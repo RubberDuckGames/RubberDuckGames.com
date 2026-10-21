@@ -28,7 +28,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 body.playing .bar{display:none}
 body.playing .wrap{padding-top:10px}
 .pause{display:inline-flex;align-items:center;justify-content:center}
-.stagebox{position:relative}
+.stagebox{position:relative;margin:0 auto;max-width:100%}
 canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow:0 0 0 2px var(--line),0 10px 30px rgba(0,0,0,.4);touch-action:none}
 .panel{position:absolute;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.96);border:2px solid var(--cyan);border-radius:18px;padding:14px 18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:5}
 #reload{bottom:12px;min-width:min(92%,420px)}
@@ -81,11 +81,23 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
 /* On a phone the maze is short, so screens and questions cover the whole
    screen instead of being squeezed into the maze box (seen on iPhone Chrome). */
-@media (max-width:700px){
+@media (max-width:700px), (orientation: landscape) and (max-height: 500px){
   .cover{position:fixed;inset:0;border-radius:0;align-items:flex-start;overflow:auto;padding:16px;z-index:20}
   .card{max-height:none;margin:auto 0}
   #reload{position:fixed;left:50%;bottom:16px;z-index:20}
   #task{position:fixed;z-index:20;max-height:92vh;overflow:auto}
+}
+/* A phone turned sideways: maze in the middle, stick bottom-left, buttons bottom-right. */
+@media (orientation: landscape) and (max-height: 500px){
+  .bar{display:none}
+  .wrap{padding:4px 8px}
+  .hud{margin:0 0 4px;gap:4px;justify-content:center}
+  .hud .pill{font-size:13px;padding:2px 9px;border-width:1px}
+  body.touchdev .touch.on{position:fixed;inset:0;margin:0;pointer-events:none;z-index:6}
+  body.touchdev .stick{position:fixed;left:10px;bottom:12px;width:104px;height:104px;pointer-events:auto}
+  body.touchdev .stick i{left:27px;top:27px}
+  body.touchdev .tbtns{position:fixed;right:10px;bottom:10px;flex-direction:column;gap:6px;pointer-events:auto}
+  body.touchdev .tbtn{width:60px;height:60px;font-size:12px}
 }
 @media (max-width:600px){.stick{width:104px;height:104px}.stick i{left:27px;top:27px}.tbtn{width:70px;height:70px;font-size:13px}.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
@@ -354,14 +366,26 @@ function newSector(n) {
 function makeErr(x, y, armored) { return { x, y, armored, hp: armored ? 3 : 1, speed: armored ? 1.2 : 1.7, jit: Math.random() * 10 }; }
 
 // ---------- Drawing ----------
+// The maze fits the screen both ways. Decided 21 Oct: sized by width alone, a
+// small phone turned sideways got a maze taller than the screen, with the
+// controls pushed below it.
+const sideways = () => matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
 function resize() {
-  const w = $('#box').clientWidth, dpr = Math.min(2, devicePixelRatio || 1);
-  const h = w * MH / MW;
+  const box = $('#box'), dpr = Math.min(2, devicePixelRatio || 1);
+  box.style.width = '';
+  let w = box.clientWidth;
+  const land = sideways() && touchMode;
+  if (land) w = Math.min(w, innerWidth - 2 * 128);          // room for the stick and the buttons
+  const room = innerHeight - box.getBoundingClientRect().top - (land ? 8 : touchMode ? 150 : 24);
+  let h = w * MH / MW;
+  if (h > room) { h = Math.max(140, room); w = h * MW / MH; }
+  box.style.width = w + 'px';
   cv.style.height = h + 'px';
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   T = cv.width / MW;
 }
 addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
 
 function draw(t) {
   cx.clearRect(0, 0, cv.width, cv.height);
@@ -860,7 +884,7 @@ function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class=
 $('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
 $('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
 $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
-$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); newSector(1); toast('Restore every Error in the sector!'); };
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); newSector(1); toast('Restore every Error in the sector!'); };
 // Pause: everything that isn't the game lives here.
 function pause() {
   if (!G || $('#start').hidden === false || !$('#clear').hidden) return;
@@ -872,7 +896,7 @@ function pause() {
 $('#pauseBtn').onclick = pause;
 $('#resume').onclick = () => { $('#paused').hidden = true; G.running = true; };
 $('#pSound').onclick = () => { S.sound = !S.sound; persist(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
-$('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); pick = S.level; drawLevels(); $('#start').hidden = false; };
+$('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); resize(); pick = S.level; drawLevels(); $('#start').hidden = false; };
 drawLevels();
 
 // ---------- Loop ----------
