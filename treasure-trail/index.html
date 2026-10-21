@@ -62,7 +62,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
     radial-gradient(circle at 20% 80%, #9edc85 0 9%, transparent 9.2%),
     radial-gradient(circle at 85% 40%, #9edc85 0 7%, transparent 7.2%),
     linear-gradient(#a6e08f,#8fd17a)}
-.path{position:absolute;inset:0;pointer-events:none}
+.path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .place,.deco,.me,.gshiny{position:absolute;transform:translate(-50%,-50%)}
 .place{text-align:center;cursor:pointer}
 .place .icon{font-size:7cqw;line-height:1;filter:drop-shadow(0 .5cqw 0 rgba(0,0,0,.15))}
@@ -136,8 +136,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .choice.wrong{opacity:.4}
 
 /* Memory Match */
-.table{background:radial-gradient(ellipse at 50% 30%,#e9c79c,#c99a66);padding:24px;display:grid;gap:14px;justify-content:center;align-content:center}
-.mcard{width:min(120px,18vw);aspect-ratio:3/4;border-radius:16px;background:#fff8e8;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:min(56px,8vw);position:relative;transition:transform .25s}
+.table{background:radial-gradient(ellipse at 50% 30%,#e9c79c,#c99a66);padding:24px;container-type:inline-size;display:grid;gap:14px;justify-content:center;align-content:center}
+.mcard{width:100%;aspect-ratio:3/4;border-radius:16px;background:#fff8e8;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:min(56px,9cqw);position:relative;transition:transform .25s}
 .mcard .back{position:absolute;inset:8px;border-radius:12px;background:#ffd98a;display:flex;align-items:center;justify-content:center}
 .mcard .back svg{width:60%}
 .mcard .face{display:none;flex-direction:column;align-items:center;line-height:1.1}
@@ -200,6 +200,65 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(calc(-100% - 40px));visibility:hidden;background:#fff;border-radius:999px;padding:10px 24px;font-weight:800;box-shadow:var(--shadow);z-index:20;transition:transform .3s,visibility .3s}
 .toast.on{transform:translateX(-50%) translateY(0);visibility:visible}
 
+.short{display:none}
+
+/* Phones. Checked at 375 px wide on 20 Oct: the bars wrapped to three lines,
+   swimmers stacked one per row, and the keyboard ran off the screen.
+   The map gets taller instead of wider; every position on it is a percentage,
+   so the places spread out and their signs can be read. */
+@media (max-width: 600px) {
+  body{font-size:17px}
+  .top{padding:10px 12px;gap:8px}
+  .top h1{font-size:20px}
+  .pill{padding:6px 12px;font-size:16px;white-space:nowrap}
+  .screen{padding:4px 12px 24px}
+  .title{font-size:26px;margin:4px 0 14px}
+  .pcard{padding:18px 12px}
+  .pcard .buddy{font-size:64px}
+  .pcard .name{font-size:24px}
+  .gamebar{flex-wrap:nowrap;gap:8px}
+  .gamebar h2{font-size:19px;line-height:1.2}
+  .gamebar .btn{padding:8px 12px;font-size:16px;white-space:nowrap}
+  .long{display:none}
+  .short{display:inline}
+  .levels{gap:6px;margin:8px 0}
+  .lvl{font-size:15px;padding:6px 12px}
+  .prompt{min-height:72px;font-size:24px;gap:8px}
+  .prompt .big{font-size:48px}
+  .prompt .hint{font-size:15px}
+  .prompt .buddy{display:none}
+  .stage{min-height:300px;border-radius:20px}
+  #controls{gap:8px;margin:10px 0}
+  .btn.big{font-size:18px;padding:12px 16px}
+  .choice{width:84px;height:84px;font-size:40px}
+  .pond{padding:12px;gap:6px}
+  .swimmer{width:42vw;max-width:150px;height:auto;aspect-ratio:16/15}
+  .rail{min-height:220px}
+  .engine{font-size:70px}
+  .car{min-width:62px;height:58px;font-size:32px;padding:0 10px}
+  .train{bottom:66px}
+  .kb{padding:8px;max-width:100%}
+  .kbrow{gap:4px;margin-bottom:4px}
+  .kbrow:nth-child(2){margin-left:12px!important}
+  .kbrow:nth-child(3){margin-left:24px!important}
+  .k{width:calc((100vw - 76px) / 10.4);height:44px;font-size:19px;border-radius:8px}
+  .table{padding:12px;gap:8px}
+  .world{aspect-ratio:3/4}
+  .place .icon{font-size:12cqw}
+  .place .sign{font-size:3.6cqw;padding:.3cqw 1.4cqw}
+  .deco{font-size:7cqw}
+  .deco svg{width:7cqw}
+  .me{font-size:10cqw}
+  .gshiny{font-size:7cqw}
+  .lake{width:36cqw;height:22cqw}
+  .bubble{font-size:3.8cqw;padding:1cqw 3cqw}
+  .worldbar h2{font-size:22px}
+  .card{padding:20px 16px}
+  .bud{font-size:32px;width:54px;height:54px}
+  .age{font-size:20px;min-width:48px;height:48px}
+  .bigShiny{font-size:110px}
+}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -220,11 +279,11 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 <section id="s-map" class="screen">
   <div class="worldbar">
     <h2 id="hello"></h2>
-    <span class="soft">Click to walk, or use the arrow keys</span>
+    <span class="soft" id="walkHint">Click to walk, or use the arrow keys</span>
   </div>
   <div class="world" id="world">
     <svg class="path" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q330 370 130 350"
+      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q340 370 160 350"
         fill="none" stroke="#e8d3a8" stroke-width="34" stroke-linecap="round"/>
     </svg>
     <div class="lake" style="left:22%;top:32%"></div>
@@ -238,9 +297,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 <section id="s-game" class="screen">
   <div class="gamebar">
-    <button class="btn" data-go="map">🗺️ Back to map</button>
+    <button class="btn" data-go="map">🗺️ <span class="long">Back to map</span><span class="short">Map</span></button>
     <h2 id="gTitle"></h2>
-    <button class="btn" id="hearBtn">🔊 Hear it</button>
+    <button class="btn" id="hearBtn" aria-label="Hear it">🔊<span class="long"> Hear it</span></button>
   </div>
   <div class="levels" id="levels"></div>
   <div class="prompt" id="prompt"></div>
@@ -251,7 +310,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 <section id="s-shelf" class="screen">
   <div class="gamebar">
-    <button class="btn" data-go="map">🗺️ Back to map</button>
+    <button class="btn" data-go="map">🗺️ <span class="long">Back to map</span><span class="short">Map</span></button>
     <h2 id="shelfTitle"></h2>
   </div>
   <div class="shelf" id="shelf"></div>
@@ -315,7 +374,7 @@ const PLACES = [
   { id: 'pond', icon: '🐸', name: 'Tadpole Pond', x: 220, y: 200, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
   { id: 'tower', icon: '🧱', name: 'Block Tower', x: 780, y: 180, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
   { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words'] },
-  { id: 'memory', icon: '🃏', name: 'Memory Match', x: 120, y: 340, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
+  { id: 'memory', icon: '🃏', name: 'Memory Match', x: 150, y: 340, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
   { id: 'shelf', icon: '🏠', name: 'My Treasures', x: 500, y: 330 },
   { id: 'space', icon: '🚀', name: 'Space Lab', x: 500, y: 95, soon: true },
   { id: 'story', icon: '📚', name: 'Story Tree', x: 240, y: 480, soon: true },
@@ -690,8 +749,8 @@ G.tower = {
       // the counting is real, but a counter shows how many are on the tower.
       if (l === 0) { $('#ghost').innerHTML = '<div class="slot"></div>'.repeat(n); setPrompt(`Build <span class="big">${n}</span><span class="hint">Drag blocks onto the tower, or tap ➕ Add a block, until the outline is full.</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}. Drag blocks onto the tower until the outline is full.`); }
       else { $('#count').hidden = false; this.showCount(); setPrompt(`Build <span class="big">${n}</span><span class="hint">Drag blocks on, or drag the top one off. Then press ✅ Done.</span>`, `Build a tower of ${n} blocks. When you think it's right, press done.`); }
-      $('#controls').innerHTML = `<button class="btn big" data-a="add">➕ Add a block</button>` +
-        (l === 1 ? `<button class="btn big" data-a="take">➖ Take one off</button><button class="btn big go" data-a="done">✅ Done</button>` : '');
+      $('#controls').innerHTML = `<button class="btn big" data-a="add">➕ Add<span class="long"> a block</span></button>` +
+        (l === 1 ? `<button class="btn big" data-a="take">➖ Take<span class="long"> one</span> off</button><button class="btn big go" data-a="done">✅ Done</button>` : '');
     } else if (l === 2) {
       const a = randInt(1, 5), b = randInt(1, Math.min(5, 10 - a)); cur.n = a + b;
       setPrompt(`<span style="color:#ef5b5b">${a}</span> + <span style="color:#4a90e2">${b}</span> = ?<span class="hint">Count all the blocks, then tap the answer. Tap a block to hear its number.</span>`, '', true);
@@ -824,7 +883,7 @@ G.memory = {
     const picks = [...shuffle(owned), ...shuffle(SHINIES.filter(s => !owned.includes(s)))].slice(0, pairs);
     Object.assign(cur, { total: pairs, deck: shuffle([...picks, ...picks]), open: [], tries: 0 });
     const st = $('#stage'); st.classList.add('table');
-    st.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+    st.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 120px))`;
     st.innerHTML = cur.deck.map(([e, n], i) => `<button class="mcard" data-i="${i}" aria-label="Card ${i + 1}"><span class="back">${rubberDuckSVG()}</span><span class="face">${e}<small>${n}</small></span></button>`).join('');
     st.onclick = e => { const c = e.target.closest('.mcard'); if (c) this.flip(c); };
     setPrompt(`Find the pairs!<span class="hint">Tap two cards. If they match, they stay up.</span>`, 'Find the pairs! Tap two cards. If they match, they stay up.');
@@ -926,6 +985,7 @@ window.addEventListener('blur', () => { W.keys = {}; });
 window.addEventListener('resize', () => { if (screen === 'game' && cur?.zone.id === 'tower') G.tower.fit(); });
 
 document.querySelector('.credit').innerHTML = rubberDuckSVG();
+if (matchMedia('(pointer: coarse)').matches) $('#walkHint').textContent = 'Tap where you want to walk';
 drawSound();
 showWho();
 </script>
