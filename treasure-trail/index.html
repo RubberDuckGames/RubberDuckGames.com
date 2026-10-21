@@ -616,6 +616,23 @@ const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view), D
 const touch = matchMedia('(pointer: coarse)').matches;
 // On an island you walk on the grass of its own coastline.
 const coast = d => `<path class="shore" d="${d}"/><path class="sand" d="${d}"/><path class="grass" d="${d}"/>`;
+// Winding sandy paths from the dock to each place (21 Oct: "we need a winding
+// path to the games from the shore"). Each is an S-curve, clipped to the island
+// so a bend never runs out over the water.
+function trails(isl) {
+  const x0 = DOCK.x, y0 = DOCK.y - 30;
+  const d = here().filter(p => p.id !== 'dock').map((p, i) => {
+    const x1 = p.x, y1 = p.y + 45, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len, bend = (i % 2 ? 1 : -1) * Math.min(90, len * .3);
+    return `M${x0} ${y0}C${x0 + dx * .3 + nx * bend} ${y0 + dy * .3 + ny * bend} ${x0 + dx * .7 - nx * bend} ${y0 + dy * .7 - ny * bend} ${x1} ${y1}`;
+  }).join('');
+  return `<clipPath id="onland"><path d="${isl.shape}"/></clipPath>
+    <g clip-path="url(#onland)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="${d}" stroke="#d6bd8a" stroke-width="30"/>
+      <path d="${d}" stroke="#efdcb0" stroke-width="22"/>
+      <path d="${d}" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-dasharray="1 16"/>
+    </g>`;
+}
 // The SVG stretches to the map (preserveAspectRatio="none"), so its units are map units.
 function inLand(x, y) {
   const g = document.querySelector('#land .grass');
@@ -654,7 +671,7 @@ function renderWorld() {
     $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
     // The island shape is an SVG, and Safari has no .hidden property on SVG
     // elements, so the first version never showed the land there. Use the attribute.
-    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape);
+    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape) + trails(isl);
     $('#places').innerHTML = here().map(pl => `
       <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
         <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
