@@ -463,7 +463,11 @@ const plural = w => /(s|x|ch|sh)$/.test(w) ? w + 'es' : /[^aeiou]y$/.test(w) ? w
 // ---------- Content ----------
 const LETTERS = { A: ['apple', '🍎'], B: ['bear', '🐻'], C: ['cat', '🐱'], D: ['duck', '🦆'], E: ['egg', '🥚'], F: ['fish', '🐟'], G: ['goat', '🐐'], H: ['hat', '🎩'], I: ['insect', '🐞'], J: ['juice', '🧃'], K: ['kite', '🪁'], L: ['lion', '🦁'], M: ['moon', '🌙'], N: ['nose', '👃'], O: ['octopus', '🐙'], P: ['pig', '🐷'], Q: ['queen', '👑'], R: ['rabbit', '🐰'], S: ['sun', '☀️'], T: ['train', '🚂'], U: ['umbrella', '☂️'], V: ['van', '🚐'], W: ['whale', '🐳'], X: ['fox', '🦊'], Y: ['yo-yo', '🪀'], Z: ['zebra', '🦓'] };
 const ALPHA = Object.keys(LETTERS);
-const phrase = L => L === 'X' ? 'X. Fox ends with X.' : `${L}. ${L} is for ${LETTERS[L][0]}.`;
+// Letters are spoken by name. Decided 21 Oct: phone voices read a lone capital
+// letter as "capital B", which is confusing when the letter on screen is small.
+const LETTER_NAMES = { A: 'ay', B: 'bee', C: 'see', D: 'dee', E: 'ee', F: 'ef', G: 'jee', H: 'aitch', I: 'eye', J: 'jay', K: 'kay', L: 'el', M: 'em', N: 'en', O: 'oh', P: 'pee', Q: 'cue', R: 'ar', S: 'ess', T: 'tee', U: 'you', V: 'vee', W: 'double you', X: 'ex', Y: 'why', Z: 'zee' };
+const ln = c => LETTER_NAMES[String(c).toUpperCase()] || c;
+const phrase = L => L === 'X' ? 'ex. Fox ends with ex.' : `${ln(L)}. ${ln(L)} is for ${LETTERS[L][0]}.`;
 
 const SHINIES = [['💎', 'blue gem'], ['🐚', 'sea shell'], ['🌰', 'acorn'], ['🪙', 'gold coin'], ['🔮', 'crystal ball'], ['🍀', 'lucky clover'], ['🪶', 'feather'], ['⭐', 'gold star'], ['🗝️', 'old key'], ['🔔', 'little bell'], ['🪨', 'smooth rock'], ['🧭', 'compass'], ['🐞', 'ladybug'], ['🌸', 'flower'], ['🍄', 'mushroom'], ['🧲', 'magnet'], ['🫧', 'bubble'], ['🦋', 'butterfly'], ['🌈', 'rainbow'], ['🐌', 'snail']];
 const BUDDIES = ['🐈‍⬛', '🐕', '🦆', '🦹', '🦸', '🚂', '⛵', '🚀', '🦖', '🐉', '🦉', '🐙', '🤖', '🦊', '🐢', '👾'];
@@ -525,13 +529,20 @@ if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged 
 // clipped short words, so "what" came out as "whaa".
 const wordLine = w => `Your word is: ${w}.`;
 const sayWord = w => say(wordLine(w), .8);
+// Resolves when the voice has finished (or right away with sound off), so a game
+// can wait before moving on instead of cutting the sentence off. The timer is a
+// fallback for browsers that never send "end".
 function say(t, rate = .9) {
-  if (!t || !save.sound || !('speechSynthesis' in window)) return;
+  if (!t || !save.sound || !('speechSynthesis' in window)) return Promise.resolve();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(t);
   if (voice) u.voice = voice;
   u.rate = rate; u.pitch = 1.1;
-  speechSynthesis.speak(u);
+  return new Promise(done => {
+    const fallback = setTimeout(done, 1500 + t.length * 85 / rate);
+    u.onend = u.onerror = () => { clearTimeout(fallback); done(); };
+    speechSynthesis.speak(u);
+  });
 }
 let ac;
 function tone(freq, dur = .15, type = 'sine', when = 0, vol = .15, slideTo) {
@@ -929,9 +940,9 @@ G.pond = {
     const t = rand(pool.filter(x => x !== cur.target)); cur.target = t;
     this.draw(shuffle([t, ...shuffle(pool.filter(x => x !== t)).slice(0, 3)]));
     const [word, pic] = LETTERS[t];
-    if (l === 1) setPrompt(`Find <span class="big">${t}</span>`, `Find the letter ${t}.`);
+    if (l === 1) setPrompt(`Find <span class="big">${t}</span>`, `Find the letter ${ln(t)}.`);
     else if (l === 2) setPrompt(`<span class="big">${pic}</span> ${word} starts with…`, `${word}. What letter does ${word} start with?`);
-    else setPrompt(`Big <span class="big">${t}</span> Find little <span class="big">?</span>`, `This is big ${t}. Find little ${t}.`);
+    else setPrompt(`Big <span class="big">${t}</span> Find little <span class="big">?</span>`, `This is big ${ln(t)}. Find little ${ln(t)}.`);
   },
   tap(d) {
     if (cur.busy) return;
@@ -953,13 +964,13 @@ G.pond = {
     }
     if (L === cur.target) {
       cur.busy = true; d.classList.remove('hint'); d.classList.add('yay'); sfx.bloop(); setTimeout(sfx.good, 150); cheer();
-      say(l === 2 ? `Yes! ${LETTERS[L][0]} starts with ${L}!` : l === 3 ? `Yes! Little ${L}!` : `Yes! ${L}!`);
+      say(l === 2 ? `Yes! ${LETTERS[L][0]} starts with ${ln(L)}!` : l === 3 ? `Yes! Little ${ln(L)}!` : `Yes! ${ln(L)}!`);
       if (!stepDone()) setTimeout(() => { if (alive(c)) this.next(); }, 1500);
     } else {
       cur.misses++; cur.missHere++;
       d.classList.remove('wobble'); void d.offsetWidth; d.classList.add('wobble');
       setTimeout(() => d.classList.remove('wobble'), 500);
-      sfx.oops(); say(`That's ${l === 3 ? 'little ' : ''}${L}. Try again!`);
+      sfx.oops(); say(`That's ${l === 3 ? 'little ' : ''}${ln(L)}. Try again!`);
       // After two misses, the right swimmer glows so nobody gets stuck.
       if (cur.missHere >= 2) document.querySelector(`.swimmer[data-l="${cur.target}"]`)?.classList.add('hint');
     }
@@ -1162,7 +1173,7 @@ G.memory = {
 const parseWords = text => [...new Set(text.split(/[\n,;\t]+/)
   .map(w => w.replace(/^\s*\d+[.)]?\s*/, '').trim())
   .filter(w => /[a-z]/i.test(w)))].slice(0, 40);
-const spellOut = w => [...w].filter(c => /[a-z]/i.test(c)).map(c => c.toUpperCase()).join(', ');
+const spellOut = w => [...w].filter(c => /[a-z]/i.test(c)).map(ln).join(', ');
 G.spell = {
   start(l) {
     const st = $('#stage'); st.classList.add('paper');
@@ -1268,22 +1279,25 @@ G.spell = {
     if (btn.dataset.c !== want) {
       cur.wrongTaps++;
       btn.classList.remove('wiggle'); void btn.offsetWidth; btn.classList.add('wiggle');
-      return say(`Not ${btn.dataset.c.toUpperCase()}. Try another letter.`);
+      return say(`Not ${ln(btn.dataset.c)}. Try another letter.`);
     }
     btn.classList.add('used'); sfx.pop();
     $('#slots').children[cur.placed].textContent = want; cur.placed++;
     if (cur.placed === cur.letters.length) {
       if (cur.wrongTaps > 2) { this.stat(cur.word).m++; persist(); }
       this.right();
-    } else say(want.toUpperCase());
+    } else say(ln(want));
   },
   right() {
     const w = cur.word, c = cur;
     if (cur.tries === 0 && !(cur.level === 1 && cur.wrongTaps > 2)) this.stat(w).r++;
-    persist(); cur.busy = true; sfx.good(); cheer(); say(`Yes! ${w} is spelled ${spellOut(w)}.`, .85);
+    persist(); cur.busy = true; sfx.good(); cheer();
     cur.queue.shift();
-    if (!stepDone()) setTimeout(() => { if (alive(c)) this.ask(); }, 2200);
-    else cur.sub = `You spelled ${cur.total} words!`;
+    say(`Yes! ${w} is spelled ${spellOut(w)}.`, .85).then(() => wait(600)).then(() => {
+      if (!alive(c)) return;
+      if (!stepDone()) this.ask();
+      else cur.sub = `You spelled ${cur.total} words!`;
+    });
   },
 };
 
@@ -1371,7 +1385,7 @@ G.fetch = {
     // A wrong key: the corgi tilts its head. No buzzer.
     cur.wrongWord++; cur.wrongHere++;
     const c = $('#corgi'); c.classList.add('tilt'); setTimeout(() => c.classList.remove('tilt'), 600);
-    if (cur.wrongHere === 2) { this.draw(); say(want.toUpperCase()); }
+    if (cur.wrongHere === 2) { this.draw(); say(ln(want)); }
   },
   async throwBall() {
     const c0 = cur, w = cur.word, perfect = !cur.wrongWord && !cur.peeked;
@@ -1389,9 +1403,12 @@ G.fetch = {
     await glide(dog, far - 4, 14, (far - 14) * 16);
     if (!alive(c0)) return;
     dog.className = 'corgi wag'; bark(); cheer();
-    say(perfect ? `Good dog! You spelled ${w}!` : `Good dog! The word ${w} is spelled ${spellOut(w)}.`, .85);
     cur.queue.shift();
-    if (!stepDone()) setTimeout(() => { if (alive(c0)) this.ask(); }, 1800);
+    // Wait until the voice is done, then a short pause, before the next word.
+    await say(perfect ? `Good dog! You spelled ${w}!` : `Good dog! The word ${w} is spelled ${spellOut(w)}.`, .85);
+    await wait(600);
+    if (!alive(c0)) return;
+    if (!stepDone()) this.ask();
     else cur.sub = `You spelled ${cur.total} words with the corgi!`;
   },
   list() { return player().words.list; },
@@ -1440,7 +1457,7 @@ G.train = {
       const hint = `${LEFT_KEYS.includes(ch) ? 'Left' : 'Right'} ${FINGER_NAME[FINGER[ch]]}`;
       // The very first letter of an early round starts with where the fingers go.
       const warm = cur.i === 0 && cur.level <= 1 ? 'Put your pointer fingers on the bumps on F and J. ' : '';
-      if (w.length === 1) setPrompt(`Type <span class="big">${ch}</span><span class="hint">${warm ? 'Pointer fingers on the bumps on F and J. ' : ''}${hint}</span>`, `${warm}${ch.toUpperCase()}`);
+      if (w.length === 1) setPrompt(`Type <span class="big">${ch}</span><span class="hint">${warm ? 'Pointer fingers on the bumps on F and J. ' : ''}${hint}</span>`, `${warm}${ln(ch)}`);
       else setPrompt(`Type <span class="big">${w}</span>`, `Type the word: ${w}.`);
     }
   },
