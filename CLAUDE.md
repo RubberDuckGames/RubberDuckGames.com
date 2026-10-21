@@ -7,6 +7,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 ## Layout
 
 - `index.html` is the studio home page. Each game sits in its own folder.
+- `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
+  are rendered from the matching `brand/*.html` with headless Chrome
+  (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
+  from a 64 px render via `sips -s format ico`. Bump `?v=` in the meta tags when
+  an image changes, or link previews keep the old one.
 - `treasure-trail/index.html` is the whole game in one file ("Treasure Trail" is a working title): no build step,
   no libraries. It runs offline when you double-click it.
 
