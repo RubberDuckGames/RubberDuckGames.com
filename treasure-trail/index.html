@@ -99,12 +99,14 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 @keyframes yay{40%{transform:scale(1.25) rotate(360deg)}100%{transform:scale(1.15)}}
 
 /* Block Tower */
-.yard{background:linear-gradient(#dff2ff,#f2fbff);min-height:530px}
+.yard{background:linear-gradient(#dff2ff,#f2fbff);min-height:460px}
 .ground{position:absolute;left:0;right:0;bottom:0;height:56px;background:#8fd17a;border-top:6px solid #6fb85a}
 .sun{position:absolute;top:18px;right:28px;font-size:64px}
-.tower{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center}
-.brick{width:160px;height:36px;background:currentColor;border-radius:5px;position:relative;margin-top:9px;cursor:pointer;animation:drop .35s ease-out;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.3)}
-.brick::before{content:'';position:absolute;top:-9px;left:18px;right:18px;height:10px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,currentColor 0 24px,transparent 24px 46px)}
+.tower,.ghost{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center}
+.ghost .slot{width:150px;height:28px;margin-top:8px;border:3px dashed rgba(35,50,74,.35);border-radius:5px}
+.count{position:absolute;left:24px;bottom:76px;background:#fff;border-radius:18px;padding:8px 18px;font-size:30px;font-weight:800;box-shadow:var(--shadow)}
+.brick{width:150px;height:28px;background:currentColor;border-radius:5px;position:relative;margin-top:8px;cursor:pointer;animation:drop .35s ease-out;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.3)}
+.brick::before{content:'';position:absolute;top:-8px;left:16px;right:16px;height:9px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,currentColor 0 24px,transparent 24px 46px)}
 .brick.flash{outline:5px solid var(--ink)}
 .brick.gone{animation:fly .45s forwards}
 @keyframes drop{from{transform:translateY(-160px);opacity:0}to{transform:none;opacity:1}}
@@ -512,6 +514,7 @@ function openGame(id, level) {
   cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
   const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
+  st.after($('#controls'));
   $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
   $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
   renderLevels();
@@ -626,30 +629,36 @@ G.pond = {
 const BRICK_COLORS = ['#ef5b5b', '#4a90e2', '#ffc93c', '#3fb37f', '#f59a3a', '#9b6ee8'];
 G.tower = {
   start() {
-    const st = $('#stage'); st.classList.add('yard'); cur.total = 6;
+    // Decided 20 Oct, after the first play-test ("we weren't sure how Block Tower worked"):
+    // the buttons sit above the tower, where they were easy to miss below a tall stage.
+    const st = $('#stage'); st.classList.add('yard'); cur.total = 6; st.before($('#controls'));
     st.onclick = e => { const b = e.target.closest('.brick:not(.gone)'); if (b) this.tapBrick(b); };
     this.next();
   },
+  showCount() { const c = $('#count'); if (c && !c.hidden) c.textContent = `🧱 ${this.bricks().length}`; },
   bricks() { return [...document.querySelectorAll('#tower .brick:not(.gone)')]; },
   brick(color) { const b = document.createElement('div'); b.className = 'brick'; b.style.color = color; $('#tower').appendChild(b); return b; },
   next() {
-    $('#stage').innerHTML = '<div class="sun">☀️</div><div class="tower" id="tower"></div><div class="ground"></div>';
+    $('#stage').innerHTML = '<div class="sun">☀️</div><div class="ghost" id="ghost"></div><div class="tower" id="tower"></div><div class="count" id="count" hidden></div><div class="ground"></div>';
     $('#controls').innerHTML = ''; cur.busy = false;
     const l = cur.level;
     if (l <= 1) {
       const n = l === 0 ? randInt(1, 5) : randInt(3, 10); cur.n = n;
-      setPrompt(`Build <span class="big">${n}</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}.`);
+      // Build to 5 shows a see-through outline to fill. Build to 10 doesn't, so
+      // the counting is real, but a counter shows how many are on the tower.
+      if (l === 0) { $('#ghost').innerHTML = '<div class="slot"></div>'.repeat(n); setPrompt(`Build <span class="big">${n}</span><span class="hint">Tap ➕ Add a block until the outline is full.</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}. Tap add a block until the outline is full.`); }
+      else { $('#count').hidden = false; this.showCount(); setPrompt(`Build <span class="big">${n}</span><span class="hint">Add blocks or take some off, then press ✅ Done.</span>`, `Build a tower of ${n} blocks. When you think it's right, press done.`); }
       $('#controls').innerHTML = `<button class="btn big" data-a="add">➕ Add a block</button>` +
         (l === 1 ? `<button class="btn big" data-a="take">➖ Take one off</button><button class="btn big go" data-a="done">✅ Done</button>` : '');
     } else if (l === 2) {
       const a = randInt(1, 5), b = randInt(1, Math.min(5, 10 - a)); cur.n = a + b;
-      setPrompt(`<span style="color:#ef5b5b">${a}</span> + <span style="color:#4a90e2">${b}</span> = ?`, '', true);
+      setPrompt(`<span style="color:#ef5b5b">${a}</span> + <span style="color:#4a90e2">${b}</span> = ?<span class="hint">Count all the blocks, then tap the answer. Tap a block to hear its number.</span>`, '', true);
       this.autoBuild([[a, '#ef5b5b'], [b, '#4a90e2']], `${a} red ${a === 1 ? 'block' : 'blocks'} and ${b} blue ${b === 1 ? 'block' : 'blocks'}. How many blocks in all?`);
     } else {
       const n = randInt(3, 10), k = randInt(1, Math.min(5, n - 1));
       Object.assign(cur, { n: n - k, k, taken: 0, start: n });
       for (let i = 0; i < n; i++) this.brick(BRICK_COLORS[i % 6]);
-      setPrompt(`${n} take away ${k}`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
+      setPrompt(`${n} take away ${k}<span class="hint">Tap the tower ${k} ${k === 1 ? 'time' : 'times'} to take blocks off. Then tap how many are left.</span>`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
     }
   },
   async autoBuild(groups, speech) {
@@ -672,7 +681,7 @@ G.tower = {
       const top = this.bricks().at(-1); top.classList.add('gone'); setTimeout(() => top.remove(), 450);
       cur.taken++; sfx.pop(); say(String(cur.taken));
       if (cur.taken === cur.k) {
-        setPrompt(`${cur.start} take away ${cur.k} = ?`, 'How many blocks are left?', true);
+        setPrompt(`${cur.start} take away ${cur.k} = ?<span class="hint">Tap how many blocks are left.</span>`, 'How many blocks are left?', true);
         setTimeout(() => { say(cur.say); this.choices(); }, 700);
       }
       return;
@@ -686,11 +695,11 @@ G.tower = {
     const l = cur.level, c = this.bricks().length;
     if (a === 'add') {
       if (c >= 10) return say('That is as tall as it goes!');
-      this.brick(BRICK_COLORS[c % 6]); sfx.pop(); say(String(c + 1));
+      this.brick(BRICK_COLORS[c % 6]); sfx.pop(); say(String(c + 1)); this.showCount();
       if (l === 0 && c + 1 === cur.n) setTimeout(() => this.win(`${cur.n}! You built ${cur.n}!`), 500);
     } else if (a === 'take') {
       if (!c) return;
-      this.bricks().at(-1).remove(); sfx.pop(); say(c - 1 ? String(c - 1) : 'Zero');
+      this.bricks().at(-1).remove(); sfx.pop(); say(c - 1 ? String(c - 1) : 'Zero'); this.showCount();
     } else if (a === 'done') {
       if (c === cur.n) this.win(`Yes! ${cur.n} blocks!`);
       else { sfx.oops(); cur.misses++; say(`You have ${c}. We need ${cur.n}. ${c > cur.n ? 'Take some off.' : 'Add some more.'}`); }
