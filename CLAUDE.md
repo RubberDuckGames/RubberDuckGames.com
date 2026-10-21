@@ -7,6 +7,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 ## Layout
 
 - `index.html` is the studio home page. Each game sits in its own folder.
+- `math-force/index.html` is a separate game designed by the oldest kid tester
+  (full design on Trello card #33). Decided 20 Oct: the fix-the-glitch theme;
+  Errors are restored, not killed, and the blaster is a debug blaster, not a
+  real-world gun. Single-player only; multiplayer needs a server and moderation.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
