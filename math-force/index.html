@@ -23,6 +23,11 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .wrap{max-width:1100px;margin:0 auto;padding:0 14px 20px}
 .hud{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
 .hud .pill{font-size:16px}
+/* Decided 21 Oct: in play, only the game. The top bar hides after Start and the
+   pause button holds everything else. */
+body.playing .bar{display:none}
+body.playing .wrap{padding-top:10px}
+.pause{display:inline-flex;align-items:center;justify-content:center}
 .stagebox{position:relative}
 canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow:0 0 0 2px var(--line),0 10px 30px rgba(0,0,0,.4);touch-action:none}
 .panel{position:absolute;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.96);border:2px solid var(--cyan);border-radius:18px;padding:14px 18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:5}
@@ -72,19 +77,19 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 </style>
 </head>
 <body>
-<div class="bar">
+<div class="bar" id="bar">
   <a class="pill" href="../">← All games</a>
   <h1><b>MATH</b> FORCE</h1>
   <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
 </div>
 <div class="wrap">
   <div class="hud" aria-live="polite">
+    <button class="pill pause" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 12 14" width="12" height="14" aria-hidden="true"><rect x="1" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="7.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
     <span class="pill" id="hShield"></span>
     <span class="pill" id="hAmmo"></span>
     <span class="pill" id="hWrench"></span>
     <span class="pill" id="hBucks"></span>
     <span class="pill" id="hLeft"></span>
-    <span class="pill" id="hLevel"></span>
   </div>
   <div class="stagebox" id="box">
     <canvas id="cv" aria-label="Math Force maze"></canvas>
@@ -127,6 +132,15 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
         <p style="color:var(--ink);font-weight:700;margin-top:12px">Spend Math Bucks: <span id="cBucks"></span></p>
         <div class="shop" id="shop"></div>
         <div class="row"><button class="btn go" id="next">Next sector</button></div>
+      </div>
+    </div>
+
+    <div class="cover" id="paused" hidden>
+      <div class="card">
+        <h2>Paused</h2>
+        <p id="pInfo"></p>
+        <div class="row"><button class="btn go" id="resume">Keep playing</button></div>
+        <div class="row"><button class="btn" id="pSound"></button><button class="btn" id="pLevel">Change math level</button><a class="btn" href="../" style="text-decoration:none;color:inherit">All games</a></div>
       </div>
     </div>
 
@@ -588,10 +602,9 @@ function hud() {
   if (!G) return;
   $('#hShield').textContent = `🛡️ ${'■'.repeat(G.p.shield)}${'□'.repeat(3 - G.p.shield)}`;
   $('#hAmmo').textContent = `⚡ ${G.ammo}`;
-  $('#hWrench').textContent = G.wrenchBroken ? '🔧 broken' : `🔧 ${G.wrench}${G.wrench === 0 ? ' (risky!)' : ''}`;
+  $('#hWrench').textContent = G.wrenchBroken ? '🔧 ✖' : `🔧 ${G.wrench}${G.wrench === 0 ? '!' : ''}`;
   $('#hBucks').textContent = `💰 ${S.bucks}`;
-  $('#hLeft').textContent = `👾 ${G.errs.length} left · Sector ${G.n}`;
-  $('#hLevel').textContent = `➗ ${LEVELS[S.level - 1].name}`;
+  $('#hLeft').textContent = `👾 ${G.errs.length}`;
 }
 let toastT;
 function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
@@ -610,6 +623,7 @@ addEventListener('keydown', e => {
   if (k === 'e') swing();
   if (k === 'r' && G?.running && G.ammo < magMax()) openReload();
   if (k === 'enter' && G?.onT) useTerminal();
+  if (k === 'escape' || k === 'p') pause();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
@@ -639,7 +653,19 @@ function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class=
 $('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
 $('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
 $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
-$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; newSector(1); toast('Restore every Error in the sector!'); };
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); newSector(1); toast('Restore every Error in the sector!'); };
+// Pause: everything that isn't the game lives here.
+function pause() {
+  if (!G || $('#start').hidden === false || !$('#clear').hidden) return;
+  G.running = false;
+  $('#pInfo').textContent = `Sector ${G.n} · math ${LEVELS[S.level - 1].name} · ${G.errs.length} Errors left`;
+  $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off';
+  $('#paused').hidden = false;
+}
+$('#pauseBtn').onclick = pause;
+$('#resume').onclick = () => { $('#paused').hidden = true; G.running = true; };
+$('#pSound').onclick = () => { S.sound = !S.sound; persist(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); pick = S.level; drawLevels(); $('#start').hidden = false; };
 drawLevels();
 
 // ---------- Loop ----------
