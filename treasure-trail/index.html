@@ -151,6 +151,32 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .mcard.got{background:#d4f3e3;box-shadow:0 0 0 4px var(--green)}
 .mcard:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 
+/* Spelling Words */
+.paper{background:#fffdf5;padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center}
+.blanks{font-size:40px;font-weight:800;letter-spacing:.3em}
+#spellIn{font:inherit;font-size:40px;text-align:center;padding:10px 16px;border-radius:16px;border:3px solid #cdd6e3;width:min(100%,440px);letter-spacing:.08em}
+#spellIn:focus-visible,#wordsIn:focus-visible{outline:4px solid var(--ink);outline-offset:2px}
+.answer{font-size:46px;font-weight:800;letter-spacing:.08em}
+.blanks .answer,.blanks .cover{display:inline-block}
+.answer .off{text-decoration:underline wavy var(--red);text-decoration-thickness:3px;text-underline-offset:10px}
+.cover{font-size:20px;color:var(--soft);font-weight:600;letter-spacing:normal}
+.slots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.slots span{width:52px;height:62px;border-bottom:5px solid var(--ink);font-size:38px;font-weight:800;display:flex;align-items:flex-end;justify-content:center}
+.ltiles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.lt{width:64px;height:64px;font-size:34px;font-weight:800;border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+.lt.used{visibility:hidden}
+.lt.wiggle{animation:wobble .4s}
+.lt:focus-visible{outline:4px solid var(--ink)}
+.wlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:8px;width:100%;text-align:left}
+.wrow{background:#fff;border-radius:12px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 0 rgba(35,50,74,.1)}
+.wrow b{font-size:22px}
+.wrow small{display:block;color:var(--soft);font-size:15px}
+.wrow button{font-size:22px}
+#wordsIn{font:inherit;font-size:20px;width:100%;min-height:220px;border-radius:14px;border:3px solid #cdd6e3;padding:12px}
+.paper label,.paper .note{font-weight:700;text-align:left;width:100%}
+.paper .note{font-weight:400;color:var(--soft);font-size:16px}
+.paper .warn{color:#b42318;font-weight:700}
+
 /* Letter Train */
 .rail{background:linear-gradient(#fff6e5 0 72%,#c9e9b8 72%);min-height:300px}
 .track{position:absolute;left:0;right:0;bottom:52px;height:12px;border-top:5px solid #6b7b8f;background:repeating-linear-gradient(90deg,#8a6a4a 0 18px,transparent 18px 34px)}
@@ -264,6 +290,12 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   .bud{font-size:32px;width:54px;height:54px}
   .age{font-size:20px;min-width:48px;height:48px}
   .bigShiny{font-size:110px}
+  .slots{gap:5px}
+  .slots span{width:36px;height:50px;font-size:30px}
+  .lt{width:56px;height:56px;font-size:30px}
+  .blanks{font-size:30px}
+  .answer{font-size:36px}
+  #spellIn{font-size:30px}
 }
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
@@ -291,7 +323,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   </div>
   <div class="world" id="world">
     <svg class="path" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q340 370 160 350"
+      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q340 370 160 350 M500 340 Q590 300 660 275"
         fill="none" stroke="#e8d3a8" stroke-width="34" stroke-linecap="round"/>
     </svg>
     <div class="lake" style="left:22%;top:32%"></div>
@@ -381,20 +413,21 @@ const FINGER_NAME = { p: 'pinky', r: 'ring finger', m: 'middle finger', i: 'poin
 const PLACES = [
   { id: 'pond', icon: '🐸', name: 'Tadpole Pond', x: 220, y: 200, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
   { id: 'tower', icon: '🧱', name: 'Block Tower', x: 780, y: 180, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
-  { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words'] },
+  { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
   { id: 'memory', icon: '🃏', name: 'Memory Match', x: 150, y: 340, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
+  { id: 'spell', icon: '📝', name: 'Spelling Words', x: 660, y: 275, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
   { id: 'shelf', icon: '🏠', name: 'My Treasures', x: 500, y: 330 },
   { id: 'space', icon: '🚀', name: 'Space Lab', x: 500, y: 95, soon: true },
   { id: 'story', icon: '📚', name: 'Story Tree', x: 240, y: 480, soon: true },
 ];
-const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 60, 440], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 660, 300], ['🍄', 90, 580]];
+const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 60, 440], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 880, 75], ['🍄', 90, 580]];
 
 // ---------- Save data (stays on this computer) ----------
 function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
 function persist() { try { localStorage.setItem('treasure-trail', JSON.stringify(save)); } catch (e) { } }
-const newPlayer = (name, buddy, age = null, setup = false) => ({ name, buddy, age, setup, shinies: [], done: {}, last: {} });
+const newPlayer = (name, buddy, age = null, setup = false) => ({ name, buddy, age, setup, shinies: [], done: {}, last: {}, words: { list: [], stats: {}, set: null }, oldWords: [] });
 let save = load() || { sound: true, current: null, players: [newPlayer('Player 1', '🐈‍⬛'), newPlayer('Player 2', '🐕'), newPlayer('Player 3', '🦆')] };
-save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; p.age ??= null; p.setup ??= !/^Player \d+$/.test(p.name); });
+save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; p.age ??= null; p.words ??= { list: [], stats: {}, set: null }; p.oldWords ??= []; p.setup ??= !/^Player \d+$/.test(p.name); });
 const player = () => save.players[save.current];
 
 // ---------- Voice and sounds ----------
@@ -618,7 +651,7 @@ function openGame(id, level) {
   cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
   const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
-  st.after($('#controls')); st.style.gridTemplateColumns = ''; st.style.height = ''; st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null;
+  st.after($('#controls')); st.style.gridTemplateColumns = ''; st.style.height = ''; st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = st.onsubmit = null;
   scrollTo(0, 0);
   $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
   $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
@@ -632,7 +665,7 @@ function renderLevels() {
   $('#levels').innerHTML = z.levels.map((n, i) => `<button class="lvl${i === cur.level ? ' on' : ''}" data-lv="${i}">${n}${p.done[z.id + i] ? ` <small>⭐${p.done[z.id + i]}</small>` : ''}</button>`).join('');
 }
 $('#levels').onclick = e => { const b = e.target.closest('[data-lv]'); if (b && cur) openGame(cur.zone.id, +b.dataset.lv); };
-function drawDots() { $('#dots').innerHTML = Array.from({ length: cur.total }, (_, i) => `<span class="${i < cur.step ? 'on' : ''}"></span>`).join('') + '✨'; }
+function drawDots() { if (!cur.total) return void ($('#dots').innerHTML = ''); $('#dots').innerHTML = Array.from({ length: cur.total }, (_, i) => `<span class="${i < cur.step ? 'on' : ''}"></span>`).join('') + '✨'; }
 function setPrompt(html, speech, quiet) {
   $('#prompt').innerHTML = `<span class="buddy" id="buddy">${player().buddy}</span><span>${html}</span>`;
   cur.say = speech;
@@ -920,6 +953,137 @@ G.memory = {
   },
 };
 
+// ---------- Spelling Words (the school list) ----------
+// A grown-up pastes the week's list once per player. The practice follows the
+// way spelling is taught at school: look, say, cover, write, check.
+const parseWords = text => [...new Set(text.split(/[\n,;\t]+/)
+  .map(w => w.replace(/^\s*\d+[.)]?\s*/, '').trim())
+  .filter(w => /[a-z]/i.test(w)))].slice(0, 40);
+const spellOut = w => [...w].filter(c => /[a-z]/i.test(c)).map(c => c.toUpperCase()).join(', ');
+G.spell = {
+  start(l) {
+    const st = $('#stage'); st.classList.add('paper');
+    st.onsubmit = e => { e.preventDefault(); this.check(); };
+    st.onclick = e => { const b = e.target.closest('[data-a]'); if (b) this.act(b.dataset.a, b); };
+    if (!this.list().length && l !== 2) { cur.level = 2; player().last.spell = 2; persist(); renderLevels(); l = 2; }
+    if (l === 2) { cur.total = 0; return this.listView(); }
+    const p = player();
+    // Words missed more than they were got come first, then the rest, shuffled.
+    const score = w => { const s = p.words.stats[w] || { r: 0, m: 0 }; return s.m - s.r; };
+    const pick = shuffle(this.list()).sort((a, b) => score(b) - score(a)).slice(0, 10);
+    Object.assign(cur, { queue: shuffle(pick), total: pick.length });
+    this.ask();
+  },
+  list() { return player().words.list; },
+  stat(w) { const s = player().words.stats; return s[w] ??= { r: 0, m: 0 }; },
+  listView(editing = false) {
+    const p = player(), list = this.list();
+    $('#controls').innerHTML = '';
+    if (editing || !list.length) {
+      setPrompt('This week\'s spelling words<span class="hint">For a grown-up: paste the list from school.</span>', list.length ? '' : 'Ask a grown-up to add your spelling words.');
+      $('#stage').innerHTML = `<form class="paper-form" style="width:100%">
+        <label for="wordsIn">Paste the words. One per line, or with commas between.</label>
+        <textarea id="wordsIn" autocapitalize="off" autocomplete="off" spellcheck="false">${esc(list.join('\n'))}</textarea>
+        <p class="warn" id="wordsWarn" hidden></p>
+        <div class="row"><button type="button" class="btn big go" data-a="savewords">Save words</button>${list.length ? '<button type="button" class="btn big" data-a="cancelwords">Cancel</button>' : ''}</div>
+        ${list.length ? '<p class="note">Saving a new list keeps the old one, so last week\'s words aren\'t lost.</p>' : ''}
+      </form>`;
+      return setTimeout(() => $('#wordsIn')?.focus(), 50);
+    }
+    const label = w => { const s = p.words.stats[w];
+      return !s || !(s.r + s.m) ? '⚪ Not tried yet' : s.r >= 2 && s.r > s.m ? '✅ Got it' : '🔁 Keep practicing'; };
+    setPrompt(`My spelling words<span class="hint">${list.length} words. Tap 🔊 to hear one.</span>`, `You have ${list.length} spelling words.`);
+    $('#stage').innerHTML = `<div class="wlist">${list.map(w => `<div class="wrow"><span><b>${esc(w)}</b><small>${label(w)}</small></span><button type="button" data-a="hear" data-w="${esc(w)}" aria-label="Hear ${esc(w)}">🔊</button></div>`).join('')}</div>
+      <div class="row"><button type="button" class="btn big go" data-a="practice">Practice now</button><button type="button" class="btn big" data-a="editwords">✏️ New list</button></div>`;
+  },
+  ask() {
+    const w = cur.queue[0]; cur.word = w; cur.tries = 0; cur.busy = false;
+    const blanks = [...w].map(c => /[a-z]/i.test(c) ? '_' : c).join('');
+    setPrompt(`Spell the word you hear<span class="hint">${[...w].filter(c => /[a-z]/i.test(c)).length} letters</span>`, `${w}. ${w}.`);
+    cur.say = w;
+    if (cur.level === 0) {
+      $('#stage').innerHTML = `<div class="blanks" aria-hidden="true">${blanks}</div>
+        <form style="display:contents"><label class="sr" for="spellIn" style="position:absolute;left:-9999px">Type the word</label>
+        <input id="spellIn" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></form>
+        <div class="row"><button type="button" class="btn big go" data-a="check">Check</button><button type="button" class="btn big" data-a="show">👀 Show me</button></div>`;
+      setTimeout(() => $('#spellIn')?.focus(), 50);
+    } else {
+      const letters = [...w.toLowerCase()].filter(c => /[a-z]/.test(c));
+      cur.letters = letters; cur.placed = 0; cur.wrongTaps = 0;
+      $('#stage').innerHTML = `<div class="slots" id="slots">${letters.map(() => '<span></span>').join('')}</div>
+        <div class="ltiles">${shuffle(letters.map((c, i) => [c, i])).map(([c, i]) => `<button type="button" class="lt" data-a="tile" data-c="${c}">${c}</button>`).join('')}</div>`;
+    }
+  },
+  act(a, btn) {
+    if (a === 'hear') return say(btn.dataset.w);
+    if (a === 'practice') return openGame('spell', 0);
+    if (a === 'editwords') return this.listView(true);
+    if (a === 'cancelwords') return this.listView();
+    if (a === 'savewords') return this.save();
+    if (cur.busy) return;
+    if (a === 'check') return this.check();
+    if (a === 'show') return this.reveal(false);
+    if (a === 'tile') return this.tile(btn);
+  },
+  save() {
+    const words = parseWords($('#wordsIn').value), p = player();
+    if (!words.length) { const w = $('#wordsWarn'); w.hidden = false; w.textContent = 'Type at least one word, then press Save words.'; return; }
+    if (p.words.list.length && p.words.list.join('|') !== words.join('|')) p.oldWords = [p.words, ...p.oldWords].slice(0, 10);
+    p.words = { list: words, stats: Object.fromEntries(words.map(w => [w, p.words.stats[w] || { r: 0, m: 0 }])), set: new Date().toISOString().slice(0, 10) };
+    persist(); sfx.good(); say(`Saved ${words.length} words.`); this.listView();
+  },
+  // Look, cover, write: show the word, then hide it and try again.
+  reveal(missed) {
+    const w = cur.word, typed = ($('#spellIn')?.value || '').trim().toLowerCase();
+    const shown = [...w].map((c, i) => missed && typed[i] !== c.toLowerCase() ? `<span class="off">${esc(c)}</span>` : esc(c)).join('');
+    cur.busy = true;
+    $('#stage').querySelector('.blanks').innerHTML = `<span class="answer">${shown}</span>`;
+    say(`${w}. ${spellOut(w)}. ${w}.`);
+    const c = cur;
+    setTimeout(() => {
+      if (!alive(c) || cur.word !== w) return;
+      $('#stage').querySelector('.blanks').innerHTML = `<span class="cover">The word is hidden now. Can you type it?</span>`;
+      const i = $('#spellIn'); i.value = ''; i.focus(); cur.busy = false;
+    }, 4500);
+  },
+  check() {
+    if (cur.busy || cur.level !== 0) return;
+    const i = $('#spellIn'), typed = i.value.trim().toLowerCase(), w = cur.word;
+    if (!typed) return say(`Type ${w}, then press check.`);
+    if (typed === w.toLowerCase()) return this.right();
+    cur.tries++; this.stat(w).m++; persist(); cur.misses++;
+    if (cur.tries >= 3) {
+      // Third miss: move on, and this word comes back near the end.
+      cur.queue.push(cur.queue.shift());
+      cur.busy = true; say(`That's a tricky one. We'll come back to ${w}.`);
+      const c = cur; return setTimeout(() => { if (alive(c)) this.ask(); }, 2600);
+    }
+    this.reveal(true);
+  },
+  tile(btn) {
+    const want = cur.letters[cur.placed];
+    if (btn.dataset.c !== want) {
+      cur.wrongTaps++;
+      btn.classList.remove('wiggle'); void btn.offsetWidth; btn.classList.add('wiggle');
+      return say(`Not ${btn.dataset.c.toUpperCase()}. Try another letter.`);
+    }
+    btn.classList.add('used'); sfx.pop();
+    $('#slots').children[cur.placed].textContent = want; cur.placed++;
+    if (cur.placed === cur.letters.length) {
+      if (cur.wrongTaps > 2) { this.stat(cur.word).m++; persist(); }
+      this.right();
+    } else say(want.toUpperCase());
+  },
+  right() {
+    const w = cur.word, c = cur;
+    if (cur.tries === 0 && !(cur.level === 1 && cur.wrongTaps > 2)) this.stat(w).r++;
+    persist(); cur.busy = true; sfx.good(); cheer(); say(`Yes! ${w}. ${spellOut(w)}.`);
+    cur.queue.shift();
+    if (!stepDone()) setTimeout(() => { if (alive(c)) this.ask(); }, 2200);
+    else cur.sub = `You spelled ${cur.total} words!`;
+  },
+};
+
 // ---------- Letter Train (typing) ----------
 const LEFT_KEYS = 'qwertasdfgzxcvb';
 G.train = {
@@ -929,7 +1093,18 @@ G.train = {
     let items = [];
     // Short first rounds: 6 letters, then 8, then 12.
     if (l < 3) while (items.length < [6, 8, 12][l]) { const c = rand(pools[l]); if (!(items.at(-1) === c && items.at(-2) === c)) items.push(c); }
-    else items = shuffle(WORDS).slice(0, 6);
+    else if (l === 3) items = shuffle(WORDS).slice(0, 6);
+    else {
+      // The on-screen keyboard has letters only, so apostrophes and hyphens
+      // are dropped for typing ("don't" is typed as "dont").
+      items = shuffle(player().words.list.map(w => w.toLowerCase().replace(/[^a-z]/g, '')).filter(Boolean)).slice(0, 8);
+      if (!items.length) {
+        cur.total = 0; cur.busy = true;
+        setPrompt('No spelling words yet<span class="hint">Add this week\'s words in Spelling Words first.</span>', 'Add your spelling words first.');
+        $('#controls').innerHTML = '<button class="btn big go" data-a="gospell">📝 Go to Spelling Words</button>';
+        return;
+      }
+    }
     Object.assign(cur, { items, total: items.length, i: 0, pos: 0 });
     st.innerHTML = `<div class="track"></div><div class="train" id="train"><div class="engine">🚂</div>${items.map((w, i) => `<div class="car" data-i="${i}">${[...w].map(ch => `<span>${ch}</span>`).join('')}</div>`).join('')}</div>`;
     $('#controls').innerHTML = '<div class="kb">' + ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'].map((r, ri) =>
@@ -953,7 +1128,7 @@ G.train = {
       else setPrompt(`Type <span class="big">${w}</span>`, w);
     }
   },
-  act(a, btn) { if (a === 'key' && !cur.busy) this.key(btn.dataset.k); },
+  act(a, btn) { if (a === 'gospell') return openGame('spell'); if (a === 'key' && !cur.busy) this.key(btn.dataset.k); },
   key(k) {
     const w = cur.items[cur.i], want = w[cur.pos];
     const car = document.querySelector(`.car[data-i="${cur.i}"]`);
