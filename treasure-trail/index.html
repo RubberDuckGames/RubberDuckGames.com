@@ -48,7 +48,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
     radial-gradient(circle at 85% 40%, #9edc85 0 7%, transparent 7.2%),
     linear-gradient(#a6e08f,#8fd17a)}
 .path{position:absolute;inset:0;pointer-events:none}
-.place,.deco,.me,.sprout,.gshiny{position:absolute;transform:translate(-50%,-50%)}
+.place,.deco,.me,.gshiny{position:absolute;transform:translate(-50%,-50%)}
 .place{text-align:center;cursor:pointer}
 .place .icon{font-size:7cqw;line-height:1;filter:drop-shadow(0 .5cqw 0 rgba(0,0,0,.15))}
 .place .sign{display:inline-block;background:#fff8e8;border:.3cqw solid #b98552;border-radius:1cqw;padding:.2cqw 1cqw;font-size:1.7cqw;font-weight:800;white-space:nowrap;margin-top:.4cqw}
@@ -59,9 +59,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .deco svg{width:4.5cqw;display:block}
 .me{font-size:5.5cqw;line-height:1;z-index:5;pointer-events:none;transition:filter .2s}
 .me.walk{animation:waddle .35s infinite}
-.sprout{width:2.8cqw;z-index:4;pointer-events:none}
-.sprout svg{width:100%;display:block}
-.sprout.walk{animation:waddle .3s infinite}
 .gshiny{font-size:3.4cqw;z-index:3;pointer-events:none;animation:twinkle 1.6s ease-in-out infinite}
 .bubble{position:absolute;left:50%;bottom:2cqw;transform:translateX(-50%);background:#fff;border-radius:999px;padding:.6cqw 2cqw;font-size:2cqw;font-weight:700;box-shadow:var(--shadow);display:none;z-index:6;pointer-events:none}
 .bubble.on{display:block}
@@ -145,8 +142,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .item small{font-size:15px}
 .item.locked .e{filter:grayscale(1) brightness(0);opacity:.18}
 .item .n{position:absolute;top:6px;right:8px;background:var(--ink);color:#fff;border-radius:999px;font-size:14px;padding:0 8px}
-.sprouts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.sprouts div{width:40px}
 
 /* Pop-ups */
 .overlay{position:fixed;inset:0;background:rgba(35,50,74,.5);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
@@ -194,7 +189,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
     <div id="places"></div>
     <div id="decos"></div>
     <div id="ground"></div>
-    <div id="sproutLine"></div>
     <div class="me" id="me"></div>
     <div class="bubble" id="bubble"></div>
   </div>
@@ -219,8 +213,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
     <h2 id="shelfTitle"></h2>
   </div>
   <div class="shelf" id="shelf"></div>
-  <h3 id="sproutTitle"></h3>
-  <div class="sprouts" id="sproutList"></div>
 </section>
 
 <div class="overlay" id="reward">
@@ -267,7 +259,6 @@ const phrase = L => L === 'X' ? 'X. Fox ends with X.' : `${L}. ${L} is for ${LET
 
 const SHINIES = [['💎', 'blue gem'], ['🐚', 'sea shell'], ['🌰', 'acorn'], ['🪙', 'gold coin'], ['🔮', 'crystal ball'], ['🍀', 'lucky clover'], ['🪶', 'feather'], ['⭐', 'gold star'], ['🗝️', 'old key'], ['🔔', 'little bell'], ['🪨', 'smooth rock'], ['🧭', 'compass'], ['🐞', 'ladybug'], ['🌸', 'flower'], ['🍄', 'mushroom'], ['🧲', 'magnet'], ['🫧', 'bubble'], ['🦋', 'butterfly'], ['🌈', 'rainbow'], ['🐌', 'snail']];
 const BUDDIES = ['🐈‍⬛', '🐕', '🦆', '🦹', '🦸', '🚂', '⛵', '🚀', '🦖', '🐉', '🦉', '🐙', '🤖', '🦊', '🐢', '👾'];
-const SPROUT_COLORS = ['#ef5b5b', '#4a90e2', '#ffc93c', '#9b6ee8', '#f59a3a', '#3fb37f', '#ff8fc7', '#5ad1d1'];
 const WORDS = ['cat', 'sun', 'map', 'duck', 'boat', 'ship', 'star', 'moon', 'frog', 'gem', 'lego', 'key', 'train', 'rocket', 'corgi', 'ocean', 'castle', 'dragon', 'planet', 'shell', 'robot', 'comet'];
 const FINGER = { q: 'p', a: 'p', z: 'p', w: 'r', s: 'r', x: 'r', e: 'm', d: 'm', c: 'm', r: 'i', f: 'i', v: 'i', t: 'i', g: 'i', b: 'i', y: 'i', h: 'i', n: 'i', u: 'i', j: 'i', m: 'i', i: 'm', k: 'm', ',': 'm', o: 'r', l: 'r', '.': 'r', p: 'p', ';': 'p', '/': 'p' };
 const FINGER_NAME = { p: 'pinky', r: 'ring finger', m: 'middle finger', i: 'pointer finger' };
@@ -286,9 +277,9 @@ const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 110, 330], ['🌳'
 // ---------- Save data (stays on this computer) ----------
 function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
 function persist() { try { localStorage.setItem('treasure-trail', JSON.stringify(save)); } catch (e) { } }
-const newPlayer = (name, buddy) => ({ name, buddy, shinies: [], done: {}, last: {}, sprouts: 0 });
+const newPlayer = (name, buddy) => ({ name, buddy, shinies: [], done: {}, last: {} });
 let save = load() || { sound: true, current: null, players: [newPlayer('Player 1', '🐈‍⬛'), newPlayer('Player 2', '🐕'), newPlayer('Player 3', '🦆')] };
-save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; p.sprouts ??= 0; });
+save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; });
 const player = () => save.players[save.current];
 
 // ---------- Voice and sounds ----------
@@ -352,7 +343,7 @@ function showWho() {
       <button class="edit" data-edit="${i}" aria-label="Edit">✏️</button>
       <div class="buddy">${p.buddy}</div>
       <div class="name">${esc(p.name)}</div>
-      <div class="soft">✨ ${p.shinies.length} treasures · 🌱 ${p.sprouts} Sprouts</div>
+      <div class="soft">✨ ${p.shinies.length} treasures</div>
     </div>`).join('') +
     `<div class="pcard add" data-edit="-1"><div class="buddy">➕</div><div class="name">Add a player</div></div>`;
   show('who');
@@ -383,12 +374,8 @@ $('#eCancel').onclick = () => $('#edit').classList.remove('on');
 $('#eName').onkeydown = e => { if (e.key === 'Enter') $('#eSave').click(); };
 
 // ---------- The world ----------
-const W = { x: 500, y: 420, tx: null, ty: null, enter: null, keys: {}, trail: [], ground: [], near: null, last: 0 };
+const W = { x: 500, y: 420, tx: null, ty: null, enter: null, keys: {}, ground: [], near: null, last: 0 };
 const pos = (el, x, y) => { el.style.left = x / 10 + '%'; el.style.top = y / 6.25 + '%'; };
-
-function sproutSVG(c) {
-  return `<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M20 22 Q20 10 22 5" stroke="#3a7d3a" stroke-width="2.5" fill="none"/><path d="M22 6 Q32 0 35 8 Q27 12 22 6Z" fill="#5cc25c"/><ellipse cx="20" cy="38" rx="13" ry="16" fill="${c}"/><circle cx="15" cy="34" r="2.6" fill="#23324a"/><circle cx="25" cy="34" r="2.6" fill="#23324a"/><path d="M15 42 Q20 46 25 42" stroke="#23324a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
-}
 
 function showMap() {
   cur = null;
@@ -402,8 +389,6 @@ function showMap() {
     </div>`).join('');
   $('#decos').innerHTML = DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e === 'duck' ? rubberDuckSVG() : e}</div>`).join('');
   $('#me').textContent = p.buddy;
-  $('#sproutLine').innerHTML = Array.from({ length: Math.min(p.sprouts, 24) }, (_, i) => `<div class="sprout">${sproutSVG(SPROUT_COLORS[i % SPROUT_COLORS.length])}</div>`).join('');
-  W.trail = [];
   while (W.ground.length < 2) spawnGround();
   drawWorld(false);
   show('map');
@@ -422,10 +407,6 @@ setInterval(() => { if (screen === 'map' && W.ground.length < 2) spawnGround(); 
 
 function drawWorld(moving) {
   const me = $('#me'); pos(me, W.x, W.y); me.classList.toggle('walk', moving);
-  document.querySelectorAll('.sprout').forEach((el, i) => {
-    const t = W.trail[Math.min((i + 1) * 9, W.trail.length - 1)] || [W.x + 20 + i * 4, W.y + 20];
-    pos(el, t[0], t[1]); el.classList.toggle('walk', moving);
-  });
   // Is the player standing near a place?
   let near = null;
   PLACES.forEach(pl => { if (Math.hypot(pl.x - W.x, pl.y - W.y) < 75) near = pl; });
@@ -453,8 +434,6 @@ function stepWorld(dt) {
     } else { W.x += ddx / d * sp; W.y += ddy / d * sp; moving = true; }
   }
   W.x = clamp(W.x, 20, 980); W.y = clamp(W.y, 30, 600);
-  const t0 = W.trail[0];
-  if (!t0 || Math.hypot(t0[0] - W.x, t0[1] - W.y) > 3) { W.trail.unshift([W.x, W.y]); W.trail.length = Math.min(W.trail.length, 300); }
   // Pick up shiny things on the ground
   W.ground = W.ground.filter(g => {
     if (Math.hypot(g.x - W.x, g.y - W.y) > 30) return true;
@@ -495,8 +474,6 @@ function showShelf() {
   $('#shelf').innerHTML = SHINIES.map(([e, n]) => counts[e]
     ? `<button class="item" data-n="${n}"><span class="e">${e}</span><small>${n}</small>${counts[e] > 1 ? `<span class="n">×${counts[e]}</span>` : ''}</button>`
     : `<div class="item locked"><span class="e">${e}</span><small>?</small></div>`).join('');
-  $('#sproutTitle').textContent = p.sprouts ? `🌱 Your Sprouts: ${p.sprouts}` : '🌱 Finish a game to meet your first Sprout!';
-  $('#sproutList').innerHTML = Array.from({ length: p.sprouts }, (_, i) => `<div>${sproutSVG(SPROUT_COLORS[i % SPROUT_COLORS.length])}</div>`).join('');
   say(`${p.name}'s treasures. You found ${found} of ${SHINIES.length}.`);
   show('shelf');
 }
@@ -543,14 +520,13 @@ function finishRound() {
   const fresh = SHINIES.filter(s => !p.shinies.includes(s[0]));
   const s = fresh.length ? rand(fresh) : rand(SHINIES);
   p.shinies.push(s[0]);
-  p.sprouts++;
   persist(); renderLevels();
   const el = $('#rShiny'); el.textContent = s[0]; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   $('#rText').textContent = `You found ${art(s[1])} ${s[1]}!`;
-  $('#rSub').innerHTML = [cur.sub, '🌱 A new Sprout joined you!'].filter(Boolean).join('<br>');
+  $('#rSub').textContent = cur.sub || (fresh.length ? 'It is going on your shelf.' : 'Another one for your shelf!');
   $('#reward').classList.add('on');
   sfx.shiny();
-  setTimeout(() => say(`You found ${art(s[1])} ${s[1]}! And a new Sprout joined you!`), 300);
+  setTimeout(() => say(`You found ${art(s[1])} ${s[1]}!`), 300);
 }
 $('#rAgain').onclick = () => { $('#reward').classList.remove('on'); openGame(cur.zone.id, cur.level); };
 $('#rMap').onclick = () => { $('#reward').classList.remove('on'); showMap(); };
