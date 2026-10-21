@@ -57,12 +57,23 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 #task{top:50%;transform:translate(-50%,-50%);min-width:min(92%,460px)}
 #task svg{display:block;margin:6px auto;max-width:100%}
 .touch{display:none}
+/* Decided 21 Oct: the Wrench and Fire buttons show on laptops too, with their
+   keys, because the E key was only mentioned once on the start screen. */
 /* On touch screens the controls sit under the maze, so they never cover it. */
 .touch.on{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px}
 .stick{position:relative;flex:none;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);touch-action:none}
 .stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(65,227,255,.5)}
 .tbtns{display:flex;gap:12px}
 .tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
+.tbtn .key{display:none}
+.deskhelp{display:none;margin:0;color:var(--soft);font-size:15px}
+.deskhelp b{color:var(--ink)}
+body:not(.touchdev) .stick{display:none}
+body:not(.touchdev) .deskhelp{display:block}
+body:not(.touchdev) .tbtn{width:auto;height:auto;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:17px}
+body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700}
+.tbtn.glow{animation:glow .6s ease-in-out 5 alternate}
+@keyframes glow{to{box-shadow:0 0 0 6px rgba(255,201,60,.7);border-color:var(--gold)}}
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
 /* On a phone the maze is short, so screens and questions cover the whole
    screen instead of being squeezed into the maze box (seen on iPhone Chrome). */
@@ -154,7 +165,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
   </div>
   <div class="touch" id="touch">
     <div class="stick" id="stick"><i id="knob"></i></div>
-    <div class="tbtns"><button class="tbtn" id="tWrench">Wrench</button><button class="tbtn" id="tFire">Fire</button></div>
+    <p class="deskhelp">Move: <b>WASD</b> or <b>arrows</b> · Aim: <b>mouse</b> · Pause: <b>Esc</b></p>
+    <div class="tbtns"><button class="tbtn" id="tWrench">🔧 Wrench<small class="key">E</small></button><button class="tbtn" id="tFire">⚡ Fire<small class="key">Space</small></button></div>
   </div>
 </div>
 
@@ -453,6 +465,12 @@ function step(dt) {
   });
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .4));
   G.restored = G.restored.filter(r => (r.t += dt) < 1.6);
+  // The first time an Armored Error comes close, say how to use the wrench.
+  if (!S.armorTip && G.errs.some(e => e.armored && Math.hypot(e.x - p.x, e.y - p.y) < 2.5)) {
+    S.armorTip = true; persist();
+    toast(touchMode ? 'Armored Error! Tap Wrench when it gets close.' : 'Armored Error! Press E (or click Wrench) when it gets close.');
+    $('#tWrench').classList.remove('glow'); void $('#tWrench').offsetWidth; $('#tWrench').classList.add('glow');
+  }
   // terminal
   const onT = Math.hypot(p.x - TERMINAL[0], p.y - TERMINAL[1]) < .7;
   if (onT && !G.terminalUsed && !G.onT) toast(roomClear() ? (touchMode ? 'Tap Wrench to use the terminal' : 'Press Enter to use the terminal') : 'Restore every Error in this room to unlock the terminal');
@@ -607,7 +625,7 @@ function hud() {
   $('#hLeft').textContent = `👾 ${G.errs.length}`;
 }
 let toastT;
-function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+function toast(m, ms = m.length > 40 ? 3500 : 1800) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); }
 
 // ---------- Input ----------
 addEventListener('keydown', e => {
@@ -635,16 +653,18 @@ cv.addEventListener('mousemove', e => {
 cv.addEventListener('mousedown', e => { if (!touchMode && e.button === 0) fire(); });
 // touch: a stick on the left, buttons on the right, aiming locks on to the nearest target
 const stick = { x: 0, y: 0, id: null };
+$('#touch').classList.add('on');
+// pointerdown (not click) so the button never takes focus and Space can't fire twice
+$('#tFire').addEventListener('pointerdown', e => { e.preventDefault(); fire(); });
+$('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing(); });
 if (touchMode) {
-  $('#touch').classList.add('on'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors and the terminal. Tip: turn your phone sideways for a bigger maze.';
+  document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors and the terminal. Tip: turn your phone sideways for a bigger maze.';
   const st = $('#stick'), knob = $('#knob');
   const upd = e => { const r = st.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stick.x = x; stick.y = y; knob.style.transform = `translate(${x * 35}px,${y * 35}px)`; };
   st.addEventListener('pointerdown', e => { stick.id = e.pointerId; st.setPointerCapture(e.pointerId); upd(e); });
   st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
   const end = () => { stick.x = stick.y = 0; stick.id = null; knob.style.transform = ''; };
   st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
-  $('#tFire').addEventListener('pointerdown', e => { e.preventDefault(); fire(); });
-  $('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing(); });
 }
 
 // ---------- Start screen ----------
