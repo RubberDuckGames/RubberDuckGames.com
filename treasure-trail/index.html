@@ -61,18 +61,24 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 /* The world */
 .world{position:relative;width:100%;aspect-ratio:16/10;border-radius:28px;overflow:hidden;box-shadow:var(--shadow);container-type:inline-size;cursor:pointer;
-  background:
-    radial-gradient(circle at 20% 80%, #9edc85 0 9%, transparent 9.2%),
-    radial-gradient(circle at 85% 40%, #9edc85 0 7%, transparent 7.2%),
-    linear-gradient(#a6e08f,#8fd17a)}
-.path{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  background:radial-gradient(ellipse 3% 1.2% at 50% 50%,rgba(255,255,255,.35) 60%,transparent 62%) 0 0/9% 14%,linear-gradient(#8fd3f5,#5fb4e6)}
+.landsvg,.isle svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.shore{fill:none;stroke:rgba(255,255,255,.45);stroke-width:64;stroke-linejoin:round}
+.sand{fill:#f3dfae;stroke:#f3dfae;stroke-width:38;stroke-linejoin:round}
+.grass{fill:var(--land);stroke:rgba(35,50,74,.08);stroke-width:5;stroke-linejoin:round}
+.isle{position:absolute;transform:translate(-50%,-50%);width:22%;aspect-ratio:1.6;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;text-align:center}
+.isle .icons,.isle .sign{position:relative}
+.isle .icons{font-size:4.2cqw;line-height:1;filter:drop-shadow(0 .4cqw 0 rgba(0,0,0,.15))}
+.isle .sign,.place .sign{display:inline-block;background:#fff8e8;border:.3cqw solid #b98552;border-radius:1cqw;padding:.2cqw 1cqw;font-size:1.7cqw;font-weight:800;white-space:nowrap;margin-top:.4cqw}
+.isle.near .icons{animation:hop .8s infinite}
+.me.boat{display:flex;flex-direction:column;align-items:center}
+.me .rider{font-size:.5em;margin-bottom:-.45em;position:relative;z-index:1}
 .place,.deco,.me,.gshiny{position:absolute;transform:translate(-50%,-50%)}
 .place{text-align:center;cursor:pointer}
 .place .icon{font-size:7cqw;line-height:1;filter:drop-shadow(0 .5cqw 0 rgba(0,0,0,.15))}
-.place .sign{display:inline-block;background:#fff8e8;border:.3cqw solid #b98552;border-radius:1cqw;padding:.2cqw 1cqw;font-size:1.7cqw;font-weight:800;white-space:nowrap;margin-top:.4cqw}
 .place.soon .icon{opacity:.6;filter:grayscale(.5)}
 .place.near .icon{animation:hop .8s infinite}
-.lake{position:absolute;transform:translate(-50%,-50%);width:22cqw;height:12cqw;border-radius:50%;background:radial-gradient(ellipse,#8fd3f5,#5fb4e6);box-shadow:inset 0 -1cqw 0 rgba(0,0,0,.08)}
+.lake{position:absolute;transform:translate(-50%,-50%);width:20cqw;height:11cqw;border-radius:50%;background:radial-gradient(ellipse,#8fd3f5,#5fb4e6);box-shadow:inset 0 -1cqw 0 rgba(0,0,0,.08)}
 .deco{font-size:4.5cqw;pointer-events:none}
 .deco svg{width:4.5cqw;display:block}
 .me{font-size:5.5cqw;line-height:1;z-index:5;pointer-events:none;transition:filter .2s}
@@ -283,7 +289,10 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   .deco svg{width:7cqw}
   .me{font-size:10cqw}
   .gshiny{font-size:7cqw}
-  .lake{width:36cqw;height:22cqw}
+  .lake{width:30cqw;height:20cqw}
+  .isle{width:36%}
+  .isle .icons{font-size:7cqw}
+  .isle .sign{font-size:3.4cqw;padding:.3cqw 1.4cqw}
   .bubble{font-size:3.8cqw;padding:1cqw 3cqw}
   .worldbar h2{font-size:22px}
   .card{padding:20px 16px}
@@ -319,16 +328,13 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 <section id="s-map" class="screen">
   <div class="worldbar">
     <h2 id="hello"></h2>
-    <span class="soft" id="walkHint">Click to walk, or use the arrow keys</span>
+    <span class="soft" id="walkHint"></span>
+    <button class="btn" id="toSea" hidden>⛵ Back to the sea</button>
   </div>
   <div class="world" id="world">
-    <svg class="path" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q340 370 160 350 M500 340 Q590 300 660 275"
-        fill="none" stroke="#e8d3a8" stroke-width="34" stroke-linecap="round"/>
-    </svg>
-    <div class="lake" style="left:22%;top:32%"></div>
-    <div id="places"></div>
+    <svg class="landsvg" id="land" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
     <div id="decos"></div>
+    <div id="places"></div>
     <div id="ground"></div>
     <div class="me" id="me"></div>
     <div class="bubble" id="bubble"></div>
@@ -410,17 +416,37 @@ const FINGER = { q: 'p', a: 'p', z: 'p', w: 'r', s: 'r', x: 'r', e: 'm', d: 'm',
 const FINGER_NAME = { p: 'pinky', r: 'ring finger', m: 'middle finger', i: 'pointer finger' };
 
 // Places in the world. x/y are on a 1000 x 625 map.
-const PLACES = [
-  { id: 'pond', icon: '🐸', name: 'Tadpole Pond', x: 220, y: 200, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
-  { id: 'tower', icon: '🧱', name: 'Block Tower', x: 780, y: 180, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
-  { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
-  { id: 'memory', icon: '🃏', name: 'Memory Match', x: 150, y: 340, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
-  { id: 'spell', icon: '📝', name: 'Spelling Words', x: 660, y: 275, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
-  { id: 'shelf', icon: '🏠', name: 'My Treasures', x: 500, y: 330 },
-  { id: 'space', icon: '🚀', name: 'Space Lab', x: 500, y: 95, soon: true },
-  { id: 'story', icon: '📚', name: 'Story Tree', x: 240, y: 480, soon: true },
+// Decided 20 Oct: one crowded map became islands, one per kind of learning.
+// Each coastline is drawn on the same 1000 x 625 grid as the places, so the
+// grass is also the area you can walk on (the first version used one oval).
+// The sea shows the islands (x/y on a 1000 x 625 map); each island is its own
+// close-up view, with its places on the same 1000 x 625 grid.
+const ISLANDS = [
+  { id: 'home', shape: 'M140 330C120 210 230 110 380 95C470 85 520 130 600 110C700 85 850 140 880 250C905 340 860 430 760 480C680 520 600 560 500 565C360 572 230 520 170 440C150 410 145 370 140 330Z', name: 'Home Island', icon: '🏠', x: 500, y: 330, land: '#a6e08f', decos: [['🌳', 270, 180], ['🌷', 380, 440], ['🌻', 720, 170], ['🌲', 790, 420], ['🍄', 330, 300]] },
+  { id: 'word', shape: 'M110 300C100 180 220 90 360 80C480 72 560 120 640 100C760 72 900 150 890 260C885 320 820 330 790 360C770 380 830 420 820 470C800 540 660 570 520 568C380 566 240 540 170 470C125 425 115 360 110 300Z', name: 'Word Island', icon: '🐸', x: 210, y: 175, land: '#9fd9a0', decos: [['lake', 330, 255], ['duck', 410, 215], ['🌾', 230, 200], ['🪷', 220, 330], ['🌾', 780, 420], ['🌳', 790, 180]] },
+  { id: 'number', shape: 'M150 200L260 120L420 110L470 80L640 85L700 130L840 140L880 240L850 330L900 420L820 520L640 560L520 570L360 555L230 500L160 420L120 320Z', name: 'Number Island', icon: '🧱', x: 800, y: 170, land: '#c9e3a0', decos: [['🪨', 270, 200], ['🪨', 770, 190], ['🌵', 310, 440], ['🪨', 730, 450]] },
+  { id: 'keys', shape: 'M120 260C130 150 240 90 330 110C380 120 400 180 460 200C540 225 600 160 660 120C750 70 880 140 885 260C890 380 820 500 680 545C580 575 420 575 320 545C190 505 115 390 120 260Z', name: 'Keyboard Cove', icon: '🚂', x: 800, y: 470, land: '#b8e2a6', decos: [['🌲', 270, 200], ['🌲', 770, 190], ['🛤️', 320, 440], ['🌳', 740, 450]] },
+  { id: 'puzzle', shape: 'M150 130L400 130C380 60 600 60 580 130L850 130L850 300C930 280 930 420 850 400L850 540L600 540C620 600 380 600 400 540L150 540L150 380C220 400 220 270 150 290Z', name: 'Puzzle Island', icon: '🃏', x: 200, y: 470, land: '#d6e8a0', decos: [['🍄', 270, 200], ['🌳', 770, 190], ['🎲', 320, 440], ['🍄', 730, 450]] },
+  { id: 'science', shape: 'M160 340C140 220 250 120 400 105C520 95 600 140 680 120C760 100 860 60 930 70C880 110 830 150 820 210C860 280 870 380 800 460C720 540 600 570 480 568C340 566 200 500 160 340Z', name: 'Science Island', icon: '🚀', x: 500, y: 100, land: '#a9d7c8', decos: [['🔭', 280, 200], ['⭐', 770, 180], ['🪐', 320, 440], ['🌙', 740, 440]] },
 ];
-const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 60, 440], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 880, 75], ['🍄', 90, 580]];
+const SEA_DECOS = [['🐟', 360, 590], ['🐋', 650, 310], ['🐟', 330, 320]];
+const PLACES = [
+  { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
+  { id: 'spell', island: 'word', icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
+  { id: 'story', island: 'word', icon: '📚', name: 'Story Tree', x: 330, y: 430, soon: true },
+  { id: 'tower', island: 'number', icon: '🧱', name: 'Block Tower', x: 450, y: 280, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
+  { id: 'patterns', island: 'number', icon: '🔷', name: 'Patterns', x: 660, y: 390, soon: true },
+  { id: 'train', island: 'keys', icon: '🚂', name: 'Letter Train', x: 520, y: 300, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
+  { id: 'memory', island: 'puzzle', icon: '🃏', name: 'Memory Match', x: 440, y: 280, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
+  { id: 'jigsaw', island: 'puzzle', icon: '🧩', name: 'Jigsaw', x: 660, y: 390, soon: true },
+  { id: 'space', island: 'science', icon: '🚀', name: 'Space Lab', x: 440, y: 270, soon: true },
+  { id: 'whoami', island: 'science', icon: '🦉', name: 'Who Am I?', x: 660, y: 380, soon: true },
+  { id: 'shelf', island: 'home', icon: '🏠', name: 'My Treasures', x: 500, y: 270 },
+  { id: 'build', island: 'home', icon: '🏗️', name: 'Free Build', x: 680, y: 390, soon: true },
+];
+// Every island has a dock that sails back to the sea.
+// It sits at the bottom so its sign fits on a phone, where islands are tall and narrow.
+const DOCK = { id: 'dock', icon: '⛵', name: 'Back to the sea', x: 500, y: 525 };
 
 // ---------- Save data (stays on this computer) ----------
 function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
@@ -532,56 +558,113 @@ $('#eSave').onclick = () => {
 $('#eCancel').onclick = () => $('#edit').classList.remove('on');
 $('#eName').onkeydown = e => { if (e.key === 'Enter') $('#eSave').click(); };
 
-// ---------- The world ----------
-const W = { x: 500, y: 420, tx: null, ty: null, enter: null, keys: {}, ground: [], near: null, last: 0 };
+// ---------- The world: the sea and its islands ----------
+const W = { view: 'sea', x: 500, y: 470, tx: null, ty: null, enter: null, keys: {}, ground: [], near: null, last: 0 };
 const pos = (el, x, y) => { el.style.left = x / 10 + '%'; el.style.top = y / 6.25 + '%'; };
+const atSea = () => W.view === 'sea';
+const island = () => ISLANDS.find(i => i.id === W.view);
+const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view), DOCK];
+const touch = matchMedia('(pointer: coarse)').matches;
+// On an island you walk on the grass of its own coastline.
+const coast = d => `<path class="shore" d="${d}"/><path class="sand" d="${d}"/><path class="grass" d="${d}"/>`;
+// The SVG stretches to the map (preserveAspectRatio="none"), so its units are map units.
+function inLand(x, y) {
+  const g = document.querySelector('#land .grass');
+  if (!g) return true;
+  const pt = $('#land').createSVGPoint(); pt.x = x; pt.y = y;
+  return g.isPointInFill(pt);
+}
 
 function showMap() {
   cur = null;
   const p = player();
   $('#playerBtn').hidden = false;
   $('#playerBtn').innerHTML = `${p.buddy}<span class="long"> ${esc(p.name)}</span>`; $('#playerBtn').setAttribute('aria-label', `Player: ${p.name}. Change player`);
-  $('#hello').textContent = `Hi, ${p.name}!`;
-  $('#places').innerHTML = PLACES.map(pl => `
-    <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
-      <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
-    </div>`).join('');
-  $('#decos').innerHTML = DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e === 'duck' ? rubberDuckSVG() : e}</div>`).join('');
-  $('#me').textContent = p.buddy;
-  while (W.ground.length < 2) spawnGround();
-  drawWorld(false);
+  renderWorld();
   show('map');
 }
 
+function renderWorld() {
+  const p = player();
+  W.near = null; $('#bubble').classList.remove('on');
+  $('#ground').innerHTML = ''; W.ground = [];
+  if (atSea()) {
+    $('#hello').textContent = `Hi, ${p.name}! Where do you want to sail?`;
+    $('#walkHint').textContent = touch ? 'Tap an island to sail there' : 'Click an island to sail there, or use the arrow keys';
+    $('#toSea').hidden = true; $('#land').hidden = true;
+    $('#places').innerHTML = ISLANDS.map(i => {
+      const icons = PLACES.filter(pl => pl.island === i.id).sort((a, b) => !!a.soon - !!b.soon).slice(0, 3).map(pl => pl.icon).join('');
+      return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
+    }).join('');
+    $('#decos').innerHTML = SEA_DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e}</div>`).join('');
+    $('#me').className = 'me boat'; $('#me').innerHTML = `<span class="rider">${p.buddy}</span><span>⛵</span>`;
+  } else {
+    const isl = island();
+    $('#hello').textContent = `${isl.icon} ${isl.name}`;
+    $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
+    $('#toSea').hidden = false; $('#land').hidden = false; $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape);
+    $('#places').innerHTML = here().map(pl => `
+      <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
+        <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
+      </div>`).join('');
+    $('#decos').innerHTML = isl.decos.map(([e, x, y]) => e === 'lake'
+      ? `<div class="lake" style="left:${x / 10}%;top:${y / 6.25}%"></div>`
+      : `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e === 'duck' ? rubberDuckSVG() : e}</div>`).join('');
+    $('#me').className = 'me'; $('#me').textContent = p.buddy;
+    // Treasures wash up on every island.
+    while (W.ground.length < 2) spawnGround();
+  }
+  drawWorld(false);
+}
+
+function landOn(id) {
+  W.view = id; [W.x, W.y] = [DOCK.x, DOCK.y - 100]; W.tx = null; W.enter = null;
+  renderWorld(); say(island().name);
+}
+function goSea() {
+  const isl = island(); W.view = 'sea';
+  W.x = isl.x; W.y = Math.min(isl.y + 95, 600); W.tx = null; W.enter = null;
+  renderWorld(); say('Where do you want to sail?');
+}
+$('#toSea').onclick = goSea;
+
 function spawnGround() {
   let x, y, tries = 0;
-  do { x = randInt(60, 940); y = randInt(60, 580); tries++; }
-  while (tries < 50 && PLACES.some(pl => Math.hypot(pl.x - x, pl.y - y) < 120));
+  do { x = randInt(170, 830); y = randInt(110, 515); tries++; }
+  while (tries < 80 && (![[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45]].every(([a, b]) => inLand(x + a, y + b)) || Math.hypot(W.x - x, W.y - y) < 150 || here().some(pl => Math.hypot(pl.x - x, pl.y - y) < 110)));
   const el = document.createElement('div');
   el.className = 'gshiny'; const s = rand(SHINIES); el.textContent = s[0]; pos(el, x, y);
   $('#ground').appendChild(el);
   W.ground.push({ x, y, s, el });
 }
-setInterval(() => { if (screen === 'map' && W.ground.length < 2) spawnGround(); }, 25000);
+setInterval(() => { if (screen === 'map' && !atSea() && W.ground.length < 2) spawnGround(); }, 25000);
 
 function drawWorld(moving) {
   const me = $('#me'); pos(me, W.x, W.y); me.classList.toggle('walk', moving);
-  // Is the player standing near a place?
+  // Is the player near an island (at sea) or a place (on an island)?
   let near = null;
-  PLACES.forEach(pl => { if (Math.hypot(pl.x - W.x, pl.y - W.y) < 75) near = pl; });
+  if (atSea()) ISLANDS.forEach(i => { if (Math.hypot(i.x - W.x, i.y - W.y) < 115) near = i; });
+  else here().forEach(pl => { if (Math.hypot(pl.x - W.x, pl.y - W.y) < 75) near = pl; });
   if (near !== W.near) {
     W.near = near;
-    document.querySelectorAll('.place').forEach(el => el.classList.toggle('near', near?.id === el.dataset.p));
-    $('#bubble').textContent = near ? (near.soon ? `${near.name} is coming soon!` : `Press Enter to go in: ${near.name}`) : '';
+    document.querySelectorAll('.place,.isle').forEach(el => el.classList.toggle('near', near?.id === (el.dataset.p || el.dataset.isle)));
+    const go = touch ? 'Tap it' : 'Press Enter';
+    $('#bubble').textContent = !near ? '' : atSea() ? `${go} to land on ${near.name}`
+      : near.soon ? `${near.name} is coming soon!` : near.id === 'dock' ? `${go} to sail back to the sea` : `${go} to go in: ${near.name}`;
     $('#bubble').classList.toggle('on', !!near);
   }
 }
 
+function arrive(target) {
+  if (target.startsWith('isle:')) return landOn(target.slice(5));
+  enterPlace(target);
+}
+
 function stepWorld(dt) {
-  const k = W.keys, sp = .3 * dt;
+  const k = W.keys, sp = (atSea() ? .36 : .3) * dt;
   let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
   let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0);
-  let moving = false;
+  let moving = false; const px = W.x, py = W.y;
   if (dx || dy) {
     W.tx = null; W.enter = null; const m = Math.hypot(dx, dy);
     W.x += dx / m * sp; W.y += dy / m * sp; moving = true;
@@ -589,10 +672,14 @@ function stepWorld(dt) {
     const ddx = W.tx - W.x, ddy = W.ty - W.y, d = Math.hypot(ddx, ddy);
     if (d <= sp) {
       W.x = W.tx; W.y = W.ty; W.tx = null;
-      if (W.enter) { const id = W.enter; W.enter = null; drawWorld(false); return enterPlace(id); }
+      if (W.enter) { const t = W.enter; W.enter = null; drawWorld(false); return arrive(t); }
     } else { W.x += ddx / d * sp; W.y += ddy / d * sp; moving = true; }
   }
-  W.x = clamp(W.x, 20, 980); W.y = clamp(W.y, 30, 600);
+  if (atSea()) { W.x = clamp(W.x, 30, 970); W.y = clamp(W.y, 30, 600); }
+  else if (moving && !inLand(W.x, W.y)) {
+    // At the water's edge: stay on the sand. A tap out on the water just walks to the shore.
+    W.x = px; W.y = py; moving = false; if (!W.enter) W.tx = null;
+  }
   // Pick up shiny things on the ground
   W.ground = W.ground.filter(g => {
     if (Math.hypot(g.x - W.x, g.y - W.y) > 30) return true;
@@ -612,12 +699,14 @@ requestAnimationFrame(loop);
 
 $('#world').onclick = e => {
   const r = $('#world').getBoundingClientRect();
-  const pl = e.target.closest('.place');
-  if (pl) { const p = PLACES.find(x => x.id === pl.dataset.p); W.tx = p.x; W.ty = p.y + 25; W.enter = p.id; }
-  else { W.tx = (e.clientX - r.left) / r.width * 1000; W.ty = (e.clientY - r.top) / r.height * 625; W.enter = null; }
+  const isle = e.target.closest('.isle'), pl = e.target.closest('.place');
+  if (isle) { const i = ISLANDS.find(x => x.id === isle.dataset.isle); W.tx = i.x; W.ty = Math.min(i.y + 70, 600); W.enter = 'isle:' + i.id; return; }
+  if (pl) { const p = here().find(x => x.id === pl.dataset.p); W.tx = p.x; W.ty = inLand(p.x, p.y + 25) ? p.y + 25 : p.y; W.enter = p.id; return; }
+  W.tx = (e.clientX - r.left) / r.width * 1000; W.ty = (e.clientY - r.top) / r.height * 625; W.enter = null;
 };
 
 function enterPlace(id) {
+  if (id === 'dock') return goSea();
   const pl = PLACES.find(p => p.id === id);
   if (pl.soon) return say(`${pl.name} is coming soon!`);
   if (id === 'shelf') return showShelf();
@@ -1162,7 +1251,7 @@ document.addEventListener('keydown', e => {
   if (screen === 'map') {
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { W.keys[k] = true; e.preventDefault(); }
-    if ((k === 'Enter' || k === ' ') && W.near) { e.preventDefault(); enterPlace(W.near.id); }
+    if ((k === 'Enter' || k === ' ') && W.near) { e.preventDefault(); atSea() ? landOn(W.near.id) : enterPlace(W.near.id); }
     return;
   }
   if (screen === 'game' && cur?.zone.id === 'train' && !cur.busy && e.key.length === 1) {
@@ -1175,7 +1264,6 @@ window.addEventListener('resize', () => { if (screen === 'game' && cur?.zone.id 
 
 document.querySelector('.credit').innerHTML = rubberDuckSVG();
 $('#homeDuck').innerHTML = rubberDuckSVG();
-if (matchMedia('(pointer: coarse)').matches) $('#walkHint').textContent = 'Tap where you want to walk';
 drawSound();
 showWho();
 </script>
