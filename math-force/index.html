@@ -415,7 +415,7 @@ function step(dt) {
     if (!goal) return;
     const gx = goal[0] - e.x, gy = goal[1] - e.y, gl = Math.hypot(gx, gy) || 1;
     move(e, gx / gl * e.speed * sdt, gy / gl * e.speed * sdt, .22);
-    if (Math.hypot(e.x - p.x, e.y - p.y) < .5 && p.hurtT <= 0) hurt(e);
+    if (G.slow > 0 && Math.hypot(e.x - p.x, e.y - p.y) < .5 && p.hurtT <= 0) hurt(e);
   });
   // worms wander
   G.worms.forEach(w => { w.t += dt; w.a += (Math.random() - .5) * 3 * dt; const ox = w.x, oy = w.y; move(w, Math.cos(w.a) * .6 * sdt, Math.sin(w.a) * .6 * sdt, .1); if (ox === w.x && oy === w.y) w.a += 2; });
@@ -490,7 +490,9 @@ let RQ = null;
 function openReload() {
   const [q, a] = quick(S.level);
   RQ = { a, t0: performance.now(), tries: 0 };
-  G.slow = .35;                         // the fight keeps going, just slower
+  // The first version only slowed the fight to 35%, and Errors still reached you
+  // while you were thinking. Now everything holds still until you answer.
+  G.slow = 0;
   $('#rq').textContent = q + ' = ?'; $('#ra').value = ''; $('#rmsg').textContent = '';
   const opts = new Set([a]); while (opts.size < 3) { const v = a + randInt(-6, 6); if (v >= 0 && v !== a) opts.add(v); }
   $('#rc').innerHTML = shuffle([...opts]).map((v, i) => `<button class="choice" data-v="${v}">${v}<small style="display:block;font-size:12px;color:var(--soft)">${touchMode ? '' : i + 1}</small></button>`).join('');
@@ -504,12 +506,15 @@ function answerReload(v) {
   if (ok) {
     G.stats.right++; record(RQ.tries === 0, ms);
     G.ammo = magMax() * (S.double ? 2 : 1); S.bucks++; persist(); sfx.good();
-    $('#reload').hidden = true; G.slow = 1; RQ = null; $('#ra').blur(); hud(); return;
+    $('#reload').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); RQ = null; $('#ra').blur(); hud(); return;
   }
   RQ.tries++; sfx.soft();
   if (RQ.tries >= 2) { record(false, ms); $('#rmsg').textContent = `It was ${RQ.a}. Here's a new one.`; setTimeout(openReload, 1100); }
   else $('#rmsg').textContent = 'Not quite. Try again.';
 }
+// Answer boxes take numbers only (the terminal also allows a decimal point).
+$('#ra').oninput = () => { $('#ra').value = $('#ra').value.replace(/[^0-9]/g, ''); };
+$('#ta').oninput = () => { $('#ta').value = $('#ta').value.replace(/[^0-9.]/g, ''); };
 $('#rform').onsubmit = e => { e.preventDefault(); if ($('#ra').value !== '') answerReload($('#ra').value); };
 $('#rc').onclick = e => { const b = e.target.closest('[data-v]'); if (b) answerReload(b.dataset.v); };
 
@@ -533,7 +538,7 @@ $('#tform').onsubmit = e => {
     sfx.soft(); G.terminalUsed = true; $('#tmsg').textContent = `The answer was ${TQ.a}: ${TQ.why}.`; TQ = null;
   } else { sfx.soft(); $('#tmsg').textContent = 'Not quite. Check it again.'; }
 };
-function closeTask() { $('#task').hidden = true; G.slow = 1; $('#ta').blur(); }
+function closeTask() { $('#task').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); $('#ta').blur(); }
 $('#tclose').onclick = closeTask;
 
 // ---------- Level up ----------
