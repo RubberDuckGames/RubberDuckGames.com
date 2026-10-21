@@ -115,6 +115,19 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .choice.right{background:var(--green);color:#fff}
 .choice.wrong{opacity:.4}
 
+/* Memory Match */
+.table{background:radial-gradient(ellipse at 50% 30%,#e9c79c,#c99a66);padding:24px;display:grid;gap:14px;justify-content:center;align-content:center}
+.mcard{width:min(120px,18vw);aspect-ratio:3/4;border-radius:16px;background:#fff8e8;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;font-size:min(56px,8vw);position:relative;transition:transform .25s}
+.mcard .back{position:absolute;inset:8px;border-radius:12px;background:#ffd98a;display:flex;align-items:center;justify-content:center}
+.mcard .back svg{width:60%}
+.mcard .face{display:none;flex-direction:column;align-items:center;line-height:1.1}
+.mcard .face small{font-size:14px;font-weight:600;margin-top:4px}
+.mcard.up .back{display:none}
+.mcard.up .face{display:flex}
+.mcard.up{transform:rotateY(180deg) scaleX(-1)}
+.mcard.got{background:#d4f3e3;box-shadow:0 0 0 4px var(--green)}
+.mcard:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+
 /* Letter Train */
 .rail{background:linear-gradient(#fff6e5 0 72%,#c9e9b8 72%);min-height:300px}
 .track{position:absolute;left:0;right:0;bottom:52px;height:12px;border-top:5px solid #6b7b8f;background:repeating-linear-gradient(90deg,#8a6a4a 0 18px,transparent 18px 34px)}
@@ -189,7 +202,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   </div>
   <div class="world" id="world">
     <svg class="path" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110"
+      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110 M500 340 Q330 370 130 350"
         fill="none" stroke="#e8d3a8" stroke-width="34" stroke-linecap="round"/>
     </svg>
     <div class="lake" style="left:22%;top:32%"></div>
@@ -262,6 +275,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const art = w => /^[aeiou]/i.test(w) ? 'an' : 'a';
+const plural = w => /(s|x|ch|sh)$/.test(w) ? w + 'es' : /[^aeiou]y$/.test(w) ? w.slice(0, -1) + 'ies' : w + 's';
 
 // ---------- Content ----------
 const LETTERS = { A: ['apple', '🍎'], B: ['bear', '🐻'], C: ['cat', '🐱'], D: ['duck', '🦆'], E: ['egg', '🥚'], F: ['fish', '🐟'], G: ['goat', '🐐'], H: ['hat', '🎩'], I: ['insect', '🐞'], J: ['juice', '🧃'], K: ['kite', '🪁'], L: ['lion', '🦁'], M: ['moon', '🌙'], N: ['nose', '👃'], O: ['octopus', '🐙'], P: ['pig', '🐷'], Q: ['queen', '👑'], R: ['rabbit', '🐰'], S: ['sun', '☀️'], T: ['train', '🚂'], U: ['umbrella', '☂️'], V: ['van', '🚐'], W: ['whale', '🐳'], X: ['fox', '🦊'], Y: ['yo-yo', '🪀'], Z: ['zebra', '🦓'] };
@@ -279,11 +293,12 @@ const PLACES = [
   { id: 'pond', icon: '🐸', name: 'Tadpole Pond', x: 220, y: 200, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
   { id: 'tower', icon: '🧱', name: 'Block Tower', x: 780, y: 180, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
   { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words'] },
+  { id: 'memory', icon: '🃏', name: 'Memory Match', x: 120, y: 340, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
   { id: 'shelf', icon: '🏠', name: 'My Treasures', x: 500, y: 330 },
   { id: 'space', icon: '🚀', name: 'Space Lab', x: 500, y: 95, soon: true },
   { id: 'story', icon: '📚', name: 'Story Tree', x: 240, y: 480, soon: true },
 ];
-const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 110, 330], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 660, 300], ['🍄', 90, 580]];
+const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 60, 440], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 660, 300], ['🍄', 90, 580]];
 
 // ---------- Save data (stays on this computer) ----------
 function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
@@ -514,7 +529,7 @@ function openGame(id, level) {
   cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
   const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
-  st.after($('#controls'));
+  st.after($('#controls')); st.style.gridTemplateColumns = '';
   $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
   $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
   renderLevels();
@@ -720,6 +735,45 @@ G.tower = {
       bs[i].classList.add('flash'); say(String(i + 1)); await wait(750); bs[i].classList.remove('flash');
     }
     if (alive(c)) cur.busy = false;
+  },
+};
+
+// ---------- Memory Match (the player's own treasures) ----------
+G.memory = {
+  start(l) {
+    const pairs = [2, 4, 6, 10][l], cols = [2, 4, 4, 5][l];
+    // Treasures this player has found come first, so the game is about *their*
+    // collection; the rest tops it up so a brand-new player can still play.
+    const owned = SHINIES.filter(s => player().shinies.includes(s[0]));
+    const picks = [...shuffle(owned), ...shuffle(SHINIES.filter(s => !owned.includes(s)))].slice(0, pairs);
+    Object.assign(cur, { total: pairs, deck: shuffle([...picks, ...picks]), open: [], tries: 0 });
+    const st = $('#stage'); st.classList.add('table');
+    st.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+    st.innerHTML = cur.deck.map(([e, n], i) => `<button class="mcard" data-i="${i}" aria-label="Card ${i + 1}"><span class="back">${rubberDuckSVG()}</span><span class="face">${e}<small>${n}</small></span></button>`).join('');
+    st.onclick = e => { const c = e.target.closest('.mcard'); if (c) this.flip(c); };
+    setPrompt(`Find the pairs!<span class="hint">Tap two cards. If they match, they stay up.</span>`, 'Find the pairs! Tap two cards. If they match, they stay up.');
+  },
+  flip(card) {
+    if (cur.busy || card.classList.contains('up')) return;
+    const c = cur, [e, n] = cur.deck[+card.dataset.i];
+    card.classList.add('up'); card.setAttribute('aria-label', n); sfx.pop(); say(n);
+    cur.open.push(card);
+    if (cur.open.length < 2) return;
+    cur.tries++;
+    const [a, b] = cur.open; cur.open = [];
+    if (cur.deck[+a.dataset.i][0] === cur.deck[+b.dataset.i][0]) {
+      a.classList.add('got'); b.classList.add('got');
+      setTimeout(() => { if (!alive(c)) return; sfx.good(); cheer(); say(`A match! Two ${plural(n)}!`); }, 450);
+      if (stepDone()) cur.sub = `You found all ${cur.total} pairs in ${cur.tries} tries.`;
+    } else {
+      // A miss just turns both back over. No buzzer, nothing lost.
+      cur.busy = true;
+      setTimeout(() => {
+        if (!alive(c)) return;
+        [a, b].forEach(x => { x.classList.remove('up'); x.setAttribute('aria-label', `Card ${+x.dataset.i + 1}`); });
+        cur.busy = false;
+      }, 1300);
+    }
   },
 };
 
