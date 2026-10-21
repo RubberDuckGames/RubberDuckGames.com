@@ -640,7 +640,7 @@ function renderWorld() {
   if (atSea()) {
     $('#hello').textContent = `Hi, ${p.name}! Where do you want to sail?`;
     $('#walkHint').textContent = touch ? 'Tap an island to sail there' : 'Click an island to sail there, or use the arrow keys';
-    $('#toSea').hidden = true; $('#land').hidden = true;
+    $('#toSea').hidden = true; $('#land').setAttribute('hidden', '');
     $('#places').innerHTML = ISLANDS.map(i => {
       const icons = PLACES.filter(pl => pl.island === i.id).sort((a, b) => !!a.soon - !!b.soon).slice(0, 3).map(pl => pl.icon).join('');
       return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
@@ -652,7 +652,9 @@ function renderWorld() {
     const isl = island();
     $('#hello').textContent = `${isl.icon} ${isl.name}`;
     $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
-    $('#toSea').hidden = false; $('#land').hidden = false; $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape);
+    // The island shape is an SVG, and Safari has no .hidden property on SVG
+    // elements, so the first version never showed the land there. Use the attribute.
+    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape);
     $('#places').innerHTML = here().map(pl => `
       <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
         <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
