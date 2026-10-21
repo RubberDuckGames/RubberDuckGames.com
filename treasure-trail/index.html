@@ -30,6 +30,7 @@
   font-family: Lexend, Verdana, "Trebuchet MS", sans-serif;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;min-height:100%}
 body{background:linear-gradient(var(--sky),#eaf6ff 60%,#f3fbe9);color:var(--ink);font-size:20px;line-height:1.5;letter-spacing:.02em;user-select:none;-webkit-user-select:none}
 input{user-select:text;-webkit-user-select:text}
@@ -93,6 +94,23 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 /* Game screen */
 .gamebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* Decided 20 Oct: inside a game there is just the game and one big arrow back,
+   like the old CD-ROM games. The top bar slides away and comes back when the
+   mouse reaches the top edge. */
+.btn.back{width:64px;height:64px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--gold)}
+.btn.back svg{width:38px;height:38px;fill:none;stroke:var(--ink);stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.btn.round{width:56px;height:56px;border-radius:50%;padding:0;font-size:24px}
+/* Hear it again: small, out of the way in the bottom corner. Volume is left to
+   the phone or computer's own buttons. */
+.btn.hear{position:fixed;right:16px;bottom:16px;width:48px;height:48px;font-size:20px;z-index:12;opacity:.9}
+.lvlbtn{font-size:17px}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.top{transition:transform .25s}
+body.ingame .top{position:fixed;top:0;left:0;right:0;z-index:15;background:linear-gradient(var(--sky),rgba(207,234,255,.92));transform:translateY(-110%);box-shadow:0 4px 12px rgba(35,50,74,.12)}
+body.ingame .top.peek,body.ingame .top:focus-within{transform:none}
+.hotzone{display:none}
+body.ingame .hotzone{display:block;position:fixed;top:0;left:0;right:0;height:16px;z-index:14}
+body.ingame #s-game{padding-top:16px}
 .gamebar h2{flex:1;margin:0;font-size:28px}
 .levels{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .lvl{background:#fff;border-radius:999px;padding:8px 18px;box-shadow:var(--shadow);font-weight:600;font-size:18px}
@@ -280,6 +298,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   .gamebar{flex-wrap:nowrap;gap:8px}
   .gamebar h2{font-size:19px;line-height:1.2}
   .gamebar .btn{padding:8px 12px;font-size:16px;white-space:nowrap}
+  .btn.back{width:52px;height:52px}
+  .btn.back svg{width:30px;height:30px}
+  .btn.round{width:46px;height:46px;font-size:20px;padding:0}
   .long{display:none}
   .short{display:inline}
   .levels{gap:6px;margin:8px 0}
@@ -287,7 +308,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   .prompt{min-height:72px;font-size:24px;gap:8px}
   .prompt .big{font-size:48px}
   .prompt .hint{font-size:15px}
-  .prompt .buddy{display:none}
   .stage{min-height:300px;border-radius:20px}
   #controls{gap:8px;margin:10px 0}
   .btn.big{font-size:18px;padding:12px 16px}
@@ -337,7 +357,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 </head>
 <body>
 
-<header class="top">
+<div class="hotzone" id="hotzone" aria-hidden="true"></div>
+<header class="top" id="topbar">
   <a class="pill homelink" href="../" aria-label="All games"><span class="hduck" id="homeDuck" aria-hidden="true"></span><span class="long">All games</span></a>
   <h1>🗺️ Treasure Trail</h1>
   <button class="pill" id="playerBtn" hidden></button>
@@ -368,11 +389,12 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 <section id="s-game" class="screen">
   <div class="gamebar">
-    <button class="btn" data-go="map">🗺️ <span class="long">Back to map</span><span class="short">Map</span></button>
+    <button class="btn back" data-go="map" aria-label="Back to the island"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7M8 12h10"/></svg></button>
     <h2 id="gTitle"></h2>
-    <button class="btn" id="hearBtn" aria-label="Hear it">🔊<span class="long"> Hear it</span></button>
+    <button class="btn lvlbtn" id="lvlBtn" aria-expanded="false" aria-controls="levels">⭐<span class="long" id="lvlName"></span> ▾</button>
   </div>
-  <div class="levels" id="levels"></div>
+  <button class="btn round hear" id="hearBtn" aria-label="Hear it again">🔊</button>
+  <div class="levels" id="levels" hidden></div>
   <div class="prompt" id="prompt"></div>
   <div class="stage" id="stage"></div>
   <div id="controls"></div>
@@ -381,7 +403,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 <section id="s-shelf" class="screen">
   <div class="gamebar">
-    <button class="btn" data-go="map">🗺️ <span class="long">Back to map</span><span class="short">Map</span></button>
+    <button class="btn back" data-go="map" aria-label="Back to the island"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7M8 12h10"/></svg></button>
     <h2 id="shelfTitle"></h2>
   </div>
   <div class="shelf" id="shelf"></div>
@@ -523,6 +545,8 @@ const sfx = {
 let screen = 'who', cur = null;
 function show(name) {
   screen = name;
+  document.body.classList.toggle('ingame', name === 'game' || name === 'shelf');
+  $('#topbar').classList.remove('peek');
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + name));
   W.keys = {};
 }
@@ -777,16 +801,24 @@ function openGame(id, level) {
 }
 function renderLevels() {
   const z = cur.zone, p = player();
+  $('#lvlName').textContent = ' ' + z.levels[cur.level];
+  $('#levels').hidden = true; $('#lvlBtn').setAttribute('aria-expanded', 'false');
   $('#levels').innerHTML = z.levels.map((n, i) => `<button class="lvl${i === cur.level ? ' on' : ''}" data-lv="${i}">${n}${p.done[z.id + i] ? ` <small>⭐${p.done[z.id + i]}</small>` : ''}</button>`).join('');
 }
 $('#levels').onclick = e => { const b = e.target.closest('[data-lv]'); if (b && cur) openGame(cur.zone.id, +b.dataset.lv); };
+// The levels stay folded under one button until someone wants to change level.
+$('#lvlBtn').onclick = () => { const l = $('#levels'); l.hidden = !l.hidden; $('#lvlBtn').setAttribute('aria-expanded', String(!l.hidden)); };
+// On a computer, the top bar comes back while the mouse is at the top of the screen.
+$('#hotzone').onmouseenter = () => $('#topbar').classList.add('peek');
+$('#topbar').onmouseleave = () => $('#topbar').classList.remove('peek');
 function drawDots() { if (!cur.total) return void ($('#dots').innerHTML = ''); $('#dots').innerHTML = Array.from({ length: cur.total }, (_, i) => `<span class="${i < cur.step ? 'on' : ''}"></span>`).join('') + '✨'; }
 function setPrompt(html, speech, quiet) {
-  $('#prompt').innerHTML = `<span class="buddy" id="buddy">${player().buddy}</span><span>${html}</span>`;
+  // No buddy beside the prompt: in a game, the screen is only the task (20 Oct).
+  $('#prompt').innerHTML = `<span id="ptext">${html}</span>`;
   cur.say = speech;
   if (speech && !quiet) say(speech);
 }
-function cheer() { const b = $('#buddy'); if (!b) return; b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop'); }
+function cheer() { const b = $('#ptext'); if (!b) return; b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop'); }
 function stepDone() {
   cur.step++; drawDots();
   if (cur.step < cur.total) return false;
