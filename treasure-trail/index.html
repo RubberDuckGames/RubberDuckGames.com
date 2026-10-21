@@ -183,6 +183,28 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .paper .note{font-weight:400;color:var(--soft);font-size:16px}
 .paper .warn{color:#b42318;font-weight:700}
 
+/* Corgi Fetch */
+.field{background:linear-gradient(#cfeaff 0 52%,#a6e08f 52%);min-height:330px}
+.field .spelled{position:absolute;top:14px;left:0;right:0;text-align:center;font-size:44px;font-weight:800;letter-spacing:.18em}
+.spelled .hintl{opacity:.3}
+.spelled .peek{opacity:.45}
+.corgi{position:absolute;bottom:14%;width:170px;transform:translateX(-50%)}
+.corgi svg{width:100%;display:block;overflow:visible}
+.corgi.back svg{transform:scaleX(-1)}
+.corgi .head{transform-origin:92px 30px;transition:transform .25s}
+.corgi.tilt .head{transform:rotate(-16deg)}
+.corgi .tail{transform-origin:16px 40px}
+.corgi.wag .tail{animation:wag .22s infinite alternate}
+.corgi.run .legA{animation:trot .18s infinite alternate}
+.corgi.run .legB{animation:trot .18s infinite alternate-reverse}
+.corgi.run svg{animation:gallop .36s infinite}
+.corgi .held{display:none}
+.corgi.carry .held{display:inline}
+.fball{position:absolute;font-size:34px;transform:translate(-50%,50%);pointer-events:none}
+@keyframes wag{from{transform:rotate(-28deg)}to{transform:rotate(22deg)}}
+@keyframes trot{to{transform:translateY(-4px)}}
+@keyframes gallop{50%{translate:0 -5px}}
+
 /* Letter Train */
 .rail{background:linear-gradient(#fff6e5 0 72%,#c9e9b8 72%);min-height:300px}
 .track{position:absolute;left:0;right:0;bottom:52px;height:12px;border-top:5px solid #6b7b8f;background:repeating-linear-gradient(90deg,#8a6a4a 0 18px,transparent 18px 34px)}
@@ -299,6 +321,9 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
   .bud{font-size:32px;width:54px;height:54px}
   .age{font-size:20px;min-width:48px;height:48px}
   .bigShiny{font-size:110px}
+  .field .spelled{font-size:32px}
+  .corgi{width:120px}
+  .field{min-height:240px}
   .slots{gap:5px}
   .slots span{width:36px;height:50px;font-size:30px}
   .lt{width:56px;height:56px;font-size:30px}
@@ -433,6 +458,7 @@ const SEA_DECOS = [['🐟', 360, 590], ['🐋', 650, 310], ['🐟', 330, 320]];
 const PLACES = [
   { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
   { id: 'spell', island: 'word', icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
+  { id: 'fetch', island: 'word', icon: '🐕', name: 'Corgi Fetch', x: 650, y: 410, levels: ['My spelling words', 'Practice words'] },
   { id: 'story', island: 'word', icon: '📚', name: 'Story Tree', x: 330, y: 430, soon: true },
   { id: 'tower', island: 'number', icon: '🧱', name: 'Block Tower', x: 450, y: 280, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
   { id: 'patterns', island: 'number', icon: '🔷', name: 'Patterns', x: 660, y: 390, soon: true },
@@ -1173,6 +1199,121 @@ G.spell = {
   },
 };
 
+// ---------- Corgi Fetch (spelling words, with a dog) ----------
+// Built 20 Oct for the middle one's morning spelling practice. Hear the word,
+// type it letter by letter, then the ball flies and the corgi fetches it.
+const corgiSVG = () => `<svg viewBox="0 0 120 80" aria-hidden="true">
+  <g class="tail"><ellipse cx="14" cy="38" rx="7" ry="5" fill="#e8913a"/></g>
+  <rect class="legA" x="27" y="54" width="9" height="16" rx="3" fill="#e8913a"/><rect class="legB" x="40" y="54" width="9" height="16" rx="3" fill="#d27b2a"/>
+  <rect class="legB" x="72" y="54" width="9" height="16" rx="3" fill="#e8913a"/><rect class="legA" x="84" y="54" width="9" height="16" rx="3" fill="#d27b2a"/>
+  <ellipse cx="56" cy="44" rx="40" ry="17" fill="#e8913a"/>
+  <ellipse cx="60" cy="53" rx="27" ry="7" fill="#fff3e0"/>
+  <g class="head">
+    <path d="M80 22 L82 2 L93 17 Z" fill="#e8913a"/><path d="M83 17 L84 7 L90 16 Z" fill="#f7b9a8"/>
+    <path d="M93 16 L101 0 L105 19 Z" fill="#e8913a"/><path d="M97 15 L101 6 L103 17 Z" fill="#f7b9a8"/>
+    <circle cx="92" cy="30" r="15" fill="#e8913a"/>
+    <ellipse cx="103" cy="37" rx="10" ry="7" fill="#fff3e0"/>
+    <circle cx="112" cy="34" r="2.8" fill="#23324a"/>
+    <circle cx="96" cy="26" r="2.4" fill="#23324a"/><circle cx="96.8" cy="25.2" r=".8" fill="#fff"/>
+    <text class="held" x="104" y="50" font-size="16">🎾</text>
+  </g>
+</svg>`;
+const bark = () => { tone(620, .08, 'square', 0, .05, 420); tone(560, .1, 'square', .14, .05, 380); };
+const glide = (el, x1, x2, ms, arc = 0) => new Promise(done => {
+  const t0 = performance.now();
+  const f = t => {
+    const k = Math.min(1, (t - t0) / ms);
+    el.style.left = (x1 + (x2 - x1) * k) + '%';
+    if (arc) el.style.bottom = (14 + arc * 4 * k * (1 - k)) + '%';
+    k < 1 ? requestAnimationFrame(f) : done();
+  };
+  requestAnimationFrame(f);
+});
+G.fetch = {
+  start(l) {
+    const st = $('#stage'); st.classList.add('field');
+    const words = l === 0 ? player().words.list : WORDS;
+    if (!words.length) {
+      cur.total = 0; cur.busy = true;
+      setPrompt('No spelling words yet<span class="hint">Add this week\'s words in Spelling Words, or play Practice words.</span>', 'Add your spelling words first, or play practice words.');
+      st.innerHTML = `<div class="corgi wag" style="left:50%">${corgiSVG()}</div>`;
+      $('#controls').innerHTML = '<button class="btn big go" data-a="gospell">📝 Add spelling words</button><button class="btn big" data-a="practice">🐕 Practice words</button>';
+      return;
+    }
+    const p = player();
+    const score = w => { const s = p.words.stats[w] || { r: 0, m: 0 }; return s.m - s.r; };
+    const pick = l === 0 ? shuffle(words).sort((a, b) => score(b) - score(a)).slice(0, 10) : shuffle(words).slice(0, 8);
+    Object.assign(cur, { queue: shuffle(pick), total: pick.length });
+    st.innerHTML = `<div class="spelled" id="spelled" aria-live="polite"></div><div class="corgi wag" id="corgi" style="left:14%">${corgiSVG()}</div><div class="fball" id="fball" hidden>🎾</div>`;
+    $('#controls').innerHTML = kbHtml().replace('<p class="kbtip">', '<p class="kbtip"><button type="button" class="btn" data-a="peek">👀 Peek at the word</button> ');
+    this.ask();
+  },
+  ask() {
+    const w = cur.queue[0];
+    Object.assign(cur, { word: w, clean: w.toLowerCase().replace(/[^a-z]/g, ''), pos: 0, wrongHere: 0, wrongWord: 0, peeked: false, busy: false });
+    this.draw();
+    setPrompt(`Spell the word, then the corgi fetches!<span class="hint">${cur.clean.length} letters · Tap 🔊 to hear it again</span>`, `${w}. ${w}.`);
+    cur.say = w;
+    const c = $('#corgi'); c.className = 'corgi wag'; c.style.left = '14%';
+  },
+  draw(peek) {
+    const w = cur.clean;
+    $('#spelled').innerHTML = [...w].map((ch, i) => i < cur.pos ? ch
+      : peek ? `<span class="peek">${ch}</span>`
+      : i === cur.pos && cur.wrongHere >= 2 ? `<span class="hintl">${ch}</span>` : '_').join('');
+  },
+  act(a, btn) {
+    if (a === 'key') return this.key(btn.dataset.k);
+    if (a === 'gospell') return openGame('spell', 2);
+    if (a === 'practice') return openGame('fetch', 1);
+    if (cur.busy) return;
+    if (a === 'peek') {
+      cur.peeked = true; this.draw(true); say(`${cur.word}. ${spellOut(cur.word)}.`);
+      const c = cur; setTimeout(() => { if (alive(c) && !cur.busy) this.draw(); }, 3000);
+    }
+  },
+  key(k) {
+    if (cur.busy || !cur.clean) return;
+    const want = cur.clean[cur.pos];
+    if (k === want) {
+      cur.pos++; cur.wrongHere = 0; sfx.pop(); this.draw();
+      if (cur.pos >= cur.clean.length) this.throwBall();
+      return;
+    }
+    // A wrong key: the corgi tilts its head. No buzzer.
+    cur.wrongWord++; cur.wrongHere++;
+    const c = $('#corgi'); c.classList.add('tilt'); setTimeout(() => c.classList.remove('tilt'), 600);
+    if (cur.wrongHere === 2) { this.draw(); say(want.toUpperCase()); }
+  },
+  async throwBall() {
+    const c0 = cur, w = cur.word, perfect = !cur.wrongWord && !cur.peeked;
+    cur.busy = true;
+    if (this.list().includes(w)) { const s = player().words.stats[w] ??= { r: 0, m: 0 }; perfect ? s.r++ : s.m++; persist(); }
+    sfx.good(); say(perfect ? 'Fetch!' : `${w}. Fetch!`);
+    const ball = $('#fball'), dog = $('#corgi'), far = perfect ? 86 : 62;
+    ball.hidden = false; ball.style.left = '10%'; ball.style.bottom = '14%';
+    await glide(ball, 10, far, 900, 14);
+    if (!alive(c0)) return;
+    dog.className = 'corgi run';
+    await glide(dog, 14, far - 4, (far - 14) * 16);
+    if (!alive(c0)) return;
+    ball.hidden = true; dog.className = 'corgi run back carry';
+    await glide(dog, far - 4, 14, (far - 14) * 16);
+    if (!alive(c0)) return;
+    dog.className = 'corgi wag'; bark(); cheer();
+    say(perfect ? `Good dog! You spelled ${w}!` : `Good dog! ${w}. ${spellOut(w)}.`);
+    cur.queue.shift();
+    if (!stepDone()) setTimeout(() => { if (alive(c0)) this.ask(); }, 1800);
+    else cur.sub = `You spelled ${cur.total} words with the corgi!`;
+  },
+  list() { return player().words.list; },
+};
+
+// The on-screen keyboard, shared by Letter Train and Corgi Fetch.
+const kbHtml = () => '<div class="kb">' + ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'].map((r, ri) =>
+      `<div class="kbrow" style="margin-left:${ri * 22}px">${[...r].map(c => `<div class="k f-${FINGER[c]}${ri === 1 && c !== 'g' && c !== 'h' ? ' home' : ''}${c === 'f' || c === 'j' ? ' bump' : ''}" data-a="key" data-k="${c}">${c}</div>`).join('')}</div>`).join('') +
+      '<p class="kbtip">Fingers rest on the middle row. Feel the bumps on F and J.</p></div>';
+
 // ---------- Letter Train (typing) ----------
 const LEFT_KEYS = 'qwertasdfgzxcvb';
 G.train = {
@@ -1196,9 +1337,7 @@ G.train = {
     }
     Object.assign(cur, { items, total: items.length, i: 0, pos: 0 });
     st.innerHTML = `<div class="track"></div><div class="train" id="train"><div class="engine">🚂</div>${items.map((w, i) => `<div class="car" data-i="${i}">${[...w].map(ch => `<span>${ch}</span>`).join('')}</div>`).join('')}</div>`;
-    $('#controls').innerHTML = '<div class="kb">' + ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'].map((r, ri) =>
-      `<div class="kbrow" style="margin-left:${ri * 22}px">${[...r].map(c => `<div class="k f-${FINGER[c]}${ri === 1 && c !== 'g' && c !== 'h' ? ' home' : ''}${c === 'f' || c === 'j' ? ' bump' : ''}" data-a="key" data-k="${c}">${c}</div>`).join('')}</div>`).join('') +
-      '<p class="kbtip">Fingers rest on the middle row. Feel the bumps on F and J.</p></div>';
+    $('#controls').innerHTML = kbHtml();
     requestAnimationFrame(() => this.focus());
   },
   focus() {
@@ -1254,8 +1393,8 @@ document.addEventListener('keydown', e => {
     if ((k === 'Enter' || k === ' ') && W.near) { e.preventDefault(); atSea() ? landOn(W.near.id) : enterPlace(W.near.id); }
     return;
   }
-  if (screen === 'game' && cur?.zone.id === 'train' && !cur.busy && e.key.length === 1) {
-    e.preventDefault(); G.train.key(e.key.toLowerCase());
+  if (screen === 'game' && (cur?.zone.id === 'train' || cur?.zone.id === 'fetch') && !cur.busy && e.key.length === 1) {
+    e.preventDefault(); G[cur.zone.id].key(e.key.toLowerCase());
   }
 });
 document.addEventListener('keyup', e => { W.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
