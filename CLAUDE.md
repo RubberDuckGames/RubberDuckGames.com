@@ -25,6 +25,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   before pushing.
 - Progress lives in the browser's localStorage (key `treasure-trail`). There's
   no server and no account.
+  That includes each player's school spelling list (`player.words`), which a
+  grown-up pastes in Spelling Words; older lists are kept in `player.oldWords`.
+- Letter Train never shows speed. Decided 20 Oct for a kid who's anxious about
+  typing: the end screen says what they did, and wrong keys are silent in the
+  first two levels.
 - Design for kids with ADHD and dyslexia: short rounds, every prompt spoken,
   no timers, no buzzers, a hint after two misses, no grade labels.
 
