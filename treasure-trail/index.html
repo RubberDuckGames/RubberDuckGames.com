@@ -73,7 +73,6 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .isle .sign,.place .sign{display:inline-block;background:#fff8e8;border:.3cqw solid #b98552;border-radius:1cqw;padding:.2cqw 1cqw;font-size:1.7cqw;font-weight:800;white-space:nowrap;margin-top:.4cqw}
 .isle.near .icons{animation:hop .8s infinite}
 .me.boat{display:flex;flex-direction:column;align-items:center}
-.me .rider{font-size:.5em;margin-bottom:-.45em;position:relative;z-index:1}
 .place,.deco,.me,.gshiny{position:absolute;transform:translate(-50%,-50%)}
 .place{text-align:center;cursor:pointer}
 .place .icon{font-size:7cqw;line-height:1;filter:drop-shadow(0 .5cqw 0 rgba(0,0,0,.15))}
@@ -647,7 +646,8 @@ function renderWorld() {
       return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
     }).join('');
     $('#decos').innerHTML = SEA_DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e}</div>`).join('');
-    $('#me').className = 'me boat'; $('#me').innerHTML = `<span class="rider">${p.buddy}</span><span>⛵</span>`;
+    // Just the boat at sea. The buddy riding on top looked stuck on the mast.
+    $('#me').className = 'me boat'; $('#me').textContent = '⛵';
   } else {
     const isl = island();
     $('#hello').textContent = `${isl.icon} ${isl.name}`;
