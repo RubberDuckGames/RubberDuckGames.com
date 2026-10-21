@@ -59,6 +59,14 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 .tbtns{display:flex;gap:12px}
 .tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
 .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
+/* On a phone the maze is short, so screens and questions cover the whole
+   screen instead of being squeezed into the maze box (seen on iPhone Chrome). */
+@media (max-width:700px){
+  .cover{position:fixed;inset:0;border-radius:0;align-items:flex-start;overflow:auto;padding:16px;z-index:20}
+  .card{max-height:none;margin:auto 0}
+  #reload{position:fixed;left:50%;bottom:16px;z-index:20}
+  #task{position:fixed;z-index:20;max-height:92vh;overflow:auto}
+}
 @media (max-width:600px){.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
