@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treasure Trail</title>
+<!-- Lexend is easier to read for dyslexic kids. Offline, it falls back to Verdana. -->
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky:#cfeaff; --ink:#23324a; --soft:#5b6b82; --card:#fffdf7;
+  --gold:#ffc93c; --red:#ef5b5b; --blue:#4a90e2; --green:#3fb37f; --purple:#9b6ee8; --orange:#f59a3a;
+  --shadow:0 6px 0 rgba(35,50,74,.15), 0 10px 24px rgba(35,50,74,.12);
+  font-family: Lexend, Verdana, "Trebuchet MS", sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:linear-gradient(var(--sky),#eaf6ff 60%,#f3fbe9);color:var(--ink);font-size:20px;line-height:1.5;letter-spacing:.02em;user-select:none;-webkit-user-select:none}
+input{user-select:text;-webkit-user-select:text}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.soft{color:var(--soft);font-size:17px}
+.credit svg{width:1.6em;vertical-align:-.45em}
+
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px}
+.top h1{font-size:26px;margin:0;flex:1}
+.pill{background:var(--card);border-radius:999px;padding:8px 16px;box-shadow:var(--shadow);font-weight:600}
+.btn{background:var(--card);border-radius:16px;padding:10px 18px;box-shadow:var(--shadow);font-weight:600}
+.btn:active,.pill:active{transform:translateY(3px)}
+.btn.big{font-size:24px;padding:16px 26px}
+.btn.go{background:#d4f3e3}
+.screen{display:none;padding:8px 20px 40px;max-width:1150px;margin:0 auto}
+.screen.on{display:block}
+.title{text-align:center;font-size:34px;margin:10px 0 20px}
+
+/* Who's playing */
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.pcard{background:var(--card);border-radius:26px;box-shadow:var(--shadow);padding:26px 16px;text-align:center;position:relative;cursor:pointer}
+.pcard .buddy{font-size:96px;line-height:1.1}
+.pcard .name{font-size:30px;font-weight:800}
+.pcard .edit{position:absolute;top:10px;right:10px;width:46px;height:46px;border-radius:50%;background:#eef2f8;font-size:22px}
+.pcard.add{background:#f1f5fa}
+
+/* The world */
+.world{position:relative;width:100%;aspect-ratio:16/10;border-radius:28px;overflow:hidden;box-shadow:var(--shadow);container-type:inline-size;cursor:pointer;
+  background:
+    radial-gradient(circle at 20% 80%, #9edc85 0 9%, transparent 9.2%),
+    radial-gradient(circle at 85% 40%, #9edc85 0 7%, transparent 7.2%),
+    linear-gradient(#a6e08f,#8fd17a)}
+.path{position:absolute;inset:0;pointer-events:none}
+.place,.deco,.me,.sprout,.gshiny{position:absolute;transform:translate(-50%,-50%)}
+.place{text-align:center;cursor:pointer}
+.place .icon{font-size:7cqw;line-height:1;filter:drop-shadow(0 .5cqw 0 rgba(0,0,0,.15))}
+.place .sign{display:inline-block;background:#fff8e8;border:.3cqw solid #b98552;border-radius:1cqw;padding:.2cqw 1cqw;font-size:1.7cqw;font-weight:800;white-space:nowrap;margin-top:.4cqw}
+.place.soon .icon{opacity:.6;filter:grayscale(.5)}
+.place.near .icon{animation:hop .8s infinite}
+.lake{position:absolute;transform:translate(-50%,-50%);width:22cqw;height:12cqw;border-radius:50%;background:radial-gradient(ellipse,#8fd3f5,#5fb4e6);box-shadow:inset 0 -1cqw 0 rgba(0,0,0,.08)}
+.deco{font-size:4.5cqw;pointer-events:none}
+.deco svg{width:4.5cqw;display:block}
+.me{font-size:5.5cqw;line-height:1;z-index:5;pointer-events:none;transition:filter .2s}
+.me.walk{animation:waddle .35s infinite}
+.sprout{width:2.8cqw;z-index:4;pointer-events:none}
+.sprout svg{width:100%;display:block}
+.sprout.walk{animation:waddle .3s infinite}
+.gshiny{font-size:3.4cqw;z-index:3;pointer-events:none;animation:twinkle 1.6s ease-in-out infinite}
+.bubble{position:absolute;left:50%;bottom:2cqw;transform:translateX(-50%);background:#fff;border-radius:999px;padding:.6cqw 2cqw;font-size:2cqw;font-weight:700;box-shadow:var(--shadow);display:none;z-index:6;pointer-events:none}
+.bubble.on{display:block}
+.worldbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
+.worldbar h2{margin:0;font-size:28px}
+@keyframes waddle{0%,100%{transform:translate(-50%,-50%) rotate(-6deg)}50%{transform:translate(-50%,-56%) rotate(6deg)}}
+@keyframes twinkle{0%,100%{transform:translate(-50%,-50%) scale(1);filter:drop-shadow(0 0 2px #fff)}50%{transform:translate(-50%,-58%) scale(1.15);filter:drop-shadow(0 0 10px #fff8b0)}}
+
+/* Game screen */
+.gamebar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gamebar h2{flex:1;margin:0;font-size:28px}
+.levels{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.lvl{background:#fff;border-radius:999px;padding:8px 18px;box-shadow:var(--shadow);font-weight:600;font-size:18px}
+.lvl.on{background:var(--gold)}
+.lvl small{color:var(--soft)}
+.prompt{display:flex;align-items:center;justify-content:center;gap:18px;min-height:120px;font-size:38px;font-weight:800;text-align:center;flex-wrap:wrap}
+.prompt .big{font-size:76px;line-height:1;margin:0 6px}
+.prompt .hint{display:block;font-size:20px;color:var(--soft);font-weight:600}
+.buddy{font-size:64px;display:inline-block}
+.hop{animation:hop .6s}
+@keyframes hop{40%{transform:translateY(-24px) rotate(-8deg)}}
+.stage{position:relative;border-radius:28px;min-height:420px;overflow:hidden;box-shadow:var(--shadow)}
+#controls{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.dots{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:16px;font-size:24px}
+.dots span{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:inset 0 2px 4px rgba(0,0,0,.15)}
+.dots span.on{background:var(--gold)}
+
+/* Tadpole Pond */
+.pond{background:radial-gradient(ellipse at 50% 120%,#5fb4e6,#8fd3f5 60%,#bfe8fb);display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:18px 26px;padding:30px}
+.swimmer{width:160px;height:150px;animation:bob 2.8s ease-in-out infinite;transition:filter .2s}
+.swimmer svg{width:100%;height:100%}
+.swimmer text{font-family:inherit}
+.swimmer.wobble{animation:wobble .5s}
+.swimmer.yay{animation:yay .9s forwards}
+.swimmer.hint{filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 14px #ffd23f)}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-10px) rotate(3deg)}}
+@keyframes wobble{25%{transform:rotate(-14deg)}75%{transform:rotate(14deg)}}
+@keyframes yay{40%{transform:scale(1.25) rotate(360deg)}100%{transform:scale(1.15)}}
+
+/* Block Tower */
+.yard{background:linear-gradient(#dff2ff,#f2fbff);min-height:530px}
+.ground{position:absolute;left:0;right:0;bottom:0;height:56px;background:#8fd17a;border-top:6px solid #6fb85a}
+.sun{position:absolute;top:18px;right:28px;font-size:64px}
+.tower{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center}
+.brick{width:160px;height:36px;background:currentColor;border-radius:5px;position:relative;margin-top:9px;cursor:pointer;animation:drop .35s ease-out;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.3)}
+.brick::before{content:'';position:absolute;top:-9px;left:18px;right:18px;height:10px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,currentColor 0 24px,transparent 24px 46px)}
+.brick.flash{outline:5px solid var(--ink)}
+.brick.gone{animation:fly .45s forwards}
+@keyframes drop{from{transform:translateY(-160px);opacity:0}to{transform:none;opacity:1}}
+@keyframes fly{to{transform:translate(220px,-120px) rotate(40deg);opacity:0}}
+.choice{width:110px;height:110px;font-size:52px;font-weight:800;border-radius:26px}
+.choice.right{background:var(--green);color:#fff}
+.choice.wrong{opacity:.4}
+
+/* Letter Train */
+.rail{background:linear-gradient(#fff6e5 0 72%,#c9e9b8 72%);min-height:300px}
+.track{position:absolute;left:0;right:0;bottom:52px;height:12px;border-top:5px solid #6b7b8f;background:repeating-linear-gradient(90deg,#8a6a4a 0 18px,transparent 18px 34px)}
+.train{position:absolute;left:0;bottom:72px;display:flex;align-items:flex-end;gap:12px;transition:transform .45s ease;padding-left:20px}
+.engine{font-size:110px;line-height:1;margin-bottom:-18px}
+.car{position:relative;min-width:96px;height:84px;padding:0 18px;background:var(--red);border-radius:14px 14px 8px 8px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:800;color:#fff;letter-spacing:.06em;box-shadow:inset 0 -8px 0 rgba(0,0,0,.15)}
+.car:nth-child(3n){background:var(--blue)}
+.car:nth-child(3n+1){background:var(--purple)}
+.car::before,.car::after{content:'';position:absolute;bottom:-18px;width:28px;height:28px;border-radius:50%;background:var(--ink);border:5px solid #9aa7b8}
+.car::before{left:12px}.car::after{right:12px}
+.car.now{outline:6px solid var(--gold);outline-offset:4px}
+.car.done{background:var(--green)!important}
+.car span.typed{opacity:.45}
+.car span.next{text-decoration:underline;text-underline-offset:8px;text-decoration-thickness:5px}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.kb{display:inline-block;padding:14px;background:#fff;border-radius:18px;box-shadow:var(--shadow)}
+.kbrow{display:flex;gap:6px;margin-bottom:6px}
+.k{width:54px;height:54px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;position:relative;border-bottom:4px solid rgba(0,0,0,.15);cursor:pointer}
+.f-p{background:#e8dcff}.f-r{background:#d6e8ff}.f-m{background:#d4f3e3}.f-i{background:#ffe2c8}
+.k.bump::after{content:'';position:absolute;bottom:8px;width:14px;height:3px;border-radius:2px;background:var(--ink)}
+.k.target{background:var(--gold);transform:translateY(-4px) scale(1.08);box-shadow:0 0 0 4px var(--ink)}
+
+/* Treasure shelf */
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;background:#d7a46f;padding:20px;border-radius:24px;margin-top:14px;box-shadow:var(--shadow),inset 0 0 0 8px #b98552}
+.item{background:#f4dcbc;border-radius:16px;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:56px;position:relative;line-height:1.2}
+.item small{font-size:15px}
+.item.locked .e{filter:grayscale(1) brightness(0);opacity:.18}
+.item .n{position:absolute;top:6px;right:8px;background:var(--ink);color:#fff;border-radius:999px;font-size:14px;padding:0 8px}
+.sprouts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sprouts div{width:40px}
+
+/* Pop-ups */
+.overlay{position:fixed;inset:0;background:rgba(35,50,74,.5);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+.overlay.on{display:flex}
+.card{background:var(--card);border-radius:30px;padding:30px 36px;text-align:center;max-width:580px;width:100%;box-shadow:var(--shadow)}
+.card h2{margin:6px 0}
+.bigShiny{font-size:150px;line-height:1.1;animation:shine 1.4s ease-out}
+@keyframes shine{0%{transform:scale(.2) rotate(-30deg);opacity:0}60%{transform:scale(1.2) rotate(10deg);opacity:1}100%{transform:scale(1)}}
+.row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+#eName{font:inherit;font-size:26px;padding:10px 16px;border-radius:14px;border:3px solid #cdd6e3;width:100%;margin:10px 0 16px}
+.buddies{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.bud{font-size:40px;width:66px;height:66px;border-radius:16px;background:#f0f3f8}
+.bud.on{background:var(--gold)}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120%);background:#fff;border-radius:999px;padding:10px 24px;font-weight:800;box-shadow:var(--shadow);z-index:20;transition:transform .3s}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>🗺️ Treasure Trail</h1>
+  <button class="pill" id="playerBtn" hidden></button>
+  <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
+</header>
+
+<section id="s-who" class="screen">
+  <h2 class="title">Who's playing?</h2>
+  <div class="players" id="players"></div>
+  <p class="soft" style="text-align:center;margin-top:30px"><span class="credit"></span> Made by Rubber Duck Games</p>
+</section>
+
+<section id="s-map" class="screen">
+  <div class="worldbar">
+    <h2 id="hello"></h2>
+    <span class="soft">Click to walk, or use the arrow keys</span>
+  </div>
+  <div class="world" id="world">
+    <svg class="path" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M220 200 Q360 300 500 340 T780 180 M500 340 Q620 420 760 470 M500 340 Q380 420 240 480 M500 340 L500 110"
+        fill="none" stroke="#e8d3a8" stroke-width="34" stroke-linecap="round"/>
+    </svg>
+    <div class="lake" style="left:22%;top:32%"></div>
+    <div id="places"></div>
+    <div id="decos"></div>
+    <div id="ground"></div>
+    <div id="sproutLine"></div>
+    <div class="me" id="me"></div>
+    <div class="bubble" id="bubble"></div>
+  </div>
+</section>
+
+<section id="s-game" class="screen">
+  <div class="gamebar">
+    <button class="btn" data-go="map">🗺️ Back to map</button>
+    <h2 id="gTitle"></h2>
+    <button class="btn" id="hearBtn">🔊 Hear it</button>
+  </div>
+  <div class="levels" id="levels"></div>
+  <div class="prompt" id="prompt"></div>
+  <div class="stage" id="stage"></div>
+  <div id="controls"></div>
+  <div class="dots" id="dots"></div>
+</section>
+
+<section id="s-shelf" class="screen">
+  <div class="gamebar">
+    <button class="btn" data-go="map">🗺️ Back to map</button>
+    <h2 id="shelfTitle"></h2>
+  </div>
+  <div class="shelf" id="shelf"></div>
+  <h3 id="sproutTitle"></h3>
+  <div class="sprouts" id="sproutList"></div>
+</section>
+
+<div class="overlay" id="reward">
+  <div class="card">
+    <div class="bigShiny" id="rShiny"></div>
+    <h2 id="rText"></h2>
+    <p class="soft" id="rSub"></p>
+    <div class="row">
+      <button class="btn big go" id="rAgain">Play again</button>
+      <button class="btn big" id="rMap">Back to map</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="edit">
+  <div class="card">
+    <h2>Player</h2>
+    <input id="eName" maxlength="14" placeholder="Name" aria-label="Name">
+    <div class="buddies" id="eBuddies"></div>
+    <div class="row">
+      <button class="btn big go" id="eSave">Save</button>
+      <button class="btn big" id="eCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Helpers ----------
+const $ = s => document.querySelector(s);
+const rand = a => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const art = w => /^[aeiou]/i.test(w) ? 'an' : 'a';
+
+// ---------- Content ----------
+const LETTERS = { A: ['apple', '🍎'], B: ['bear', '🐻'], C: ['cat', '🐱'], D: ['duck', '🦆'], E: ['egg', '🥚'], F: ['fish', '🐟'], G: ['goat', '🐐'], H: ['hat', '🎩'], I: ['insect', '🐞'], J: ['juice', '🧃'], K: ['kite', '🪁'], L: ['lion', '🦁'], M: ['moon', '🌙'], N: ['nose', '👃'], O: ['octopus', '🐙'], P: ['pig', '🐷'], Q: ['queen', '👑'], R: ['rabbit', '🐰'], S: ['sun', '☀️'], T: ['train', '🚂'], U: ['umbrella', '☂️'], V: ['van', '🚐'], W: ['whale', '🐳'], X: ['fox', '🦊'], Y: ['yo-yo', '🪀'], Z: ['zebra', '🦓'] };
+const ALPHA = Object.keys(LETTERS);
+const phrase = L => L === 'X' ? 'X. Fox ends with X.' : `${L}. ${L} is for ${LETTERS[L][0]}.`;
+
+const SHINIES = [['💎', 'blue gem'], ['🐚', 'sea shell'], ['🌰', 'acorn'], ['🪙', 'gold coin'], ['🔮', 'crystal ball'], ['🍀', 'lucky clover'], ['🪶', 'feather'], ['⭐', 'gold star'], ['🗝️', 'old key'], ['🔔', 'little bell'], ['🪨', 'smooth rock'], ['🧭', 'compass'], ['🐞', 'ladybug'], ['🌸', 'flower'], ['🍄', 'mushroom'], ['🧲', 'magnet'], ['🫧', 'bubble'], ['🦋', 'butterfly'], ['🌈', 'rainbow'], ['🐌', 'snail']];
+const BUDDIES = ['🐈‍⬛', '🐕', '🦆', '🦹', '🦸', '🚂', '⛵', '🚀', '🦖', '🐉', '🦉', '🐙', '🤖', '🦊', '🐢', '👾'];
+const SPROUT_COLORS = ['#ef5b5b', '#4a90e2', '#ffc93c', '#9b6ee8', '#f59a3a', '#3fb37f', '#ff8fc7', '#5ad1d1'];
+const WORDS = ['cat', 'sun', 'map', 'duck', 'boat', 'ship', 'star', 'moon', 'frog', 'gem', 'lego', 'key', 'train', 'rocket', 'corgi', 'ocean', 'castle', 'dragon', 'planet', 'shell', 'robot', 'comet'];
+const FINGER = { q: 'p', a: 'p', z: 'p', w: 'r', s: 'r', x: 'r', e: 'm', d: 'm', c: 'm', r: 'i', f: 'i', v: 'i', t: 'i', g: 'i', b: 'i', y: 'i', h: 'i', n: 'i', u: 'i', j: 'i', m: 'i', i: 'm', k: 'm', ',': 'm', o: 'r', l: 'r', '.': 'r', p: 'p', ';': 'p', '/': 'p' };
+const FINGER_NAME = { p: 'pinky', r: 'ring finger', m: 'middle finger', i: 'pointer finger' };
+
+// Places in the world. x/y are on a 1000 x 625 map.
+const PLACES = [
+  { id: 'pond', icon: '🐸', name: 'Tadpole Pond', x: 220, y: 200, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
+  { id: 'tower', icon: '🧱', name: 'Block Tower', x: 780, y: 180, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
+  { id: 'train', icon: '🚂', name: 'Letter Train', x: 760, y: 470, levels: ['F and J', 'Home row', 'More keys', 'Words'] },
+  { id: 'shelf', icon: '🏠', name: 'My Treasures', x: 500, y: 330 },
+  { id: 'space', icon: '🚀', name: 'Space Lab', x: 500, y: 95, soon: true },
+  { id: 'story', icon: '📚', name: 'Story Tree', x: 240, y: 480, soon: true },
+];
+const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 110, 330], ['🌳', 380, 560], ['🌲', 640, 80], ['🌳', 930, 320], ['🌻', 610, 560], ['🌷', 400, 190], ['🌲', 950, 560], ['🪨', 660, 300], ['🍄', 90, 580]];
+
+// ---------- Save data (stays on this computer) ----------
+function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
+function persist() { try { localStorage.setItem('treasure-trail', JSON.stringify(save)); } catch (e) { } }
+const newPlayer = (name, buddy) => ({ name, buddy, shinies: [], done: {}, last: {}, sprouts: 0 });
+let save = load() || { sound: true, current: null, players: [newPlayer('Player 1', '🐈‍⬛'), newPlayer('Player 2', '🐕'), newPlayer('Player 3', '🦆')] };
+save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; p.sprouts ??= 0; });
+const player = () => save.players[save.current];
+
+// ---------- Voice and sounds ----------
+let voice = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices();
+  voice = vs.find(v => v.lang === 'en-US' && /Samantha|Google US|Aria|Jenny|Ava/.test(v.name)) || vs.find(v => v.lang.startsWith('en')) || null;
+}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(t) {
+  if (!t || !save.sound || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(t);
+  if (voice) u.voice = voice;
+  u.rate = .9; u.pitch = 1.1;
+  speechSynthesis.speak(u);
+}
+let ac;
+function tone(freq, dur = .15, type = 'sine', when = 0, vol = .15, slideTo) {
+  if (!save.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+  } catch (e) { }
+}
+const sfx = {
+  good() { tone(660, .12, 'triangle'); tone(990, .22, 'triangle', .1); },
+  oops() { tone(240, .18, 'sine', 0, .12, 180); },
+  quack() { tone(520, .12, 'sawtooth', 0, .05, 300); },
+  bloop() { tone(300, .15, 'sine', 0, .14, 750); },
+  pop() { tone(400, .08, 'square', 0, .05, 700); },
+  chug() { tone(130, .07, 'square', 0, .04); },
+  shiny() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .25, 'triangle', i * .09, .1)); },
+};
+
+// ---------- Screens ----------
+let screen = 'who', cur = null;
+function show(name) {
+  screen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + name));
+  W.keys = {};
+}
+const alive = c => cur === c && screen === 'game';
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2200); }
+
+$('#soundBtn').onclick = () => { save.sound = !save.sound; persist(); drawSound(); if (!save.sound) speechSynthesis?.cancel(); };
+function drawSound() { $('#soundBtn').textContent = save.sound ? '🔊' : '🔇'; }
+$('#playerBtn').onclick = showWho;
+$('#hearBtn').onclick = () => say(cur?.say);
+document.addEventListener('click', e => { if (e.target.closest('[data-go="map"]')) showMap(); });
+
+// ---------- Who's playing ----------
+function showWho() {
+  $('#playerBtn').hidden = true;
+  $('#players').innerHTML = save.players.map((p, i) => `
+    <div class="pcard" data-i="${i}">
+      <button class="edit" data-edit="${i}" aria-label="Edit">✏️</button>
+      <div class="buddy">${p.buddy}</div>
+      <div class="name">${esc(p.name)}</div>
+      <div class="soft">✨ ${p.shinies.length} treasures · 🌱 ${p.sprouts} Sprouts</div>
+    </div>`).join('') +
+    `<div class="pcard add" data-edit="-1"><div class="buddy">➕</div><div class="name">Add a player</div></div>`;
+  show('who');
+}
+$('#players').onclick = e => {
+  const ed = e.target.closest('[data-edit]');
+  if (ed) return openEdit(+ed.dataset.edit);
+  const c = e.target.closest('.pcard');
+  if (c) { save.current = +c.dataset.i; persist(); say(`Hi ${player().name}! Where do you want to go?`); showMap(); }
+};
+
+let editing = null, pickedBuddy = null;
+function openEdit(i) {
+  editing = i;
+  const p = i >= 0 ? save.players[i] : { name: '', buddy: '🦊' };
+  $('#eName').value = p.name; pickedBuddy = p.buddy; drawBuddies();
+  $('#edit').classList.add('on'); setTimeout(() => $('#eName').focus(), 50);
+}
+function drawBuddies() { $('#eBuddies').innerHTML = BUDDIES.map(b => `<button class="bud${b === pickedBuddy ? ' on' : ''}" data-b="${b}">${b}</button>`).join(''); }
+$('#eBuddies').onclick = e => { const b = e.target.closest('[data-b]'); if (b) { pickedBuddy = b.dataset.b; drawBuddies(); } };
+$('#eSave').onclick = () => {
+  const name = $('#eName').value.trim() || 'Player';
+  if (editing >= 0) Object.assign(save.players[editing], { name, buddy: pickedBuddy });
+  else save.players.push(newPlayer(name, pickedBuddy));
+  persist(); $('#edit').classList.remove('on'); showWho();
+};
+$('#eCancel').onclick = () => $('#edit').classList.remove('on');
+$('#eName').onkeydown = e => { if (e.key === 'Enter') $('#eSave').click(); };
+
+// ---------- The world ----------
+const W = { x: 500, y: 420, tx: null, ty: null, enter: null, keys: {}, trail: [], ground: [], near: null, last: 0 };
+const pos = (el, x, y) => { el.style.left = x / 10 + '%'; el.style.top = y / 6.25 + '%'; };
+
+function sproutSVG(c) {
+  return `<svg viewBox="0 0 40 56" aria-hidden="true"><path d="M20 22 Q20 10 22 5" stroke="#3a7d3a" stroke-width="2.5" fill="none"/><path d="M22 6 Q32 0 35 8 Q27 12 22 6Z" fill="#5cc25c"/><ellipse cx="20" cy="38" rx="13" ry="16" fill="${c}"/><circle cx="15" cy="34" r="2.6" fill="#23324a"/><circle cx="25" cy="34" r="2.6" fill="#23324a"/><path d="M15 42 Q20 46 25 42" stroke="#23324a" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+}
+
+function showMap() {
+  cur = null;
+  const p = player();
+  $('#playerBtn').hidden = false;
+  $('#playerBtn').textContent = `${p.buddy} ${p.name}`;
+  $('#hello').textContent = `Hi, ${p.name}!`;
+  $('#places').innerHTML = PLACES.map(pl => `
+    <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
+      <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
+    </div>`).join('');
+  $('#decos').innerHTML = DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e === 'duck' ? rubberDuckSVG() : e}</div>`).join('');
+  $('#me').textContent = p.buddy;
+  $('#sproutLine').innerHTML = Array.from({ length: Math.min(p.sprouts, 24) }, (_, i) => `<div class="sprout">${sproutSVG(SPROUT_COLORS[i % SPROUT_COLORS.length])}</div>`).join('');
+  W.trail = [];
+  while (W.ground.length < 2) spawnGround();
+  drawWorld(false);
+  show('map');
+}
+
+function spawnGround() {
+  let x, y, tries = 0;
+  do { x = randInt(60, 940); y = randInt(60, 580); tries++; }
+  while (tries < 50 && PLACES.some(pl => Math.hypot(pl.x - x, pl.y - y) < 120));
+  const el = document.createElement('div');
+  el.className = 'gshiny'; const s = rand(SHINIES); el.textContent = s[0]; pos(el, x, y);
+  $('#ground').appendChild(el);
+  W.ground.push({ x, y, s, el });
+}
+setInterval(() => { if (screen === 'map' && W.ground.length < 2) spawnGround(); }, 25000);
+
+function drawWorld(moving) {
+  const me = $('#me'); pos(me, W.x, W.y); me.classList.toggle('walk', moving);
+  document.querySelectorAll('.sprout').forEach((el, i) => {
+    const t = W.trail[Math.min((i + 1) * 9, W.trail.length - 1)] || [W.x + 20 + i * 4, W.y + 20];
+    pos(el, t[0], t[1]); el.classList.toggle('walk', moving);
+  });
+  // Is the player standing near a place?
+  let near = null;
+  PLACES.forEach(pl => { if (Math.hypot(pl.x - W.x, pl.y - W.y) < 75) near = pl; });
+  if (near !== W.near) {
+    W.near = near;
+    document.querySelectorAll('.place').forEach(el => el.classList.toggle('near', near?.id === el.dataset.p));
+    $('#bubble').textContent = near ? (near.soon ? `${near.name} is coming soon!` : `Press Enter to go in: ${near.name}`) : '';
+    $('#bubble').classList.toggle('on', !!near);
+  }
+}
+
+function stepWorld(dt) {
+  const k = W.keys, sp = .3 * dt;
+  let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
+  let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0);
+  let moving = false;
+  if (dx || dy) {
+    W.tx = null; W.enter = null; const m = Math.hypot(dx, dy);
+    W.x += dx / m * sp; W.y += dy / m * sp; moving = true;
+  } else if (W.tx != null) {
+    const ddx = W.tx - W.x, ddy = W.ty - W.y, d = Math.hypot(ddx, ddy);
+    if (d <= sp) {
+      W.x = W.tx; W.y = W.ty; W.tx = null;
+      if (W.enter) { const id = W.enter; W.enter = null; drawWorld(false); return enterPlace(id); }
+    } else { W.x += ddx / d * sp; W.y += ddy / d * sp; moving = true; }
+  }
+  W.x = clamp(W.x, 20, 980); W.y = clamp(W.y, 30, 600);
+  const t0 = W.trail[0];
+  if (!t0 || Math.hypot(t0[0] - W.x, t0[1] - W.y) > 3) { W.trail.unshift([W.x, W.y]); W.trail.length = Math.min(W.trail.length, 300); }
+  // Pick up shiny things on the ground
+  W.ground = W.ground.filter(g => {
+    if (Math.hypot(g.x - W.x, g.y - W.y) > 30) return true;
+    g.el.remove(); player().shinies.push(g.s[0]); persist();
+    sfx.shiny(); say(`You found ${art(g.s[1])} ${g.s[1]}!`); toast(`${g.s[0]} You found ${art(g.s[1])} ${g.s[1]}!`);
+    return false;
+  });
+  drawWorld(moving);
+}
+
+function loop(t) {
+  const dt = Math.min(50, t - (W.last || t)); W.last = t;
+  if (screen === 'map' && !$('.overlay.on')) stepWorld(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+$('#world').onclick = e => {
+  const r = $('#world').getBoundingClientRect();
+  const pl = e.target.closest('.place');
+  if (pl) { const p = PLACES.find(x => x.id === pl.dataset.p); W.tx = p.x; W.ty = p.y + 25; W.enter = p.id; }
+  else { W.tx = (e.clientX - r.left) / r.width * 1000; W.ty = (e.clientY - r.top) / r.height * 625; W.enter = null; }
+};
+
+function enterPlace(id) {
+  const pl = PLACES.find(p => p.id === id);
+  if (pl.soon) return say(`${pl.name} is coming soon!`);
+  if (id === 'shelf') return showShelf();
+  openGame(id);
+}
+
+// ---------- Treasure shelf ----------
+function showShelf() {
+  const p = player(), counts = {};
+  p.shinies.forEach(s => counts[s] = (counts[s] || 0) + 1);
+  const found = Object.keys(counts).length;
+  $('#shelfTitle').textContent = `${p.name}'s treasures · ${found} of ${SHINIES.length} found`;
+  $('#shelf').innerHTML = SHINIES.map(([e, n]) => counts[e]
+    ? `<button class="item" data-n="${n}"><span class="e">${e}</span><small>${n}</small>${counts[e] > 1 ? `<span class="n">×${counts[e]}</span>` : ''}</button>`
+    : `<div class="item locked"><span class="e">${e}</span><small>?</small></div>`).join('');
+  $('#sproutTitle').textContent = p.sprouts ? `🌱 Your Sprouts: ${p.sprouts}` : '🌱 Finish a game to meet your first Sprout!';
+  $('#sproutList').innerHTML = Array.from({ length: p.sprouts }, (_, i) => `<div>${sproutSVG(SPROUT_COLORS[i % SPROUT_COLORS.length])}</div>`).join('');
+  say(`${p.name}'s treasures. You found ${found} of ${SHINIES.length}.`);
+  show('shelf');
+}
+$('#shelf').onclick = e => { const it = e.target.closest('[data-n]'); if (it) { say(it.dataset.n); sfx.shiny(); } };
+
+// ---------- Game frame ----------
+const G = {};
+function openGame(id, level) {
+  const z = PLACES.find(p => p.id === id), p = player();
+  if (level == null) level = p.last[id] ?? 0;
+  p.last[id] = level; persist();
+  cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
+  $('#gTitle').textContent = `${z.icon} ${z.name}`;
+  const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
+  $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
+  $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
+  renderLevels();
+  show('game');
+  G[id].start(level);
+  drawDots();
+}
+function renderLevels() {
+  const z = cur.zone, p = player();
+  $('#levels').innerHTML = z.levels.map((n, i) => `<button class="lvl${i === cur.level ? ' on' : ''}" data-lv="${i}">${n}${p.done[z.id + i] ? ` <small>⭐${p.done[z.id + i]}</small>` : ''}</button>`).join('');
+}
+$('#levels').onclick = e => { const b = e.target.closest('[data-lv]'); if (b && cur) openGame(cur.zone.id, +b.dataset.lv); };
+function drawDots() { $('#dots').innerHTML = Array.from({ length: cur.total }, (_, i) => `<span class="${i < cur.step ? 'on' : ''}"></span>`).join('') + '✨'; }
+function setPrompt(html, speech, quiet) {
+  $('#prompt').innerHTML = `<span class="buddy" id="buddy">${player().buddy}</span><span>${html}</span>`;
+  cur.say = speech;
+  if (speech && !quiet) say(speech);
+}
+function cheer() { const b = $('#buddy'); if (!b) return; b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop'); }
+function stepDone() {
+  cur.step++; drawDots();
+  if (cur.step < cur.total) return false;
+  const c = cur; cur.busy = true;
+  setTimeout(() => { if (alive(c)) finishRound(); }, 1700);
+  return true;
+}
+function finishRound() {
+  const p = player(), key = cur.zone.id + cur.level;
+  p.done[key] = (p.done[key] || 0) + 1;
+  const fresh = SHINIES.filter(s => !p.shinies.includes(s[0]));
+  const s = fresh.length ? rand(fresh) : rand(SHINIES);
+  p.shinies.push(s[0]);
+  p.sprouts++;
+  persist(); renderLevels();
+  const el = $('#rShiny'); el.textContent = s[0]; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  $('#rText').textContent = `You found ${art(s[1])} ${s[1]}!`;
+  $('#rSub').innerHTML = [cur.sub, '🌱 A new Sprout joined you!'].filter(Boolean).join('<br>');
+  $('#reward').classList.add('on');
+  sfx.shiny();
+  setTimeout(() => say(`You found ${art(s[1])} ${s[1]}! And a new Sprout joined you!`), 300);
+}
+$('#rAgain').onclick = () => { $('#reward').classList.remove('on'); openGame(cur.zone.id, cur.level); };
+$('#rMap').onclick = () => { $('#reward').classList.remove('on'); showMap(); };
+
+// ---------- Tadpole Pond (letters) ----------
+// The studio rubber duck (64 x 64 drawing), same as ../favicon.svg.
+// The first draft drew its own yellow duck; this one keeps the studio look.
+const duckShape = (body = '#f28c28') => `<ellipse cx="32" cy="59" rx="22" ry="3" fill="#f28c28" opacity=".15"/><path d="M8 40c0-8 8-12 18-12h6c-4-3-5-7-5-10 0-7 6-12 13-12s12 5 12 11c0 3-1 5-3 7 6 1 9 6 9 11 0 10-12 17-27 17S8 49 8 40z" fill="${body}"/><path d="M22 39c4 5 13 6 19 1" fill="none" stroke="#c2410c" stroke-width="2.4" stroke-linecap="round" opacity=".55"/><path d="M51 14.5l10-1.5-8.5 6.5z" fill="#c2410c"/><circle cx="43" cy="14" r="2.6" fill="#16131a"/><circle cx="43.9" cy="13.1" r=".8" fill="#fff"/><ellipse cx="36" cy="10" rx="3" ry="1.4" fill="#fff" opacity=".35" transform="rotate(-25 36 10)"/>`;
+const rubberDuckSVG = () => `<svg viewBox="0 0 64 64" aria-hidden="true">${duckShape()}</svg>`;
+
+// Letters ride on tadpoles and rubber ducks, taking turns.
+const SWIMMERS = [['tadpole', '#a8e06c'], ['duck', '#f28c28'], ['tadpole', '#7fd1b9'], ['duck', '#ffc93c'], ['tadpole', '#c9b6ff'], ['duck', '#f28c28']];
+function swimmerSVG(kind, t, c) {
+  const letter = `<text x="70" y="120" text-anchor="middle" font-size="46" font-weight="800" fill="#23324a">${t}</text>`;
+  if (kind === 'duck') return `<svg viewBox="0 0 160 150" aria-hidden="true"><g transform="translate(4 2) scale(2.3)">${duckShape(c)}</g><text x="68" y="118" text-anchor="middle" font-size="44" font-weight="800" fill="#23324a">${t}</text></svg>`;
+  return `<svg viewBox="0 0 160 150" aria-hidden="true"><ellipse cx="78" cy="138" rx="64" ry="9" fill="rgba(0,70,130,.2)"/><path d="M112 88 C132 74 140 112 158 92 C146 124 128 116 110 106Z" fill="${c}"/><ellipse cx="70" cy="98" rx="52" ry="40" fill="${c}"/><circle cx="50" cy="60" r="12" fill="#fff"/><circle cx="90" cy="60" r="12" fill="#fff"/><circle cx="52" cy="62" r="5.5" fill="#23324a"/><circle cx="88" cy="62" r="5.5" fill="#23324a"/><path d="M58 74 Q70 80 82 74" stroke="#23324a" stroke-width="3" fill="none" stroke-linecap="round"/>${letter}</svg>`;
+}
+G.pond = {
+  start(l) {
+    const st = $('#stage'); st.classList.add('pond');
+    st.onclick = e => { const d = e.target.closest('.swimmer'); if (d) this.tap(d); };
+    if (l === 0) { this.draw(shuffle(ALPHA).slice(0, 6)); setPrompt('<span class="big">👆</span> Tap one!', 'Tap a tadpole or a duck to hear its letter.'); }
+    else this.next();
+  },
+  draw(list) {
+    const lower = cur.level === 3;
+    $('#stage').innerHTML = list.map((L, i) => `<button class="swimmer" data-l="${L}" data-i="${i % 6}" style="animation-delay:-${(i * .45).toFixed(2)}s" aria-label="${L}">${swimmerSVG(SWIMMERS[i % 6][0], lower ? L.toLowerCase() : L, SWIMMERS[i % 6][1])}</button>`).join('');
+  },
+  next() {
+    cur.busy = false; cur.missHere = 0;
+    const l = cur.level, pool = l === 2 ? ALPHA.filter(x => x !== 'X') : ALPHA;
+    const t = rand(pool.filter(x => x !== cur.target)); cur.target = t;
+    this.draw(shuffle([t, ...shuffle(pool.filter(x => x !== t)).slice(0, 3)]));
+    const [word, pic] = LETTERS[t];
+    if (l === 1) setPrompt(`Find <span class="big">${t}</span>`, `Find the letter ${t}.`);
+    else if (l === 2) setPrompt(`<span class="big">${pic}</span> ${word} starts with…`, `${word}. What letter does ${word} start with?`);
+    else setPrompt(`Big <span class="big">${t}</span> Find little <span class="big">?</span>`, `This is big ${t}. Find little ${t}.`);
+  },
+  tap(d) {
+    if (cur.busy) return;
+    const L = d.dataset.l, l = cur.level, c = cur;
+    if (l === 0) {
+      cur.busy = true; d.classList.add('yay'); sfx.bloop();
+      const [w, p] = LETTERS[L];
+      setPrompt(`<span class="big">${L}${L.toLowerCase()}</span><span class="big">${p}</span>${w}`, phrase(L));
+      cheer();
+      const done = stepDone();
+      setTimeout(() => {
+        if (done || !alive(c)) return;
+        cur.busy = false;
+        const onScreen = [...document.querySelectorAll('.swimmer')].map(x => x.dataset.l);
+        const nl = rand(ALPHA.filter(x => !onScreen.includes(x)));
+        d.dataset.l = nl; d.setAttribute('aria-label', nl); const [kind, color] = SWIMMERS[+d.dataset.i]; d.innerHTML = swimmerSVG(kind, nl, color); d.classList.remove('yay');
+      }, 1100);
+      return;
+    }
+    if (L === cur.target) {
+      cur.busy = true; d.classList.remove('hint'); d.classList.add('yay'); sfx.bloop(); setTimeout(sfx.good, 150); cheer();
+      say(l === 2 ? `Yes! ${LETTERS[L][0]} starts with ${L}!` : l === 3 ? `Yes! Little ${L}!` : `Yes! ${L}!`);
+      if (!stepDone()) setTimeout(() => { if (alive(c)) this.next(); }, 1500);
+    } else {
+      cur.misses++; cur.missHere++;
+      d.classList.remove('wobble'); void d.offsetWidth; d.classList.add('wobble');
+      setTimeout(() => d.classList.remove('wobble'), 500);
+      sfx.oops(); say(`That's ${l === 3 ? 'little ' : ''}${L}. Try again!`);
+      // After two misses, the right swimmer glows so nobody gets stuck.
+      if (cur.missHere >= 2) document.querySelector(`.swimmer[data-l="${cur.target}"]`)?.classList.add('hint');
+    }
+  },
+};
+
+// ---------- Block Tower (counting) ----------
+const BRICK_COLORS = ['#ef5b5b', '#4a90e2', '#ffc93c', '#3fb37f', '#f59a3a', '#9b6ee8'];
+G.tower = {
+  start() {
+    const st = $('#stage'); st.classList.add('yard'); cur.total = 6;
+    st.onclick = e => { const b = e.target.closest('.brick:not(.gone)'); if (b) this.tapBrick(b); };
+    this.next();
+  },
+  bricks() { return [...document.querySelectorAll('#tower .brick:not(.gone)')]; },
+  brick(color) { const b = document.createElement('div'); b.className = 'brick'; b.style.color = color; $('#tower').appendChild(b); return b; },
+  next() {
+    $('#stage').innerHTML = '<div class="sun">☀️</div><div class="tower" id="tower"></div><div class="ground"></div>';
+    $('#controls').innerHTML = ''; cur.busy = false;
+    const l = cur.level;
+    if (l <= 1) {
+      const n = l === 0 ? randInt(1, 5) : randInt(3, 10); cur.n = n;
+      setPrompt(`Build <span class="big">${n}</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}.`);
+      $('#controls').innerHTML = `<button class="btn big" data-a="add">➕ Add a block</button>` +
+        (l === 1 ? `<button class="btn big" data-a="take">➖ Take one off</button><button class="btn big go" data-a="done">✅ Done</button>` : '');
+    } else if (l === 2) {
+      const a = randInt(1, 5), b = randInt(1, Math.min(5, 10 - a)); cur.n = a + b;
+      setPrompt(`<span style="color:#ef5b5b">${a}</span> + <span style="color:#4a90e2">${b}</span> = ?`, '', true);
+      this.autoBuild([[a, '#ef5b5b'], [b, '#4a90e2']], `${a} red ${a === 1 ? 'block' : 'blocks'} and ${b} blue ${b === 1 ? 'block' : 'blocks'}. How many blocks in all?`);
+    } else {
+      const n = randInt(3, 10), k = randInt(1, Math.min(5, n - 1));
+      Object.assign(cur, { n: n - k, k, taken: 0, start: n });
+      for (let i = 0; i < n; i++) this.brick(BRICK_COLORS[i % 6]);
+      setPrompt(`${n} take away ${k}`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
+    }
+  },
+  async autoBuild(groups, speech) {
+    const c = cur; cur.busy = true;
+    for (const [count, color] of groups) for (let i = 0; i < count; i++) {
+      await wait(380); if (!alive(c)) return;
+      this.brick(color); sfx.pop();
+    }
+    await wait(400); if (!alive(c)) return;
+    cur.say = speech; say(speech); this.choices(); cur.busy = false;
+  },
+  choices() {
+    const opts = new Set([cur.n]);
+    while (opts.size < 3) { const v = cur.n + randInt(-3, 3); if (v >= 0 && v <= 10) opts.add(v); }
+    $('#controls').innerHTML = shuffle([...opts]).map(v => `<button class="btn choice" data-a="pick" data-v="${v}">${v}</button>`).join('');
+  },
+  tapBrick(b) {
+    if (cur.busy) return;
+    if (cur.level === 3 && cur.taken < cur.k) {
+      const top = this.bricks().at(-1); top.classList.add('gone'); setTimeout(() => top.remove(), 450);
+      cur.taken++; sfx.pop(); say(String(cur.taken));
+      if (cur.taken === cur.k) {
+        setPrompt(`${cur.start} take away ${cur.k} = ?`, 'How many blocks are left?', true);
+        setTimeout(() => { say(cur.say); this.choices(); }, 700);
+      }
+      return;
+    }
+    // Tapping a block says its number, to help with counting.
+    const i = this.bricks().indexOf(b) + 1;
+    b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 400); say(String(i));
+  },
+  act(a, btn) {
+    if (cur.busy) return;
+    const l = cur.level, c = this.bricks().length;
+    if (a === 'add') {
+      if (c >= 10) return say('That is as tall as it goes!');
+      this.brick(BRICK_COLORS[c % 6]); sfx.pop(); say(String(c + 1));
+      if (l === 0 && c + 1 === cur.n) setTimeout(() => this.win(`${cur.n}! You built ${cur.n}!`), 500);
+    } else if (a === 'take') {
+      if (!c) return;
+      this.bricks().at(-1).remove(); sfx.pop(); say(c - 1 ? String(c - 1) : 'Zero');
+    } else if (a === 'done') {
+      if (c === cur.n) this.win(`Yes! ${cur.n} blocks!`);
+      else { sfx.oops(); cur.misses++; say(`You have ${c}. We need ${cur.n}. ${c > cur.n ? 'Take some off.' : 'Add some more.'}`); }
+    } else if (a === 'pick') {
+      if (+btn.dataset.v === cur.n) { btn.classList.add('right'); this.win(`Yes! ${cur.n}!`); }
+      else { btn.classList.add('wrong'); sfx.oops(); cur.misses++; this.countAlong(); }
+    }
+  },
+  win(msg) {
+    const c = cur; cur.busy = true; sfx.good(); cheer(); say(msg);
+    if (!stepDone()) setTimeout(() => { if (alive(c)) this.next(); }, 1800);
+  },
+  async countAlong() {
+    const c = cur, bs = this.bricks(); cur.busy = true;
+    say("Let's count them together."); await wait(1500);
+    for (let i = 0; i < bs.length; i++) {
+      if (!alive(c)) return;
+      bs[i].classList.add('flash'); say(String(i + 1)); await wait(750); bs[i].classList.remove('flash');
+    }
+    if (alive(c)) cur.busy = false;
+  },
+};
+
+// ---------- Letter Train (typing) ----------
+const LEFT_KEYS = 'qwertasdfgzxcvb';
+G.train = {
+  start(l) {
+    const st = $('#stage'); st.classList.add('rail');
+    const pools = ['fj', 'asdfjkl', 'asdfghjkleiru'];
+    let items = [];
+    if (l < 3) while (items.length < 12) { const c = rand(pools[l]); if (!(items.at(-1) === c && items.at(-2) === c)) items.push(c); }
+    else items = shuffle(WORDS).slice(0, 6);
+    Object.assign(cur, { items, total: items.length, i: 0, pos: 0, keys: 0, tStart: 0 });
+    st.innerHTML = `<div class="track"></div><div class="train" id="train"><div class="engine">🚂</div>${items.map((w, i) => `<div class="car" data-i="${i}">${[...w].map(ch => `<span>${ch}</span>`).join('')}</div>`).join('')}</div>`;
+    $('#controls').innerHTML = '<div class="kb">' + ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'].map((r, ri) =>
+      `<div class="kbrow" style="margin-left:${ri * 22}px">${[...r].map(c => `<div class="k f-${FINGER[c]}${c === 'f' || c === 'j' ? ' bump' : ''}" data-a="key" data-k="${c}">${c}</div>`).join('')}</div>`).join('') + '</div>';
+    requestAnimationFrame(() => this.focus());
+  },
+  focus() {
+    const w = cur.items[cur.i], ch = w[cur.pos];
+    document.querySelectorAll('.car').forEach((el, i) => el.classList.toggle('now', i === cur.i));
+    const car = document.querySelector(`.car[data-i="${cur.i}"]`);
+    [...car.children].forEach((s, j) => { s.classList.toggle('typed', j < cur.pos); s.classList.toggle('next', j === cur.pos && w.length > 1); });
+    document.querySelectorAll('.k').forEach(k => k.classList.toggle('target', k.dataset.k === ch));
+    const st = $('#stage');
+    $('#train').style.transform = `translateX(${st.clientWidth * .45 - (car.offsetLeft + car.offsetWidth / 2)}px)`;
+    if (cur.pos === 0) {
+      const hint = `${LEFT_KEYS.includes(ch) ? 'Left' : 'Right'} ${FINGER_NAME[FINGER[ch]]}`;
+      if (w.length === 1) setPrompt(`Type <span class="big">${ch}</span><span class="hint">${hint}</span>`, ch.toUpperCase());
+      else setPrompt(`Type <span class="big">${w}</span>`, w);
+    }
+  },
+  act(a, btn) { if (a === 'key' && !cur.busy) this.key(btn.dataset.k); },
+  key(k) {
+    if (!cur.tStart) cur.tStart = Date.now();
+    const w = cur.items[cur.i], want = w[cur.pos];
+    const car = document.querySelector(`.car[data-i="${cur.i}"]`);
+    cur.keys++;
+    if (k === want) {
+      cur.pos++; sfx.chug();
+      if (cur.pos >= w.length) {
+        car.classList.add('done'); sfx.good(); cur.i++; cur.pos = 0;
+        if (stepDone()) { cur.busy = true; this.summary(); cheer(); return; }
+      }
+      this.focus();
+    } else {
+      sfx.oops();
+      car.classList.remove('shake'); void car.offsetWidth; car.classList.add('shake');
+    }
+  },
+  summary() {
+    const letters = cur.items.join('').length;
+    const mins = (Date.now() - cur.tStart) / 60000;
+    const acc = Math.round(100 * letters / cur.keys);
+    cur.sub = `${acc}% of your keys were right · ${Math.round(letters / Math.max(mins, .05))} letters a minute`;
+  },
+};
+
+// ---------- Keyboard ----------
+document.addEventListener('keydown', e => {
+  if ($('.overlay.on') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (screen === 'map') {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { W.keys[k] = true; e.preventDefault(); }
+    if ((k === 'Enter' || k === ' ') && W.near) { e.preventDefault(); enterPlace(W.near.id); }
+    return;
+  }
+  if (screen === 'game' && cur?.zone.id === 'train' && !cur.busy && e.key.length === 1) {
+    e.preventDefault(); G.train.key(e.key.toLowerCase());
+  }
+});
+document.addEventListener('keyup', e => { W.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+window.addEventListener('blur', () => { W.keys = {}; });
+
+document.querySelector('.credit').innerHTML = rubberDuckSVG();
+drawSound();
+showWho();
+</script>
+</body>
+</html>
