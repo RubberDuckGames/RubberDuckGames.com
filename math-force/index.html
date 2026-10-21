@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math Force · Rubber Duck Games</title>
+<meta name="description" content="Fix the glitched maze: restore the Errors with your Debug Blaster and Wrench, powered by quick math.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#e8f1ff;--soft:#9fb2cc;--bg:#0f1830;--panel:#18254a;--line:#2b3d6e;--cyan:#41e3ff;--gold:#ffc93c;--green:#5fe0a0;--red:#ff5f6d;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:radial-gradient(ellipse at 50% 0%,#1c2c58,var(--bg) 70%);color:var(--ink);min-height:100%}
+body{font-size:18px;line-height:1.45;user-select:none;-webkit-user-select:none}
+input{user-select:text;-webkit-user-select:text}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:10px;padding:10px 14px;max-width:1100px;margin:0 auto}
+.bar h1{font-size:22px;margin:0;flex:1;letter-spacing:.04em}
+.bar h1 b{color:var(--cyan)}
+.pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:0 14px 20px}
+.hud{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
+.hud .pill{font-size:16px}
+.stagebox{position:relative}
+canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow:0 0 0 2px var(--line),0 10px 30px rgba(0,0,0,.4);touch-action:none}
+.panel{position:absolute;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.96);border:2px solid var(--cyan);border-radius:18px;padding:14px 18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:5}
+#reload{bottom:12px;min-width:min(92%,420px)}
+#reload .q,#task .q{font-size:34px;font-weight:800;margin:2px 0 8px}
+#reload .lbl{color:var(--cyan);font-weight:700;font-size:15px;letter-spacing:.05em}
+.ans{font:inherit;font-size:26px;width:140px;text-align:center;border-radius:12px;border:2px solid var(--line);background:#0b1226;color:var(--ink);padding:6px}
+.choices{display:flex;gap:10px;justify-content:center;margin-top:10px}
+.choice{min-width:76px;padding:10px 14px;font-size:24px;font-weight:800;border-radius:14px;background:var(--panel);border:2px solid var(--line)}
+.choice:hover{border-color:var(--cyan)}
+.msg{color:var(--gold);font-weight:700;min-height:1.4em;font-size:16px}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,13,30,.82);border-radius:18px;z-index:6;padding:14px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:22px;max-width:560px;width:100%;text-align:center;max-height:100%;overflow:auto}
+.card h2{margin:0 0 6px;font-size:28px}
+.card p{margin:6px 0;color:var(--soft)}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.btn{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 16px;font-weight:700}
+.btn.go{background:var(--cyan);border-color:var(--cyan);color:#081226}
+.btn.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.btn small{display:block;font-weight:400;color:var(--soft);font-size:13px}
+.btn.go small{color:#123}
+.shop{display:grid;gap:8px;margin-top:10px;text-align:left}
+.shop button{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.shop button[disabled]{opacity:.45;cursor:default}
+.keys{font-size:15px;color:var(--soft);margin-top:10px}
+.keys b{color:var(--ink)}
+#task{top:50%;transform:translate(-50%,-50%);min-width:min(92%,460px)}
+#task svg{display:block;margin:6px auto;max-width:100%}
+.touch{display:none}
+/* On touch screens the controls sit under the maze, so they never cover it. */
+.touch.on{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px}
+.stick{position:relative;flex:none;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);touch-action:none}
+.stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(65,227,255,.5)}
+.tbtns{display:flex;gap:12px}
+.tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
+.toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
+@media (max-width:600px){.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <h1><b>MATH</b> FORCE</h1>
+  <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
+</div>
+<div class="wrap">
+  <div class="hud" aria-live="polite">
+    <span class="pill" id="hShield"></span>
+    <span class="pill" id="hAmmo"></span>
+    <span class="pill" id="hWrench"></span>
+    <span class="pill" id="hBucks"></span>
+    <span class="pill" id="hLeft"></span>
+    <span class="pill" id="hLevel"></span>
+  </div>
+  <div class="stagebox" id="box">
+    <canvas id="cv" aria-label="Math Force maze"></canvas>
+    <div class="toast" id="toast" hidden></div>
+
+    <div class="panel" id="reload" hidden>
+      <div class="lbl">QUICK RELOAD</div>
+      <div class="q" id="rq"></div>
+      <form id="rform"><input class="ans" id="ra" inputmode="numeric" autocomplete="off" aria-label="Your answer"></form>
+      <div class="choices" id="rc"></div>
+      <div class="msg" id="rmsg"></div>
+    </div>
+
+    <div class="panel" id="task" hidden>
+      <div class="lbl" style="color:var(--gold);font-weight:700">SECURE TERMINAL</div>
+      <div id="tpic"></div>
+      <div class="q" id="tq"></div>
+      <form id="tform"><input class="ans" id="ta" inputmode="decimal" autocomplete="off" aria-label="Your answer"></form>
+      <div class="msg" id="tmsg"></div>
+      <div class="row"><button class="btn" id="tclose">Close</button></div>
+    </div>
+
+
+    <div class="cover" id="start">
+      <div class="card">
+        <h2>MATH FORCE</h2>
+        <p>The maze has been corrupted. Errors are wandering the halls. Restore them with your Debug Blaster and Wrench. Your blaster runs on math.</p>
+        <p style="color:var(--ink);font-weight:700;margin-top:12px">Pick your math level</p>
+        <div class="row" id="levels"></div>
+        <div class="row"><button class="btn" id="catBtn">🐱 Cat-ear helmet: off</button></div>
+        <div class="row"><button class="btn go" id="go">Start</button></div>
+        <div class="keys" id="keys"><b>WASD</b> or <b>arrows</b> move · <b>mouse</b> aims · <b>click</b> or <b>Space</b> fires · <b>E</b> wrench · <b>R</b> reload · <b>Enter</b> on the terminal</div>
+      </div>
+    </div>
+
+    <div class="cover" id="clear" hidden>
+      <div class="card">
+        <h2 id="cTitle">Sector restored!</h2>
+        <p id="cStats"></p>
+        <p style="color:var(--ink);font-weight:700;margin-top:12px">Spend Math Bucks: <span id="cBucks"></span></p>
+        <div class="shop" id="shop"></div>
+        <div class="row"><button class="btn go" id="next">Next sector</button></div>
+      </div>
+    </div>
+
+    <div class="cover" id="levelUp" hidden>
+      <div class="card">
+        <h2>You're crushing it!</h2>
+        <p id="luText"></p>
+        <div class="row"><button class="btn go" id="luYes">Level up the math</button><button class="btn" id="luNo">Not yet</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="touch" id="touch">
+    <div class="stick" id="stick"><i id="knob"></i></div>
+    <div class="tbtns"><button class="tbtn" id="tWrench">Wrench</button><button class="tbtn" id="tFire">Fire</button></div>
+  </div>
+</div>
+
+<script>
+// Math Force: designed by one of our kid testers (the full design is on the
+// Rubber Duck Games board). Decided 20 Oct: the fix-the-glitch theme. Errors
+// are corrupted programs; a hit glitches them back to normal instead of
+// killing them, and the blaster is a debug blaster, not a real-world gun.
+const $ = s => document.querySelector(s);
+const rand = a => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- Save data ----------
+const KEY = 'math-force';
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+const S = Object.assign({ bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double: false, cat: false, sound: true, best: 0 }, load() || {});
+
+// ---------- Sound ----------
+let ac;
+function tone(f, d = .1, type = 'square', when = 0, vol = .05, to) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .02);
+  } catch (e) { }
+}
+const sfx = {
+  zap() { tone(900, .08, 'square', 0, .03, 300); },
+  restore() { [523, 659, 784].forEach((f, i) => tone(f, .12, 'triangle', i * .07, .06)); },
+  clank() { tone(160, .12, 'sawtooth', 0, .06, 90); },
+  snap() { tone(400, .25, 'sawtooth', 0, .07, 60); },
+  good() { tone(660, .1, 'triangle', 0, .07); tone(990, .16, 'triangle', .09, .07); },
+  soft() { tone(240, .16, 'sine', 0, .06, 190); },
+  hurt() { tone(120, .2, 'sawtooth', 0, .06, 70); },
+  buck() { tone(1200, .06, 'triangle', 0, .04); },
+};
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
+
+// ---------- The maze (one sector, 24 x 16 tiles) ----------
+const MAP = [
+  "########################",
+  "#P.....#.......#.......#",
+  "#......#.......#...W...#",
+  "#..##......E.......A...#",
+  "#..##..#.......#.......#",
+  "#......#.......#.......#",
+  "###.#######.#####.######",
+  "#......#.......#.......#",
+  "#..E...#...W...#...E...#",
+  "#......................#",
+  "#..W...#.......#...A...#",
+  "###.#######.#####.######",
+  "#......#.......#.......#",
+  "#..E.......T.......E...#",
+  "#......#.......#.......#",
+  "########################",
+];
+const MW = 24, MH = 16;
+const wall = (x, y) => x < 0 || y < 0 || x >= MW || y >= MH || MAP[y][x] === '#';
+const SECURE = { x0: 8, y0: 12, x1: 14, y1: 14 };   // the room with the terminal
+const find = ch => { const out = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) out.push([x + .5, y + .5]); })); return out; };
+const START = find('P')[0], TERMINAL = find('T')[0];
+
+// ---------- Math, with difficulty that adapts ----------
+const LEVELS = [
+  { n: 1, name: 'Level 1', eg: 'like 7 + 5' },
+  { n: 2, name: 'Level 2', eg: 'like 34 + 27, 4 × 5' },
+  { n: 3, name: 'Level 3', eg: 'like 8 × 7, 56 ÷ 8' },
+  { n: 4, name: 'Level 4', eg: 'like 23 × 4, 25% of 60' },
+];
+function quick(level) {
+  const L = level, r = Math.random();
+  if (L === 1) { const a = randInt(1, 12), b = randInt(1, 9); return r < .6 ? [`${a} + ${b}`, a + b] : [`${a + b} − ${b}`, a]; }
+  if (L === 2) {
+    if (r < .4) { const a = randInt(11, 59), b = randInt(11, 39); return [`${a} + ${b}`, a + b]; }
+    if (r < .7) { const a = randInt(30, 99), b = randInt(11, a - 5); return [`${a} − ${b}`, a - b]; }
+    const a = randInt(2, 5), b = randInt(2, 10); return [`${a} × ${b}`, a * b];
+  }
+  if (L === 3) {
+    const a = randInt(3, 12), b = randInt(3, 12);
+    return r < .65 ? [`${a} × ${b}`, a * b] : [`${a * b} ÷ ${a}`, b];
+  }
+  if (r < .4) { const a = randInt(12, 49), b = randInt(3, 9); return [`${a} × ${b}`, a * b]; }
+  if (r < .7) { const p = rand([10, 25, 50, 20]), n = rand([20, 40, 60, 80, 120, 200]); return [`${p}% of ${n}`, p * n / 100]; }
+  const a = randInt(4, 15); return [`${a}²`, a * a];
+}
+// Bigger problems for the secure terminal. Each comes with a picture.
+function bigTask(level) {
+  const kind = level <= 1 ? 'perimeter' : level === 2 ? rand(['perimeter', 'area']) : level === 3 ? rand(['perimeter', 'area', 'percent']) : rand(['area', 'percent', 'volume']);
+  if (kind === 'perimeter' || kind === 'area') {
+    const w = randInt(3, level <= 1 ? 9 : 14), h = randInt(2, level <= 1 ? 7 : 11);
+    const pic = rectPic(w, h);
+    return kind === 'perimeter'
+      ? { q: `Perimeter of the wall section?`, a: 2 * (w + h), pic, why: `${w} + ${h} + ${w} + ${h} = ${2 * (w + h)}` }
+      : { q: `Area of the floor panel?`, a: w * h, pic, why: `${w} × ${h} = ${w * h}` };
+  }
+  if (kind === 'percent') {
+    const p = rand([10, 20, 25, 50, 75]), n = rand([40, 60, 80, 120, 160, 200]);
+    return { q: `Shields are ${p}% charged. Full is ${n}. How much charge?`, a: p * n / 100, pic: '', why: `${p}% of ${n} = ${p * n / 100}` };
+  }
+  const l = randInt(2, 8), w = randInt(2, 6), h = randInt(2, 5);
+  return { q: `Volume of the supply crate (${l} × ${w} × ${h})?`, a: l * w * h, pic: '', why: `${l} × ${w} × ${h} = ${l * w * h}` };
+}
+function rectPic(w, h) {
+  const k = Math.min(18, 200 / Math.max(w, h)), W = w * k, H = h * k;
+  return `<svg width="${W + 70}" height="${H + 50}" viewBox="-35 -25 ${W + 70} ${H + 50}" aria-hidden="true">
+    <rect width="${W}" height="${H}" fill="rgba(65,227,255,.15)" stroke="#41e3ff" stroke-width="3"/>
+    <text x="${W / 2}" y="-8" fill="#e8f1ff" font-size="16" text-anchor="middle" font-family="Lexend">${w}</text>
+    <text x="-10" y="${H / 2 + 5}" fill="#e8f1ff" font-size="16" text-anchor="end" font-family="Lexend">${h}</text></svg>`;
+}
+const hist = [];   // last answers: { ok, ms }
+function record(ok, ms) {
+  hist.push({ ok, ms }); if (hist.length > 8) hist.shift();
+  if (hist.length < 8) return;
+  const acc = hist.filter(h => h.ok).length / 8, avg = hist.reduce((s, h) => s + h.ms, 0) / 8;
+  if (acc >= .875 && avg < 6500 && S.level < 4) { hist.length = 0; askLevelUp(); }
+  else if (acc < .5 && S.level > 1) { hist.length = 0; S.level--; persist(); toast(`Math eased to ${LEVELS[S.level - 1].name}`); hud(); }
+}
+
+// ---------- Game state ----------
+const cv = $('#cv'), cx = cv.getContext('2d');
+let T = 1;                 // tile size in canvas pixels
+let G = null;              // the running sector
+const keys = {};
+const touchMode = matchMedia('(pointer: coarse)').matches;
+
+function wrenchMax() { return [6, 9, 12][S.wrenchTier]; }
+function magMax() { return 6 + S.magBonus; }
+
+function newSector(n) {
+  const errs = [];
+  if (n === 1) {
+    find('E').forEach(([x, y]) => errs.push(makeErr(x, y, false)));
+    find('A').forEach(([x, y]) => errs.push(makeErr(x, y, true)));
+  } else {
+    const floor = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '#' && Math.hypot(x + .5 - START[0], y + .5 - START[1]) > 7) floor.push([x + .5, y + .5]); }));
+    const count = Math.min(6 + 2 * n, 22), armored = Math.min(.2 + .1 * n, .6);
+    shuffle(floor).slice(0, count).forEach(([x, y]) => errs.push(makeErr(x, y, Math.random() < armored)));
+  }
+  const worms = [];
+  find('W').forEach(([x, y]) => { for (let i = 0; i < 5; i++) worms.push({ x: x + (Math.random() - .5) * 2, y: y + (Math.random() - .5) * 2, a: Math.random() * 6.28, t: Math.random() * 6 }); });
+  G = {
+    n, errs, worms, bolts: [], fx: [], restored: [],
+    p: { x: START[0], y: START[1], aim: 0, shield: 3, hurtT: 0 },
+    ammo: magMax(), wrench: G?.wrench ?? wrenchMax(), wrenchBroken: G?.wrenchBroken ?? false,
+    swingT: 0, terminalUsed: false, stats: { right: 0, asked: 0, restored: 0 },
+    slow: 1, dist: null, distT: 0, running: true,
+  };
+  hud();
+}
+function makeErr(x, y, armored) { return { x, y, armored, hp: armored ? 3 : 1, speed: armored ? 1.2 : 1.7, jit: Math.random() * 10 }; }
+
+// ---------- Drawing ----------
+function resize() {
+  const w = $('#box').clientWidth, dpr = Math.min(2, devicePixelRatio || 1);
+  const h = w * MH / MW;
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  T = cv.width / MW;
+}
+addEventListener('resize', resize);
+
+function draw(t) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // floor grid and walls
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    if (MAP[y][x] === '#') {
+      cx.fillStyle = '#22335f'; cx.fillRect(x * T, y * T, T, T);
+      cx.fillStyle = '#2d4378'; cx.fillRect(x * T, y * T, T, T * .2);
+    } else {
+      const sec = x >= SECURE.x0 && x <= SECURE.x1 && y >= SECURE.y0 && y <= SECURE.y1;
+      cx.fillStyle = sec ? '#132a3c' : '#0f1933'; cx.fillRect(x * T, y * T, T, T);
+      cx.strokeStyle = 'rgba(65,227,255,.06)'; cx.strokeRect(x * T, y * T, T, T);
+    }
+  }
+  // terminal
+  const clearRoom = roomClear();
+  cx.fillStyle = G.terminalUsed ? '#3a4a6a' : clearRoom ? '#5fe0a0' : '#ff5f6d';
+  roundRect(TERMINAL[0] * T - T * .35, TERMINAL[1] * T - T * .35, T * .7, T * .7, T * .12); cx.fill();
+  cx.fillStyle = '#0b1226'; cx.fillRect(TERMINAL[0] * T - T * .22, TERMINAL[1] * T - T * .2, T * .44, T * .25);
+  // worms
+  G.worms.forEach(w => {
+    cx.strokeStyle = '#c6f25a'; cx.lineWidth = T * .08; cx.lineCap = 'round'; cx.beginPath();
+    for (let i = 0; i < 4; i++) { const px = (w.x - Math.cos(w.a) * i * .12) * T, py = (w.y - Math.sin(w.a) * i * .12 + Math.sin(w.t * 8 + i) * .03) * T; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }
+    cx.stroke();
+  });
+  // restored programs float up and fade
+  G.restored.forEach(r => {
+    cx.globalAlpha = Math.max(0, 1 - r.t / 1.6);
+    cx.fillStyle = '#5fe0a0'; roundRect(r.x * T - T * .22, (r.y - r.t * .5) * T - T * .3, T * .44, T * .5, T * .12); cx.fill();
+    cx.fillStyle = '#0b1226'; cx.font = `${T * .26}px Lexend`; cx.textAlign = 'center'; cx.fillText('^‿^', r.x * T, (r.y - r.t * .5) * T + T * .02);
+    cx.globalAlpha = 1;
+  });
+  // errors: dark glitchy figures with a colour-split jitter
+  // A pink glow so the dark Errors stand out on the dark floor, drawn a bit larger than a tile's half.
+  G.errs.forEach(e => {
+    const j = Math.sin(t / 60 + e.jit) > .7 ? (Math.random() - .5) * T * .12 : 0;
+    const ex = e.x * T + j, ey = e.y * T;
+    cx.save(); cx.translate(ex, ey); cx.scale(1.3, 1.3); cx.translate(-ex, -ey);
+    cx.shadowColor = 'rgba(255,60,170,.9)'; cx.shadowBlur = T * .35;
+    [['rgba(255,0,140,.55)', -T * .05], ['rgba(0,230,255,.55)', T * .05], ['#05070f', 0]].forEach(([c, o]) => {
+      cx.fillStyle = c;
+      cx.beginPath(); cx.arc(ex + o, ey - T * .2, T * .16, 0, 7); cx.fill();
+      roundRect(ex - T * .2 + o, ey - T * .05, T * .4, T * .45, T * .1); cx.fill();
+    });
+    if (e.armored) { cx.strokeStyle = '#9aa7b8'; cx.lineWidth = T * .07; roundRect(ex - T * .24, ey - T * .08, T * .48, T * .5, T * .1); cx.stroke(); }
+    cx.shadowBlur = 0;
+    cx.fillStyle = '#ff2d55'; cx.fillRect(ex - T * .09, ey - T * .23, T * .06, T * .04); cx.fillRect(ex + T * .03, ey - T * .23, T * .06, T * .04);
+    cx.restore();
+  });
+  // bolts
+  G.bolts.forEach(b => { cx.strokeStyle = '#41e3ff'; cx.lineWidth = T * .1; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(b.x * T, b.y * T); cx.lineTo((b.x - b.vx * .03) * T, (b.y - b.vy * .03) * T); cx.stroke(); });
+  // sparks
+  G.fx.forEach(f => { cx.globalAlpha = Math.max(0, 1 - f.t / .4); cx.fillStyle = f.c; cx.fillRect(f.x * T, f.y * T, T * .07, T * .07); cx.globalAlpha = 1; });
+  drawPlayer(t);
+}
+function roundRect(x, y, w, h, r) { cx.beginPath(); cx.roundRect ? cx.roundRect(x, y, w, h, r) : cx.rect(x, y, w, h); }
+function drawPlayer(t) {
+  const p = G.p, x = p.x * T, y = p.y * T;
+  if (p.hurtT > 0 && Math.floor(t / 90) % 2) return;     // blink while recovering
+  // air tank on the back
+  cx.fillStyle = '#9aa7b8'; cx.save(); cx.translate(x, y); cx.rotate(p.aim);
+  roundRect(-T * .42, -T * .14, T * .16, T * .28, T * .06); cx.fill();
+  // debug blaster: chunky and toy-like, red with a cyan tip
+  cx.fillStyle = '#ff5f6d'; roundRect(T * .12, -T * .07, T * .32, T * .14, T * .05); cx.fill();
+  cx.fillStyle = '#41e3ff'; cx.fillRect(T * .42, -T * .05, T * .06, T * .1);
+  // wrench swing
+  if (G.swingT > 0) { cx.strokeStyle = '#e8f1ff'; cx.lineWidth = T * .08; cx.beginPath(); cx.arc(0, 0, T * .6, -1, 1); cx.stroke(); }
+  cx.restore();
+  // suit and helmet
+  cx.fillStyle = '#2bb3a3'; cx.shadowColor = 'rgba(65,227,255,.8)'; cx.shadowBlur = T * .3; cx.beginPath(); cx.arc(x, y, T * .32, 0, 7); cx.fill(); cx.shadowBlur = 0;
+  if (S.cat) { cx.fillStyle = '#2bb3a3'; [[-1], [1]].forEach(([s]) => { cx.beginPath(); cx.moveTo(x + s * T * .1, y - T * .26); cx.lineTo(x + s * T * .26, y - T * .44); cx.lineTo(x + s * T * .3, y - T * .16); cx.fill(); }); }
+  cx.fillStyle = '#bdf6ff'; cx.beginPath(); cx.ellipse(x + Math.cos(p.aim) * T * .1, y + Math.sin(p.aim) * T * .1, T * .16, T * .12, p.aim, 0, 7); cx.fill();
+  cx.fillStyle = '#e8f1ff'; cx.font = `800 ${T * .16}px Lexend`; cx.textAlign = 'center'; cx.fillText('123', x, y + T * .22);
+}
+
+// ---------- Movement and AI ----------
+function move(o, dx, dy, r) {
+  const nx = o.x + dx; if (!hits(nx, o.y, r)) o.x = nx;
+  const ny = o.y + dy; if (!hits(o.x, ny, r)) o.y = ny;
+}
+function hits(x, y, r) { return wall(Math.floor(x - r), Math.floor(y - r)) || wall(Math.floor(x + r), Math.floor(y - r)) || wall(Math.floor(x - r), Math.floor(y + r)) || wall(Math.floor(x + r), Math.floor(y + r)); }
+// Errors find the player through the maze with a distance map, rebuilt a few times a second.
+function buildDist() {
+  const d = Array.from({ length: MH }, () => Array(MW).fill(Infinity));
+  const q = [[Math.floor(G.p.x), Math.floor(G.p.y)]]; d[q[0][1]][q[0][0]] = 0;
+  while (q.length) {
+    const [x, y] = q.shift();
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const X = x + a, Y = y + b; if (!wall(X, Y) && d[Y][X] === Infinity) { d[Y][X] = d[y][x] + 1; q.push([X, Y]); } });
+  }
+  G.dist = d;
+}
+function roomClear() { return !G.errs.some(e => e.x >= SECURE.x0 && e.x <= SECURE.x1 + 1 && e.y >= SECURE.y0 && e.y <= SECURE.y1 + 1); }
+
+function step(dt) {
+  if (!G.running) return;
+  const p = G.p, sdt = dt * G.slow;
+  // player
+  let dx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0) + stick.x;
+  let dy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0) + stick.y;
+  const m = Math.hypot(dx, dy);
+  if (m > .1) { dx /= Math.max(1, m); dy /= Math.max(1, m); move(p, dx * 4 * sdt, dy * 4 * sdt, .28); }
+  if (touchMode) { const tgt = nearest(); if (tgt) p.aim = Math.atan2(tgt.y - p.y, tgt.x - p.x); else if (m > .1) p.aim = Math.atan2(dy, dx); }
+  p.hurtT = Math.max(0, p.hurtT - dt); G.swingT = Math.max(0, G.swingT - dt);
+  // errors
+  G.distT -= dt; if (G.distT <= 0 || !G.dist) { buildDist(); G.distT = .3; }
+  G.errs.forEach(e => {
+    const tx = Math.floor(e.x), ty = Math.floor(e.y), here = G.dist[ty]?.[tx] ?? Infinity;
+    if (here > 9) return;                                  // too far away to notice you
+    let best = null, bd = here;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const v = G.dist[ty + b]?.[tx + a]; if (v < bd) { bd = v; best = [tx + a + .5, ty + b + .5]; } });
+    const goal = here <= 1 ? [p.x, p.y] : best;
+    if (!goal) return;
+    const gx = goal[0] - e.x, gy = goal[1] - e.y, gl = Math.hypot(gx, gy) || 1;
+    move(e, gx / gl * e.speed * sdt, gy / gl * e.speed * sdt, .22);
+    if (Math.hypot(e.x - p.x, e.y - p.y) < .5 && p.hurtT <= 0) hurt(e);
+  });
+  // worms wander
+  G.worms.forEach(w => { w.t += dt; w.a += (Math.random() - .5) * 3 * dt; const ox = w.x, oy = w.y; move(w, Math.cos(w.a) * .6 * sdt, Math.sin(w.a) * .6 * sdt, .1); if (ox === w.x && oy === w.y) w.a += 2; });
+  // bolts
+  G.bolts = G.bolts.filter(b => {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (wall(Math.floor(b.x), Math.floor(b.y))) { spark(b.x, b.y, '#41e3ff', 3); return false; }
+    const e = G.errs.find(e => Math.hypot(e.x - b.x, e.y - b.y) < .32);
+    if (e) { hitErr(e, 1); return false; }
+    const wi = G.worms.findIndex(w => Math.hypot(w.x - b.x, w.y - b.y) < .25);
+    if (wi >= 0) { G.worms.splice(wi, 1); S.bucks++; persist(); sfx.buck(); spark(b.x, b.y, '#c6f25a', 6); toast('+1 Math Buck'); hud(); return false; }
+    return true;
+  });
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .4));
+  G.restored = G.restored.filter(r => (r.t += dt) < 1.6);
+  // terminal
+  const onT = Math.hypot(p.x - TERMINAL[0], p.y - TERMINAL[1]) < .7;
+  if (onT && !G.terminalUsed && !G.onT) toast(roomClear() ? (touchMode ? 'Tap Wrench to use the terminal' : 'Press Enter to use the terminal') : 'Restore every Error in this room to unlock the terminal');
+  G.onT = onT;
+  if (!G.errs.length && G.running) sectorClear();
+}
+function nearest() {
+  let best = null, bd = 7;
+  [...G.errs, ...G.worms].forEach(o => { const d = Math.hypot(o.x - G.p.x, o.y - G.p.y); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
+function spark(x, y, c, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 3; G.fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, c }); } }
+
+function hitErr(e, dmg) {
+  e.hp -= dmg; spark(e.x, e.y, '#ff4fa3', 6);
+  if (e.hp > 0) { sfx.clank(); return; }
+  G.errs.splice(G.errs.indexOf(e), 1);
+  G.restored.push({ x: e.x, y: e.y, t: 0 });
+  G.stats.restored++; S.bucks += 2; persist(); sfx.restore(); toast('Error restored! +2'); hud();
+}
+function hurt(e) {
+  const p = G.p; p.shield--; p.hurtT = 1.5; sfx.hurt();
+  const a = Math.atan2(p.y - e.y, p.x - e.x); move(p, Math.cos(a) * .8, Math.sin(a) * .8, .28);
+  if (p.shield <= 0) {
+    // A reboot, not a game over: back to the start with full shields, nothing lost.
+    p.x = START[0]; p.y = START[1]; p.shield = 3; p.hurtT = 2; toast('System reboot! Back at the start.');
+  }
+  hud();
+}
+
+// ---------- Actions ----------
+function fire() {
+  if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
+  if (G.ammo <= 0) return openReload();
+  G.ammo--; sfx.zap();
+  const p = G.p, s = 14;
+  G.bolts.push({ x: p.x + Math.cos(p.aim) * .45, y: p.y + Math.sin(p.aim) * .45, vx: Math.cos(p.aim) * s, vy: Math.sin(p.aim) * s });
+  hud();
+  if (G.ammo <= 0) openReload();
+}
+function swing() {
+  if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
+  if (G.onT) return useTerminal();
+  if (G.wrenchBroken) return toast('Your wrench snapped. Fix it in the shop after this sector.');
+  G.swingT = .2; sfx.clank();
+  const p = G.p, targets = G.errs.filter(e => Math.hypot(e.x - p.x, e.y - p.y) < 1.1);
+  targets.forEach(e => hitErr(e, e.armored ? 99 : 1));     // armor shreds instantly
+  if (!targets.length) return;
+  if (G.wrench > 0) G.wrench--;
+  else if (Math.random() < .35) { G.wrenchBroken = true; sfx.snap(); toast('SNAP! The wrench broke.'); }
+  if (G.wrench === 0 && !G.wrenchBroken) toast('Wrench at its breaking point!');
+  hud();
+}
+
+// ---------- Quick reload ----------
+let RQ = null;
+function openReload() {
+  const [q, a] = quick(S.level);
+  RQ = { a, t0: performance.now(), tries: 0 };
+  G.slow = .35;                         // the fight keeps going, just slower
+  $('#rq').textContent = q + ' = ?'; $('#ra').value = ''; $('#rmsg').textContent = '';
+  const opts = new Set([a]); while (opts.size < 3) { const v = a + randInt(-6, 6); if (v >= 0 && v !== a) opts.add(v); }
+  $('#rc').innerHTML = shuffle([...opts]).map((v, i) => `<button class="choice" data-v="${v}">${v}<small style="display:block;font-size:12px;color:var(--soft)">${touchMode ? '' : i + 1}</small></button>`).join('');
+  $('#reload').hidden = false;
+  if (!touchMode) setTimeout(() => $('#ra').focus(), 30);
+}
+function answerReload(v) {
+  if (!RQ) return;
+  const ok = +v === RQ.a, ms = performance.now() - RQ.t0;
+  G.stats.asked++;
+  if (ok) {
+    G.stats.right++; record(RQ.tries === 0, ms);
+    G.ammo = magMax() * (S.double ? 2 : 1); S.bucks++; persist(); sfx.good();
+    $('#reload').hidden = true; G.slow = 1; RQ = null; $('#ra').blur(); hud(); return;
+  }
+  RQ.tries++; sfx.soft();
+  if (RQ.tries >= 2) { record(false, ms); $('#rmsg').textContent = `It was ${RQ.a}. Here's a new one.`; setTimeout(openReload, 1100); }
+  else $('#rmsg').textContent = 'Not quite. Try again.';
+}
+$('#rform').onsubmit = e => { e.preventDefault(); if ($('#ra').value !== '') answerReload($('#ra').value); };
+$('#rc').onclick = e => { const b = e.target.closest('[data-v]'); if (b) answerReload(b.dataset.v); };
+
+// ---------- Secure terminal ----------
+let TQ = null;
+function useTerminal() {
+  if (G.terminalUsed) return toast('Terminal already used this sector.');
+  if (!roomClear()) return toast('Restore every Error in this room first.');
+  TQ = bigTask(S.level); TQ.tries = 0;
+  G.slow = 0;
+  $('#tpic').innerHTML = TQ.pic; $('#tq').textContent = TQ.q; $('#ta').value = ''; $('#tmsg').textContent = '';
+  $('#task').hidden = false; setTimeout(() => $('#ta').focus(), 30);
+}
+$('#tform').onsubmit = e => {
+  e.preventDefault(); if (!TQ || $('#ta').value === '') return;
+  if (+$('#ta').value === TQ.a) {
+    S.bucks += 10; persist(); sfx.good(); G.terminalUsed = true;
+    $('#tmsg').textContent = `Correct! ${TQ.why}. +10 Math Bucks.`; TQ = null; hud();
+    setTimeout(closeTask, 1600);
+  } else if (++TQ.tries >= 2) {
+    sfx.soft(); G.terminalUsed = true; $('#tmsg').textContent = `The answer was ${TQ.a}: ${TQ.why}.`; TQ = null;
+  } else { sfx.soft(); $('#tmsg').textContent = 'Not quite. Check it again.'; }
+};
+function closeTask() { $('#task').hidden = true; G.slow = 1; $('#ta').blur(); }
+$('#tclose').onclick = closeTask;
+
+// ---------- Level up ----------
+function askLevelUp() {
+  G.running = false;
+  $('#luText').textContent = `Almost every answer right, and fast. Want to try ${LEVELS[S.level].name} (${LEVELS[S.level].eg})?`;
+  $('#levelUp').hidden = false;
+}
+$('#luYes').onclick = () => { S.level++; persist(); $('#levelUp').hidden = true; G.running = true; hud(); toast(`Math is now ${LEVELS[S.level - 1].name}`); };
+$('#luNo').onclick = () => { $('#levelUp').hidden = true; G.running = true; };
+
+// ---------- Sector clear and shop ----------
+function sectorClear() {
+  G.running = false; S.best = Math.max(S.best, G.n); persist(); sfx.restore();
+  $('#cTitle').textContent = `Sector ${G.n} restored!`;
+  $('#cStats').textContent = `${G.stats.restored} Errors restored · ${G.stats.right} of ${G.stats.asked} reloads right`;
+  drawShop(); $('#clear').hidden = false;
+}
+const SHOP = [
+  { id: 'repair', name: 'Repair the wrench', cost: 5, show: () => G.wrenchBroken || G.wrench < wrenchMax(), buy: () => { G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 't1', name: 'Wrench: Metal T1 (9 uses)', cost: 15, show: () => S.wrenchTier === 0, buy: () => { S.wrenchTier = 1; G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 't2', name: 'Wrench: Metal T2 (12 uses)', cost: 30, show: () => S.wrenchTier === 1, buy: () => { S.wrenchTier = 2; G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 'mag', name: 'Bigger battery (+3 shots)', cost: 20, show: () => S.magBonus < 9, buy: () => { S.magBonus += 3; } },
+  { id: 'double', name: 'Double Energy (1 answer = 2 batteries)', cost: 35, show: () => !S.double, buy: () => { S.double = true; } },
+];
+function drawShop() {
+  $('#cBucks').textContent = `💰 ${S.bucks}`;
+  $('#shop').innerHTML = SHOP.filter(i => i.show()).map(i => `<button class="btn" data-id="${i.id}" ${S.bucks < i.cost ? 'disabled' : ''}><span>${i.name}</span><b>💰 ${i.cost}</b></button>`).join('') || '<p>Nothing left to buy. Nice!</p>';
+}
+$('#shop').onclick = e => {
+  const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
+  const it = SHOP.find(i => i.id === b.dataset.id); if (S.bucks < it.cost) return;
+  S.bucks -= it.cost; it.buy(); persist(); sfx.good(); drawShop(); hud();
+};
+$('#next').onclick = () => { $('#clear').hidden = true; newSector(G.n + 1); toast(`Sector ${G.n}: more Errors this time`); };
+
+// ---------- HUD and messages ----------
+function hud() {
+  if (!G) return;
+  $('#hShield').textContent = `🛡️ ${'■'.repeat(G.p.shield)}${'□'.repeat(3 - G.p.shield)}`;
+  $('#hAmmo').textContent = `⚡ ${G.ammo}`;
+  $('#hWrench').textContent = G.wrenchBroken ? '🔧 broken' : `🔧 ${G.wrench}${G.wrench === 0 ? ' (risky!)' : ''}`;
+  $('#hBucks').textContent = `💰 ${S.bucks}`;
+  $('#hLeft').textContent = `👾 ${G.errs.length} left · Sector ${G.n}`;
+  $('#hLevel').textContent = `➗ ${LEVELS[S.level - 1].name}`;
+}
+let toastT;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (!$('#reload').hidden) {
+    if (['1', '2', '3'].includes(k) && $('#ra').value === '') { const b = $('#rc').children[+k - 1]; if (b) { e.preventDefault(); answerReload(b.dataset.v); } }
+    return;
+  }
+  if (!$('#task').hidden || document.activeElement?.tagName === 'INPUT') return;
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys[k] = true;
+  if (k === ' ') fire();
+  if (k === 'e') swing();
+  if (k === 'r' && G?.running && G.ammo < magMax()) openReload();
+  if (k === 'enter' && G?.onT) useTerminal();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+cv.addEventListener('mousemove', e => {
+  if (!G) return; const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) / r.width * MW, my = (e.clientY - r.top) / r.height * MH;
+  G.p.aim = Math.atan2(my - G.p.y, mx - G.p.x);
+});
+cv.addEventListener('mousedown', e => { if (!touchMode && e.button === 0) fire(); });
+// touch: a stick on the left, buttons on the right, aiming locks on to the nearest target
+const stick = { x: 0, y: 0, id: null };
+if (touchMode) {
+  $('#touch').classList.add('on'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors and the terminal. Tip: turn your phone sideways for a bigger maze.';
+  const st = $('#stick'), knob = $('#knob');
+  const upd = e => { const r = st.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stick.x = x; stick.y = y; knob.style.transform = `translate(${x * 35}px,${y * 35}px)`; };
+  st.addEventListener('pointerdown', e => { stick.id = e.pointerId; st.setPointerCapture(e.pointerId); upd(e); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
+  const end = () => { stick.x = stick.y = 0; stick.id = null; knob.style.transform = ''; };
+  st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
+  $('#tFire').addEventListener('pointerdown', e => { e.preventDefault(); fire(); });
+  $('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing(); });
+}
+
+// ---------- Start screen ----------
+let pick = S.level;
+function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class="btn${l.n === pick ? ' on' : ''}" data-n="${l.n}">${l.name}<small>${l.eg}</small></button>`).join(''); }
+$('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
+$('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
+$('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; newSector(1); toast('Restore every Error in the sector!'); };
+drawLevels();
+
+// ---------- Loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - (last || t)) / 1000); last = t;
+  if (G) { step(dt); draw(t); }
+  requestAnimationFrame(loop);
+}
+resize();
+G = null;
+newSector(1); G.running = false;          // draw the maze behind the start screen
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

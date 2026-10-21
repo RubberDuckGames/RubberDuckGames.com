@@ -38,6 +38,10 @@ h1{font-size:2.6rem;margin:.5rem 0 0;line-height:1.2}
 .game{background:var(--card);border-radius:1.6rem;box-shadow:var(--shadow);padding:1.6rem}
 .game h2{margin:0;font-size:1.9rem}
 .game > p{margin:.3rem 0 1.2rem}
+.game + .game{margin-top:1.2rem}
+.game.mf{background:#18254a;color:#e8f1ff}
+.game.mf p{color:#c7d4ea}
+.game.mf .play{background:#41e3ff}
 .places{list-style:none;margin:0 0 1.4rem;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
 .places li{background:#eef7ff;border-radius:1rem;padding:.8rem 1rem;display:flex;gap:.7rem;align-items:center;line-height:1.3}
 .places .i{font-size:2rem;line-height:1}
@@ -76,6 +80,12 @@ footer{text-align:center;color:var(--soft);font-size:.95rem;margin-top:3rem}
       <li><span class="i" aria-hidden="true">🃏</span><span><b>Memory Match</b><span class="what">Pairs made from your treasures</span></span></li>
     </ul>
     <a class="play" href="treasure-trail/">Play Treasure Trail</a>
+  </section>
+
+  <section class="game mf">
+    <h2>Math Force</h2>
+    <p>The maze is glitching. Restore the Errors with your Debug Blaster and Wrench, and power every reload with quick math. Designed by one of our kid testers, for older kids.</p>
+    <a class="play" href="math-force/">Play Math Force</a>
   </section>
 
   <section class="good">
