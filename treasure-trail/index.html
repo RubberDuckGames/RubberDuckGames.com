@@ -354,7 +354,14 @@ body.ingame #s-game{padding-top:16px}
   #spellIn{font-size:30px}
 }
 
-@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+/* Confetti and balloons when a round is finished (Riley's idea, 21 Oct). */
+.party{position:fixed;inset:0;pointer-events:none;z-index:11;overflow:hidden}
+.confetti{position:absolute;top:-4vh;width:10px;height:16px;border-radius:3px;animation:fall linear forwards}
+.balloon{position:absolute;bottom:-20vh;font-size:56px;animation:rise ease-in forwards}
+@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--spin))}}
+@keyframes rise{to{transform:translate(var(--dx),-130vh)}}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}.party{display:none}}
 </style>
 </head>
 <body>
@@ -862,6 +869,19 @@ function stepDone() {
   setTimeout(() => { if (alive(c)) finishRound(); }, 1700);
   return true;
 }
+function party() {
+  const box = document.createElement('div'); box.className = 'party'; box.setAttribute('aria-hidden', 'true');
+  const colors = ['#ef5b5b', '#4a90e2', '#ffc93c', '#3fb37f', '#9b6ee8', '#f59a3a', '#ff8fc7'];
+  let html = '';
+  for (let i = 0; i < 70; i++) {
+    html += `<i class="confetti" style="left:${Math.random() * 100}%;background:${rand(colors)};--dx:${randInt(-80, 80)}px;--spin:${randInt(-720, 720)}deg;animation-duration:${(1.8 + Math.random() * 1.6).toFixed(2)}s;animation-delay:${(Math.random() * .4).toFixed(2)}s"></i>`;
+  }
+  for (let i = 0; i < 6; i++) {
+    html += `<span class="balloon" style="left:${8 + i * 15 + randInt(-4, 4)}%;--dx:${randInt(-60, 60)}px;animation-duration:${(3 + Math.random() * 1.5).toFixed(2)}s;animation-delay:${(Math.random() * .6).toFixed(2)}s;filter:hue-rotate(${randInt(0, 300)}deg)">🎈</span>`;
+  }
+  box.innerHTML = html; document.body.appendChild(box);
+  setTimeout(() => box.remove(), 5200);
+}
 function finishRound() {
   const p = player(), key = cur.zone.id + cur.level;
   p.done[key] = (p.done[key] || 0) + 1;
@@ -873,7 +893,7 @@ function finishRound() {
   $('#rText').textContent = `You found ${art(s[1])} ${s[1]}!`;
   $('#rSub').textContent = cur.sub || (fresh.length ? 'It is going on your shelf.' : 'Another one for your shelf!');
   $('#reward').classList.add('on');
-  sfx.shiny();
+  sfx.shiny(); party();
   setTimeout(() => say(`You found ${art(s[1])} ${s[1]}!`), 300);
 }
 $('#rAgain').onclick = () => { $('#reward').classList.remove('on'); openGame(cur.zone.id, cur.level); };
