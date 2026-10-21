@@ -1432,7 +1432,14 @@ G.train = {
       cur.pos++; sfx.chug();
       if (cur.pos >= w.length) {
         car.classList.add('done'); sfx.good(); cur.i++; cur.pos = 0;
-        if (stepDone()) { cur.busy = true; this.summary(); cheer(); return; }
+        if (stepDone()) {
+          // Round over: clear the highlighted key and car, so nothing looks like
+          // it's still waiting to be pressed (21 Oct play-test).
+          document.querySelectorAll('.k.target').forEach(k => k.classList.remove('target'));
+          document.querySelectorAll('.car.now').forEach(c => c.classList.remove('now'));
+          document.querySelectorAll('.car span.next').forEach(x => x.classList.remove('next'));
+          cur.busy = true; this.summary(); cheer(); return;
+        }
       }
       this.focus();
     } else {
