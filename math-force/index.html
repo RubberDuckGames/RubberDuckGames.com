@@ -49,6 +49,10 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 .btn.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
 .btn small{display:block;font-weight:400;color:var(--soft);font-size:13px}
 .btn.go small{color:#123}
+.ans.sm{width:70px}
+#tform{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
+#tpic svg{cursor:crosshair}
+.tbtn.ready{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,201,60,.45)}
 .shop{display:grid;gap:8px;margin-top:10px;text-align:left}
 .shop button{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .shop button[disabled]{opacity:.45;cursor:default}
@@ -63,7 +67,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 .touch.on{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px}
 .stick{position:relative;flex:none;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);touch-action:none}
 .stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(65,227,255,.5)}
-.tbtns{display:flex;gap:12px}
+.tbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
 .tbtn .key{display:none}
 .deskhelp{display:none;margin:0;color:var(--soft);font-size:15px}
@@ -83,7 +87,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   #reload{position:fixed;left:50%;bottom:16px;z-index:20}
   #task{position:fixed;z-index:20;max-height:92vh;overflow:auto}
 }
-@media (max-width:600px){.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
+@media (max-width:600px){.stick{width:104px;height:104px}.stick i{left:27px;top:27px}.tbtn{width:70px;height:70px;font-size:13px}.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -115,10 +119,15 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
     </div>
 
     <div class="panel" id="task" hidden>
-      <div class="lbl" style="color:var(--gold);font-weight:700">SECURE TERMINAL</div>
+      <div class="lbl" id="tlbl" style="color:var(--gold);font-weight:700">SECURE TERMINAL</div>
       <div id="tpic"></div>
       <div class="q" id="tq"></div>
-      <form id="tform"><input class="ans" id="ta" inputmode="decimal" autocomplete="off" aria-label="Your answer"></form>
+      <form id="tform">
+        <input class="ans" id="ta" inputmode="decimal" autocomplete="off" aria-label="Your answer">
+        <span id="txy" hidden>( <input class="ans sm" id="tx" inputmode="numeric" autocomplete="off" aria-label="x"> , <input class="ans sm" id="ty" inputmode="numeric" autocomplete="off" aria-label="y"> )</span>
+        <button class="btn go" id="tgo">Check</button>
+      </form>
+      <div class="choices" id="tch"></div>
       <div class="msg" id="tmsg"></div>
       <div class="row"><button class="btn" id="tclose">Close</button></div>
     </div>
@@ -132,7 +141,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
         <div class="row" id="levels"></div>
         <div class="row"><button class="btn" id="catBtn">🐱 Cat-ear helmet: off</button></div>
         <div class="row"><button class="btn go" id="go">Start</button></div>
-        <div class="keys" id="keys"><b>WASD</b> or <b>arrows</b> move · <b>mouse</b> aims · <b>click</b> or <b>Space</b> fires · <b>E</b> wrench · <b>R</b> reload · <b>Enter</b> on the terminal</div>
+        <div class="keys" id="keys"><b>WASD</b> or <b>arrows</b> move · <b>mouse</b> aims · <b>click</b> or <b>Space</b> fires · <b>E</b> wrench · <b>F</b> use (drill, doors, wire, terminal) · <b>R</b> reload</div>
       </div>
     </div>
 
@@ -166,7 +175,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   <div class="touch" id="touch">
     <div class="stick" id="stick"><i id="knob"></i></div>
     <p class="deskhelp">Move: <b>WASD</b> or <b>arrows</b> · Aim: <b>mouse</b> · Pause: <b>Esc</b></p>
-    <div class="tbtns"><button class="tbtn" id="tWrench">🔧 Wrench<small class="key">E</small></button><button class="tbtn" id="tFire">⚡ Fire<small class="key">Space</small></button></div>
+    <div class="tbtns"><button class="tbtn" id="tUse"><span id="useLbl">🛠 Use</span><small class="key">F</small></button><button class="tbtn" id="tWrench">🔧 Wrench<small class="key">E</small></button><button class="tbtn" id="tFire">⚡ Fire<small class="key">Space</small></button></div>
   </div>
 </div>
 
@@ -213,36 +222,45 @@ $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').t
 $('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
 
 // ---------- The maze (one sector, 24 x 16 tiles) ----------
+// Slice 2 (21 Oct), from the kid designer's campaign notes: C is a cracked wall
+// you can drill through, D a doorway with a blast door, K the wire panel in the
+// secure room, G a power gate that opens when the panel is wired, $ a vault crate.
 const MAP = [
   "########################",
   "#P.....#.......#.......#",
   "#......#.......#...W...#",
-  "#..##......E.......A...#",
+  "#..##......E...D...A...#",
   "#..##..#.......#.......#",
   "#......#.......#.......#",
-  "###.#######.#####.######",
+  "###D#####C#.#####.######",
   "#......#.......#.......#",
-  "#..E...#...W...#...E...#",
-  "#......................#",
+  "#..E...C...W...#...E...#",
+  "#......D...............#",
   "#..W...#.......#...A...#",
-  "###.#######.#####.######",
-  "#......#.......#.......#",
-  "#..E.......T.......E...#",
+  "###.#######.############",
+  "#......#......K#.......#",
+  "#..E.......T...G...$...#",
   "#......#.......#.......#",
   "########################",
 ];
 const MW = 24, MH = 16;
-const wall = (x, y) => x < 0 || y < 0 || x >= MW || y >= MH || MAP[y][x] === '#';
+// The live tiles change as walls are drilled and the gate opens; doors open and close.
+const tile = (x, y) => (G?.tiles ? G.tiles[y]?.[x] : MAP[y]?.[x]) ?? '#';
+const wall = (x, y) => {
+  if (x < 0 || y < 0 || x >= MW || y >= MH) return true;
+  const c = tile(x, y);
+  return c === '#' || c === 'C' || c === 'G' || (c === 'D' && !!G?.closed?.has(x + ',' + y));
+};
 const SECURE = { x0: 8, y0: 12, x1: 14, y1: 14 };   // the room with the terminal
 const find = ch => { const out = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) out.push([x + .5, y + .5]); })); return out; };
-const START = find('P')[0], TERMINAL = find('T')[0];
+const START = find('P')[0], TERMINAL = find('T')[0], PANEL = find('K')[0], CRATE = find('$')[0];
 
 // ---------- Math, with difficulty that adapts ----------
 const LEVELS = [
   { n: 1, name: 'Level 1', eg: 'like 7 + 5' },
   { n: 2, name: 'Level 2', eg: 'like 34 + 27, 4 × 5' },
-  { n: 3, name: 'Level 3', eg: 'like 8 × 7, 56 ÷ 8' },
-  { n: 4, name: 'Level 4', eg: 'like 23 × 4, 25% of 60' },
+  { n: 3, name: 'Level 3', eg: 'like 8 × 7, 3/4 of 20, −3 + 8' },
+  { n: 4, name: 'Level 4', eg: 'like √64, 2x + 4 = 12, 25% of 60' },
 ];
 function quick(level) {
   const L = level, r = Math.random();
@@ -252,12 +270,20 @@ function quick(level) {
     if (r < .7) { const a = randInt(30, 99), b = randInt(11, a - 5); return [`${a} − ${b}`, a - b]; }
     const a = randInt(2, 5), b = randInt(2, 10); return [`${a} × ${b}`, a * b];
   }
+  const neg = n => n < 0 ? `−${-n}` : `${n}`;
   if (L === 3) {
-    const a = randInt(3, 12), b = randInt(3, 12);
-    return r < .65 ? [`${a} × ${b}`, a * b] : [`${a * b} ÷ ${a}`, b];
+    // Middle-school reloads from the design: fractions of a number and negatives.
+    if (r < .4) { const a = randInt(3, 12), b = randInt(3, 12); return [`${a} × ${b}`, a * b]; }
+    if (r < .55) { const a = randInt(3, 12), b = randInt(3, 12); return [`${a * b} ÷ ${a}`, b]; }
+    if (r < .78) { const [n, d] = rand([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5]]), m = d * randInt(2, 9); return [`${n}/${d} of ${m}`, n * m / d]; }   // simplified fractions only
+    const a = randInt(-9, 9), b = randInt(1, 12);
+    return Math.random() < .5 ? [`${neg(a)} + ${b}`, a + b] : [`${neg(a)} − ${b}`, a - b];
   }
-  if (r < .4) { const a = randInt(12, 49), b = randInt(3, 9); return [`${a} × ${b}`, a * b]; }
-  if (r < .7) { const p = rand([10, 25, 50, 20]), n = rand([20, 40, 60, 80, 120, 200]); return [`${p}% of ${n}`, p * n / 100]; }
+  // High-school reloads: square roots and quick algebra too.
+  if (r < .2) { const a = randInt(12, 49), b = randInt(3, 9); return [`${a} × ${b}`, a * b]; }
+  if (r < .4) { const p = rand([10, 25, 50, 20]), n = rand([20, 40, 60, 80, 120, 200]); return [`${p}% of ${n}`, p * n / 100]; }
+  if (r < .6) { const a = randInt(2, 15); return [`√${a * a}`, a]; }
+  if (r < .85) { const x = randInt(1, 12), a = randInt(2, 6), b = randInt(1, 20); return [`${a}x + ${b} = ${a * x + b}, x`, x]; }
   const a = randInt(4, 15); return [`${a}²`, a * a];
 }
 // Bigger problems for the secure terminal. Each comes with a picture.
@@ -309,7 +335,7 @@ function newSector(n) {
     find('E').forEach(([x, y]) => errs.push(makeErr(x, y, false)));
     find('A').forEach(([x, y]) => errs.push(makeErr(x, y, true)));
   } else {
-    const floor = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '#' && Math.hypot(x + .5 - START[0], y + .5 - START[1]) > 7) floor.push([x + .5, y + .5]); }));
+    const floor = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if ('#CGDK$T'.indexOf(c) < 0 && !(x >= 16 && y >= 12) && Math.hypot(x + .5 - START[0], y + .5 - START[1]) > 7) floor.push([x + .5, y + .5]); }));
     const count = Math.min(6 + 2 * n, 22), armored = Math.min(.2 + .1 * n, .6);
     shuffle(floor).slice(0, count).forEach(([x, y]) => errs.push(makeErr(x, y, Math.random() < armored)));
   }
@@ -320,6 +346,7 @@ function newSector(n) {
     p: { x: START[0], y: START[1], aim: 0, shield: 3, hurtT: 0 },
     ammo: magMax(), wrench: G?.wrench ?? wrenchMax(), wrenchBroken: G?.wrenchBroken ?? false,
     swingT: 0, terminalUsed: false, stats: { right: 0, asked: 0, restored: 0 },
+    tiles: MAP.map(r => [...r]), closed: new Set(), powered: false, crate: false, near: null,
     slow: 1, dist: null, distT: 0, running: true,
   };
   hud();
@@ -340,15 +367,36 @@ function draw(t) {
   cx.clearRect(0, 0, cv.width, cv.height);
   // floor grid and walls
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    if (MAP[y][x] === '#') {
+    const c = G.tiles[y][x];
+    if (c === '#' || c === 'C') {
       cx.fillStyle = '#22335f'; cx.fillRect(x * T, y * T, T, T);
       cx.fillStyle = '#2d4378'; cx.fillRect(x * T, y * T, T, T * .2);
+      if (c === 'C') {                       // cracks you can drill through
+        cx.strokeStyle = '#ffb347'; cx.lineWidth = T * .06; cx.beginPath();
+        cx.moveTo(x * T + T * .2, y * T + T * .3); cx.lineTo(x * T + T * .45, y * T + T * .5); cx.lineTo(x * T + T * .35, y * T + T * .75);
+        cx.moveTo(x * T + T * .45, y * T + T * .5); cx.lineTo(x * T + T * .8, y * T + T * .45); cx.stroke();
+      }
+    } else if (c === 'G') {                  // power gate: hazard stripes and a bolt
+      for (let i = 0; i < 4; i++) { cx.fillStyle = i % 2 ? '#23324a' : '#ffc93c'; cx.fillRect(x * T, y * T + i * T / 4, T, T / 4); }
+      cx.fillStyle = '#fff'; cx.font = `${T * .5}px sans-serif`; cx.textAlign = 'center'; cx.fillText('⚡', x * T + T / 2, y * T + T * .68);
     } else {
       const sec = x >= SECURE.x0 && x <= SECURE.x1 && y >= SECURE.y0 && y <= SECURE.y1;
       cx.fillStyle = sec ? '#132a3c' : '#0f1933'; cx.fillRect(x * T, y * T, T, T);
       cx.strokeStyle = 'rgba(65,227,255,.06)'; cx.strokeRect(x * T, y * T, T, T);
     }
   }
+  // blast doors: a frame when open, a striped shutter when closed
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (G.tiles[y][x] === 'D') {
+    if (G.closed.has(x + ',' + y)) {
+      cx.fillStyle = '#6b7b8f'; cx.fillRect(x * T, y * T, T, T);
+      cx.fillStyle = '#4d5d74'; for (let i = 1; i < 4; i++) cx.fillRect(x * T, y * T + i * T / 4 - T * .03, T, T * .06);
+    } else { cx.fillStyle = '#6b7b8f'; cx.fillRect(x * T, y * T, T * .12, T); cx.fillRect(x * T + T * .88, y * T, T * .12, T); }
+  }
+  // wire panel and vault crate
+  cx.fillStyle = '#4d5d74'; roundRect(PANEL[0] * T - T * .3, PANEL[1] * T - T * .32, T * .6, T * .64, T * .08); cx.fill();
+  cx.fillStyle = G.powered ? '#5fe0a0' : '#ff5f6d'; cx.beginPath(); cx.arc(PANEL[0] * T, PANEL[1] * T - T * .1, T * .09, 0, 7); cx.fill();
+  cx.strokeStyle = '#ffc93c'; cx.lineWidth = T * .05; cx.beginPath(); cx.moveTo(PANEL[0] * T - T * .15, PANEL[1] * T + T * .15); cx.lineTo(PANEL[0] * T + T * .15, PANEL[1] * T + T * .15); cx.stroke();
+  if (!G.crate) { cx.fillStyle = '#a56a2b'; roundRect(CRATE[0] * T - T * .3, CRATE[1] * T - T * .25, T * .6, T * .5, T * .06); cx.fill(); cx.fillStyle = '#ffc93c'; cx.fillRect(CRATE[0] * T - T * .3, CRATE[1] * T - T * .04, T * .6, T * .08); }
   // terminal
   const clearRoom = roomClear();
   cx.fillStyle = G.terminalUsed ? '#3a4a6a' : clearRoom ? '#5fe0a0' : '#ff5f6d';
@@ -471,11 +519,66 @@ function step(dt) {
     toast(touchMode ? 'Armored Error! Tap Wrench when it gets close.' : 'Armored Error! Press E (or click Wrench) when it gets close.');
     $('#tWrench').classList.remove('glow'); void $('#tWrench').offsetWidth; $('#tWrench').classList.add('glow');
   }
-  // terminal
-  const onT = Math.hypot(p.x - TERMINAL[0], p.y - TERMINAL[1]) < .7;
-  if (onT && !G.terminalUsed && !G.onT) toast(roomClear() ? (touchMode ? 'Tap Wrench to use the terminal' : 'Press Enter to use the terminal') : 'Restore every Error in this room to unlock the terminal');
-  G.onT = onT;
+  // what's within reach for the Use button
+  const nb = nearby(), was = G.near?.kind;
+  G.near = nb;
+  if (nb?.kind !== was) { setUse(nb); if (nb) firstTip(nb); }
+  if (!G.crate && Math.hypot(p.x - CRATE[0], p.y - CRATE[1]) < .6) {
+    G.crate = true; S.bucks += 15; persist(); sfx.restore(); toast('Vault crate: +15 Math Bucks!'); hud();
+  }
   if (!G.errs.length && G.running) sectorClear();
+}
+function nearby() {
+  const p = G.p, px = Math.floor(p.x), py = Math.floor(p.y);
+  if (Math.hypot(p.x - TERMINAL[0], p.y - TERMINAL[1]) < .8) return { kind: 'terminal' };
+  if (Math.hypot(p.x - PANEL[0], p.y - PANEL[1]) < .9) return { kind: 'panel' };
+  for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const x = px + a, y = py + b, c = G.tiles[y]?.[x];
+    if (c === 'C') return { kind: 'drill', x, y };
+    if (c === 'D') return { kind: 'door', x, y };
+    if (c === 'G') return { kind: 'gate', x, y };
+  }
+  return null;
+}
+const USE_LABEL = { drill: '🛠 Drill', door: '🚪 Door', panel: '🔌 Wire', terminal: '💻 Terminal', gate: '⚡ Gate' };
+function setUse(nb) {
+  $('#useLbl').textContent = nb ? USE_LABEL[nb.kind] : '🛠 Use';
+  $('#tUse').classList.toggle('ready', !!nb);
+}
+const TIPS = {
+  drill: 'Cracked wall! Drill through it for a shortcut.',
+  door: 'A blast door. Drop it to seal the hallway.',
+  panel: 'The wire panel. Measure the wire to power the vault.',
+  terminal: 'The secure terminal. A bigger problem for bigger bucks.',
+  gate: 'This gate needs power from the wire panel in the secure room.',
+};
+function firstTip(nb) {
+  S.tips = S.tips || {};
+  if (S.tips[nb.kind]) return;
+  S.tips[nb.kind] = true; persist();
+  toast(`${TIPS[nb.kind]} ${touchMode ? 'Tap Use.' : 'Press F (or click Use).'}`);
+}
+function use() {
+  if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
+  const nb = G.near;
+  if (!nb) return toast('Nothing to use here. Walk up to a cracked wall, a door, the wire panel or the terminal.');
+  if (nb.kind === 'terminal') return useTerminal();
+  if (nb.kind === 'gate') return toast(G.powered ? 'The gate is open.' : 'Locked. Wire the panel in the secure room to power it.');
+  if (nb.kind === 'door') return toggleDoor(nb);
+  if (nb.kind === 'drill') return openTask(drillTask(nb));
+  if (nb.kind === 'panel') {
+    if (G.powered) return toast('Power is already on.');
+    if (!roomClear()) return toast('Restore every Error in this room first.');
+    return openTask(wireTask());
+  }
+}
+function toggleDoor({ x, y }) {
+  const key = x + ',' + y, p = G.p;
+  if (G.closed.has(key)) { G.closed.delete(key); sfx.clank(); toast('Door up.'); G.distT = 0; return; }
+  const inWay = o => Math.floor(o.x) === x && Math.floor(o.y) === y;
+  if (inWay(p)) return toast('Step out of the doorway first.');
+  if (G.errs.some(inWay)) return toast('An Error is in the doorway!');
+  G.closed.add(key); sfx.snap(); toast('Blast door down! The hallway is sealed.'); G.distT = 0;
 }
 function nearest() {
   let best = null, bd = 7;
@@ -513,7 +616,6 @@ function fire() {
 }
 function swing() {
   if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
-  if (G.onT) return useTerminal();
   if (G.wrenchBroken) return toast('Your wrench snapped. Fix it in the shop after this sector.');
   G.swingT = .2; sfx.clank();
   const p = G.p, targets = G.errs.filter(e => Math.hypot(e.x - p.x, e.y - p.y) < 1.1);
@@ -534,7 +636,7 @@ function openReload() {
   // while you were thinking. Now everything holds still until you answer.
   G.slow = 0;
   $('#rq').textContent = q + ' = ?'; $('#ra').value = ''; $('#rmsg').textContent = '';
-  const opts = new Set([a]); while (opts.size < 3) { const v = a + randInt(-6, 6); if (v >= 0 && v !== a) opts.add(v); }
+  const opts = new Set([a]); while (opts.size < 3) { const v = a + randInt(-6, 6); if (v !== a && (v >= 0 || a < 0)) opts.add(v); }
   $('#rc').innerHTML = shuffle([...opts]).map((v, i) => `<button class="choice" data-v="${v}">${v}<small style="display:block;font-size:12px;color:var(--soft)">${touchMode ? '' : i + 1}</small></button>`).join('');
   $('#reload').hidden = false;
   if (!touchMode) setTimeout(() => $('#ra').focus(), 30);
@@ -553,23 +655,107 @@ function answerReload(v) {
   else $('#rmsg').textContent = 'Not quite. Try again.';
 }
 // Answer boxes take numbers only (the terminal also allows a decimal point).
-$('#ra').oninput = () => { $('#ra').value = $('#ra').value.replace(/[^0-9]/g, ''); };
+$('#ra').oninput = () => { $('#ra').value = $('#ra').value.replace(/[^0-9-]/g, '').replace(/(?!^)-/g, ''); };   // a minus sign only at the start
 $('#ta').oninput = () => { $('#ta').value = $('#ta').value.replace(/[^0-9.]/g, ''); };
 $('#rform').onsubmit = e => { e.preventDefault(); if ($('#ra').value !== '') answerReload($('#ra').value); };
 $('#rc').onclick = e => { const b = e.target.closest('[data-v]'); if (b) answerReload(b.dataset.v); };
+
+// ---------- Drill and wire puzzles ----------
+// A 10 x 10 coordinate grid: x across from the left, y up from the bottom.
+function gridPic(mark, tappable) {
+  const P = (x, y) => [20 + x * 20, 210 - y * 20];
+  let g = '';
+  for (let i = 0; i <= 10; i++) {
+    g += `<line x1="${20 + i * 20}" y1="10" x2="${20 + i * 20}" y2="210" stroke="${i ? 'rgba(65,227,255,.25)' : '#41e3ff'}"/>`;
+    g += `<line x1="20" y1="${10 + i * 20}" x2="220" y2="${10 + i * 20}" stroke="${i === 10 ? '#41e3ff' : 'rgba(65,227,255,.25)'}"/>`;
+    g += `<text x="${20 + i * 20}" y="226" fill="#9fb2cc" font-size="11" text-anchor="middle">${i}</text><text x="8" y="${214 - i * 20}" fill="#9fb2cc" font-size="11" text-anchor="middle">${i}</text>`;
+  }
+  if (mark) { const [mx, my] = P(...mark); g += `<circle cx="${mx}" cy="${my}" r="7" fill="#ffc93c" stroke="#23324a" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2" fill="#23324a"/>`; }
+  return `<svg id="grid" width="240" height="234" viewBox="0 0 240 234" ${tappable ? 'role="img" aria-label="Tap a point on the grid"' : 'aria-hidden="true"'}>${g}<g id="gridMark"></g></svg>`;
+}
+function anglePic(deg) {
+  const r = 70, a = deg * Math.PI / 180, x2 = 40 + Math.cos(a) * r * 1.6, y2 = 120 - Math.sin(a) * r * 1.6;
+  const ax = 40 + Math.cos(a) * 34, ay = 120 - Math.sin(a) * 34;
+  return `<svg width="240" height="140" viewBox="0 0 240 140" aria-hidden="true">
+    <line x1="40" y1="120" x2="220" y2="120" stroke="#41e3ff" stroke-width="5" stroke-linecap="round"/>
+    <line x1="40" y1="120" x2="${x2}" y2="${y2}" stroke="#ffc93c" stroke-width="5" stroke-linecap="round"/>
+    <path d="M74 120 A34 34 0 0 0 ${ax} ${ay}" fill="none" stroke="#e8f1ff" stroke-width="2"/></svg>`;
+}
+function drillTask(nb) {
+  const x = randInt(1, 9), y = randInt(1, 9), win = () => { G.tiles[nb.y][nb.x] = '.'; G.distT = 0; sfx.restore(); spark(nb.x + .5, nb.y + .5, '#ffb347', 14); toast('Breached! A new shortcut.'); };
+  if (S.level >= 3 && Math.random() < .4) {
+    const deg = rand([30, 45, 60, 90, 120, 135, 150]), kind = deg < 90 ? 'acute' : deg === 90 ? 'right' : 'obtuse';
+    return { lbl: 'DRILL · ANGLE', pic: anglePic(deg), q: `The drill is set to ${deg}°. Is that angle acute, right or obtuse?`, type: 'choice', choices: ['acute', 'right', 'obtuse'], a: kind, why: 'acute is less than 90°, right is exactly 90°, obtuse is more than 90°', win, retry: () => drillTask(nb) };
+  }
+  if (S.level <= 2) return { lbl: 'DRILL · FIND THE POINT', pic: gridPic(null, true), q: `Drill where the screw is: (${x}, ${y}). Tap that point.`, type: 'tap', a: [x, y], why: `go ${x} across, then ${y} up`, win, retry: () => drillTask(nb) };
+  return { lbl: 'DRILL · READ THE POINT', pic: gridPic([x, y]), q: 'Where is the central screw? Type its coordinates (x, y).', type: 'xy', a: [x, y], why: `it's ${x} across and ${y} up, so (${x}, ${y})`, win, retry: () => drillTask(nb) };
+}
+function wireTask() {
+  const L = S.level, l = randInt(L <= 1 ? 3 : 6, L <= 1 ? 9 : L === 2 ? 20 : 40), w = randInt(L <= 1 ? 2 : 4, L <= 1 ? 6 : L === 2 ? 14 : 25);
+  const loops = L >= 4 ? 2 : 1, P = 2 * l + 2 * w;
+  const pic = `<svg width="260" height="150" viewBox="0 0 260 150" aria-hidden="true">
+    <rect x="40" y="25" width="180" height="95" fill="rgba(65,227,255,.12)" stroke="#41e3ff" stroke-width="3"/>
+    <line x1="40" y1="134" x2="220" y2="134" stroke="#ffc93c" stroke-width="6" stroke-dasharray="6 4"/><text x="130" y="148" fill="#e8f1ff" font-size="14" text-anchor="middle">${l} m</text>
+    <line x1="26" y1="25" x2="26" y2="120" stroke="#ffc93c" stroke-width="6" stroke-dasharray="6 4"/><text x="14" y="78" fill="#e8f1ff" font-size="14" text-anchor="middle">${w}</text></svg>`;
+  return {
+    lbl: 'MEASURING TAPE · WIRE', pic, type: 'num', a: P * loops,
+    q: loops === 1 ? `The room is ${l} m by ${w} m. How much wire runs all the way around it?` : `The room is ${l} m by ${w} m. The wire goes around TWICE. How much wire?`,
+    why: loops === 1 ? `2 × ${l} + 2 × ${w} = ${P} m` : `2 × ${l} + 2 × ${w} = ${P}, and twice around is ${P * 2} m`,
+    win: () => { G.powered = true; G.tiles[13][15] = '.'; G.distT = 0; S.bucks += 5; persist(); sfx.restore(); toast('Power restored! The vault gate opened. +5'); hud(); },
+    retry: () => wireTask(),
+  };
+}
+let TK = null;
+function openTask(t) {
+  TK = Object.assign(t, { tries: 0 }); G.slow = 0;
+  $('#tlbl').textContent = t.lbl; $('#tpic').innerHTML = t.pic; $('#tq').textContent = t.q; $('#tmsg').textContent = '';
+  $('#ta').hidden = t.type !== 'num'; $('#txy').hidden = t.type !== 'xy'; $('#tgo').hidden = t.type === 'tap' || t.type === 'choice';
+  $('#ta').value = ''; $('#tx').value = ''; $('#ty').value = '';
+  $('#tch').innerHTML = t.type === 'choice' ? t.choices.map(c => `<button class="choice" data-c="${c}">${c}</button>`).join('') : '';
+  $('#task').hidden = false;
+  setTimeout(() => (t.type === 'num' ? $('#ta') : t.type === 'xy' ? $('#tx') : null)?.focus(), 30);
+}
+function judge(ok) {
+  const t = TK; if (!t) return;
+  if (ok) { sfx.good(); $('#tmsg').textContent = 'Correct!'; TK = null; setTimeout(() => { closeTask(); t.win(); }, 900); return; }
+  sfx.soft();
+  if (++t.tries < 2) return void ($('#tmsg').textContent = 'Not quite. Try again.');
+  // Two misses: show how, then a fresh one of the same kind. Nothing is lost.
+  $('#tmsg').textContent = `The answer was ${Array.isArray(t.a) ? `(${t.a.join(', ')})` : t.a}: ${t.why}. Here's a new one.`;
+  TK = null; setTimeout(() => { if (!$('#task').hidden) openTask(t.retry()); }, 2600);
+}
+$('#tch').onclick = e => { const b = e.target.closest('[data-c]'); if (b && TK?.type === 'choice') judge(b.dataset.c === TK.a); };
+$('#tpic').onclick = e => {
+  if (TK?.type !== 'tap') return;
+  const svg = $('#grid'), r = svg.getBoundingClientRect();
+  const sx = (e.clientX - r.left) * 240 / r.width, sy = (e.clientY - r.top) * 234 / r.height;
+  const x = clamp(Math.round((sx - 20) / 20), 0, 10), y = clamp(Math.round((210 - sy) / 20), 0, 10);
+  $('#gridMark').innerHTML = `<circle cx="${20 + x * 20}" cy="${210 - y * 20}" r="7" fill="#ffc93c"/>`;
+  judge(x === TK.a[0] && y === TK.a[1]);
+};
+$('#tx').oninput = () => { $('#tx').value = $('#tx').value.replace(/[^0-9]/g, ''); };
+$('#ty').oninput = () => { $('#ty').value = $('#ty').value.replace(/[^0-9]/g, ''); };
 
 // ---------- Secure terminal ----------
 let TQ = null;
 function useTerminal() {
   if (G.terminalUsed) return toast('Terminal already used this sector.');
   if (!roomClear()) return toast('Restore every Error in this room first.');
-  TQ = bigTask(S.level); TQ.tries = 0;
+  TQ = bigTask(S.level); TQ.tries = 0; TK = null;
   G.slow = 0;
+  $('#tlbl').textContent = 'SECURE TERMINAL'; $('#ta').hidden = false; $('#txy').hidden = true; $('#tgo').hidden = false; $('#tch').innerHTML = '';
   $('#tpic').innerHTML = TQ.pic; $('#tq').textContent = TQ.q; $('#ta').value = ''; $('#tmsg').textContent = '';
   $('#task').hidden = false; setTimeout(() => $('#ta').focus(), 30);
 }
 $('#tform').onsubmit = e => {
-  e.preventDefault(); if (!TQ || $('#ta').value === '') return;
+  e.preventDefault();
+  if (TK) {
+    const t = TK;   // judge() clears TK, so read it once
+    if (t.type === 'num' && $('#ta').value !== '') judge(+$('#ta').value === t.a);
+    else if (t.type === 'xy' && $('#tx').value !== '' && $('#ty').value !== '') judge(+$('#tx').value === t.a[0] && +$('#ty').value === t.a[1]);
+    return;
+  }
+  if (!TQ || $('#ta').value === '') return;
   if (+$('#ta').value === TQ.a) {
     S.bucks += 10; persist(); sfx.good(); G.terminalUsed = true;
     $('#tmsg').textContent = `Correct! ${TQ.why}. +10 Math Bucks.`; TQ = null; hud();
@@ -578,7 +764,7 @@ $('#tform').onsubmit = e => {
     sfx.soft(); G.terminalUsed = true; $('#tmsg').textContent = `The answer was ${TQ.a}: ${TQ.why}.`; TQ = null;
   } else { sfx.soft(); $('#tmsg').textContent = 'Not quite. Check it again.'; }
 };
-function closeTask() { $('#task').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); $('#ta').blur(); }
+function closeTask() { TK = null; $('#task').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); $('#ta').blur(); }
 $('#tclose').onclick = closeTask;
 
 // ---------- Level up ----------
@@ -640,7 +826,7 @@ addEventListener('keydown', e => {
   if (k === ' ') fire();
   if (k === 'e') swing();
   if (k === 'r' && G?.running && G.ammo < magMax()) openReload();
-  if (k === 'enter' && G?.onT) useTerminal();
+  if (k === 'f' || (k === 'enter' && G?.near)) use();
   if (k === 'escape' || k === 'p') pause();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -657,8 +843,9 @@ $('#touch').classList.add('on');
 // pointerdown (not click) so the button never takes focus and Space can't fire twice
 $('#tFire').addEventListener('pointerdown', e => { e.preventDefault(); fire(); });
 $('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing(); });
+$('#tUse').addEventListener('pointerdown', e => { e.preventDefault(); use(); });
 if (touchMode) {
-  document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors and the terminal. Tip: turn your phone sideways for a bigger maze.';
+  document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors. Use drills cracked walls, drops doors, and works the wire panel and terminal. Tip: turn your phone sideways for a bigger maze.';
   const st = $('#stick'), knob = $('#knob');
   const upd = e => { const r = st.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stick.x = x; stick.y = y; knob.style.transform = `translate(${x * 35}px,${y * 35}px)`; };
   st.addEventListener('pointerdown', e => { stick.id = e.pointerId; st.setPointerCapture(e.pointerId); upd(e); });
