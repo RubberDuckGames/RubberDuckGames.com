@@ -38,7 +38,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .pcard{background:var(--card);border-radius:26px;box-shadow:var(--shadow);padding:26px 16px;text-align:center;position:relative;cursor:pointer}
 .pcard .buddy{font-size:96px;line-height:1.1}
 .pcard .name{font-size:30px;font-weight:800}
-.pcard .edit{position:absolute;top:10px;right:10px;width:46px;height:46px;border-radius:50%;background:#eef2f8;font-size:22px}
+.pcard .edit{position:absolute;top:10px;right:10px;border-radius:999px;background:#eef2f8;font-size:17px;padding:6px 12px;font-weight:600}
 .pcard.add{background:#f1f5fa}
 
 /* The world */
@@ -151,10 +151,15 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .bigShiny{font-size:150px;line-height:1.1;animation:shine 1.4s ease-out}
 @keyframes shine{0%{transform:scale(.2) rotate(-30deg);opacity:0}60%{transform:scale(1.2) rotate(10deg);opacity:1}100%{transform:scale(1)}}
 .row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-#eName{font:inherit;font-size:26px;padding:10px 16px;border-radius:14px;border:3px solid #cdd6e3;width:100%;margin:10px 0 16px}
+#eName{font:inherit;font-size:26px;padding:10px 16px;border-radius:14px;border:3px solid #cdd6e3;width:100%;margin:4px 0 6px}
+#eName:focus-visible{outline:4px solid var(--ink);outline-offset:2px}
+.flabel{display:block;text-align:left;font-weight:800;margin:14px 0 6px}
+.ages{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.age{font-size:24px;font-weight:800;min-width:58px;height:58px;border-radius:16px;background:#f0f3f8;padding:0 10px}
+.age.on,.bud.on{background:var(--gold);box-shadow:0 0 0 3px var(--ink)}
+.card{max-height:94vh;overflow:auto}
 .buddies{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .bud{font-size:40px;width:66px;height:66px;border-radius:16px;background:#f0f3f8}
-.bud.on{background:var(--gold)}
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120%);background:#fff;border-radius:999px;padding:10px 24px;font-weight:800;box-shadow:var(--shadow);z-index:20;transition:transform .3s}
 .toast.on{transform:translateX(-50%) translateY(0)}
 
@@ -229,9 +234,13 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 
 <div class="overlay" id="edit">
   <div class="card">
-    <h2>Player</h2>
-    <input id="eName" maxlength="14" placeholder="Name" aria-label="Name">
+    <h2 id="eTitle">Player</h2>
+    <label class="flabel" for="eName">Your name</label>
+    <input id="eName" maxlength="14" autocomplete="off">
+    <p class="flabel">Pick your buddy</p>
     <div class="buddies" id="eBuddies"></div>
+    <p class="flabel">How old are you?</p>
+    <div class="ages" id="eAges"></div>
     <div class="row">
       <button class="btn big go" id="eSave">Save</button>
       <button class="btn big" id="eCancel">Cancel</button>
@@ -277,9 +286,9 @@ const DECOS = [['duck', 290, 165], ['🌳', 60, 70], ['🌲', 110, 330], ['🌳'
 // ---------- Save data (stays on this computer) ----------
 function load() { try { return JSON.parse(localStorage.getItem('treasure-trail')) || null; } catch (e) { return null; } }
 function persist() { try { localStorage.setItem('treasure-trail', JSON.stringify(save)); } catch (e) { } }
-const newPlayer = (name, buddy) => ({ name, buddy, shinies: [], done: {}, last: {} });
+const newPlayer = (name, buddy, age = null, setup = false) => ({ name, buddy, age, setup, shinies: [], done: {}, last: {} });
 let save = load() || { sound: true, current: null, players: [newPlayer('Player 1', '🐈‍⬛'), newPlayer('Player 2', '🐕'), newPlayer('Player 3', '🦆')] };
-save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; });
+save.players.forEach(p => { p.shinies ??= []; p.done ??= {}; p.last ??= {}; p.age ??= null; p.setup ??= !/^Player \d+$/.test(p.name); });
 const player = () => save.players[save.current];
 
 // ---------- Voice and sounds ----------
@@ -340,7 +349,7 @@ function showWho() {
   $('#playerBtn').hidden = true;
   $('#players').innerHTML = save.players.map((p, i) => `
     <div class="pcard" data-i="${i}">
-      <button class="edit" data-edit="${i}" aria-label="Edit">✏️</button>
+      <button class="edit" data-edit="${i}">✏️ Change</button>
       <div class="buddy">${p.buddy}</div>
       <div class="name">${esc(p.name)}</div>
       <div class="soft">✨ ${p.shinies.length} treasures</div>
@@ -352,23 +361,34 @@ $('#players').onclick = e => {
   const ed = e.target.closest('[data-edit]');
   if (ed) return openEdit(+ed.dataset.edit);
   const c = e.target.closest('.pcard');
-  if (c) { save.current = +c.dataset.i; persist(); say(`Hi ${player().name}! Where do you want to go?`); showMap(); }
+  if (!c) return;
+  save.current = +c.dataset.i; persist();
+  // A player still called "Player 2" hasn't been set up yet: ask who they are first.
+  if (!player().setup) return openEdit(save.current, true);
+  say(`Hi ${player().name}! Where do you want to go?`); showMap();
 };
 
-let editing = null, pickedBuddy = null;
-function openEdit(i) {
-  editing = i;
-  const p = i >= 0 ? save.players[i] : { name: '', buddy: '🦊' };
-  $('#eName').value = p.name; pickedBuddy = p.buddy; drawBuddies();
+let editing = null, pickedBuddy = null, pickedAge = null, playAfter = false;
+const AGES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+function openEdit(i, firstTime = false) {
+  editing = i; playAfter = firstTime;
+  const p = i >= 0 ? save.players[i] : { name: '', buddy: '🦊', age: null, setup: false };
+  $('#eTitle').textContent = p.setup ? 'Change player' : 'Make your player';
+  $('#eName').value = p.setup ? p.name : ''; pickedBuddy = p.buddy; pickedAge = p.age;
+  drawBuddies(); drawAges();
   $('#edit').classList.add('on'); setTimeout(() => $('#eName').focus(), 50);
+  say(p.setup ? '' : 'Type your name, pick a buddy, and tell us how old you are.');
 }
-function drawBuddies() { $('#eBuddies').innerHTML = BUDDIES.map(b => `<button class="bud${b === pickedBuddy ? ' on' : ''}" data-b="${b}">${b}</button>`).join(''); }
+function drawBuddies() { $('#eBuddies').innerHTML = BUDDIES.map(b => `<button class="bud${b === pickedBuddy ? ' on' : ''}" data-b="${b}" aria-pressed="${b === pickedBuddy}">${b}</button>`).join(''); }
+function drawAges() { $('#eAges').innerHTML = AGES.map(a => `<button class="age${a === pickedAge ? ' on' : ''}" data-age="${a}" aria-pressed="${a === pickedAge}">${a === 13 ? '13+' : a}</button>`).join(''); }
 $('#eBuddies').onclick = e => { const b = e.target.closest('[data-b]'); if (b) { pickedBuddy = b.dataset.b; drawBuddies(); } };
+$('#eAges').onclick = e => { const b = e.target.closest('[data-age]'); if (b) { pickedAge = +b.dataset.age; drawAges(); say(b.textContent); } };
 $('#eSave').onclick = () => {
-  const name = $('#eName').value.trim() || 'Player';
-  if (editing >= 0) Object.assign(save.players[editing], { name, buddy: pickedBuddy });
-  else save.players.push(newPlayer(name, pickedBuddy));
-  persist(); $('#edit').classList.remove('on'); showWho();
+  const name = $('#eName').value.trim() || (editing >= 0 ? save.players[editing].name : 'Player');
+  if (editing >= 0) Object.assign(save.players[editing], { name, buddy: pickedBuddy, age: pickedAge, setup: true });
+  else save.players.push(newPlayer(name, pickedBuddy, pickedAge, true));
+  persist(); $('#edit').classList.remove('on');
+  if (playAfter) { say(`Hi ${name}! Where do you want to go?`); showMap(); } else showWho();
 };
 $('#eCancel').onclick = () => $('#edit').classList.remove('on');
 $('#eName').onkeydown = e => { if (e.key === 'Enter') $('#eSave').click(); };
@@ -480,10 +500,14 @@ function showShelf() {
 $('#shelf').onclick = e => { const it = e.target.closest('[data-n]'); if (it) { say(it.dataset.n); sfx.shiny(); } };
 
 // ---------- Game frame ----------
+// The first visit to a place starts at a level that fits the player's age.
+// Nothing is locked and no grade is shown; this only saves a few taps.
+const START_AGES = { pond: [4, 5, 6], tower: [4, 6, 7], train: [6, 8, 10], memory: [4, 6, 9] };
+const startLevel = (id, age) => age ? (START_AGES[id] || []).filter(a => age >= a).length : 0;
 const G = {};
 function openGame(id, level) {
   const z = PLACES.find(p => p.id === id), p = player();
-  if (level == null) level = p.last[id] ?? 0;
+  if (level == null) level = p.last[id] ?? startLevel(id, p.age);
   p.last[id] = level; persist();
   cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
