@@ -84,6 +84,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .me{font-size:5.5cqw;line-height:1;z-index:5;pointer-events:none;transition:filter .2s}
 .me.walk{animation:waddle .35s infinite}
 .gshiny{font-size:3.4cqw;z-index:3;pointer-events:none;animation:twinkle 1.6s ease-in-out infinite}
+.reveal{position:absolute;font-size:6cqw;z-index:7;pointer-events:none;transform:translate(-50%,-50%);animation:reveal 1.6s ease-out forwards;filter:drop-shadow(0 0 1cqw #fff8b0)}
+@keyframes reveal{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}25%{transform:translate(-50%,-80%) scale(1.4);opacity:1}70%{transform:translate(-50%,-110%) scale(1.15);opacity:1}100%{transform:translate(-50%,-160%) scale(1);opacity:0}}
 .bubble{position:absolute;left:50%;bottom:2cqw;transform:translateX(-50%);background:#fff;border-radius:999px;padding:.6cqw 2cqw;font-size:2cqw;font-weight:700;box-shadow:var(--shadow);display:none;z-index:6;pointer-events:none}
 .bubble.on{display:block}
 .worldbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}
@@ -330,6 +332,7 @@ body.ingame #s-game{padding-top:16px}
   .deco svg{width:7cqw}
   .me{font-size:10cqw}
   .gshiny{font-size:7cqw}
+  .reveal{font-size:11cqw}
   .lake{width:30cqw;height:20cqw}
   .isle{width:36%}
   .isle .icons{font-size:7cqw}
@@ -702,11 +705,20 @@ function spawnGround() {
   do { x = randInt(170, 830); y = randInt(110, 515); tries++; }
   while (tries < 80 && (![[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45]].every(([a, b]) => inLand(x + a, y + b)) || Math.hypot(W.x - x, W.y - y) < 150 || here().some(pl => Math.hypot(pl.x - x, pl.y - y) < 110)));
   const el = document.createElement('div');
-  el.className = 'gshiny'; const s = rand(SHINIES); el.textContent = s[0]; pos(el, x, y);
+  // A sparkle on the ground; what it is stays a surprise until you pick it up (21 Oct).
+  el.className = 'gshiny'; const s = rand(SHINIES); el.textContent = '✨'; pos(el, x, y);
   $('#ground').appendChild(el);
   W.ground.push({ x, y, s, el });
 }
 setInterval(() => { if (screen === 'map' && !atSea() && W.ground.length < 2) spawnGround(); }, 25000);
+
+// The found treasure pops up out of its sparkle, then floats away.
+function reveal(g) {
+  const el = document.createElement('div');
+  el.className = 'reveal'; el.textContent = g.s[0]; pos(el, g.x, g.y);
+  $('#ground').appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
 
 function drawWorld(moving) {
   const me = $('#me'); pos(me, W.x, W.y); me.classList.toggle('walk', moving);
@@ -752,7 +764,7 @@ function stepWorld(dt) {
   // Pick up shiny things on the ground
   W.ground = W.ground.filter(g => {
     if (Math.hypot(g.x - W.x, g.y - W.y) > 30) return true;
-    g.el.remove(); player().shinies.push(g.s[0]); persist();
+    g.el.remove(); player().shinies.push(g.s[0]); persist(); reveal(g);
     sfx.shiny(); say(`You found ${art(g.s[1])} ${g.s[1]}!`); toast(`${g.s[0]} You found ${art(g.s[1])} ${g.s[1]}!`);
     return false;
   });
