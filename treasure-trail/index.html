@@ -114,16 +114,21 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 @keyframes yay{40%{transform:scale(1.25) rotate(360deg)}100%{transform:scale(1.15)}}
 
 /* Block Tower */
-.yard{background:linear-gradient(#dff2ff,#f2fbff);min-height:460px}
+.yard{background:linear-gradient(#dff2ff,#f2fbff);min-height:0;touch-action:none}
 .ground{position:absolute;left:0;right:0;bottom:0;height:56px;background:#8fd17a;border-top:6px solid #6fb85a}
 .sun{position:absolute;top:18px;right:28px;font-size:64px}
 .tower,.ghost{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center}
-.ghost .slot{width:150px;height:28px;margin-top:8px;border:3px dashed rgba(35,50,74,.35);border-radius:5px}
+.ghost .slot{width:calc(var(--bh,28px)*5.4);height:var(--bh,28px);margin-top:calc(var(--bh,28px)*.29);border:3px dashed rgba(35,50,74,.35);border-radius:5px}
 .count{position:absolute;left:24px;bottom:76px;background:#fff;border-radius:18px;padding:8px 18px;font-size:30px;font-weight:800;box-shadow:var(--shadow)}
-.brick{width:150px;height:28px;background:currentColor;border-radius:5px;position:relative;margin-top:8px;cursor:pointer;animation:drop .35s ease-out;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.3)}
-.brick::before{content:'';position:absolute;top:-8px;left:16px;right:16px;height:9px;border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,currentColor 0 24px,transparent 24px 46px)}
+.brick{width:calc(var(--bh,28px)*5.4);height:var(--bh,28px);background:currentColor;border-radius:5px;position:relative;margin-top:calc(var(--bh,28px)*.29);cursor:pointer;animation:drop .35s ease-out;box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),inset 0 3px 0 rgba(255,255,255,.3)}
+.brick::before{content:'';position:absolute;top:calc(var(--bh,28px)*-.29);left:16px;right:16px;height:calc(var(--bh,28px)*.32);border-radius:4px 4px 0 0;background:repeating-linear-gradient(90deg,currentColor 0 24px,transparent 24px 46px)}
 .brick.flash{outline:5px solid var(--ink)}
 .brick.gone{animation:fly .45s forwards}
+.brick.lifted{visibility:hidden}
+.brick.float{position:fixed;z-index:30;pointer-events:none;animation:none;margin:0;transform:translate(-50%,-50%) rotate(-4deg);box-shadow:0 10px 20px rgba(0,0,0,.25)}
+.pile{position:absolute;left:24px;top:20px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:grab;background:rgba(255,255,255,.75);border-radius:18px;padding:12px 14px;box-shadow:var(--shadow)}
+.pile .brick{animation:none;margin-top:calc(var(--bh,28px)*.29);cursor:grab}
+.pile span{font-size:16px;font-weight:700;margin-top:4px}
 @keyframes drop{from{transform:translateY(-160px);opacity:0}to{transform:none;opacity:1}}
 @keyframes fly{to{transform:translate(220px,-120px) rotate(40deg);opacity:0}}
 .choice{width:110px;height:110px;font-size:52px;font-weight:800;border-radius:26px}
@@ -546,7 +551,8 @@ function openGame(id, level) {
   cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
   const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
-  st.after($('#controls')); st.style.gridTemplateColumns = '';
+  st.after($('#controls')); st.style.gridTemplateColumns = ''; st.style.height = ''; st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = null;
+  scrollTo(0, 0);
   $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
   $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
   renderLevels();
@@ -664,22 +670,26 @@ G.tower = {
     // Decided 20 Oct, after the first play-test ("we weren't sure how Block Tower worked"):
     // the buttons sit above the tower, where they were easy to miss below a tall stage.
     const st = $('#stage'); st.classList.add('yard'); cur.total = 6; st.before($('#controls'));
-    st.onclick = e => { const b = e.target.closest('.brick:not(.gone)'); if (b) this.tapBrick(b); };
+    // Pointer events cover mouse, touch and pen. A press that barely moves is a tap.
+    st.onpointerdown = e => this.down(e);
+    st.onpointermove = e => this.move(e);
+    st.onpointerup = st.onpointercancel = e => this.up(e);
     this.next();
   },
   showCount() { const c = $('#count'); if (c && !c.hidden) c.textContent = `🧱 ${this.bricks().length}`; },
   bricks() { return [...document.querySelectorAll('#tower .brick:not(.gone)')]; },
   brick(color) { const b = document.createElement('div'); b.className = 'brick'; b.style.color = color; $('#tower').appendChild(b); return b; },
   next() {
-    $('#stage').innerHTML = '<div class="sun">☀️</div><div class="ghost" id="ghost"></div><div class="tower" id="tower"></div><div class="count" id="count" hidden></div><div class="ground"></div>';
-    $('#controls').innerHTML = ''; cur.busy = false;
     const l = cur.level;
+    $('#stage').innerHTML = '<div class="sun">☀️</div><div class="ghost" id="ghost"></div><div class="tower" id="tower"></div><div class="count" id="count" hidden></div><div class="ground"></div>' +
+      (l <= 1 ? `<div class="pile" id="pile" aria-hidden="true">${BRICK_COLORS.slice(0, 3).map(c => `<div class="brick" style="color:${c}"></div>`).join('')}<span>Drag a block</span></div>` : '');
+    $('#controls').innerHTML = ''; cur.busy = false;
     if (l <= 1) {
       const n = l === 0 ? randInt(1, 5) : randInt(3, 10); cur.n = n;
       // Build to 5 shows a see-through outline to fill. Build to 10 doesn't, so
       // the counting is real, but a counter shows how many are on the tower.
-      if (l === 0) { $('#ghost').innerHTML = '<div class="slot"></div>'.repeat(n); setPrompt(`Build <span class="big">${n}</span><span class="hint">Tap ➕ Add a block until the outline is full.</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}. Tap add a block until the outline is full.`); }
-      else { $('#count').hidden = false; this.showCount(); setPrompt(`Build <span class="big">${n}</span><span class="hint">Add blocks or take some off, then press ✅ Done.</span>`, `Build a tower of ${n} blocks. When you think it's right, press done.`); }
+      if (l === 0) { $('#ghost').innerHTML = '<div class="slot"></div>'.repeat(n); setPrompt(`Build <span class="big">${n}</span><span class="hint">Drag blocks onto the tower, or tap ➕ Add a block, until the outline is full.</span>`, `Build a tower of ${n} ${n === 1 ? 'block' : 'blocks'}. Drag blocks onto the tower until the outline is full.`); }
+      else { $('#count').hidden = false; this.showCount(); setPrompt(`Build <span class="big">${n}</span><span class="hint">Drag blocks on, or drag the top one off. Then press ✅ Done.</span>`, `Build a tower of ${n} blocks. When you think it's right, press done.`); }
       $('#controls').innerHTML = `<button class="btn big" data-a="add">➕ Add a block</button>` +
         (l === 1 ? `<button class="btn big" data-a="take">➖ Take one off</button><button class="btn big go" data-a="done">✅ Done</button>` : '');
     } else if (l === 2) {
@@ -690,8 +700,18 @@ G.tower = {
       const n = randInt(3, 10), k = randInt(1, Math.min(5, n - 1));
       Object.assign(cur, { n: n - k, k, taken: 0, start: n });
       for (let i = 0; i < n; i++) this.brick(BRICK_COLORS[i % 6]);
-      setPrompt(`${n} take away ${k}<span class="hint">Tap the tower ${k} ${k === 1 ? 'time' : 'times'} to take blocks off. Then tap how many are left.</span>`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
+      setPrompt(`${n} take away ${k}<span class="hint">Drag ${k} ${k === 1 ? 'block' : 'blocks'} off the top, or tap the tower. Then tap how many are left.</span>`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
     }
+    requestAnimationFrame(() => this.fit());
+  },
+  // Decided 20 Oct, after the second play-test: the scrolling was the real problem.
+  // The stage takes the rest of the window and the bricks shrink so 10 still fit.
+  fit() {
+    const st = $('#stage'); if (!st.classList.contains('yard')) return;
+    const top = st.getBoundingClientRect().top + scrollY;
+    const h = Math.max(240, innerHeight - top - 100);  // room for the progress dots
+    st.style.height = h + 'px';
+    st.style.setProperty('--bh', clamp(Math.floor((h - 56 - 24) / 10 / 1.29), 14, 28) + 'px');
   },
   async autoBuild(groups, speech) {
     const c = cur; cur.busy = true;
@@ -706,6 +726,45 @@ G.tower = {
     const opts = new Set([cur.n]);
     while (opts.size < 3) { const v = cur.n + randInt(-3, 3); if (v >= 0 && v <= 10) opts.add(v); }
     $('#controls').innerHTML = shuffle([...opts]).map(v => `<button class="btn choice" data-a="pick" data-v="${v}">${v}</button>`).join('');
+    this.fit();
+  },
+  down(e) {
+    if (cur.busy || e.button > 0) return;
+    const pile = e.target.closest('#pile'), b = e.target.closest('#tower .brick:not(.gone)');
+    if (!pile && !b) return;
+    this.drag = { pile: !!pile, brick: b, x: e.clientX, y: e.clientY, float: null };
+    $('#stage').setPointerCapture(e.pointerId);
+  },
+  move(e) {
+    const d = this.drag; if (!d) return;
+    if (!d.float) {
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+      // Only the top block comes off, like a real stack. Others just get counted on tap.
+      const top = this.bricks().at(-1);
+      if (!d.pile && (d.brick !== top || cur.level === 2)) return;
+      if (d.pile && this.bricks().length >= 10) { this.drag = null; return say('That is as tall as it goes!'); }
+      d.float = document.createElement('div'); d.float.className = 'brick float';
+      d.float.style.color = d.pile ? BRICK_COLORS[this.bricks().length % 6] : d.brick.style.color;
+      d.float.style.setProperty('--bh', $('#stage').style.getPropertyValue('--bh'));
+      document.body.appendChild(d.float);
+      if (!d.pile) d.brick.classList.add('lifted');
+    }
+    d.float.style.left = e.clientX + 'px'; d.float.style.top = e.clientY + 'px';
+  },
+  up(e) {
+    const d = this.drag; this.drag = null; if (!d) return;
+    if (!d.float) {                       // a tap
+      if (d.pile) this.act('add'); else this.tapBrick(d.brick);
+      return;
+    }
+    d.float.remove();
+    const r = $('#tower').getBoundingClientRect(), half = r.width / 2 + 90;
+    const onTower = Math.abs(e.clientX - (r.left + r.width / 2)) < half && e.clientY > r.top - 140;
+    if (d.pile) { if (onTower) this.act('add'); return; }
+    d.brick.classList.remove('lifted');
+    if (onTower) return;                  // put back
+    if (cur.level === 3) this.tapBrick(d.brick);
+    else this.act('take');
   },
   tapBrick(b) {
     if (cur.busy) return;
@@ -864,6 +923,7 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('keyup', e => { W.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
 window.addEventListener('blur', () => { W.keys = {}; });
+window.addEventListener('resize', () => { if (screen === 'game' && cur?.zone.id === 'tower') G.tower.fit(); });
 
 document.querySelector('.credit').innerHTML = rubberDuckSVG();
 drawSound();
