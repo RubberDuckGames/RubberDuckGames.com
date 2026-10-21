@@ -190,8 +190,10 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .card{max-height:94vh;overflow:auto}
 .buddies{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .bud{font-size:40px;width:66px;height:66px;border-radius:16px;background:#f0f3f8}
-.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120%);background:#fff;border-radius:999px;padding:10px 24px;font-weight:800;box-shadow:var(--shadow);z-index:20;transition:transform .3s}
-.toast.on{transform:translateX(-50%) translateY(0)}
+/* Moving it up by -120% of its own height left its bottom edge and shadow
+   peeking in at the top of the screen, so it is also hidden while off. */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(calc(-100% - 40px));visibility:hidden;background:#fff;border-radius:999px;padding:10px 24px;font-weight:800;box-shadow:var(--shadow);z-index:20;transition:transform .3s,visibility .3s}
+.toast.on{transform:translateX(-50%) translateY(0);visibility:visible}
 
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
