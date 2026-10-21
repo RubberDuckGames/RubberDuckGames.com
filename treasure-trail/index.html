@@ -513,12 +513,17 @@ function pickVoice() {
   voice = vs.find(v => v.lang === 'en-US' && /Samantha|Google US|Aria|Jenny|Ava/.test(v.name)) || vs.find(v => v.lang.startsWith('en')) || null;
 }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function say(t) {
+// Spelling words are said once, inside a short sentence, and a little slower.
+// Decided 21 Oct: said alone (and twice, "teacher teacher"), phone voices
+// clipped short words, so "what" came out as "whaa".
+const wordLine = w => `Your word is: ${w}.`;
+const sayWord = w => say(wordLine(w), .8);
+function say(t, rate = .9) {
   if (!t || !save.sound || !('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(t);
   if (voice) u.voice = voice;
-  u.rate = .9; u.pitch = 1.1;
+  u.rate = rate; u.pitch = 1.1;
   speechSynthesis.speak(u);
 }
 let ac;
@@ -558,7 +563,7 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add
 $('#soundBtn').onclick = () => { save.sound = !save.sound; persist(); drawSound(); if (!save.sound) speechSynthesis?.cancel(); };
 function drawSound() { $('#soundBtn').textContent = save.sound ? '🔊' : '🔇'; }
 $('#playerBtn').onclick = showWho;
-$('#hearBtn').onclick = () => say(cur?.say);
+$('#hearBtn').onclick = () => say(cur?.say, cur?.slowSay ? .8 : .9);
 document.addEventListener('click', e => { if (e.target.closest('[data-go="map"]')) showMap(); });
 
 // ---------- Who's playing ----------
@@ -1177,8 +1182,8 @@ G.spell = {
   ask() {
     const w = cur.queue[0]; cur.word = w; cur.tries = 0; cur.busy = false;
     const blanks = [...w].map(c => /[a-z]/i.test(c) ? '_' : c).join('');
-    setPrompt(`Spell the word you hear<span class="hint">${[...w].filter(c => /[a-z]/i.test(c)).length} letters</span>`, `${w}. ${w}.`);
-    cur.say = w;
+    setPrompt(`Spell the word you hear<span class="hint">${[...w].filter(c => /[a-z]/i.test(c)).length} letters</span>`, '', true);
+    cur.say = wordLine(w); cur.slowSay = true; sayWord(w);
     if (cur.level === 0) {
       $('#stage').innerHTML = `<div class="blanks" aria-hidden="true">${blanks}</div>
         <form style="display:contents"><label class="sr" for="spellIn" style="position:absolute;left:-9999px">Type the word</label>
@@ -1193,7 +1198,7 @@ G.spell = {
     }
   },
   act(a, btn) {
-    if (a === 'hear') return say(btn.dataset.w);
+    if (a === 'hear') return sayWord(btn.dataset.w);
     if (a === 'practice') return openGame('spell', 0);
     if (a === 'editwords') return this.listView(true);
     if (a === 'cancelwords') return this.listView();
@@ -1216,7 +1221,7 @@ G.spell = {
     const shown = [...w].map((c, i) => missed && typed[i] !== c.toLowerCase() ? `<span class="off">${esc(c)}</span>` : esc(c)).join('');
     cur.busy = true;
     $('#stage').querySelector('.blanks').innerHTML = `<span class="answer">${shown}</span>`;
-    say(`${w}. ${spellOut(w)}. ${w}.`);
+    say(`The word ${w} is spelled: ${spellOut(w)}.`, .8);
     const c = cur;
     setTimeout(() => {
       if (!alive(c) || cur.word !== w) return;
@@ -1255,7 +1260,7 @@ G.spell = {
   right() {
     const w = cur.word, c = cur;
     if (cur.tries === 0 && !(cur.level === 1 && cur.wrongTaps > 2)) this.stat(w).r++;
-    persist(); cur.busy = true; sfx.good(); cheer(); say(`Yes! ${w}. ${spellOut(w)}.`);
+    persist(); cur.busy = true; sfx.good(); cheer(); say(`Yes! ${w} is spelled ${spellOut(w)}.`, .85);
     cur.queue.shift();
     if (!stepDone()) setTimeout(() => { if (alive(c)) this.ask(); }, 2200);
     else cur.sub = `You spelled ${cur.total} words!`;
@@ -1315,8 +1320,8 @@ G.fetch = {
     const w = cur.queue[0];
     Object.assign(cur, { word: w, clean: w.toLowerCase().replace(/[^a-z]/g, ''), pos: 0, wrongHere: 0, wrongWord: 0, peeked: false, busy: false });
     this.draw();
-    setPrompt(`Spell the word, then the corgi fetches!<span class="hint">${cur.clean.length} letters · Tap 🔊 to hear it again</span>`, `${w}. ${w}.`);
-    cur.say = w;
+    setPrompt(`Spell the word, then the corgi fetches!<span class="hint">${cur.clean.length} letters · Tap 🔊 to hear it again</span>`, '', true);
+    cur.say = wordLine(w); cur.slowSay = true; sayWord(w);
     const c = $('#corgi'); c.className = 'corgi wag'; c.style.left = '14%';
   },
   draw(peek) {
@@ -1331,7 +1336,7 @@ G.fetch = {
     if (a === 'practice') return openGame('fetch', 1);
     if (cur.busy) return;
     if (a === 'peek') {
-      cur.peeked = true; this.draw(true); say(`${cur.word}. ${spellOut(cur.word)}.`);
+      cur.peeked = true; this.draw(true); say(`The word ${cur.word} is spelled: ${spellOut(cur.word)}.`, .8);
       const c = cur; setTimeout(() => { if (alive(c) && !cur.busy) this.draw(); }, 3000);
     }
   },
@@ -1352,7 +1357,7 @@ G.fetch = {
     const c0 = cur, w = cur.word, perfect = !cur.wrongWord && !cur.peeked;
     cur.busy = true;
     if (this.list().includes(w)) { const s = player().words.stats[w] ??= { r: 0, m: 0 }; perfect ? s.r++ : s.m++; persist(); }
-    sfx.good(); say(perfect ? 'Fetch!' : `${w}. Fetch!`);
+    sfx.good(); say('Fetch!');
     const ball = $('#fball'), dog = $('#corgi'), far = perfect ? 86 : 62;
     ball.hidden = false; ball.style.left = '10%'; ball.style.bottom = '14%';
     await glide(ball, 10, far, 900, 14);
@@ -1364,7 +1369,7 @@ G.fetch = {
     await glide(dog, far - 4, 14, (far - 14) * 16);
     if (!alive(c0)) return;
     dog.className = 'corgi wag'; bark(); cheer();
-    say(perfect ? `Good dog! You spelled ${w}!` : `Good dog! ${w}. ${spellOut(w)}.`);
+    say(perfect ? `Good dog! You spelled ${w}!` : `Good dog! The word ${w} is spelled ${spellOut(w)}.`, .85);
     cur.queue.shift();
     if (!stepDone()) setTimeout(() => { if (alive(c0)) this.ask(); }, 1800);
     else cur.sub = `You spelled ${cur.total} words with the corgi!`;
@@ -1416,7 +1421,7 @@ G.train = {
       // The very first letter of an early round starts with where the fingers go.
       const warm = cur.i === 0 && cur.level <= 1 ? 'Put your pointer fingers on the bumps on F and J. ' : '';
       if (w.length === 1) setPrompt(`Type <span class="big">${ch}</span><span class="hint">${warm ? 'Pointer fingers on the bumps on F and J. ' : ''}${hint}</span>`, `${warm}${ch.toUpperCase()}`);
-      else setPrompt(`Type <span class="big">${w}</span>`, w);
+      else setPrompt(`Type <span class="big">${w}</span>`, `Type the word: ${w}.`);
     }
   },
   act(a, btn) { if (a === 'gospell') return openGame('spell'); if (a === 'key' && !cur.busy) this.key(btn.dataset.k); },
