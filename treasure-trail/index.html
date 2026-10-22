@@ -1644,6 +1644,7 @@ G.maze = {
     // The on-screen arrows are for phones and tablets; a computer has the real keys.
     $('#controls').innerHTML = touch ? `<div class="pad"><span></span><button class="btn" data-a="up" aria-label="Up">▲</button><span></span>
       <button class="btn" data-a="left" aria-label="Left">◀</button><button class="btn" data-a="down" aria-label="Down">▼</button><button class="btn" data-a="right" aria-label="Right">▶</button></div>` : '';
+    if (l === 3) $('#controls').insertAdjacentHTML('afterbegin', '<button class="btn big" data-a="help">Help</button>');
     Object.assign(cur, { total: l === 0 ? 8 : l === 3 ? 4 : 6, x: 1, y: 1, px: 1, py: 1, face: 1, trail: [[1, 1]], cars: [], items: [], held: null, next: 0 });
     this.fill();
     if (l === 0) setPrompt('Drive the train', 'Drive the train with the arrow keys.');
@@ -1661,15 +1662,27 @@ G.maze = {
       cur.words = shuffle(mine.length ? mine : WORDS.filter(w => w.length <= 7));
     }
     const w = cur.words.shift();
-    Object.assign(cur, { word: w, pos: 0, wrongHere: 0, items: [] });
+    Object.assign(cur, { word: w, pos: 0, wrongHere: 0, items: [], help: 0, mix: shuffle([...w.toUpperCase()]) });
     [...w.toUpperCase()].forEach(ch => { const t = this.freeTile(); if (t) cur.items.push({ x: t[0], y: t[1], v: ch, c: rand(CAR_COLORS) }); });
     shuffle(ALPHA.filter(ch => !w.toUpperCase().includes(ch))).slice(0, 3).forEach(ch => { const t = this.freeTile(); if (t) cur.items.push({ x: t[0], y: t[1], v: ch, c: rand(CAR_COLORS) }); });
-    this.spellPrompt(true);
+    this.spellPrompt(true); this.fit();
   },
   spellPrompt(speak) {
     const shownWord = [...cur.word.toUpperCase()].map((ch, i) => i < cur.pos ? ch : '_').join(' ');
-    setPrompt(`Spell <span class="big" style="letter-spacing:.1em">${shownWord}</span>`, speak ? `Spell the word: ${cur.word}.` : '', !speak);
+    const letters = cur.help ? `<span class="hint" style="letter-spacing:.25em;font-size:30px;font-weight:800;color:var(--ink)">${cur.mix.join(' ')}</span>` : '';
+    setPrompt(`Spell <span class="big" style="letter-spacing:.1em">${shownWord}</span>${letters}`, speak ? `Spell the word: ${cur.word}.` : '', !speak);
     cur.say = `Spell the word: ${cur.word}.`;
+  },
+  // Help, when they ask for it (22 Oct): the first press shows the word's
+  // letters mixed up, so they know what to look for but still work out the
+  // order. Pressing again makes the next letter glow. Nothing is counted.
+  help() {
+    if (cur.busy || cur.level !== 3) return;
+    const want = cur.word[cur.pos].toUpperCase();
+    // The letters line makes the prompt taller, so the maze is fitted again.
+    if (++cur.help === 1) { this.spellPrompt(false); this.fit(); say(`The letters are: ${cur.mix.map(ln).join(', ')}.`); return; }
+    cur.items.forEach(x => { x.hint = x.v === want; });
+    say(`Look for the glowing letter: ${ln(want)}.`);
   },
   pickSpell(i) {
     const it = cur.items[i], want = cur.word[cur.pos].toUpperCase();
@@ -1680,6 +1693,7 @@ G.maze = {
       return;
     }
     cur.items.splice(i, 1); cur.items.forEach(x => { x.hint = false; }); cur.wrongHere = 0; cur.pos++;
+    cur.mix.splice(cur.mix.indexOf(it.v), 1);
     cur.cars.unshift({ v: it.v, c: it.c }); cur.cars.length = Math.min(cur.cars.length, 10);
     sfx.bloop(); say(`${ln(it.v)}.`); this.spellPrompt(false);
     if (cur.pos < cur.word.length) return;
@@ -1714,7 +1728,7 @@ G.maze = {
   },
   fit() {
     const cv = $('#mz'), st = $('#stage');
-    const w = st.clientWidth - 20, room = Math.max(220, innerHeight - st.getBoundingClientRect().top - (touch ? 200 : 60));
+    const w = st.clientWidth - 20, room = Math.max(220, innerHeight - st.getBoundingClientRect().top - (touch ? 200 : 60) - (cur.level === 3 ? 110 : 0));
     const T = Math.floor(Math.min(w / MZW, room / MZH));
     const dpr = Math.min(2, devicePixelRatio || 1);
     cv.style.width = T * MZW + 'px'; cv.style.height = T * MZH + 'px';
@@ -1724,7 +1738,7 @@ G.maze = {
   // (22 Oct: up, down, left and right are exactly the youngest's age group).
   press(dir) { if (cur.level === 0) say(dir[0].toUpperCase() + dir.slice(1) + '!'); cur.held = dir; this.move(dir); cur.next = performance.now() + 260; },
   release() { cur.held = null; },
-  act(a) { if (['up', 'down', 'left', 'right'].includes(a)) this.move(a); },
+  act(a) { if (['up', 'down', 'left', 'right'].includes(a)) this.move(a); if (a === 'help') this.help(); },
   move(dir) {
     if (cur.busy) return;
     const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
@@ -1876,6 +1890,7 @@ document.addEventListener('keydown', e => {
   if (screen === 'game' && cur?.zone.id === 'maze' && !cur.picking && ARROWS[e.key]) {
     e.preventDefault(); if (!e.repeat) G.maze.press(ARROWS[e.key]); return;
   }
+  if (screen === 'game' && cur?.zone.id === 'maze' && cur.level === 3 && !cur.picking && e.key.toLowerCase() === 'h') { G.maze.help(); return; }
   // Everywhere else in a game, arrows move the highlight between choices; Enter picks.
   if (screen === 'game' && ARROWS[e.key] && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
     const list = [...document.querySelectorAll('#stage .pick, #stage .swimmer, #stage .mcard:not(.got), #stage .lt:not(.used), #controls button')].filter(b => b.offsetParent);
