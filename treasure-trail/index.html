@@ -406,7 +406,10 @@ body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4
 .intro svg{position:absolute;inset:0;width:100%;height:100%}
 .intro .bob{animation:bob2 3s ease-in-out infinite;transform-origin:50% 100%}
 .intro .waves{animation:drift 2.4s linear infinite}
-.intro .lift{animation:lift 2.8s ease-in forwards;transform-origin:50% 40%}
+/* The buddy stood at the bottom edge and the zoom grew from 40% down, so on a
+   wide screen it was cropped and then pushed off. It stands higher now, the
+   picture crops from the sky instead of the deck, and the zoom grows from the deck. */
+.intro .lift{animation:lift 2.8s ease-in forwards;transform-origin:50% 80%}
 @keyframes bob2{0%,100%{transform:rotate(-.8deg)}50%{transform:rotate(.8deg) translateY(-6px)}}
 @keyframes drift{to{transform:translateX(-60px)}}
 @keyframes lift{0%,60%{transform:none}100%{transform:scale(1.25) translateY(-40px)}}
@@ -825,7 +828,7 @@ const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 function introSVG(buddy) {
   let planks = '';
   for (let i = -3; i <= 3; i++) planks += `<line x1="${500 + i * 18}" y1="430" x2="${500 + i * 120}" y2="640" stroke="#7a4b23" stroke-width="3"/>`;
-  return `<svg viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  return `<svg viewBox="0 0 1000 625" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
     <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fc4f5"/><stop offset="1" stop-color="#d8f0ff"/></linearGradient>
       <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6cc0ea"/><stop offset="1" stop-color="#2f7fbf"/></linearGradient></defs>
     <g class="lift">
@@ -838,7 +841,7 @@ function introSVG(buddy) {
         <path d="M120 640 L430 425 L570 425 L880 640 Z" fill="#b97a3e"/>${planks}
         <path d="M430 425 L500 380 L570 425" fill="#b97a3e" stroke="#7a4b23" stroke-width="4"/>
         <path d="M120 640 L430 425 M880 640 L570 425" stroke="#5a3417" stroke-width="10" stroke-linecap="round"/>
-        <text x="500" y="600" font-size="110" text-anchor="middle">${buddy}</text>
+        <text x="500" y="535" font-size="100" text-anchor="middle">${buddy}</text>
       </g>
     </g></svg>`;
 }
