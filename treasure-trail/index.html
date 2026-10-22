@@ -224,6 +224,23 @@ body.ingame #s-game{padding-top:16px}
 @keyframes trot{to{transform:translateY(-4px)}}
 @keyframes gallop{50%{translate:0 -5px}}
 
+/* Level picker */
+.picker{background:#fffdf7;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:20px;align-content:start}
+.pick{background:#fff;border:3px solid #dfe6ef;border-radius:20px;padding:18px;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow);min-height:120px}
+.pick b{font-size:22px}
+.pick span{color:var(--soft);font-size:16px}
+.pick em{font-style:normal;font-weight:800;color:#b45309}
+.pick small{color:var(--soft)}
+.pick.rec{border-color:var(--gold)}
+/* Arrow keys move a big highlight between choices (for kids still learning the touchpad) */
+.pick:focus-visible,.swimmer:focus-visible,.mcard:focus-visible,.choice:focus-visible,#controls .btn:focus-visible,.lt:focus-visible{outline:6px solid #ffc93c;outline-offset:4px;border-radius:18px}
+
+/* Train Maze */
+.mazebox{background:#9edc85;display:flex;justify-content:center;align-items:center;padding:10px}
+.mazebox canvas{display:block;border-radius:14px}
+.pad{display:grid;grid-template-columns:64px 64px 64px;gap:6px;justify-content:center}
+.pad .btn{height:58px;font-size:24px;padding:0}
+
 /* Letter Train */
 .rail{background:linear-gradient(#fff6e5 0 72%,#c9e9b8 72%);min-height:300px}
 .track{position:absolute;left:0;right:0;bottom:52px;height:12px;border-top:5px solid #6b7b8f;background:repeating-linear-gradient(90deg,#8a6a4a 0 18px,transparent 18px 34px)}
@@ -427,7 +444,7 @@ body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4
   <div class="gamebar">
     <button class="btn back" data-go="map" aria-label="Back to the island"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5 7.5 12l7 7M8 12h10"/></svg></button>
     <h2 id="gTitle"></h2>
-    <button class="btn lvlbtn" id="lvlBtn" aria-expanded="false" aria-controls="levels">⭐<span class="long" id="lvlName"></span> ▾</button>
+    <button class="btn lvlbtn" id="lvlBtn" aria-label="Pick a level">⭐<span class="long" id="lvlName"></span></button>
   </div>
   <button class="btn round hear" id="hearBtn" aria-label="Hear it again">🔊</button>
   <div class="levels" id="levels" hidden></div>
@@ -517,14 +534,15 @@ const ISLANDS = [
   { id: 'science', shape: 'M160 340C140 220 250 120 400 105C520 95 600 140 680 120C760 100 860 60 930 70C880 110 830 150 820 210C860 280 870 380 800 460C720 540 600 570 480 568C340 566 200 500 160 340Z', name: 'Science Island', icon: '🚀', x: 500, y: 100, land: '#a9d7c8' },
 ];
 const PLACES = [
-  { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
-  { id: 'spell', island: 'word', minAge: 6, icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
-  { id: 'fetch', island: 'word', minAge: 6, icon: '🐕', name: 'Corgi Fetch', x: 650, y: 410, levels: ['My spelling words', 'Practice words'] },
+  { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'], about: ['Tap a letter and hear its name', 'Find the letter you hear', 'Which letter does the word start with?', 'Match big and little letters'] },
+  { id: 'spell', island: 'word', minAge: 6, icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'], about: ['Hear your word, then type it', 'Build your word from letter tiles', 'See and change your word list'] },
+  { id: 'fetch', island: 'word', minAge: 6, icon: '🐕', name: 'Corgi Fetch', x: 650, y: 410, levels: ['My spelling words', 'Practice words'], about: ['Spell your words and the corgi fetches', 'Spell practice words'] },
   { id: 'story', island: 'word', icon: '📚', name: 'Story Tree', x: 330, y: 430, soon: true },
-  { id: 'tower', island: 'number', icon: '🧱', name: 'Block Tower', x: 450, y: 280, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
+  { id: 'tower', island: 'number', icon: '🧱', name: 'Block Tower', x: 450, y: 280, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'], about: ['Stack blocks up to 5', 'Stack blocks up to 10', 'Count two colors together', 'Take blocks away and count'] },
   { id: 'patterns', island: 'number', icon: '🔷', name: 'Patterns', x: 660, y: 390, soon: true },
-  { id: 'train', island: 'keys', minAge: 5, icon: '🚂', name: 'Letter Train', x: 520, y: 300, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
-  { id: 'memory', island: 'puzzle', icon: '🃏', name: 'Memory Match', x: 440, y: 280, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
+  { id: 'train', island: 'keys', minAge: 5, icon: '🚂', name: 'Letter Train', x: 520, y: 300, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'], about: ['Type F and J', 'Type the middle row', 'Type more keys', 'Type short words', 'Type your spelling words'] },
+  { id: 'maze', island: 'keys', icon: '🛤️', name: 'Train Maze', x: 300, y: 330, levels: ['Drive around', 'Find the letter', 'Find the number'], about: ['Drive the train and pick up letters and numbers', 'Find the letter you hear', 'Find the number you hear'] },
+  { id: 'memory', island: 'puzzle', icon: '🃏', name: 'Memory Match', x: 440, y: 280, levels: ['4 cards', '8 cards', '12 cards', '20 cards'], about: ['Find 2 pairs', 'Find 4 pairs', 'Find 6 pairs', 'Find 10 pairs'] },
   { id: 'jigsaw', island: 'puzzle', icon: '🧩', name: 'Jigsaw', x: 660, y: 390, soon: true },
   { id: 'space', island: 'science', icon: '🚀', name: 'Space Lab', x: 440, y: 270, soon: true },
   { id: 'whoami', island: 'science', icon: '🦉', name: 'Who Am I?', x: 660, y: 380, soon: true },
@@ -973,19 +991,39 @@ $('#shelf').onclick = e => { const it = e.target.closest('[data-n]'); if (it) { 
 // ---------- Game frame ----------
 // The first visit to a place starts at a level that fits the player's age.
 // Nothing is locked and no grade is shown; this only saves a few taps.
-const START_AGES = { pond: [4, 5, 6], tower: [4, 6, 7], train: [6, 8, 10], memory: [4, 6, 9] };
+const START_AGES = { pond: [4, 5, 6], tower: [4, 6, 7], train: [6, 8, 10], memory: [4, 6, 9], maze: [4, 5] };
 const startLevel = (id, age) => age ? (START_AGES[id] || []).filter(a => age >= a).length : 0;
 const G = {};
-function openGame(id, level) {
-  const z = PLACES.find(p => p.id === id), p = player();
-  if (level == null) level = p.last[id] ?? startLevel(id, p.age);
-  p.last[id] = level; persist();
-  cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
+function clearStage(z) {
   $('#gTitle').textContent = `${z.icon} ${z.name}`;
-  const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null;
+  const st = $('#stage'); st.className = 'stage'; st.innerHTML = ''; st.onclick = null; st.onfocusin = null;
   st.after($('#controls')); st.style.gridTemplateColumns = ''; st.style.height = ''; st.onpointerdown = st.onpointermove = st.onpointerup = st.onpointercancel = st.onsubmit = null;
   scrollTo(0, 0);
   $('#controls').innerHTML = ''; $('#prompt').innerHTML = '';
+}
+// Decided 22 Oct: every game opens on a picker with one big card per level,
+// the one that fits the player's age already highlighted. Arrow keys and Enter
+// work, and each card is read aloud as you land on it.
+function showPicker(id) {
+  const z = PLACES.find(p => p.id === id), p = player();
+  const rec = Math.min(p.age ? startLevel(id, p.age) : (p.last[id] ?? 0), z.levels.length - 1);
+  cur = { zone: z, level: rec, picking: true, step: 0, total: 0, busy: false, misses: 0 };
+  clearStage(z);
+  $('#lvlName').textContent = '';
+  setPrompt('Pick a game', '', true);
+  const st = $('#stage'); st.classList.add('picker');
+  st.innerHTML = z.levels.map((n, i) => `<button class="pick${i === rec ? ' rec' : ''}" data-lv="${i}"><b>${n}</b><span>${z.about?.[i] || ''}</span>${i === rec ? '<em>⭐ Just right</em>' : ''}${p.done[z.id + i] ? `<small>Played ${p.done[z.id + i]}×</small>` : ''}</button>`).join('');
+  st.onclick = e => { const b = e.target.closest('[data-lv]'); if (b) openGame(id, +b.dataset.lv); };
+  st.onfocusin = e => { const b = e.target.closest('[data-lv]'); if (b) say(`${z.levels[+b.dataset.lv]}. ${z.about?.[+b.dataset.lv] || ''}`); };
+  show('game'); drawDots();
+  setTimeout(() => $('#stage .pick.rec')?.focus(), 60);
+}
+function openGame(id, level) {
+  if (level == null) return showPicker(id);
+  const z = PLACES.find(p => p.id === id), p = player();
+  p.last[id] = level; persist();
+  cur = { zone: z, level, step: 0, total: 8, busy: false, misses: 0 };
+  clearStage(z);
   $('#controls').onclick = e => { const b = e.target.closest('[data-a]'); if (b && cur && G[id].act) G[id].act(b.dataset.a, b); };
   renderLevels();
   show('game');
@@ -1000,7 +1038,7 @@ function renderLevels() {
 }
 $('#levels').onclick = e => { const b = e.target.closest('[data-lv]'); if (b && cur) openGame(cur.zone.id, +b.dataset.lv); };
 // The levels stay folded under one button until someone wants to change level.
-$('#lvlBtn').onclick = () => { const l = $('#levels'); l.hidden = !l.hidden; $('#lvlBtn').setAttribute('aria-expanded', String(!l.hidden)); };
+$('#lvlBtn').onclick = () => { if (cur) showPicker(cur.zone.id); };
 // On a computer, the top bar comes back while the mouse is at the top of the screen.
 $('#hotzone').onmouseenter = () => $('#topbar').classList.add('peek');
 $('#topbar').onmouseleave = () => $('#topbar').classList.remove('peek');
@@ -1103,7 +1141,7 @@ G.pond = {
     }
     if (L === cur.target) {
       cur.busy = true; d.classList.remove('hint'); d.classList.add('yay'); sfx.bloop(); setTimeout(sfx.good, 150); cheer();
-      say(l === 2 ? `Yes! ${LETTERS[L][0]} starts with ${ln(L)}!` : l === 3 ? `Yes! Little ${ln(L)}!` : `Yes! ${ln(L)}!`);
+      say(l === 2 ? `${LETTERS[L][0]} starts with ${ln(L)}.` : l === 3 ? `Little ${ln(L)}.` : `${ln(L)}.`);   // just the letter, no "good job" (22 Oct)
       if (!stepDone()) setTimeout(() => { if (alive(c)) this.next(); }, 1500);
     } else {
       cur.misses++; cur.missHere++;
@@ -1153,6 +1191,7 @@ G.tower = {
       const n = randInt(3, 10), k = randInt(1, Math.min(5, n - 1));
       Object.assign(cur, { n: n - k, k, taken: 0, start: n });
       for (let i = 0; i < n; i++) this.brick(BRICK_COLORS[i % 6]);
+      $('#controls').innerHTML = '<button class="btn big" data-a="takeaway">➖ Take one away</button>';
       setPrompt(`${n} take away ${k}<span class="hint">Drag ${k} ${k === 1 ? 'block' : 'blocks'} off the top, or tap the tower. Then tap how many are left.</span>`, `There are ${n} blocks. Tap the tower to take away ${k}.`);
     }
     requestAnimationFrame(() => this.fit());
@@ -1236,19 +1275,20 @@ G.tower = {
   },
   act(a, btn) {
     if (cur.busy) return;
+    if (a === 'takeaway') { const top = this.bricks().at(-1); if (top && cur.taken < cur.k) this.tapBrick(top); return; }
     const l = cur.level, c = this.bricks().length;
     if (a === 'add') {
       if (c >= 10) return say('That is as tall as it goes!');
       this.brick(BRICK_COLORS[c % 6]); sfx.pop(); say(String(c + 1)); this.showCount();
-      if (l === 0 && c + 1 === cur.n) setTimeout(() => this.win(`${cur.n}! You built ${cur.n}!`), 500);
+      if (l === 0 && c + 1 === cur.n) setTimeout(() => this.win(`${cur.n} blocks.`), 500);
     } else if (a === 'take') {
       if (!c) return;
       this.bricks().at(-1).remove(); sfx.pop(); say(c - 1 ? String(c - 1) : 'Zero'); this.showCount();
     } else if (a === 'done') {
-      if (c === cur.n) this.win(`Yes! ${cur.n} blocks!`);
+      if (c === cur.n) this.win(`${cur.n} blocks.`);
       else { sfx.oops(); cur.misses++; say(`You have ${c}. We need ${cur.n}. ${c > cur.n ? 'Take some off.' : 'Add some more.'}`); }
     } else if (a === 'pick') {
-      if (+btn.dataset.v === cur.n) { btn.classList.add('right'); this.win(`Yes! ${cur.n}!`); }
+      if (+btn.dataset.v === cur.n) { btn.classList.add('right'); this.win(`${cur.n}.`); }
       else { btn.classList.add('wrong'); sfx.oops(); cur.misses++; this.countAlong(); }
     }
   },
@@ -1292,7 +1332,7 @@ G.memory = {
     const [a, b] = cur.open; cur.open = [];
     if (cur.deck[+a.dataset.i][0] === cur.deck[+b.dataset.i][0]) {
       a.classList.add('got'); b.classList.add('got');
-      setTimeout(() => { if (!alive(c)) return; sfx.good(); cheer(); say(`A match! Two ${plural(n)}!`); }, 450);
+      setTimeout(() => { if (!alive(c)) return; sfx.good(); cheer(); say(`Two ${plural(n)}.`); }, 450);
       if (stepDone()) cur.sub = `You found all ${cur.total} pairs in ${cur.tries} tries.`;
     } else {
       // A miss just turns both back over. No buzzer, nothing lost.
@@ -1553,6 +1593,124 @@ G.fetch = {
   list() { return player().words.list; },
 };
 
+// ---------- Train Maze (arrow keys) ----------
+// Built 22 Oct for the youngest, who's learning the arrow keys: drive the train
+// around a track and pick up letters and numbers. Each one is said aloud and
+// hooks on as a new car. Nothing to lose, no timer.
+const MAZE = [
+  "###############",
+  "#.....#.......#",
+  "#.###.#.#####.#",
+  "#.............#",
+  "#.#.###.###.#.#",
+  "#.#.........#.#",
+  "#.###.#.#.###.#",
+  "#.....#.#.....#",
+  "###############",
+];
+const MZW = 15, MZH = 9;
+const mzOpen = (x, y) => MAZE[y]?.[x] === '.';
+const CAR_COLORS = ['#ef5b5b', '#4a90e2', '#ffc93c', '#3fb37f', '#9b6ee8', '#f59a3a'];
+G.maze = {
+  start(l) {
+    const st = $('#stage'); st.classList.add('mazebox');
+    st.innerHTML = '<canvas id="mz" aria-label="Train maze"></canvas>';
+    $('#controls').innerHTML = `<div class="pad"><span></span><button class="btn" data-a="up" aria-label="Up">▲</button><span></span>
+      <button class="btn" data-a="left" aria-label="Left">◀</button><button class="btn" data-a="down" aria-label="Down">▼</button><button class="btn" data-a="right" aria-label="Right">▶</button></div>`;
+    Object.assign(cur, { total: l === 0 ? 8 : 6, x: 1, y: 1, px: 1, py: 1, face: 1, trail: [[1, 1]], cars: [], items: [], held: null, next: 0 });
+    this.fill();
+    if (l === 0) setPrompt('Drive the train<span class="hint">Use the arrow keys</span>', 'Drive the train with the arrow keys.');
+    else this.newTarget();
+    this.fit();
+    const c = cur, f = t => { if (!alive(c)) return; this.tick(t); this.draw(); requestAnimationFrame(f); };
+    requestAnimationFrame(f);
+  },
+  pool() { return cur.level === 1 ? ALPHA : cur.level === 2 ? ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] : [...ALPHA.slice(0, 10), '1', '2', '3', '4', '5']; },
+  freeTile() {
+    for (let i = 0; i < 200; i++) {
+      const x = randInt(1, MZW - 2), y = randInt(1, MZH - 2);
+      if (mzOpen(x, y) && !(x === cur.x && y === cur.y) && Math.abs(x - cur.x) + Math.abs(y - cur.y) > 2 && !cur.items.some(it => it.x === x && it.y === y)) return [x, y];
+    }
+    return null;
+  },
+  addItem(v) {
+    const t = this.freeTile(); if (!t) return;
+    const vals = this.pool().filter(p => !cur.items.some(it => it.v === p));
+    cur.items.push({ x: t[0], y: t[1], v: v ?? rand(vals), c: rand(CAR_COLORS) });
+  },
+  fill() { while (cur.items.length < 6) this.addItem(); },
+  newTarget() {
+    if (!cur.items.length) this.fill();
+    cur.target = rand(cur.items).v;
+    const name = /\d/.test(cur.target) ? cur.target : ln(cur.target);
+    setPrompt(`Find <span class="big">${cur.target}</span>`, `Find ${name}.`);
+  },
+  fit() {
+    const cv = $('#mz'), st = $('#stage');
+    const w = st.clientWidth - 20, room = Math.max(220, innerHeight - st.getBoundingClientRect().top - 190);
+    const T = Math.floor(Math.min(w / MZW, room / MZH));
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    cv.style.width = T * MZW + 'px'; cv.style.height = T * MZH + 'px';
+    cv.width = T * MZW * dpr; cv.height = T * MZH * dpr; this.T = T * dpr;
+  },
+  // In Drive around, each press says its direction, so the word goes with the move
+  // (22 Oct: up, down, left and right are exactly the youngest's age group).
+  press(dir) { if (cur.level === 0) say(dir[0].toUpperCase() + dir.slice(1) + '!'); cur.held = dir; this.move(dir); cur.next = performance.now() + 260; },
+  release() { cur.held = null; },
+  act(a) { if (['up', 'down', 'left', 'right'].includes(a)) this.move(a); },
+  move(dir) {
+    if (cur.busy) return;
+    const [dx, dy] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
+    if (dx) cur.face = dx;
+    if (!mzOpen(cur.x + dx, cur.y + dy)) return;
+    cur.x += dx; cur.y += dy; sfx.chug();
+    cur.trail.unshift([cur.x, cur.y]); cur.trail.length = Math.min(cur.trail.length, 12);
+    const i = cur.items.findIndex(it => it.x === cur.x && it.y === cur.y);
+    if (i >= 0) this.pick(i);
+  },
+  pick(i) {
+    const it = cur.items[i], name = /\d/.test(it.v) ? it.v : ln(it.v);
+    if (cur.level > 0 && it.v !== cur.target) { sfx.pop(); return say(`${name}.`); }   // not the one: just its name
+    cur.items.splice(i, 1); cur.cars.unshift({ v: it.v, c: it.c }); cur.cars.length = Math.min(cur.cars.length, 10);
+    sfx.bloop(); cheer(); say(`${name}.`);
+    if (stepDone()) { cur.sub = `Your train has ${cur.cars.length} cars!`; return; }
+    this.addItem();
+    if (cur.level > 0) setTimeout(() => this.newTarget(), 900);
+  },
+  tick(t) {
+    if (cur.held && t >= cur.next) { this.move(cur.held); cur.next = t + 220; }
+    cur.px += (cur.x - cur.px) * .35; cur.py += (cur.y - cur.py) * .35;
+  },
+  draw() {
+    const cv = $('#mz'); if (!cv) return;
+    const g = cv.getContext('2d'), T = this.T;
+    for (let y = 0; y < MZH; y++) for (let x = 0; x < MZW; x++) {
+      if (MAZE[y][x] === '#') { g.fillStyle = '#7fc96b'; g.fillRect(x * T, y * T, T, T); }
+      else {
+        g.fillStyle = '#efdcb0'; g.fillRect(x * T, y * T, T, T);
+        g.fillStyle = '#c9a46e';
+        for (let k = 1; k < 4; k++) {
+          if (mzOpen(x - 1, y) || mzOpen(x + 1, y)) g.fillRect(x * T + k * T / 4 - T * .03, y * T + T * .25, T * .06, T * .5);
+          if (mzOpen(x, y - 1) || mzOpen(x, y + 1)) g.fillRect(x * T + T * .25, y * T + k * T / 4 - T * .03, T * .5, T * .06);
+        }
+      }
+    }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    cur.items.forEach(it => {
+      g.fillStyle = it.c; g.beginPath(); g.arc((it.x + .5) * T, (it.y + .5) * T, T * .36, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.font = `800 ${T * .44}px Lexend, Verdana, sans-serif`; g.fillText(it.v, (it.x + .5) * T, (it.y + .53) * T);
+    });
+    cur.cars.forEach((car, i) => {
+      const at = cur.trail[i + 1]; if (!at) return;
+      g.fillStyle = car.c; g.beginPath(); g.roundRect ? g.roundRect(at[0] * T + T * .12, at[1] * T + T * .18, T * .76, T * .64, T * .12) : g.rect(at[0] * T + T * .12, at[1] * T + T * .18, T * .76, T * .64); g.fill();
+      g.fillStyle = '#fff'; g.font = `800 ${T * .38}px Lexend, Verdana, sans-serif`; g.fillText(car.v, (at[0] + .5) * T, (at[1] + .52) * T);
+    });
+    // the engine emoji faces left; mirror it when driving right
+    g.save(); g.translate((cur.px + .5) * T, (cur.py + .5) * T); if (cur.face > 0) g.scale(-1, 1);
+    g.font = `${T * .85}px sans-serif`; g.fillText('🚂', 0, T * .05); g.restore();
+  },
+};
+
 // The on-screen keyboard, shared by Letter Train and Corgi Fetch.
 const kbHtml = () => '<div class="kb">' + ['qwertyuiop', 'asdfghjkl;', 'zxcvbnm,./'].map((r, ri) =>
       `<div class="kbrow" style="margin-left:${ri * 22}px">${[...r].map(c => `<div class="k f-${FINGER[c]}${ri === 1 && c !== 'g' && c !== 'h' ? ' home' : ''}${c === 'f' || c === 'j' ? ' bump' : ''}" data-a="key" data-k="${c}">${c}</div>`).join('')}</div>`).join('') +
@@ -1644,13 +1802,27 @@ document.addEventListener('keydown', e => {
     if ((k === 'Enter' || k === ' ') && W.near) { e.preventDefault(); atSea() ? landOn(W.near.id) : enterPlace(W.near.id); }
     return;
   }
+  const ARROWS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+  if (screen === 'game' && cur?.zone.id === 'maze' && !cur.picking && ARROWS[e.key]) {
+    e.preventDefault(); if (!e.repeat) G.maze.press(ARROWS[e.key]); return;
+  }
+  // Everywhere else in a game, arrows move the highlight between choices; Enter picks.
+  if (screen === 'game' && ARROWS[e.key] && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+    const list = [...document.querySelectorAll('#stage .pick, #stage .swimmer, #stage .mcard:not(.got), #stage .lt:not(.used), #controls button')].filter(b => b.offsetParent);
+    if (list.length) {
+      e.preventDefault();
+      const i = list.indexOf(document.activeElement), back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+      list[i < 0 ? 0 : (i + (back ? -1 : 1) + list.length) % list.length].focus();
+      return;
+    }
+  }
   if (screen === 'game' && (cur?.zone.id === 'train' || cur?.zone.id === 'fetch') && !cur.busy && e.key.length === 1) {
     e.preventDefault(); G[cur.zone.id].key(e.key.toLowerCase());
   }
 });
-document.addEventListener('keyup', e => { W.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
+document.addEventListener('keyup', e => { W.keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; if (cur?.zone?.id === 'maze' && e.key.startsWith('Arrow')) G.maze.release(); });
 window.addEventListener('blur', () => { W.keys = {}; });
-window.addEventListener('resize', () => { if (screen === 'game' && cur?.zone.id === 'tower') G.tower.fit(); });
+window.addEventListener('resize', () => { if (screen === 'game' && cur?.zone.id === 'tower') G.tower.fit(); if (screen === 'game' && cur?.zone.id === 'maze' && !cur.picking) G.maze.fit(); });
 
 document.querySelector('.credit').innerHTML = rubberDuckSVG();
 $('#homeDuck').innerHTML = rubberDuckSVG();
