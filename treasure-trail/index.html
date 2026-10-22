@@ -57,7 +57,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 .pcard{background:var(--card);border-radius:26px;box-shadow:var(--shadow);padding:26px 16px;text-align:center;position:relative;cursor:pointer}
 .pcard .buddy{font-size:96px;line-height:1.1}
 .pcard .name{font-size:30px;font-weight:800}
-.pcard .edit{position:absolute;top:10px;right:10px;border-radius:999px;background:#eef2f8;font-size:17px;padding:6px 12px;font-weight:600}
+/* Just the pencil (22 Oct): the word Change crowded the buddy. It keeps a label for screen readers. */
+.pcard .edit{position:absolute;top:10px;right:10px;border-radius:999px;background:#eef2f8;font-size:20px;width:44px;height:44px;display:grid;place-items:center;padding:0}
 .pcard.add{background:#f1f5fa}
 
 /* The world */
@@ -686,10 +687,10 @@ function showWho() {
   $('#playerBtn').hidden = true;
   $('#players').innerHTML = save.players.map((p, i) => `
     <div class="pcard" data-i="${i}">
-      <button class="edit" data-edit="${i}">✏️ Change</button>
+      <button class="edit" data-edit="${i}" aria-label="Change ${esc(p.name)}" title="Change">✏️</button>
       <div class="buddy">${p.buddy}</div>
       <div class="name">${esc(p.name)}</div>
-      <div class="soft">✨ ${p.shinies.length} treasures</div>
+      <div class="soft">✨ ${p.shinies.length} ${p.shinies.length === 1 ? 'treasure' : 'treasures'}</div>
     </div>`).join('') +
     `<div class="pcard add" data-edit="-1"><div class="buddy">➕</div><div class="name">Add a player</div></div>`;
   show('who');
