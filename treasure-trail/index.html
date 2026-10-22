@@ -361,6 +361,37 @@ body.ingame #s-game{padding-top:16px}
 @keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--spin))}}
 @keyframes rise{to{transform:translate(var(--dx),-130vh)}}
 
+/* Decided 22 Oct: the world fills the whole page, like being in the game.
+   The top bar and the island name float over the water. */
+body.onmap{overflow:hidden}
+body.onmap .top{position:fixed;top:0;left:0;right:0;z-index:15;background:none;pointer-events:none}
+body.onmap .top > *{pointer-events:auto}
+body.onmap .top h1{visibility:hidden}
+body.onmap #s-map{position:fixed;inset:0;max-width:none;padding:0;margin:0}
+body.onmap .world{position:absolute;inset:0;aspect-ratio:auto;border-radius:0;box-shadow:none}
+body.onmap .worldbar{position:fixed;top:64px;left:0;right:0;z-index:14;flex-direction:column;align-items:center;gap:4px;margin:0;pointer-events:none}
+body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4px 18px;font-size:22px;box-shadow:var(--shadow)}
+body.onmap #walkHint{background:rgba(255,253,247,.8);border-radius:999px;padding:1px 12px;font-size:14px}
+body.onmap #toSea{position:fixed;right:16px;bottom:16px;pointer-events:auto}
+
+/* The sailing intro (after picking a player) and the island landing */
+.intro,.landing{position:fixed;inset:0;z-index:30;overflow:hidden;cursor:pointer;transition:opacity .6s}
+.intro.out,.landing.out{opacity:0}
+.intro svg{position:absolute;inset:0;width:100%;height:100%}
+.intro .bob{animation:bob2 3s ease-in-out infinite;transform-origin:50% 100%}
+.intro .waves{animation:drift 2.4s linear infinite}
+.intro .lift{animation:lift 2.8s ease-in forwards;transform-origin:50% 40%}
+@keyframes bob2{0%,100%{transform:rotate(-.8deg)}50%{transform:rotate(.8deg) translateY(-6px)}}
+@keyframes drift{to{transform:translateX(-60px)}}
+@keyframes lift{0%,60%{transform:none}100%{transform:scale(1.25) translateY(-40px)}}
+.introText,.landText{position:absolute;left:0;right:0;text-align:center;font-weight:800;color:#fff;text-shadow:0 3px 0 rgba(35,50,74,.35),0 0 18px rgba(35,50,74,.35)}
+.introText{top:12%;font-size:clamp(28px,6vw,56px)}
+.skip{position:absolute;right:16px;bottom:14px;color:#fff;font-size:15px;opacity:.85}
+.landing{background:linear-gradient(#8fd3f5,#5fb4e6);display:flex;align-items:center;justify-content:center}
+.landing svg{width:70%;max-height:80%;overflow:visible;animation:zoomIn 1.25s ease-in forwards}
+.landText{top:42%;font-size:clamp(30px,7vw,64px)}
+@keyframes zoomIn{from{transform:scale(.3)}to{transform:scale(2.4)}}
+
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}.party{display:none}}
 </style>
 </head>
@@ -555,7 +586,22 @@ function tone(freq, dur = .15, type = 'sine', when = 0, vol = .15, slideTo) {
     o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
   } catch (e) { }
 }
+function noise(sec, shape, filt = 700, vol = .12) {
+  if (!save.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const n = Math.floor(ac.sampleRate * sec), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), t = ac.currentTime;
+    src.buffer = b; f.type = 'lowpass'; f.frequency.setValueAtTime(filt, t);
+    shape(g.gain, f.frequency, t, vol);
+    src.connect(f).connect(g).connect(ac.destination); src.start(t); src.stop(t + sec);
+  } catch (e) { }
+}
 const sfx = {
+  waves(sec = 3) { noise(sec, (g, f, t, v) => { g.setValueAtTime(0, t); g.linearRampToValueAtTime(v, t + sec * .35); g.linearRampToValueAtTime(v * .35, t + sec * .6); g.linearRampToValueAtTime(v * .8, t + sec * .8); g.linearRampToValueAtTime(0, t + sec); }); },
+  gull(when = 0) { tone(1500, .2, 'sine', when, .035, 950); tone(1450, .22, 'sine', when + .26, .035, 900); },
+  splash() { noise(1, (g, f, t, v) => { g.setValueAtTime(v * 1.4, t); g.exponentialRampToValueAtTime(.001, t + 1); f.setValueAtTime(2400, t); f.exponentialRampToValueAtTime(300, t + 1); }); },
   good() { tone(660, .12, 'triangle'); tone(990, .22, 'triangle', .1); },
   oops() { tone(240, .18, 'sine', 0, .12, 180); },
   quack() { tone(520, .12, 'sawtooth', 0, .05, 300); },
@@ -570,6 +616,7 @@ let screen = 'who', cur = null;
 function show(name) {
   screen = name;
   document.body.classList.toggle('ingame', name === 'game' || name === 'shelf');
+  document.body.classList.toggle('onmap', name === 'map');
   $('#topbar').classList.remove('peek');
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + name));
   W.keys = {};
@@ -604,7 +651,7 @@ $('#players').onclick = e => {
   save.current = +c.dataset.i; persist();
   // A player still called "Player 2" hasn't been set up yet: ask who they are first.
   if (!player().setup) return openEdit(save.current, true);
-  say(`Hi ${player().name}! Where do you want to go?`); showMap();
+  startVoyage();
 };
 
 let editing = null, pickedBuddy = null, pickedAge = null, playAfter = false;
@@ -627,7 +674,7 @@ $('#eSave').onclick = () => {
   if (editing >= 0) Object.assign(save.players[editing], { name, buddy: pickedBuddy, age: pickedAge, setup: true });
   else save.players.push(newPlayer(name, pickedBuddy, pickedAge, true));
   persist(); $('#edit').classList.remove('on');
-  if (playAfter) { say(`Hi ${name}! Where do you want to go?`); showMap(); } else showWho();
+  if (playAfter) startVoyage(); else showWho();
 };
 $('#eCancel').onclick = () => $('#edit').classList.remove('on');
 $('#eName').onkeydown = e => { if (e.key === 'Enter') $('#eSave').click(); };
@@ -689,6 +736,12 @@ function inLand(x, y) {
   return g.isPointInFill(pt);
 }
 
+// Picking a player starts at sea, with the deck intro over it (22 Oct).
+function startVoyage() {
+  W.view = 'sea'; W.x = 500; W.y = 470; W.tx = null; W.enter = null;
+  W.lock = true; showMap();
+  intro(player()).then(() => { W.lock = false; });
+}
 function showMap() {
   cur = null;
   const p = player();
@@ -736,14 +789,69 @@ function renderWorld() {
   drawWorld(false);
 }
 
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// The deck of the ship, the sea ahead and an island on the horizon (an old-game intro).
+function introSVG(buddy) {
+  let planks = '';
+  for (let i = -3; i <= 3; i++) planks += `<line x1="${500 + i * 18}" y1="430" x2="${500 + i * 120}" y2="640" stroke="#7a4b23" stroke-width="3"/>`;
+  return `<svg viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fc4f5"/><stop offset="1" stop-color="#d8f0ff"/></linearGradient>
+      <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6cc0ea"/><stop offset="1" stop-color="#2f7fbf"/></linearGradient></defs>
+    <g class="lift">
+      <rect width="1000" height="300" fill="url(#sky)"/>
+      <circle cx="800" cy="95" r="46" fill="#ffe27a"/>
+      <rect y="290" width="1000" height="335" fill="url(#sea)"/>
+      <path d="M560 293 q30 -26 60 -6 q24 -14 46 4 q10 6 -6 6 h-96z" fill="#9edc85"/>
+      <g class="waves" opacity=".55">${Array.from({ length: 14 }, (_, i) => `<path d="M${i * 90 - 40} ${330 + (i % 4) * 60} q15 -9 30 0 t30 0" stroke="#fff" stroke-width="3" fill="none"/>`).join('')}</g>
+      <g class="bob">
+        <path d="M120 640 L430 425 L570 425 L880 640 Z" fill="#b97a3e"/>${planks}
+        <path d="M430 425 L500 380 L570 425" fill="#b97a3e" stroke="#7a4b23" stroke-width="4"/>
+        <path d="M120 640 L430 425 M880 640 L570 425" stroke="#5a3417" stroke-width="10" stroke-linecap="round"/>
+        <text x="500" y="600" font-size="110" text-anchor="middle">${buddy}</text>
+      </g>
+    </g></svg>`;
+}
+function intro(p) {
+  return new Promise(done => {
+    const el = document.createElement('div'); el.className = 'intro'; el.setAttribute('role', 'presentation');
+    el.innerHTML = introSVG(p.buddy) + `<div class="introText">Ready to sail, ${esc(p.name)}?</div><div class="skip">Tap to skip</div>`;
+    document.body.appendChild(el);
+    sfx.waves(3); sfx.gull(.7); say(`Ready to sail, ${p.name}?`);
+    let gone = false;
+    const end = () => { if (gone) return; gone = true; el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 600); };
+    el.onclick = end; setTimeout(end, calm() ? 900 : 2800);
+  });
+}
+// Sailing into an island: its outline rushes up with a splash, then you look down on it.
+function landing(isl) {
+  return new Promise(done => {
+    const el = document.createElement('div'); el.className = 'landing'; el.style.setProperty('--land', isl.land);
+    el.innerHTML = `<svg viewBox="0 0 1000 625" aria-hidden="true">${coast(isl.shape)}</svg><div class="landText">${isl.icon} ${isl.name}</div>`;
+    document.body.appendChild(el); sfx.splash();
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 500); }, calm() ? 350 : 1150);
+  });
+}
+function setSail() {
+  return new Promise(done => {
+    const el = document.createElement('div'); el.className = 'landing';
+    el.innerHTML = `<div class="landText">⛵ Setting sail</div>`;
+    document.body.appendChild(el); sfx.waves(1.4);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 500); }, calm() ? 250 : 650);
+  });
+}
+
 function landOn(id) {
   W.view = id; [W.x, W.y] = [DOCK.x, DOCK.y - 100]; W.tx = null; W.enter = null;
-  renderWorld(); say(island().name);
+  W.lock = true; renderWorld();                 // drawn underneath while the landing plays
+  landing(island()).then(() => { W.lock = false; });
+  say(island().name);
 }
 function goSea() {
   const isl = island(); W.view = 'sea';
   W.x = isl.x; W.y = Math.min(isl.y + 95, 600); W.tx = null; W.enter = null;
-  renderWorld(); say('Where do you want to sail?');
+  W.lock = true; renderWorld();
+  setSail().then(() => { W.lock = false; });
+  say('Where do you want to sail?');
 }
 $('#toSea').onclick = goSea;
 
@@ -829,7 +937,7 @@ function stepWorld(dt) {
 
 function loop(t) {
   const dt = Math.min(50, t - (W.last || t)); W.last = t;
-  if (screen === 'map' && !$('.overlay.on')) stepWorld(dt);
+  if (screen === 'map' && !$('.overlay.on') && !W.lock) stepWorld(dt);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
