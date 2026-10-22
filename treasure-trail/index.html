@@ -482,14 +482,13 @@ const FINGER_NAME = { p: 'pinky', r: 'ring finger', m: 'middle finger', i: 'poin
 // The sea shows the islands (x/y on a 1000 x 625 map); each island is its own
 // close-up view, with its places on the same 1000 x 625 grid.
 const ISLANDS = [
-  { id: 'home', shape: 'M140 330C120 210 230 110 380 95C470 85 520 130 600 110C700 85 850 140 880 250C905 340 860 430 760 480C680 520 600 560 500 565C360 572 230 520 170 440C150 410 145 370 140 330Z', name: 'Home Island', icon: '🏠', x: 500, y: 330, land: '#a6e08f', decos: [['🌳', 270, 180], ['🌷', 380, 440], ['🌻', 720, 170], ['🌲', 790, 420], ['🍄', 330, 300]] },
-  { id: 'word', shape: 'M110 300C100 180 220 90 360 80C480 72 560 120 640 100C760 72 900 150 890 260C885 320 820 330 790 360C770 380 830 420 820 470C800 540 660 570 520 568C380 566 240 540 170 470C125 425 115 360 110 300Z', name: 'Word Island', icon: '🐸', x: 210, y: 175, land: '#9fd9a0', decos: [['lake', 330, 255], ['duck', 410, 215], ['🌾', 230, 200], ['🪷', 220, 330], ['🌾', 780, 420], ['🌳', 790, 180]] },
-  { id: 'number', shape: 'M150 200L260 120L420 110L470 80L640 85L700 130L840 140L880 240L850 330L900 420L820 520L640 560L520 570L360 555L230 500L160 420L120 320Z', name: 'Number Island', icon: '🧱', x: 800, y: 170, land: '#c9e3a0', decos: [['🪨', 270, 200], ['🪨', 770, 190], ['🌵', 310, 440], ['🪨', 730, 450]] },
-  { id: 'keys', shape: 'M120 260C130 150 240 90 330 110C380 120 400 180 460 200C540 225 600 160 660 120C750 70 880 140 885 260C890 380 820 500 680 545C580 575 420 575 320 545C190 505 115 390 120 260Z', name: 'Keyboard Cove', icon: '🚂', x: 800, y: 470, land: '#b8e2a6', decos: [['🌲', 270, 200], ['🌲', 770, 190], ['🛤️', 320, 440], ['🌳', 740, 450]] },
-  { id: 'puzzle', shape: 'M150 130L400 130C380 60 600 60 580 130L850 130L850 300C930 280 930 420 850 400L850 540L600 540C620 600 380 600 400 540L150 540L150 380C220 400 220 270 150 290Z', name: 'Puzzle Island', icon: '🃏', x: 200, y: 470, land: '#d6e8a0', decos: [['🍄', 270, 200], ['🌳', 770, 190], ['🎲', 320, 440], ['🍄', 730, 450]] },
-  { id: 'science', shape: 'M160 340C140 220 250 120 400 105C520 95 600 140 680 120C760 100 860 60 930 70C880 110 830 150 820 210C860 280 870 380 800 460C720 540 600 570 480 568C340 566 200 500 160 340Z', name: 'Science Island', icon: '🚀', x: 500, y: 100, land: '#a9d7c8', decos: [['🔭', 280, 200], ['⭐', 770, 180], ['🪐', 320, 440], ['🌙', 740, 440]] },
+  { id: 'home', shape: 'M140 330C120 210 230 110 380 95C470 85 520 130 600 110C700 85 850 140 880 250C905 340 860 430 760 480C680 520 600 560 500 565C360 572 230 520 170 440C150 410 145 370 140 330Z', name: 'Home Island', icon: '🏠', x: 500, y: 330, land: '#a6e08f' },
+  { id: 'word', shape: 'M110 300C100 180 220 90 360 80C480 72 560 120 640 100C760 72 900 150 890 260C885 320 820 330 790 360C770 380 830 420 820 470C800 540 660 570 520 568C380 566 240 540 170 470C125 425 115 360 110 300Z', name: 'Word Island', icon: '🐸', x: 210, y: 175, land: '#9fd9a0', lake: [330, 255] },
+  { id: 'number', shape: 'M150 200L260 120L420 110L470 80L640 85L700 130L840 140L880 240L850 330L900 420L820 520L640 560L520 570L360 555L230 500L160 420L120 320Z', name: 'Number Island', icon: '🧱', x: 800, y: 170, land: '#c9e3a0' },
+  { id: 'keys', shape: 'M120 260C130 150 240 90 330 110C380 120 400 180 460 200C540 225 600 160 660 120C750 70 880 140 885 260C890 380 820 500 680 545C580 575 420 575 320 545C190 505 115 390 120 260Z', name: 'Keyboard Cove', icon: '🚂', x: 800, y: 470, land: '#b8e2a6' },
+  { id: 'puzzle', shape: 'M150 130L400 130C380 60 600 60 580 130L850 130L850 300C930 280 930 420 850 400L850 540L600 540C620 600 380 600 400 540L150 540L150 380C220 400 220 270 150 290Z', name: 'Puzzle Island', icon: '🃏', x: 200, y: 470, land: '#d6e8a0' },
+  { id: 'science', shape: 'M160 340C140 220 250 120 400 105C520 95 600 140 680 120C760 100 860 60 930 70C880 110 830 150 820 210C860 280 870 380 800 460C720 540 600 570 480 568C340 566 200 500 160 340Z', name: 'Science Island', icon: '🚀', x: 500, y: 100, land: '#a9d7c8' },
 ];
-const SEA_DECOS = [['🐟', 360, 590], ['🐋', 650, 310], ['🐟', 330, 320]];
 const PLACES = [
   { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
   { id: 'spell', island: 'word', icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
@@ -638,13 +637,36 @@ const W = { view: 'sea', x: 500, y: 470, tx: null, ty: null, enter: null, keys: 
 const pos = (el, x, y) => { el.style.left = x / 10 + '%'; el.style.top = y / 6.25 + '%'; };
 const atSea = () => W.view === 'sea';
 const island = () => ISLANDS.find(i => i.id === W.view);
-const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view), DOCK];
+// Decided 22 Oct: "coming soon" places stay hidden until they're built, and an
+// island with nothing playable stays off the sea map.
+const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view && !p.soon), DOCK];
+const openIslands = () => ISLANDS.filter(i => PLACES.some(pl => pl.island === i.id && !pl.soon));
 const touch = matchMedia('(pointer: coarse)').matches;
 // On an island you walk on the grass of its own coastline.
 const coast = d => `<path class="shore" d="${d}"/><path class="sand" d="${d}"/><path class="grass" d="${d}"/>`;
 // Winding sandy paths from the dock to each place (21 Oct: "we need a winding
 // path to the games from the shore"). Each is an S-curve, clipped to the island
 // so a bend never runs out over the water.
+// The same pattern every visit for each island (a seeded random), placed away
+// from places, the pond and the edge. Low contrast on purpose: ground, not things.
+function seeded(str) {
+  let h = 1779033703 ^ str.length;
+  for (const c of str) { h = Math.imul(h ^ c.charCodeAt(0), 3432918353); h = h << 13 | h >>> 19; }
+  return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+}
+function texture(isl) {
+  const r = seeded(isl.id), spots = here(), out = [];
+  for (let tries = 0; out.length < 34 && tries < 400; tries++) {
+    const x = 150 + r() * 700, y = 90 + r() * 450, k = r();
+    if (![[0, 0], [35, 0], [-35, 0], [0, 25], [0, -25]].every(([a, b]) => inLand(x + a, y + b))) continue;
+    if (spots.some(pl => Math.hypot(pl.x - x, pl.y - y) < 85)) continue;
+    if (isl.lake && Math.hypot((x - isl.lake[0]) / 130, (y - isl.lake[1]) / 80) < 1.2) continue;
+    out.push(out.length % 3 === 2
+      ? `<ellipse cx="${x}" cy="${y}" rx="${7 + k * 6}" ry="${4 + k * 3}" fill="rgba(35,50,74,.10)"/>`
+      : `<path d="M${x - 8} ${y}q4 -10 6 -14M${x} ${y}q0 -12 2 -18M${x + 8} ${y}q-3 -10 -4 -13" stroke="rgba(30,90,40,.22)" stroke-width="3" fill="none" stroke-linecap="round"/>`);
+  }
+  return `<g>${out.join('')}</g>`;
+}
 function trails(isl) {
   const x0 = DOCK.x, y0 = DOCK.y - 30;
   const d = here().filter(p => p.id !== 'dock').map((p, i) => {
@@ -684,27 +706,29 @@ function renderWorld() {
     $('#hello').textContent = `Hi, ${p.name}! Where do you want to sail?`;
     $('#walkHint').textContent = touch ? 'Tap an island to sail there' : 'Click an island to sail there, or use the arrow keys';
     $('#toSea').hidden = true; $('#land').setAttribute('hidden', '');
-    $('#places').innerHTML = ISLANDS.map(i => {
-      const icons = PLACES.filter(pl => pl.island === i.id).sort((a, b) => !!a.soon - !!b.soon).slice(0, 3).map(pl => pl.icon).join('');
+    $('#places').innerHTML = openIslands().map(i => {
+      const icons = PLACES.filter(pl => pl.island === i.id && !pl.soon).slice(0, 3).map(pl => pl.icon).join('');
       return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
     }).join('');
-    $('#decos').innerHTML = SEA_DECOS.map(([e, x, y]) => `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e}</div>`).join('');
+    $('#decos').innerHTML = '';
     // Just the boat at sea. The buddy riding on top looked stuck on the mast.
     $('#me').className = 'me boat'; $('#me').textContent = '⛵';
+    while (W.ground.length < 3) spawnGround();
   } else {
     const isl = island();
     $('#hello').textContent = `${isl.icon} ${isl.name}`;
     $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
     // The island shape is an SVG, and Safari has no .hidden property on SVG
     // elements, so the first version never showed the land there. Use the attribute.
-    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape) + trails(isl);
+    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape); $('#land').innerHTML += texture(isl) + trails(isl);
     $('#places').innerHTML = here().map(pl => `
       <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
         <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
       </div>`).join('');
-    $('#decos').innerHTML = isl.decos.map(([e, x, y]) => e === 'lake'
-      ? `<div class="lake" style="left:${x / 10}%;top:${y / 6.25}%"></div>`
-      : `<div class="deco" style="left:${x / 10}%;top:${y / 6.25}%">${e === 'duck' ? rubberDuckSVG() : e}</div>`).join('');
+    // Decided 22 Oct: no decorative emoji. Trees, rocks and fish looked like
+    // things to tap and did nothing. Only real places and sparkles are objects;
+    // the ground gets quiet drawn texture instead (see texture()).
+    $('#decos').innerHTML = isl.lake ? `<div class="lake" style="left:${isl.lake[0] / 10}%;top:${isl.lake[1] / 6.25}%"></div>` : '';
     $('#me').className = 'me'; $('#me').textContent = p.buddy;
     // Treasures wash up on every island.
     while (W.ground.length < 2) spawnGround();
@@ -723,17 +747,26 @@ function goSea() {
 }
 $('#toSea').onclick = goSea;
 
+// Treasures you can find floating at sea (22 Oct: "something for them to explore").
+const SEA_FINDS = ['🐚', '🪙', '💎', '🫧', '🗝️', '🧭'];
 function spawnGround() {
   let x, y, tries = 0;
-  do { x = randInt(170, 830); y = randInt(110, 515); tries++; }
-  while (tries < 80 && (![[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45]].every(([a, b]) => inLand(x + a, y + b)) || Math.hypot(W.x - x, W.y - y) < 150 || here().some(pl => Math.hypot(pl.x - x, pl.y - y) < 110)));
+  if (atSea()) {
+    // Open water only: away from the islands and the boat.
+    do { x = randInt(40, 960); y = randInt(40, 590); tries++; }
+    while (tries < 80 && (openIslands().some(i => Math.hypot((i.x - x) / 150, (i.y - y) / 105) < 1) || Math.hypot(W.x - x, W.y - y) < 150 || W.ground.some(g => Math.hypot(g.x - x, g.y - y) < 120)));
+  } else {
+    do { x = randInt(170, 830); y = randInt(110, 515); tries++; }
+    while (tries < 80 && (![[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45]].every(([a, b]) => inLand(x + a, y + b)) || Math.hypot(W.x - x, W.y - y) < 150 || here().some(pl => Math.hypot(pl.x - x, pl.y - y) < 110)));
+  }
   const el = document.createElement('div');
   // A sparkle on the ground; what it is stays a surprise until you pick it up (21 Oct).
-  el.className = 'gshiny'; const s = rand(SHINIES); el.textContent = '✨'; pos(el, x, y);
+  const pool = atSea() ? SHINIES.filter(t => SEA_FINDS.includes(t[0])) : SHINIES;
+  el.className = 'gshiny'; const s = rand(pool); el.textContent = '✨'; pos(el, x, y);
   $('#ground').appendChild(el);
   W.ground.push({ x, y, s, el });
 }
-setInterval(() => { if (screen === 'map' && !atSea() && W.ground.length < 2) spawnGround(); }, 25000);
+setInterval(() => { if (screen === 'map' && W.ground.length < (atSea() ? 3 : 2)) spawnGround(); }, 25000);
 
 // The found treasure pops up out of its sparkle, then floats away.
 function reveal(g) {
@@ -747,7 +780,7 @@ function drawWorld(moving) {
   const me = $('#me'); pos(me, W.x, W.y); me.classList.toggle('walk', moving);
   // Is the player near an island (at sea) or a place (on an island)?
   let near = null;
-  if (atSea()) ISLANDS.forEach(i => { if (Math.hypot(i.x - W.x, i.y - W.y) < 115) near = i; });
+  if (atSea()) openIslands().forEach(i => { if (Math.hypot(i.x - W.x, i.y - W.y) < 115) near = i; });
   else here().forEach(pl => { if (Math.hypot(pl.x - W.x, pl.y - W.y) < 75) near = pl; });
   if (near !== W.near) {
     W.near = near;
