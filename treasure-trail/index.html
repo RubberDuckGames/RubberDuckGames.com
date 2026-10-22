@@ -371,7 +371,6 @@ body.onmap #s-map{position:fixed;inset:0;max-width:none;padding:0;margin:0}
 body.onmap .world{position:absolute;inset:0;aspect-ratio:auto;border-radius:0;box-shadow:none}
 body.onmap .worldbar{position:fixed;top:64px;left:0;right:0;z-index:14;flex-direction:column;align-items:center;gap:4px;margin:0;pointer-events:none}
 body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4px 18px;font-size:22px;box-shadow:var(--shadow)}
-body.onmap #walkHint{background:rgba(255,253,247,.8);border-radius:999px;padding:1px 12px;font-size:14px}
 
 /* The sailing intro (after picking a player) and the island landing */
 .intro,.landing{position:fixed;inset:0;z-index:30;overflow:hidden;cursor:pointer;transition:opacity .6s}
@@ -413,7 +412,6 @@ body.onmap #walkHint{background:rgba(255,253,247,.8);border-radius:999px;padding
 <section id="s-map" class="screen">
   <div class="worldbar">
     <h2 id="hello"></h2>
-    <span class="soft" id="walkHint"></span>
   </div>
   <div class="world" id="world">
     <svg class="landsvg" id="land" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
@@ -520,12 +518,12 @@ const ISLANDS = [
 ];
 const PLACES = [
   { id: 'pond', island: 'word', icon: '🐸', name: 'Tadpole Pond', x: 330, y: 250, levels: ['Tap and hear', 'Find the letter', 'First sounds', 'Big and little'] },
-  { id: 'spell', island: 'word', icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
-  { id: 'fetch', island: 'word', icon: '🐕', name: 'Corgi Fetch', x: 650, y: 410, levels: ['My spelling words', 'Practice words'] },
+  { id: 'spell', island: 'word', minAge: 6, icon: '📝', name: 'Spelling Words', x: 640, y: 250, levels: ['Hear it, type it', 'Tap the letters', 'My word list'] },
+  { id: 'fetch', island: 'word', minAge: 6, icon: '🐕', name: 'Corgi Fetch', x: 650, y: 410, levels: ['My spelling words', 'Practice words'] },
   { id: 'story', island: 'word', icon: '📚', name: 'Story Tree', x: 330, y: 430, soon: true },
   { id: 'tower', island: 'number', icon: '🧱', name: 'Block Tower', x: 450, y: 280, levels: ['Build to 5', 'Build to 10', 'Adding', 'Taking away'] },
   { id: 'patterns', island: 'number', icon: '🔷', name: 'Patterns', x: 660, y: 390, soon: true },
-  { id: 'train', island: 'keys', icon: '🚂', name: 'Letter Train', x: 520, y: 300, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
+  { id: 'train', island: 'keys', minAge: 5, icon: '🚂', name: 'Letter Train', x: 520, y: 300, levels: ['F and J', 'Home row', 'More keys', 'Words', 'My spelling words'] },
   { id: 'memory', island: 'puzzle', icon: '🃏', name: 'Memory Match', x: 440, y: 280, levels: ['4 cards', '8 cards', '12 cards', '20 cards'] },
   { id: 'jigsaw', island: 'puzzle', icon: '🧩', name: 'Jigsaw', x: 660, y: 390, soon: true },
   { id: 'space', island: 'science', icon: '🚀', name: 'Space Lab', x: 440, y: 270, soon: true },
@@ -684,8 +682,13 @@ const atSea = () => W.view === 'sea';
 const island = () => ISLANDS.find(i => i.id === W.view);
 // Decided 22 Oct: "coming soon" places stay hidden until they're built, and an
 // island with nothing playable stays off the sea map.
-const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view && !p.soon), DOCK];
-const openIslands = () => ISLANDS.filter(i => PLACES.some(pl => pl.island === i.id && !pl.soon));
+// Decided 22 Oct, with the youngest testing: a player aged 4 or under only sees
+// the games that need no reading or typing (minAge), moves faster, and gets no
+// text bubbles. Players with no age see everything.
+const little = () => (player()?.age || 99) <= 4;
+const shown = pl => !pl.soon && !(pl.minAge && player()?.age && player().age < pl.minAge);
+const here = () => atSea() ? [] : [...PLACES.filter(p => p.island === W.view && shown(p)), DOCK];
+const openIslands = () => ISLANDS.filter(i => PLACES.some(pl => pl.island === i.id && shown(pl)));
 const touch = matchMedia('(pointer: coarse)').matches;
 // On an island you walk on the grass of its own coastline.
 const coast = d => `<path class="shore" d="${d}"/><path class="sand" d="${d}"/><path class="grass" d="${d}"/>`;
@@ -755,13 +758,9 @@ function renderWorld() {
   $('#ground').innerHTML = ''; W.ground = [];
   if (atSea()) {
     $('#hello').textContent = `Hi, ${p.name}! Where do you want to sail?`;
-    // Decided 22 Oct ("less is more"): each hint shows until that player has
-    // sailed or walked once, then never again.
-    $('#walkHint').textContent = touch ? 'Tap an island to sail there' : 'Click an island to sail there, or use the arrow keys';
-    $('#walkHint').hidden = !!p.sailed;
     $('#land').setAttribute('hidden', '');
     $('#places').innerHTML = openIslands().map(i => {
-      const icons = PLACES.filter(pl => pl.island === i.id && !pl.soon).slice(0, 3).map(pl => pl.icon).join('');
+      const icons = PLACES.filter(pl => pl.island === i.id && shown(pl)).slice(0, 3).map(pl => pl.icon).join('');
       return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
     }).join('');
     $('#decos').innerHTML = '';
@@ -771,8 +770,6 @@ function renderWorld() {
   } else {
     const isl = island();
     $('#hello').textContent = `${isl.icon} ${isl.name}`;
-    $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
-    $('#walkHint').hidden = !!p.walked;
     // The island shape is an SVG, and Safari has no .hidden property on SVG
     // elements, so the first version never showed the land there. Use the attribute.
     $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape); $('#land').innerHTML += texture(isl) + trails(isl);
@@ -862,10 +859,10 @@ function spawnGround() {
   let x, y, tries = 0;
   if (atSea()) {
     // Open water only: away from the islands and the boat.
-    do { x = randInt(40, 960); y = randInt(40, 590); tries++; }
+    do { x = randInt(40, 960); y = randInt(170, 590); tries++; }   // clear of the greeting
     while (tries < 80 && (openIslands().some(i => Math.hypot((i.x - x) / 150, (i.y - y) / 105) < 1) || Math.hypot(W.x - x, W.y - y) < 150 || W.ground.some(g => Math.hypot(g.x - x, g.y - y) < 120)));
   } else {
-    do { x = randInt(170, 830); y = randInt(110, 515); tries++; }
+    do { x = randInt(170, 830); y = randInt(160, 515); tries++; }
     while (tries < 80 && (![[0, 0], [45, 0], [-45, 0], [0, 45], [0, -45]].every(([a, b]) => inLand(x + a, y + b)) || Math.hypot(W.x - x, W.y - y) < 150 || here().some(pl => Math.hypot(pl.x - x, pl.y - y) < 110)));
   }
   const el = document.createElement('div');
@@ -897,7 +894,7 @@ function drawWorld(moving) {
     const go = touch ? 'Tap it' : 'Press Enter';
     $('#bubble').textContent = !near ? '' : atSea() ? `${go} to land on ${near.name}`
       : near.soon ? `${near.name} is coming soon!` : near.id === 'dock' ? `${go} to sail back to the sea` : `${go} to go in: ${near.name}`;
-    $('#bubble').classList.toggle('on', !!near);
+    $('#bubble').classList.toggle('on', !!near && !little());
   }
 }
 
@@ -907,7 +904,7 @@ function arrive(target) {
 }
 
 function stepWorld(dt) {
-  const k = W.keys, sp = (atSea() ? .36 : .3) * dt;
+  const k = W.keys, sp = (atSea() ? .36 : .3) * (little() ? 1.6 : 1) * dt;
   let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0);
   let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0);
   let moving = false; const px = W.x, py = W.y;
@@ -928,15 +925,11 @@ function stepWorld(dt) {
   }
   // Pick up shiny things on the ground
   W.ground = W.ground.filter(g => {
-    if (Math.hypot(g.x - W.x, g.y - W.y) > 30) return true;
+    if (Math.hypot(g.x - W.x, g.y - W.y) > (little() ? 55 : 30)) return true;
     g.el.remove(); player().shinies.push(g.s[0]); persist(); reveal(g);
     sfx.shiny(); say(`You found ${art(g.s[1])} ${g.s[1]}!`); toast(`${g.s[0]} You found ${art(g.s[1])} ${g.s[1]}!`);
     return false;
   });
-  if (moving) {
-    const p = player(), k = atSea() ? 'sailed' : 'walked';
-    if (!p[k]) { p[k] = true; persist(); $('#walkHint').hidden = true; }
-  }
   drawWorld(moving);
 }
 
