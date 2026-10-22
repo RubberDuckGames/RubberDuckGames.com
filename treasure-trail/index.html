@@ -372,7 +372,6 @@ body.onmap .world{position:absolute;inset:0;aspect-ratio:auto;border-radius:0;bo
 body.onmap .worldbar{position:fixed;top:64px;left:0;right:0;z-index:14;flex-direction:column;align-items:center;gap:4px;margin:0;pointer-events:none}
 body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4px 18px;font-size:22px;box-shadow:var(--shadow)}
 body.onmap #walkHint{background:rgba(255,253,247,.8);border-radius:999px;padding:1px 12px;font-size:14px}
-body.onmap #toSea{position:fixed;right:16px;bottom:16px;pointer-events:auto}
 
 /* The sailing intro (after picking a player) and the island landing */
 .intro,.landing{position:fixed;inset:0;z-index:30;overflow:hidden;cursor:pointer;transition:opacity .6s}
@@ -415,7 +414,6 @@ body.onmap #toSea{position:fixed;right:16px;bottom:16px;pointer-events:auto}
   <div class="worldbar">
     <h2 id="hello"></h2>
     <span class="soft" id="walkHint"></span>
-    <button class="btn" id="toSea" hidden>⛵ Back to the sea</button>
   </div>
   <div class="world" id="world">
     <svg class="landsvg" id="land" viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true" hidden></svg>
@@ -757,8 +755,11 @@ function renderWorld() {
   $('#ground').innerHTML = ''; W.ground = [];
   if (atSea()) {
     $('#hello').textContent = `Hi, ${p.name}! Where do you want to sail?`;
+    // Decided 22 Oct ("less is more"): each hint shows until that player has
+    // sailed or walked once, then never again.
     $('#walkHint').textContent = touch ? 'Tap an island to sail there' : 'Click an island to sail there, or use the arrow keys';
-    $('#toSea').hidden = true; $('#land').setAttribute('hidden', '');
+    $('#walkHint').hidden = !!p.sailed;
+    $('#land').setAttribute('hidden', '');
     $('#places').innerHTML = openIslands().map(i => {
       const icons = PLACES.filter(pl => pl.island === i.id && !pl.soon).slice(0, 3).map(pl => pl.icon).join('');
       return `<div class="isle" data-isle="${i.id}" style="left:${i.x / 10}%;top:${i.y / 6.25}%;--land:${i.land}"><svg viewBox="0 0 1000 625" preserveAspectRatio="none" aria-hidden="true">${coast(i.shape)}</svg><div class="icons">${icons}</div><div class="sign">${i.name}</div></div>`;
@@ -771,9 +772,10 @@ function renderWorld() {
     const isl = island();
     $('#hello').textContent = `${isl.icon} ${isl.name}`;
     $('#walkHint').textContent = touch ? 'Tap where you want to walk' : 'Click to walk, or use the arrow keys';
+    $('#walkHint').hidden = !!p.walked;
     // The island shape is an SVG, and Safari has no .hidden property on SVG
     // elements, so the first version never showed the land there. Use the attribute.
-    $('#toSea').hidden = false; $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape); $('#land').innerHTML += texture(isl) + trails(isl);
+    $('#land').removeAttribute('hidden'); $('#land').style.setProperty('--land', isl.land); $('#land').innerHTML = coast(isl.shape); $('#land').innerHTML += texture(isl) + trails(isl);
     $('#places').innerHTML = here().map(pl => `
       <div class="place${pl.soon ? ' soon' : ''}" data-p="${pl.id}" style="left:${pl.x / 10}%;top:${pl.y / 6.25}%">
         <div class="icon">${pl.icon}</div><div class="sign">${pl.name}${pl.soon ? ' · soon' : ''}</div>
@@ -853,7 +855,6 @@ function goSea() {
   setSail().then(() => { W.lock = false; });
   say('Where do you want to sail?');
 }
-$('#toSea').onclick = goSea;
 
 // Treasures you can find floating at sea (22 Oct: "something for them to explore").
 const SEA_FINDS = ['🐚', '🪙', '💎', '🫧', '🗝️', '🧭'];
@@ -932,6 +933,10 @@ function stepWorld(dt) {
     sfx.shiny(); say(`You found ${art(g.s[1])} ${g.s[1]}!`); toast(`${g.s[0]} You found ${art(g.s[1])} ${g.s[1]}!`);
     return false;
   });
+  if (moving) {
+    const p = player(), k = atSea() ? 'sailed' : 'walked';
+    if (!p[k]) { p[k] = true; persist(); $('#walkHint').hidden = true; }
+  }
   drawWorld(moving);
 }
 
