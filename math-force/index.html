@@ -210,6 +210,17 @@ const S = Object.assign({ bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double
 
 // ---------- Sound ----------
 let ac;
+// Same fix as Treasure Trail (22 Oct): phones and Safari start the sound engine
+// paused and pause it again after the screen locks; every tap or key wakes it.
+if (navigator.audioSession) try { navigator.audioSession.type = 'playback'; } catch (e) { }
+function wakeSound() {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state !== 'running') ac.resume();
+  } catch (e) { }
+}
+['pointerdown', 'keydown', 'touchend'].forEach(ev => addEventListener(ev, wakeSound, true));
 function tone(f, d = .1, type = 'square', when = 0, vol = .05, to) {
   if (!S.sound) return;
   try {
