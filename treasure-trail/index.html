@@ -613,40 +613,20 @@ const sayWord = w => say(wordLine(w), .8);
 // fallback for browsers that never send "end".
 function say(t, rate = .9) {
   if (!t || !save.sound || !('speechSynthesis' in window)) return Promise.resolve();
-  const ss = speechSynthesis;
-  if (ss.speaking || ss.pending) ss.cancel();
-  ss.resume();
-  const me = say.n = (say.n || 0) + 1;   // a newer line replaces this one; it must not retry over it
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(t);
+  if (voice) u.voice = voice;
+  u.rate = rate; u.pitch = 1.1;
   return new Promise(done => {
-    let finished = false, tries = 0;
-    const end = () => { if (finished) return; finished = true; clearTimeout(fallback); clearTimeout(watch); done(); };
-    const fallback = setTimeout(end, 1500 + t.length * 85 / rate);
-    let watch;
-    // Decided 22 Oct: on a laptop the voice sometimes went silent for good.
-    // Chrome and Safari can drop the line spoken right after a cancel, or get
-    // stuck "speaking" nothing. If it hasn't started within a second, clear the
-    // queue and say it once more.
-    const speak = () => {
-      const u = new SpeechSynthesisUtterance(t);
-      if (voice) u.voice = voice;
-      u.rate = rate; u.pitch = 1.1;
-      u.onstart = () => clearTimeout(watch);
-      u.onend = end;
-      u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled' && tries < 1) retry(); else end(); };
-      say.u = u;            // held, or some browsers lose it and never send "end"
-      ss.speak(u);
-      watch = setTimeout(() => { if (!finished && tries < 1) retry(); }, 1000);
-    };
-    const retry = () => { if (say.n !== me) return end(); tries++; clearTimeout(watch); ss.cancel(); setTimeout(() => { if (!finished) speak(); }, 80); };
-    speak();
+    const fallback = setTimeout(done, 1500 + t.length * 85 / rate);
+    u.onend = u.onerror = () => { clearTimeout(fallback); done(); };
+    speechSynthesis.speak(u);
   });
 }
 let ac;
 // Phones, iPads and Safari start the sound engine paused, and pause it again
 // after the screen locks or the tab is hidden; nothing restarted it, so the
 // game went quiet while the voice kept talking. Every tap or key wakes it.
-// 'playback' also lets sounds play with an iPhone's silent switch on, like the voice does.
-if (navigator.audioSession) try { navigator.audioSession.type = 'playback'; } catch (e) { }
 function wakeSound() {
   if (!save.sound) return;
   try {
