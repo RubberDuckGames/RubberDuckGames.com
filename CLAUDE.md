@@ -12,12 +12,17 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Errors are restored, not killed, and the blaster is a debug blaster, not a
   real-world gun. Single-player only; multiplayer needs a server and moderation.
 - `bread/index.html` is Bread the Corgi, a separate game designed by the middle
-  kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 20 px to a tile on a
+  kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 16 px to a tile on a
   small canvas, scaled up with smoothing off) and no voice, only chiptune beeps,
   so everything a player needs is written on screen. Bread rides from home to a
-  small world, catches the squirrels and fleas, and the last one drops his
-  squeaky bone. Beating a world wins its costume; the extra pieces, the hidden
-  sparkles and the gold treat make 100% and the trophy. Treats are the money.
+  small world; her bark freezes the squirrels and fleas and her paw swipe catches
+  them, and the last one drops her squeaky bone. Beating a world wins its
+  costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
+  and the trophy. Special finds get a held-up moment with a short tune. Treats
+  are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
+  bumping an unfrozen baddie costs one, and running out is a nap, not a loss
+  (she keeps her treats). No "left" counters during play; the end of a world
+  is a tally that counts up and finishes on % complete (each piece is 20%).
   Progress is in localStorage under `bread-corgi`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
