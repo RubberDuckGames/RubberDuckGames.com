@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bread the Corgi · Rubber Duck Games</title>
+<meta name="description" content="Bread the corgi rides to the pond to chase off squirrels and fleas, find treats and win costumes.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#3b2a1a;--soft:#7a6450;--bg:#fff4e0;--panel:#fffdf7;--line:#ead7b8;--accent:#e8913a;--green:#3f9d5d;--gold:#f5b700;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:0.625rem;padding:0.625rem 0.875rem;max-width:62.5rem;margin:0 auto}
+.bar h1{font-size:1.375rem;margin:0;flex:1;letter-spacing:.03em}
+.bar h1 b{color:var(--accent)}
+.pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:0.375rem 0.875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
+.wrap{max-width:62.5rem;margin:0 auto;padding:0 0.875rem 1.25rem}
+.hud{display:flex;flex-wrap:wrap;gap:0.5rem;margin:0 0 0.5rem}
+.stagebox{position:relative;margin:0 auto;max-width:100%}
+canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow:0 0 0 3px var(--line),0 8px 24px rgba(90,60,20,.18);touch-action:none}
+.toast{position:absolute;top:0.75rem;left:50%;transform:translateX(-50%);background:rgba(255,253,247,.96);border:2px solid var(--accent);border-radius:999px;padding:0.375rem 1rem;font-weight:700;z-index:5;pointer-events:none;max-width:92%;text-align:center}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,40,20,.45);border-radius:18px;z-index:6;padding:0.875rem}
+.card{background:var(--panel);border:3px solid var(--line);border-radius:20px;padding:1.25rem;max-width:32.5rem;width:100%;text-align:center;max-height:100%;overflow:auto}
+.card h2{margin:0 0 0.375rem;font-size:1.75rem}
+.card p{margin:0.375rem 0;color:var(--soft)}
+.card .big{font-size:1.375rem;font-weight:800;color:var(--ink)}
+.found{display:flex;flex-wrap:wrap;gap:0.375rem;justify-content:center;margin:0.625rem 0}
+.found span{border:2px solid var(--line);border-radius:999px;padding:0.25rem 0.75rem;font-size:0.9375rem;font-weight:700}
+.found .yes{border-color:var(--green);color:var(--green)}
+.found .no{color:var(--soft)}
+.row{display:flex;gap:0.625rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem}
+.btn{background:var(--panel);border:3px solid var(--line);border-radius:16px;padding:0.75rem 1.25rem;font-weight:800;font-size:1.25rem}
+.btn:hover{border-color:var(--accent)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.on{border-color:var(--green);box-shadow:0 0 0 2px var(--green)}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn small{display:block;font-weight:400;font-size:0.875rem;color:var(--soft)}
+.btn.go small{color:#fff3e0}
+.panelbox{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:0.75rem 0.875rem;margin-top:0.75rem}
+.panelbox h3{margin:0 0 0.375rem;font-size:1.25rem}
+.slot{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.375rem 0}
+.slot b{min-width:5.625rem}
+.slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
+.keys{font-size:0.9375rem;color:var(--soft);margin-top:0.625rem;text-align:center}
+.keys b{color:var(--ink)}
+@media (max-width:37.5rem){.bar h1{font-size:1.125rem}.btn{font-size:1.0625rem;padding:0.625rem 0.875rem}.toast{font-size:0.875rem}}
+/* 8-bit look: pixel font for buttons and titles, square corners, chunky
+   borders with a hard shadow. Longer sentences stay in Lexend so they're easy
+   to read. */
+.bar h1,.btn,.pill,.card h2,.panelbox h3,.found span{font-family:"Press Start 2P",monospace;letter-spacing:0}
+.bar h1{font-size:1rem}
+.pill,.btn,.card,.panelbox,.toast,.found span,canvas{border-radius:0}
+.btn,.pill{font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.btn{border-width:4px;padding:.8rem 1rem}
+.btn small{font-family:Lexend,Verdana,sans-serif;font-size:.85rem;margin-top:.3rem}
+.btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
+.card,.panelbox{border-width:4px;box-shadow:.4rem .4rem 0 rgba(90,52,24,.25)}
+.card h2{font-size:1.1rem;line-height:1.6}
+.panelbox h3{font-size:.9rem}
+.found span{font-size:.6rem;line-height:1.8}
+canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 rgba(90,52,24,.2)}
+.toast{border-width:3px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <h1><b>BREAD</b> THE CORGI</h1>
+  <span class="pill" id="hBank" aria-label="Treats">🦴 0</span>
+  <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
+</div>
+<div class="wrap">
+  <div class="hud" id="hud" hidden aria-live="polite">
+    <span class="pill" id="hSq"></span>
+    <span class="pill" id="hFl"></span>
+    <span class="pill" id="hTrip"></span>
+  </div>
+  <div class="stagebox" id="box">
+    <canvas id="cv"></canvas>
+    <div class="toast" id="toast" hidden></div>
+    <div class="cover" id="cover"><div class="card" id="card">
+      <h2>Bread the Corgi</h2>
+      <p>Bread is a corgi. (He's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
+      <div class="row"><button class="btn go" id="playBtn">Play</button></div>
+    </div></div>
+  </div>
+
+  <div class="row" id="homeBtns" hidden>
+    <button class="btn" id="closetBtn">👕 Closet</button>
+    <button class="btn" id="shopBtn">🦴 Treat shop</button>
+    <button class="btn go" id="rideBtn">🚗 Go for a ride</button>
+  </div>
+  <div class="panelbox" id="closet" hidden>
+    <h3>Closet</h3>
+    <div id="closetList"></div>
+    <div class="row"><button class="btn go" data-done>Done</button></div>
+  </div>
+  <div class="panelbox" id="shop" hidden>
+    <h3>Treat shop</h3>
+    <div id="shopList"></div>
+    <div class="row"><button class="btn go" data-done>Done</button></div>
+  </div>
+  <div class="row" id="mapBtns" hidden>
+    <button class="btn go" id="pondBtn">🦆 Drive to the pond</button>
+    <button class="btn" data-home>🏠 Back home</button>
+  </div>
+  <div class="row" id="levelBtns" hidden>
+    <button class="btn go" id="barkBtn">🐶 Bark</button>
+    <button class="btn" data-home>🏠 Go home</button>
+  </div>
+  <p class="keys" id="keys" hidden>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go · Bark: <b>Space</b></p>
+</div>
+
+<script>
+// Bread the Corgi. Decided 27-28 Oct, designed by the middle kid tester: Bread
+// rides in the car from home to a small world, chases off the squirrels and
+// fleas, picks up treats (the money) and finds his lost toy. Beating a world
+// wins that animal's costume, just for fun. Every world can be played again for
+// the extra pieces, the hidden sparkles and the gold treat; finding all of them
+// is 100% and wins the trophy.
+const $ = s => document.querySelector(s);
+// Decided 28 Oct: 8-bit. Everything is drawn on a small canvas, 16 pixels to a
+// tile, then scaled up with smoothing off so the pixels show as hard blocks.
+// The first try at 20 pixels still looked fuzzy: the canvas softens every edge
+// with in-between colors. So each frame, every pixel snaps to the nearest color
+// in the game's own palette (the colors written in this file), which leaves
+// only hard edges.
+const cv = $('#cv'), out = cv.getContext('2d');
+const VW = 18, VH = 11;                       // the view, in tiles
+const T = 16;
+const lo = document.createElement('canvas'); lo.width = VW * T; lo.height = VH * T;
+const cx = lo.getContext('2d');
+const PIX = '"Press Start 2P", monospace';
+const PALETTE = [...new Set(document.currentScript.textContent.match(/#[0-9a-f]{6}\b/gi))].map(h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)));
+const snapCache = new Map();
+function snap() {
+  const img = cx.getImageData(0, 0, lo.width, lo.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const key = d[i] << 16 | d[i + 1] << 8 | d[i + 2];
+    let c = snapCache.get(key);
+    if (!c) {
+      let best = 1e9;
+      for (const q of PALETTE) { const e = (q[0] - d[i]) ** 2 * 3 + (q[1] - d[i + 1]) ** 2 * 4 + (q[2] - d[i + 2]) ** 2 * 2; if (e < best) { best = e; c = q; } }
+      snapCache.set(key, c);
+    }
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+}
+
+// ---------- Saved progress (this browser only) ----------
+const KEY = 'bread-corgi';
+const DEF = { bank: 0, have: [], wear: {}, pond: {}, toys: [], sound: true };
+const S = (() => { try { return Object.assign(structuredClone(DEF), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return structuredClone(DEF); } })();
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+
+const ITEMS = {
+  duck: { slot: 'body', name: 'Duck costume' },
+  duckHat: { slot: 'hat', name: 'Little duck hat' },
+  duckFeet: { slot: 'feet', name: 'Duck feet' },
+  bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
+  shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
+  party: { slot: 'hat', name: 'Party hat', cost: 40 },
+  cape: { slot: 'back', name: 'Hero cape', cost: 50 },
+};
+const SLOTS = [['body', 'Costume'], ['hat', 'Hat'], ['face', 'Face'], ['neck', 'Neck'], ['back', 'Back'], ['feet', 'Feet']];
+// what counts toward 100% at the pond
+const POND_PARTS = [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold treat']];
+
+// ---------- Sounds ----------
+// Decided 28 Oct: no voice in this game, only chiptune beeps. Everything a
+// player needs is written on the screen. The bell turns the beeps on and off.
+let ac;
+function tone(f, d, type = 'sine', when = 0, vol = .06, to) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new AudioContext(); if (ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d + .02);
+  } catch (e) { }
+}
+const sfx = {
+  treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
+  bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
+  catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
+  sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, .09, 'square', i * .06, .03)),
+  quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
+  squeak: () => tone(1400, .12, 'square', 0, .03, 1900),
+  honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
+  win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
+};
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
+$('#soundBtn').textContent = S.sound ? '🔔' : '🔕';
+
+let toastT;
+function toast(m, ms = Math.max(2400, m.length * 70)) {
+  const el = $('#toast'); el.textContent = m; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, ms);
+}
+
+// ---------- Screen size ----------
+function resize() {
+  const box = $('#box'), dpr = Math.min(2, devicePixelRatio || 1);
+  box.style.width = '';
+  let w = box.clientWidth;
+  const room = innerHeight - box.getBoundingClientRect().top - 130;
+  let h = w * VH / VW;
+  if (h > room) { h = Math.max(200, room); w = h * VW / VH; }
+  box.style.width = w + 'px';
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener('resize', resize);
+
+// ---------- Pixel art ----------
+// Decided 28 Oct, after "clean like Mario": no smooth shapes. Every sprite is
+// written out pixel by pixel below, and each one gets a 1-pixel dark outline
+// added around it, the way 8-bit sprites have. The smooth-shape version still
+// looked fuzzy even after the colors were snapped.
+cx.imageSmoothingEnabled = false;
+const COL = {
+  k: '#2a1a10', n: '#1d1410', o: '#e8913a', d: '#c46a1f', w: '#fff6ea', p: '#f4a6a0', f: '#fff6ea',
+  y: '#ffd23f', Y: '#e0a800', b: '#ff8a1f', r: '#e04848', R: '#a8302f', l: '#bfe8ff', g: '#c9c9d4',
+  D: '#2b2b33', m: '#9b5cd8', s: '#b8773a', t: '#8a4f2a', c: '#f2d8b8', u: '#3a6fd8', h: '#ffffff', e: '#ffe680',
+  G: '#3f8a5c', L: '#5aa772', q: '#2e6b45', W: '#5bb8e8', V: '#3a8fc0', P: '#e8a0bf', Q: '#cf7fa3', M: '#a07bc4', N: '#7b4fa0',
+};
+const LINE = COL.k;
+const spriteCache = new Map();
+function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const grid = rows.map(r => [...r.padEnd(w, '.')]);
+  if (outline) {
+    const src = grid.map(r => r.slice());
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
+  }
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  spriteCache.set(key, c);
+  return c;
+}
+function put(img, x, y, scale = 1) { cx.drawImage(img, Math.round(x), Math.round(y), img.width * scale, img.height * scale); }
+const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
+function text(t, x, y, col = LINE) { cx.font = `8px ${PIX}`; cx.textAlign = 'center'; cx.fillStyle = col; cx.fillText(t, Math.round(x), Math.round(y)); }
+function plate(t, x, y) {                    // a label on a little cream sign
+  cx.font = `8px ${PIX}`; const w = Math.ceil(cx.measureText(t).width) + 8;
+  px(x - w / 2 - 1, y - 11, w + 2, 15, LINE); px(x - w / 2, y - 10, w, 13, '#fffdf7'); text(t, x, y);
+}
+// a round blob (tree tops, bushes, the rug, the pond on the map), shaded on the bottom
+function blob(w, h, fill, shade, hi) {
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    let r = '';
+    for (let x = 0; x < w; x++) {
+      const dx = (x + .5 - w / 2) / (w / 2 - 1), dy = (y + .5 - h / 2) / (h / 2 - 1), e = dx * dx + dy * dy;
+      r += e > 1 ? '.' : dx < -.15 && dy < -.25 && e < .45 ? hi : dy > .5 ? shade : fill;
+    }
+    rows.push(r);
+  }
+  return rows;
+}
+const SPARKLE = [
+  ['...h...', '...h...', '...e...', 'hheeehh', '...e...', '...h...', '...h...'],
+  ['.......', '...h...', '...e...', '.heeeh.', '...e...', '...h...', '.......'],
+  ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
+];
+function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
+
+// Bread, side on, facing right. The pad rows on top leave room for hats.
+const BREAD = {
+  A: ['........................', '.............o....o.....', '.............oo..oo.....', '.............opoopo.....', '............oooowooo....', '............oooowooo....', '............oooowwnoo...', '.wo.........oooowwwwwn..', '.ooo.oooooooooowwwwwww..', '...oooooooooowwwwwwo....', '..ooooooooooowwww.......', '..ddooooooooowwww.......', '...dddooowwwwwwww.......', '....dddwwwwwwwww........', '....dd.......oo.........', '....dd.......oo.........', '....ff.......ff.........', '........................'],
+  B: ['........................', '.............o....o.....', '.............oo..oo.....', '.............opoopo.....', '............oooowooo....', '............oooowooo....', '............oooowwnoo...', '.wo.........oooowwwwwn..', '.ooo.oooooooooowwwwwww..', '...oooooooooowwwwwwo....', '..ooooooooooowwww.......', '..ddooooooooowwww.......', '...dddooowwwwwwww.......', '....dddwwwwwwwww........', '...dd.........oo........', '...dd.........oo........', '...ff.........ff........', '........................'],
+};
+const WEAR_PIX = {
+  cape: [3, 8, ['....rrrrr', '..rrrrrrr', 'rrrrrrrR.', 'rrrRR....']],
+  duck: [17, 4, ['bbbbbb', '.bbbbb']],             // the bill on the duck costume's hood
+  bowtie: [12, 9, ['u.u', 'uuu', 'u.u']],
+  shades: [16, 6, ['nhnnn']],
+  duckHat: [13, -5, ['...yy..', '...ynbb', 'y..yyy.', 'yyyyyy.', '.yyyy..']],
+  party: [14, -5, ['..r..', '..m..', '.mym.', '.mmm.', 'mmymm']],
+};
+function breadRows(frame, wear) {
+  const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
+  const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
+  if (wear.back === 'cape') over(WEAR_PIX.cape);
+  if (wear.body === 'duck') over(WEAR_PIX.duck);
+  if (wear.neck === 'bowtie') over(WEAR_PIX.bowtie);
+  if (wear.face === 'shades') over(WEAR_PIX.shades);
+  if (wear.hat) over(WEAR_PIX[wear.hat]);
+  return g.map(r => r.join(''));
+}
+// (x, y) is the ground under the middle of Bread
+function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
+  const map = {};
+  if (wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
+  if (wear.feet === 'duckFeet') map.f = COL.b;
+  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
+}
+const SQUIRREL = [
+  ['.............', '..ttt........', '.ttttt.......', '.tt..tt...s..', '......tt.sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '......s..s...', '.............'],
+  ['.............', '.ttt.........', 'ttttt........', 'tt..tt....s..', '.....tt..sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '.....s....s..', '.............'],
+];
+const FLEA = ['........', '...mm...', '..mmmh..', '..mmmm..', '...mm...', '..m..m..', '........'];
+const DUCK = ['..............', '........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...', '..............'];
+const BONE = ['..........', '.cc....cc.', '..cccccc..', '.cc....cc.', '..........'];
+const BIG_BONE = ['..............', '.hh........hh.', '.hhh......hhh.', '..hhhhhhhhhh..', '.hhh......hhh.', '.hh........hh.', '..............'];
+const TROPHY = ['...........', '.y.yyyyy.y.', '.yyyyyyyyy.', '..yyyyyyy..', '...yyeyy...', '....yyy....', '.....y.....', '....YYY....', '...YYYYY...', '...........'];
+const CHECK = ['........', '......L.', '.....LL.', '.L..LL..', '.LLLL...', '..LL....', '........'];
+const CAR = ['..........................', '......rrrrrrrr............', '.....rllllllllr...........', '....rllllllllllr..........', '...rrrrrrrrrrrrrrrrrrrr...', '..rrrrrrrrrrrrrrrrrrrrre..', '..rrrrrrrrrrrrrrrrrrrrrr..', '..RRRRRRRRRRRRRRRRRRRRRR..', '...DDDD.........DDDD......', '...DggD.........DggD......', '...DDDD.........DDDD......', '..........................'];
+const CAR_HEAD = ['o...o...', 'oo.oo...', 'ooooo...', 'oowonww.', 'oowwwwwn', '.wwwww..'];
+// (x, y) is the ground under the middle of the car
+function drawCar(x, y, face, t) {
+  const img = sprite(CAR, { flip: face < 0 }), head = sprite(CAR_HEAD, { map: S.wear.body === 'duck' ? { o: COL.y } : {}, flip: face < 0 });
+  const bob = Math.floor(t / 120) % 2, X = Math.round(x - 13), Y = Math.round(y - 12);
+  put(head, face > 0 ? X + 8 : X + 26 - 8 - head.width, Y - 3 + bob);
+  put(img, X, Y + bob);
+}
+
+// ---------- Home ----------
+let screen = 'title';
+function showRow(id) { ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id); $('#hud').hidden = $('#keys').hidden = id !== 'levelBtns'; }
+function bank() { $('#hBank').textContent = `🦴 ${S.bank}`; }
+function goHome(msg) {
+  screen = 'home'; G = null; showRow('homeBtns'); bank();
+  if (msg) toast(msg);
+}
+let homeWoof = 0;
+function drawHome(t) {
+  const W = VW * T, H = VH * T, floor = 108;
+  px(0, 0, W, floor, '#f6e3c4');
+  for (let x = 4; x < W; x += 12) px(x, 0, 2, floor, '#efd6b0');                   // wallpaper stripes
+  px(0, floor, W, H - floor, '#d9a86c'); px(0, floor, W, 1, LINE);
+  for (let x = 20; x < W; x += 28) px(x, floor + 1, 1, H - floor, '#b8854e');       // floorboards
+  // window
+  px(111, 15, 66, 50, LINE); px(112, 16, 64, 48, '#fffdf7'); px(115, 19, 58, 42, '#9fdcff');
+  px(155, 25, 8, 8, '#ffe680'); px(143, 19, 2, 42, '#fffdf7'); px(115, 39, 58, 2, '#fffdf7');
+  // shelf with toys and trophies
+  px(15, 51, 76, 5, LINE); px(16, 52, 74, 3, '#7a4a2a');
+  const shelf = [];
+  if (S.toys.includes('rubberDuck')) shelf.push(sprite(DUCK));
+  if (S.pond.trophy) shelf.push(sprite(TROPHY));
+  if (!shelf.length) text('Toys go here', 53, 46, '#b8854e');
+  shelf.forEach((img, i) => put(img, 22 + i * 22, 52 - img.height + 1));
+  // Bread's bed and rug
+  put(sprite(blob(70, 22, 'M', 'N', 'M')), 205, 138);
+  put(sprite(blob(64, 16, 'N', 'N', 'N')), 208, 139);
+  put(sprite(blob(112, 22, 'P', 'Q', 'P')), W / 2 - 56, 140);
+  drawBread(W / 2, 153, 3, 1, t, false);
+  if (homeWoof > t) text('Woof!', W / 2 + 46, 82);
+}
+function openCloset() {
+  showRow('closet');
+  const owned = Object.keys(ITEMS).filter(k => S.have.includes(k));
+  const list = $('#closetList');
+  if (!owned.length) { list.innerHTML = '<p>The closet is empty. Win costumes at the pond, or buy something in the treat shop.</p>'; return; }
+  list.innerHTML = '';
+  SLOTS.forEach(([slot, label]) => {
+    const mine = owned.filter(k => ITEMS[k].slot === slot);
+    if (!mine.length) return;
+    const row = document.createElement('div'); row.className = 'slot';
+    row.innerHTML = `<b>${label}</b>`;
+    [null, ...mine].forEach(k => {
+      const b = document.createElement('button'); b.className = 'btn' + ((S.wear[slot] || null) === k ? ' on' : '');
+      b.textContent = k ? ITEMS[k].name : 'None';
+      b.onclick = () => { S.wear[slot] = k; persist(); sfx.treat(1); openCloset(); };
+      row.append(b);
+    });
+    list.append(row);
+  });
+}
+function openShop() {
+  showRow('shop');
+  const list = $('#shopList'); list.innerHTML = '';
+  Object.entries(ITEMS).filter(([, it]) => it.cost).forEach(([k, it]) => {
+    const row = document.createElement('div'); row.className = 'slot';
+    const b = document.createElement('button'); b.className = 'btn';
+    if (S.have.includes(k)) { b.disabled = true; b.innerHTML = `${it.name}<small>In the closet</small>`; }
+    else {
+      b.innerHTML = `${it.name}<small>🦴 ${it.cost} treats</small>`;
+      b.onclick = () => {
+        if (S.bank < it.cost) return toast(`${it.name} costs ${it.cost} treats. You have ${S.bank}. You need ${it.cost - S.bank} more.`);
+        S.bank -= it.cost; S.have.push(k); S.wear[it.slot] = k; persist(); bank(); sfx.sparkle();
+        toast(`You got the ${it.name}! Bread is wearing it.`); openShop();
+      };
+    }
+    row.append(b); list.append(row);
+  });
+}
+$('#closetBtn').onclick = openCloset;
+$('#shopBtn').onclick = openShop;
+document.querySelectorAll('[data-done]').forEach(b => b.onclick = () => showRow('homeBtns'));
+$('#rideBtn').onclick = () => { screen = 'map'; showRow('mapBtns'); toast('Where should Bread go?'); };
+document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
+  if (screen === 'level') { drive(1, 0, () => goHome('Back home! The treats Bread found are saved.')); return; }
+  goHome();
+});
+
+// ---------- The map and the car ride ----------
+// Decided 28 Oct: the car ride is the level map. Bread's car drives along the
+// road from home to a place, and home again after. New places get added as
+// they're built.
+const ROAD = [[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]];
+const bez = t => { const u = 1 - t, [a, b, c, d] = ROAD; return [0, 1].map(i => u * u * u * a[i] + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t * t * t * d[i]); };
+let ride = null;
+function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, then }; sfx.honk(); }
+$('#pondBtn').onclick = () => drive(0, 1, startPond);
+function drawMap(t) {
+  const W = VW * T, H = VH * T;
+  px(0, 0, W, H, '#9bd88a');
+  for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) if ((x * 7 + y * 3) % 4 === 0) { px(x * T + 5, y * T + 8, 1, 2, '#79bd66'); px(x * T + 7, y * T + 7, 1, 3, '#79bd66'); }
+  // the road, a tile at a time like an old game map
+  const road = new Set();
+  for (let i = 0; i <= 100; i++) { const [x, y] = bez(i / 100); road.add(Math.floor(x) + ',' + Math.floor(y)); }
+  road.forEach(k => {
+    const [x, y] = k.split(',').map(Number), X = x * T, Y = y * T;
+    px(X, Y, T, T, '#ecd6a0');
+    if (!road.has(x + ',' + (y - 1))) px(X, Y, T, 1, '#c9a86a');
+    if (!road.has(x + ',' + (y + 1))) px(X, Y + T - 1, T, 1, '#c9a86a');
+    if (!road.has((x - 1) + ',' + y)) px(X, Y, 1, T, '#c9a86a');
+    if (!road.has((x + 1) + ',' + y)) px(X + T - 1, Y, 1, T, '#c9a86a');
+  });
+  // home: walls, a stepped roof, a door and a window
+  px(25, 113, 44, 34, LINE); px(26, 114, 42, 32, '#fff1d6');
+  for (let i = 0; i < 12; i++) { px(21 + i * 2, 113 - i * 2, 52 - i * 4, 2, LINE); px(23 + i * 2, 113 - i * 2, 48 - i * 4, 2, '#c0623b'); }
+  px(42, 127, 10, 19, LINE); px(43, 128, 8, 18, '#7a4a2a'); px(30, 121, 9, 9, LINE); px(31, 122, 7, 7, '#9fdcff');
+  plate('Home', 47, 162);
+  // the pond
+  put(sprite(blob(64, 36, 'W', 'V', 'l')), 197, 46);
+  [[212, 56], [236, 64]].forEach(([dx, dy], i) => put(sprite(DUCK, { flip: Math.floor(t / 1600 + i) % 2 === 1 }), dx + Math.round(Math.sin(t / 900 + i) * 4), dy));
+  for (let i = 0; i < 5; i++) { px(190 + i * 3, 44, 1, 10, '#3f8a5c'); px(189 + i * 3, 42, 3, 4, LINE); px(190 + i * 3, 43, 1, 2, '#7a4a2a'); }
+  plate('Pond', 229, 98);
+  if (S.pond.trophy) put(sprite(TROPHY), 252, 84);
+  else if (S.pond.beat) put(sprite(CHECK), 252, 88);
+  // trees, for a nicer drive
+  [[96, 32], [48, 48], [176, 136], [264, 136], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
+  const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(0);
+  drawCar(p[0] * T, p[1] * T + 6, ride && ride.to < ride.from ? -1 : 1, ride ? t : 0);
+}
+const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
+// ---------- The pond ----------
+const LW = 30, LH = 20;
+const SOLID = '#wT';
+let G = null;
+function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
+// The pond is the same place every visit, so it's a world you get to know.
+// The treats, squirrels and fleas move around each time.
+const POND = (() => {
+  const r = seeded(11), m = [];
+  const pcx = 15, pcy = 8.5, rx = 7, ry = 4.2;
+  const e = (x, y, a) => ((x + .5 - pcx) / (rx + a)) ** 2 + ((y + .5 - pcy) / (ry + a)) ** 2;
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 1; y < LH - 1; y++) for (let x = 1; x < LW - 1; x++) {
+    if (e(x, y, 0) < 1) m[y][x] = 'w';
+    else if (e(x, y, .9) < 1 && (x < pcx - 2 || y < pcy - 1) && r() < .7) m[y][x] = 'r';
+    else if (e(x, y, 2.1) < 1 && e(x, y, 1.3) >= 1) m[y][x] = 'p';
+  }
+  // a dock out into the water from the bottom of the path
+  let ybot = 0; for (let y = 0; y < LH; y++) if (m[y][14] === 'w') ybot = y;
+  for (const x of [14, 15]) for (let y = ybot - 3; y <= ybot; y++) m[y][x] = 'd';
+  // the path down to where the car parks
+  for (let y = ybot + 1; y < LH - 1; y++) for (const x of [14, 15]) if (m[y][x] === '.') m[y][x] = 'p';
+  // bushes in the four corners, trees around
+  const bushes = [[2, 2], [26, 2], [2, 16], [26, 16]];
+  bushes.forEach(([bx, by]) => { for (let y = by; y < by + 2; y++) for (let x = bx; x < bx + 2; x++) m[y][x] = 'b'; });
+  for (let y = 1; y < LH - 1; y++) for (let x = 1; x < LW - 1; x++)
+    if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 14.5) > 3 && r() < .06) m[y][x] = 'T';
+  const reeds = []; for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if (m[y][x] === 'r') reeds.push([x, y]);
+  reeds.sort((a, b) => a[0] - b[0]);
+  return {
+    m, start: [15, LH - 2.6],
+    // where the pieces hide: the end of the dock, deep in the reeds, a bush in the far corner
+    spots: { duckHat: [15, ybot - 3 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [27.5, 2.5] },
+    goldSpots: [[2.5, 2.5], [2.5, 16.5], [27.5, 16.5], [27.5, 3.5]],
+  };
+})();
+const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
+const solidAt = (x, y) => SOLID.includes(tileAt(x, y));
+function hits(x, y, r) { return solidAt(x - r, y - r) || solidAt(x + r, y - r) || solidAt(x - r, y + r) || solidAt(x + r, y + r); }
+function move(o, dx, dy, r) { if (!hits(o.x + dx, o.y, r)) o.x += dx; if (!hits(o.x, o.y + dy, r)) o.y += dy; }
+function randOpen(minD = 0, kinds = '.p') {
+  for (let i = 0; i < 500; i++) {
+    const x = 1 + Math.floor(Math.random() * (LW - 2)), y = 1 + Math.floor(Math.random() * (LH - 2));
+    if (kinds.includes(G.m[y][x]) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
+  }
+  return [5.5, 5.5];
+}
+function startPond() {
+  screen = 'level'; showRow('levelBtns');
+  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, toy: null, done: false, cam: { x: 0, y: 0 }, carHint: 0 };
+  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2); G.treats.push({ x, y, v }); } };
+  add(22, 1); add(6, 2); add(3, 5);
+  const [gx, gy] = POND.goldSpots[Math.floor(Math.random() * POND.goldSpots.length)];
+  G.treats.push({ x: gx, y: gy, v: 10 });
+  G.sparkles = Object.entries(POND.spots).filter(([k]) => !S.pond[k]).map(([k, [x, y]]) => ({ k, x, y }));
+  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
+  for (let i = 0; i < 6; i++) { const [x, y] = randOpen(5); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
+  hudLevel();
+  toast('Bread is at the pond! Catch the squirrels and the fleas. Bark to make them stop.');
+}
+function hudLevel() {
+  $('#hSq').textContent = `🐿️ ${G.sq.length} left`;
+  $('#hFl').textContent = `Fleas: ${G.fl.length} left`;
+  $('#hTrip').textContent = `🦴 +${G.trip} this trip`;
+  bank();
+}
+const keys = {};
+let goal = null;
+function stepLevel(dt, t) {
+  const b = G.bread;
+  let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+  let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+  if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
+  const m = Math.hypot(dx, dy);
+  b.moving = m > .1 && !G.done;
+  if (b.moving) { dx /= m; dy /= m; move(b, dx * 4.2 * dt, dy * 4.2 * dt, .3); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  // treats
+  G.treats = G.treats.filter(tr => {
+    if (Math.hypot(tr.x - b.x, tr.y - b.y) > .5) return true;
+    S.bank += tr.v; G.trip += tr.v; sfx.treat(tr.v); G.pops.push({ x: tr.x, y: tr.y, txt: '+' + tr.v, t: 0, c: TREAT_COL[tr.v] });
+    if (tr.v === 10) { S.pond.gold = true; burst(tr.x, tr.y); toast('A gold treat! That one is worth 10!'); }
+    persist(); hudLevel(); return false;
+  });
+  // hidden sparkles
+  G.sparkles = G.sparkles.filter(sp => {
+    if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
+    S.pond[sp.k] = true;
+    if (sp.k === 'rubberDuck') { S.toys.push('rubberDuck'); toast('You found a rubber duck toy! It will be on the shelf at home.'); }
+    else { S.have.push(sp.k); toast(`You found the ${ITEMS[sp.k].name}! It's in the closet at home.`); }
+    persist(); burst(sp.x, sp.y); sfx.sparkle(); return false;
+  });
+  // squirrels run from Bread and zig-zag; a bark makes them freeze
+  G.sq.forEach(s => {
+    s.t += dt;
+    if (s.stun > 0) { s.stun -= dt; return; }
+    const d = Math.hypot(s.x - b.x, s.y - b.y);
+    let ax, ay, v;
+    if (d < 3.5) { const ux = (s.x - b.x) / d, uy = (s.y - b.y) / d, z = Math.sin(s.t * 7) * .8; ax = ux - uy * z; ay = uy + ux * z; v = 3.3; }
+    else { s.a += (Math.random() - .5) * 4 * dt; ax = Math.cos(s.a); ay = Math.sin(s.a); v = Math.sin(s.t * 1.3) > .3 ? 0 : 1.3; }
+    const l = Math.hypot(ax, ay) || 1, ox = s.x, oy = s.y;
+    move(s, ax / l * v * dt, ay / l * v * dt, .25);
+    if (v && ox === s.x && oy === s.y) s.a += 2;
+    s.face = s.x > ox ? 1 : s.x < ox ? -1 : s.face || 1;
+  });
+  // fleas hop about, faster when Bread is close
+  G.fl.forEach(f => {
+    if (f.stun > 0) { f.stun -= dt; if (!f.hop) return; }
+    if (f.hop) {
+      f.hop.t += dt / .45; const k = Math.min(1, f.hop.t);
+      f.x = f.hop.x0 + (f.hop.x1 - f.hop.x0) * k; f.y = f.hop.y0 + (f.hop.y1 - f.hop.y0) * k; f.h = Math.sin(k * Math.PI);
+      if (k >= 1) { f.hop = null; f.h = 0; f.wait = .5 + Math.random() * .9; }
+      return;
+    }
+    f.wait -= dt * (Math.hypot(f.x - b.x, f.y - b.y) < 2.5 ? 2.5 : 1);
+    if (f.wait > 0) return;
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
+      if ('.prb'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
+    }
+    if (!f.hop) f.wait = .3;
+  });
+  // catching
+  let last = null;
+  G.sq = G.sq.filter(s => { if (Math.hypot(s.x - b.x, s.y - b.y) > .6) return true; last = s; G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); sfx.catch(); burst(s.x, s.y, '#c08a5a'); return false; });
+  G.fl = G.fl.filter(f => { if (Math.hypot(f.x - b.x, f.y - b.y) > .55 || f.h > .6) return true; last = f; G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); sfx.catch(); burst(f.x, f.y, '#9b6cd8'); return false; });
+  if (last) {
+    hudLevel();
+    // the last one drops Bread's lost toy
+    if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
+  }
+  if (G.toy && !G.done && Math.hypot(G.toy.x - b.x, G.toy.y - b.y) < .6) { G.done = true; sfx.squeak(); setTimeout(finishPond, 600); }
+  // ducks paddle, and quack at Bread
+  G.ducks.forEach(d => {
+    d.quack -= dt; d.a += (Math.random() - .5) * 2 * dt;
+    const near = Math.hypot(d.x - b.x, d.y - b.y) < 2.3;
+    if (near && d.quack <= 0) { sfx.quack(); d.quack = 3; d.a = Math.atan2(d.y - b.y, d.x - b.x); }
+    const v = near ? 1.4 : .5, nx = d.x + Math.cos(d.a) * v * dt, ny = d.y + Math.sin(d.a) * v * dt;
+    if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
+  });
+  // the car at the bottom
+  if (b.y > LH - 2.4 && Math.abs(b.x - 15) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car! Press Go home whenever you want to ride home.'); }
+  G.carHint -= dt;
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
+  G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
+}
+const TREAT_COL = { 1: '#b8773a', 2: '#e0474c', 5: '#3a8fe0', 10: '#f5b700' };
+function burst(x, y, col) { ['#ffd23f', '#ff8fb1', '#7fe0ff', '#9be27a', '#ffffff'].forEach(c => { for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, c: col && i % 2 ? col : c }); } }); }
+function bark() {
+  if (screen === 'home') { homeWoof = performance.now() + 700; sfx.bark(); return; }
+  if (screen !== 'level' || !G || G.done || G.woofT > performance.now()) return;
+  G.woofT = performance.now() + 700; sfx.bark();
+  const b = G.bread;
+  [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
+}
+$('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
+
+function drawTreat(x, y, v, t) {
+  put(sprite(BONE, { map: { c: TREAT_COL[v] } }), x - 5, y - 2);
+  if (v === 10) twinkle(x + 5, y - 4, t);
+}
+function drawSquirrel(s, t) {
+  const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
+  put(sprite(SQUIRREL[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 8 - (frame && s.stun <= 0 ? 1 : 0));
+  if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
+}
+function drawFlea(f, t) {
+  put(sprite(FLEA), f.x * T - 4, f.y * T - 4 - f.h * 8);
+  if (f.stun > 0) text('!', f.x * T, f.y * T - 8);
+}
+function drawLevel(t) {
+  const b = G.bread, cam = G.cam;
+  cam.x = Math.max(0, Math.min(LW - VW, b.x - VW / 2)); cam.y = Math.max(0, Math.min(LH - VH, b.y - VH / 2));
+  cx.save(); cx.translate(-Math.round(cam.x * T), -Math.round(cam.y * T));
+  const x0 = Math.floor(cam.x), y0 = Math.floor(cam.y), x1 = Math.min(LW, x0 + VW + 2), y1 = Math.min(LH, y0 + VH + 2);
+  const wet = (x, y) => 'wd'.includes(G.m[y]?.[x] ?? '.');
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.m[y][x], X = x * T, Y = y * T;
+    if (c === 'w' || c === 'd') {
+      px(X, Y, T, T, COL.W);
+      if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, COL.l); px(X + 2 + o, Y + 8, 1, 1, COL.l); }
+      if (!wet(x, y - 1)) px(X, Y, T, 1, COL.V);
+      if (!wet(x, y + 1)) px(X, Y + T - 1, T, 1, COL.V);
+      if (!wet(x - 1, y)) px(X, Y, 1, T, COL.V);
+      if (!wet(x + 1, y)) px(X + T - 1, Y, 1, T, COL.V);
+      if (c === 'd') {
+        px(X, Y, T, T, '#b07a46');
+        for (let i = 3; i < T; i += 4) px(X, Y + i, T, 1, '#8d5c30');
+        px(X + 2, Y + 1, 1, 1, LINE); px(X + 13, Y + 1, 1, 1, LINE);
+        if (G.m[y][x - 1] !== 'd') px(X, Y, 1, T, LINE);
+        if (G.m[y][x + 1] !== 'd') px(X + T - 1, Y, 1, T, LINE);
+        if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
+      }
+    } else if (c === 'p') {
+      px(X, Y, T, T, '#ecd6a0');
+      if ((x * 5 + y * 7) % 4 === 0) px(X + 4, Y + 10, 2, 1, '#d4bb82');
+      if ((x * 3 + y * 5) % 5 === 0) px(X + 11, Y + 4, 1, 1, '#d4bb82');
+    } else {
+      px(X, Y, T, T, '#8fd17a');
+      if ((x * 7 + y * 3) % 5 === 0) { px(X + 5, Y + 8, 1, 2, '#79bd66'); px(X + 7, Y + 7, 1, 3, '#79bd66'); px(X + 9, Y + 8, 1, 2, '#79bd66'); }
+      if (c === '#') {                      // white picket fence
+        px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, '#fffaf0'); px(X, Y + 9, T, 1, LINE);
+        for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
+      }
+      if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
+    }
+  }
+  drawCar(15 * T, (LH - .2) * T, 1, 0);       // parked by the gate
+  G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
+  if (G.toy) put(sprite(BIG_BONE), G.toy.x * T - 7, G.toy.y * T - 4 - (Math.floor(t / 200) % 2) * 2);
+  G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
+  G.fl.forEach(f => drawFlea(f, t));
+  G.sq.forEach(s => drawSquirrel(s, t));
+  drawBread(b.x * T, b.y * T + 7, 1, b.face, t, b.moving);
+  if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
+  // tree tops, bushes and reeds go over everything, so things can hide behind them
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.m[y][x], X = x * T, Y = y * T;
+    if (c === 'T') put(sprite(blob(26, 22, 'G', 'q', 'L')), X - 5, Y - 15);
+    if (c === 'b') put(sprite(blob(20, 16, 'G', 'q', 'L')), X - 2, Y);
+    if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
+  }
+  G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
+  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+  G.pops.forEach(p => text(p.txt, p.x * T, p.y * T - 10 - p.t * 12, p.c));
+  cx.restore();
+}
+function finishPond() {
+  const first = !S.pond.beat;
+  S.pond.beat = true; if (!S.have.includes('duck')) S.have.push('duck');
+  const all = POND_PARTS.every(([k]) => S.pond[k]), newTrophy = all && !S.pond.trophy;
+  if (all) S.pond.trophy = true;
+  persist(); sfx.win();
+  const parts = POND_PARTS.map(([k, n]) => `<span class="${S.pond[k] ? 'yes' : 'no'}">${S.pond[k] ? '✓' : '?'} ${n}</span>`).join('');
+  const lines = [first ? 'You won the duck costume!' : 'The pond is all clear again!', `Bread picked up ${G.trip} treats this trip.`];
+  if (newTrophy) lines.push('You found everything! The pond trophy goes on the shelf at home.');
+  else if (!all) lines.push('Something is still hidden at the pond. Come back and look!');
+  $('#card').innerHTML = `<h2>Bread found his squeaky bone!</h2>${lines.map((l, i) => `<p class="${i === 0 || (newTrophy && i === 2) ? 'big' : ''}">${newTrophy && i === 2 ? '🏆 ' : ''}${l}</p>`).join('')}<div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
+  $('#cover').hidden = false;
+  $('#homeRide').onclick = () => {
+    $('#cover').hidden = true;
+    drive(1, 0, () => goHome(first ? 'Welcome home! Try on the new duck costume in the closet.' : 'Welcome home!'));
+  };
+}
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
+  keys[k] = true;
+  if ((k === ' ' || k === 'b') && !e.repeat) bark();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
+const toView = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * VW, y: (e.clientY - r.top) / r.height * VH }; };
+cv.addEventListener('pointerdown', e => {
+  const p = toView(e);
+  if (screen === 'level') { goal = p; cv.setPointerCapture(e.pointerId); }
+  else if (screen === 'drive' && ride) ride.t = 1;                      // tap to skip the ride
+  else if (screen === 'map' && Math.hypot(p.x - 14.3, (p.y - 4) * 1.6) < 3.2) $('#pondBtn').click();
+  else if (screen === 'home') {
+    if (Math.abs(p.x - VW / 2) < 2.5 && p.y > 4.5 && p.y < 9.5) bark();   // pat Bread and he barks
+    else if (p.x > 1 && p.x < 5.6 && p.y > 2 && p.y < 3.4 && S.toys.length) sfx.squeak();
+  }
+});
+cv.addEventListener('pointermove', e => { if (goal) goal = toView(e); });
+cv.addEventListener('pointerup', () => goal = null);
+cv.addEventListener('pointercancel', () => goal = null);
+
+$('#playBtn').onclick = () => {
+  $('#cover').hidden = true; resize();
+  goHome(S.pond.beat ? 'Welcome back to Bread\'s house!' : 'This is Bread! Pat him to hear him bark. When you are ready, go for a ride.');
+};
+
+// ---------- Main loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  if (screen === 'title' || screen === 'home') drawHome(t);
+  else if (screen === 'map') drawMap(t);
+  else if (screen === 'drive') {
+    ride.t = Math.min(1, ride.t + dt / 3);
+    drawMap(t);
+    if (ride.t >= 1) { const then = ride.then; ride = null; then(); }
+  } else if (screen === 'level' && G) { if ($('#cover').hidden) stepLevel(dt, t); drawLevel(t); }
+  snap();
+  out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, cv.width, cv.height);
+  requestAnimationFrame(loop);
+}
+resize(); bank();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

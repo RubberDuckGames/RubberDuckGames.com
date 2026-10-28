@@ -11,6 +11,14 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (full design on Trello card #33). Decided 20 Oct: the fix-the-glitch theme;
   Errors are restored, not killed, and the blaster is a debug blaster, not a
   real-world gun. Single-player only; multiplayer needs a server and moderation.
+- `bread/index.html` is Bread the Corgi, a separate game designed by the middle
+  kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 20 px to a tile on a
+  small canvas, scaled up with smoothing off) and no voice, only chiptune beeps,
+  so everything a player needs is written on screen. Bread rides from home to a
+  small world, catches the squirrels and fleas, and the last one drops his
+  squeaky bone. Beating a world wins its costume; the extra pieces, the hidden
+  sparkles and the gold treat make 100% and the trophy. Treats are the money.
+  Progress is in localStorage under `bread-corgi`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
@@ -42,3 +50,5 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Treasure Trail sizes text in `px`; the parent rules want `rem`.
 - Treasure Trail's strings are inline, not in a catalogue.
 - Space Lab and Story Tree are on the map as "soon" and not built yet.
+- Bread's strings are inline, not in a catalogue, like Treasure Trail's.
+- The home page says every word can be read aloud; Math Force and Bread have no voice.
