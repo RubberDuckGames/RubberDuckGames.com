@@ -20,7 +20,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-off
 .bar h1 b{color:var(--accent)}
 .pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:0.375rem 0.875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
 .wrap{max-width:62.5rem;margin:0 auto;padding:0 0.875rem 1.25rem}
-.hud{display:flex;flex-wrap:wrap;gap:0.5rem;margin:0 0 0.5rem}
 .stagebox{position:relative;margin:0 auto;max-width:100%}
 canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow:0 0 0 3px var(--line),0 8px 24px rgba(90,60,20,.18);touch-action:none}
 .toast{position:absolute;top:0.75rem;left:50%;transform:translateX(-50%);background:rgba(255,253,247,.96);border:2px solid var(--accent);border-radius:999px;padding:0.375rem 1rem;font-weight:700;z-index:5;pointer-events:none;max-width:92%;text-align:center}
@@ -29,6 +28,10 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .card h2{margin:0 0 0.375rem;font-size:1.75rem}
 .card p{margin:0.375rem 0;color:var(--soft)}
 .card .big{font-size:1.375rem;font-weight:800;color:var(--ink)}
+.trow{display:flex;justify-content:space-between;gap:1rem;max-width:22rem;margin:0.5rem auto;color:var(--ink);visibility:hidden}
+.trow.on{visibility:visible}
+.trow b,.pct b{font-family:"Press Start 2P",monospace}
+.pct{visibility:hidden}.pct.on{visibility:visible}
 .found{display:flex;flex-wrap:wrap;gap:0.375rem;justify-content:center;margin:0.625rem 0}
 .found span{border:2px solid var(--line);border-radius:999px;padding:0.25rem 0.75rem;font-size:0.9375rem;font-weight:700}
 .found .yes{border-color:var(--green);color:var(--green)}
@@ -75,17 +78,12 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
 </div>
 <div class="wrap">
-  <div class="hud" id="hud" hidden aria-live="polite">
-    <span class="pill" id="hSq"></span>
-    <span class="pill" id="hFl"></span>
-    <span class="pill" id="hTrip"></span>
-  </div>
   <div class="stagebox" id="box">
     <canvas id="cv"></canvas>
     <div class="toast" id="toast" hidden></div>
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
-      <p>Bread is a corgi. (He's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
+      <p>Bread is a corgi. (She's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
       <div class="row"><button class="btn go" id="playBtn">Play</button></div>
     </div></div>
   </div>
@@ -111,17 +109,18 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   </div>
   <div class="row" id="levelBtns" hidden>
     <button class="btn go" id="barkBtn">🐶 Bark</button>
+    <button class="btn go" id="pawBtn">🐾 Paw</button>
     <button class="btn" data-home>🏠 Go home</button>
   </div>
-  <p class="keys" id="keys" hidden>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go · Bark: <b>Space</b></p>
+  <p class="keys" id="keys" hidden>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go · Bark: <b>Space</b> · Paw: <b>P</b> or <b>Enter</b></p>
 </div>
 
 <script>
 // Bread the Corgi. Decided 27-28 Oct, designed by the middle kid tester: Bread
 // rides in the car from home to a small world, chases off the squirrels and
-// fleas, picks up treats (the money) and finds his lost toy. Beating a world
+// fleas, picks up treats (the money) and finds her lost toy. Beating a world
 // wins that animal's costume, just for fun. Every world can be played again for
-// the extra pieces, the hidden sparkles and the gold treat; finding all of them
+// the extra pieces, the hidden sparkles and the gold paw print; finding all of them
 // is 100% and wins the trophy.
 const $ = s => document.querySelector(s);
 // Decided 28 Oct: 8-bit. Everything is drawn on a small canvas, 16 pixels to a
@@ -170,7 +169,7 @@ const ITEMS = {
 };
 const SLOTS = [['body', 'Costume'], ['hat', 'Hat'], ['face', 'Face'], ['neck', 'Neck'], ['back', 'Back'], ['feet', 'Feet']];
 // what counts toward 100% at the pond
-const POND_PARTS = [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold treat']];
+const POND_PARTS = [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']];
 
 // ---------- Sounds ----------
 // Decided 28 Oct: no voice in this game, only chiptune beeps. Everything a
@@ -189,11 +188,15 @@ function tone(f, d, type = 'sine', when = 0, vol = .06, to) {
 const sfx = {
   treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
   bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
+  paw: () => tone(500, .07, 'square', 0, .03, 1300),
   catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
   sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, .09, 'square', i * .06, .03)),
   quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
   squeak: () => tone(1400, .12, 'square', 0, .03, 1900),
   honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
+  ouch: () => { tone(400, .08, 'square', 0, .04, 200); tone(260, .12, 'square', .09, .04, 120); },
+  tick: () => tone(1500, .03, 'square', 0, .025),
+  found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
 };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
@@ -312,7 +315,12 @@ const SQUIRREL = [
 ];
 const FLEA = ['........', '...mm...', '..mmmh..', '..mmmm..', '...mm...', '..m..m..', '........'];
 const DUCK = ['..............', '........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...', '..............'];
+const CLAW = [...Array(8)].map((_, r) => [...Array(15)].map((_, x) => [0, 3, 6].some(o => x - r - o === 0 || x - r - o === 1) ? 'h' : '.').join(''));   // three claw lines
+const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
+const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
+const DUCK_FEET = ['.b.b...b.b.', '.bbb...bbb.', 'bbbbb.bbbbb'];
 const BONE = ['..........', '.cc....cc.', '..cccccc..', '.cc....cc.', '..........'];
+const HP_BONE = ['.........', '.hh...hh.', '..hhhhh..', '.hh...hh.', '.........'];
 const BIG_BONE = ['..............', '.hh........hh.', '.hhh......hhh.', '..hhhhhhhhhh..', '.hhh......hhh.', '.hh........hh.', '..............'];
 const TROPHY = ['...........', '.y.yyyyy.y.', '.yyyyyyyyy.', '..yyyyyyy..', '...yyeyy...', '....yyy....', '.....y.....', '....YYY....', '...YYYYY...', '...........'];
 const CHECK = ['........', '......L.', '.....LL.', '.L..LL..', '.LLLL...', '..LL....', '........'];
@@ -328,7 +336,7 @@ function drawCar(x, y, face, t) {
 
 // ---------- Home ----------
 let screen = 'title';
-function showRow(id) { ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id); $('#hud').hidden = $('#keys').hidden = id !== 'levelBtns'; }
+function showRow(id) { ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id); $('#keys').hidden = id !== 'levelBtns'; }
 function bank() { $('#hBank').textContent = `🦴 ${S.bank}`; }
 function goHome(msg) {
   screen = 'home'; G = null; showRow('homeBtns'); bank();
@@ -496,7 +504,7 @@ function randOpen(minD = 0, kinds = '.p') {
 }
 function startPond() {
   screen = 'level'; showRow('levelBtns');
-  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, toy: null, done: false, cam: { x: 0, y: 0 }, carHint: 0 };
+  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, toy: null, done: false, cam: { x: 0, y: 0 }, carHint: 0 };
   const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2); G.treats.push({ x, y, v }); } };
   add(22, 1); add(6, 2); add(3, 5);
   const [gx, gy] = POND.goldSpots[Math.floor(Math.random() * POND.goldSpots.length)];
@@ -506,38 +514,65 @@ function startPond() {
   for (let i = 0; i < 6; i++) { const [x, y] = randOpen(5); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
   for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
   hudLevel();
-  toast('Bread is at the pond! Catch the squirrels and the fleas. Bark to make them stop.');
+  toast('Bread is at the pond! Bark to make the squirrels and fleas stop, then catch them with your paw.');
 }
-function hudLevel() {
-  $('#hSq').textContent = `🐿️ ${G.sq.length} left`;
-  $('#hFl').textContent = `Fleas: ${G.fl.length} left`;
-  $('#hTrip').textContent = `🦴 +${G.trip} this trip`;
-  bank();
-}
+// Decided 28 Oct: no "how many are left" counters on screen. The tally at the
+// end counts everything up instead, one line at a time.
+function hudLevel() { bank(); }
 const keys = {};
 let goal = null;
+// Decided 28 Oct: Bread has a health bar of 5 bones. Running into a squirrel or
+// flea that isn't frozen costs one, which is why the bark comes first. Running
+// out isn't losing: Bread is tired, keeps her treats, and can try again.
+const HP = 5;
+function hurt(o) {
+  const b = G.bread; G.hp--; G.ouch = 1.5; sfx.ouch(); goal = null;
+  const d = Math.hypot(b.x - o.x, b.y - o.y) || 1;
+  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3);
+  G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
+  if (G.hp <= 0) { G.done = true; setTimeout(tiredPond, 700); }
+}
+function tiredPond() {
+  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so the squirrels and fleas freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
+  $('#cover').hidden = false;
+  $('#again').onclick = () => { $('#cover').hidden = true; startPond(); };
+  $('#homeRide').onclick = () => { $('#cover').hidden = true; drive(1, 0, () => goHome('Bread had a nap. She is ready to go again!')); };
+}
+// Decided 28 Oct: special finds get a moment. Bread stops, holds the find up
+// over her head, and a short rising tune plays, the way adventure games show
+// off a big find. Treats don't get it, so it stays special.
+function hold(rows, msg, then) {
+  G.hold = { img: sprite(rows), until: performance.now() + 1800, then }; goal = null;
+  sfx.found(); toast(msg);
+}
 function stepLevel(dt, t) {
   const b = G.bread;
+  if (G.hold) {
+    if (performance.now() < G.hold.until) { G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6)); G.pops = G.pops.filter(p => (p.t += dt, p.t < .9)); return; }
+    const then = G.hold.then; G.hold = null; if (then) then();
+    return;
+  }
   let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
   b.moving = m > .1 && !G.done;
-  if (b.moving) { dx /= m; dy /= m; move(b, dx * 4.2 * dt, dy * 4.2 * dt, .3); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  if (b.moving) { dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * 4.2 * dt, dy * 4.2 * dt, .3); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
   // treats
   G.treats = G.treats.filter(tr => {
     if (Math.hypot(tr.x - b.x, tr.y - b.y) > .5) return true;
     S.bank += tr.v; G.trip += tr.v; sfx.treat(tr.v); G.pops.push({ x: tr.x, y: tr.y, txt: '+' + tr.v, t: 0, c: TREAT_COL[tr.v] });
-    if (tr.v === 10) { S.pond.gold = true; burst(tr.x, tr.y); toast('A gold treat! That one is worth 10!'); }
-    persist(); hudLevel(); return false;
+    persist(); hudLevel();
+    if (tr.v === 10) { S.pond.gold = true; burst(tr.x, tr.y); hold(GOLD_PAW, 'The gold paw print! It is worth 10 treats!'); }
+    return false;
   });
   // hidden sparkles
   G.sparkles = G.sparkles.filter(sp => {
     if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
     S.pond[sp.k] = true;
-    if (sp.k === 'rubberDuck') { S.toys.push('rubberDuck'); toast('You found a rubber duck toy! It will be on the shelf at home.'); }
-    else { S.have.push(sp.k); toast(`You found the ${ITEMS[sp.k].name}! It's in the closet at home.`); }
-    persist(); burst(sp.x, sp.y); sfx.sparkle(); return false;
+    if (sp.k === 'rubberDuck') { S.toys.push('rubberDuck'); hold(DUCK, 'You found a rubber duck toy! It will be on the shelf at home.'); }
+    else { S.have.push(sp.k); hold(sp.k === 'duckHat' ? DUCK_HAT : DUCK_FEET, `You found the ${ITEMS[sp.k].name}! It's in the closet at home.`); }
+    persist(); burst(sp.x, sp.y); return false;
   });
   // squirrels run from Bread and zig-zag; a bark makes them freeze
   G.sq.forEach(s => {
@@ -569,16 +604,15 @@ function stepLevel(dt, t) {
     }
     if (!f.hop) f.wait = .3;
   });
-  // catching
-  let last = null;
-  G.sq = G.sq.filter(s => { if (Math.hypot(s.x - b.x, s.y - b.y) > .6) return true; last = s; G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); sfx.catch(); burst(s.x, s.y, '#c08a5a'); return false; });
-  G.fl = G.fl.filter(f => { if (Math.hypot(f.x - b.x, f.y - b.y) > .55 || f.h > .6) return true; last = f; G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); sfx.catch(); burst(f.x, f.y, '#9b6cd8'); return false; });
-  if (last) {
-    hudLevel();
-    // the last one drops Bread's lost toy
-    if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
+  G.ouch -= dt;
+  if (G.ouch <= 0 && !G.done) {
+    const by = G.sq.find(s => s.stun <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < .6) || G.fl.find(f => f.stun <= 0 && f.h < .3 && Math.hypot(f.x - b.x, f.y - b.y) < .5);
+    if (by) hurt(by);
   }
-  if (G.toy && !G.done && Math.hypot(G.toy.x - b.x, G.toy.y - b.y) < .6) { G.done = true; sfx.squeak(); setTimeout(finishPond, 600); }
+  if (G.toy && !G.done && Math.hypot(G.toy.x - b.x, G.toy.y - b.y) < .6) {
+    G.done = true; G.toy = null; sfx.squeak();
+    setTimeout(() => hold(S.pond.beat ? BIG_BONE : DUCK, S.pond.beat ? 'Bread found her squeaky bone!' : 'Bread found her squeaky bone, and won the duck costume!', finishPond), 300);
+  }
   // ducks paddle, and quack at Bread
   G.ducks.forEach(d => {
     d.quack -= dt; d.a += (Math.random() - .5) * 2 * dt;
@@ -603,10 +637,28 @@ function bark() {
   [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
 }
 $('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
+// Decided 28 Oct: Bread gets two moves. The bark freezes everything nearby, and
+// the paw swipe is what catches. Before this, walking into a baddie caught it,
+// so there was nothing to press but Bark. The paw reaches about two tiles in
+// front of Bread, the way she last walked, so a frozen squirrel is easy to get.
+function paw() {
+  if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
+  const b = G.bread; G.pawT = performance.now() + 250; sfx.paw();
+  const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
+  const hit = o => Math.hypot(o.x - hx, o.y - hy) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
+  let last = null;
+  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
+  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
+  if (!last) return;
+  sfx.catch(); hudLevel();
+  // the last one drops Bread's lost toy
+  if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
+}
+$('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 
 function drawTreat(x, y, v, t) {
+  if (v === 10) { put(sprite(GOLD_PAW), x - 4, y - 4); twinkle(x + 5, y - 5, t); return; }
   put(sprite(BONE, { map: { c: TREAT_COL[v] } }), x - 5, y - 2);
-  if (v === 10) twinkle(x + 5, y - 4, t);
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
@@ -660,8 +712,9 @@ function drawLevel(t) {
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
-  drawBread(b.x * T, b.y * T + 7, 1, b.face, t, b.moving);
+  if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, b.moving && !G.hold);
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
+  if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
   // tree tops, bushes and reeds go over everything, so things can hide behind them
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const c = G.m[y][x], X = x * T, Y = y * T;
@@ -670,22 +723,51 @@ function drawLevel(t) {
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
   }
   G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
+  if (G.hold) {                              // Bread and the find she holds up go over the trees too
+    drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
+    const im = G.hold.img, hx = b.x * T - im.width / 2, hy = Math.max(cam.y * T + 2, b.y * T - 26 - im.height);
+    put(im, hx, hy); twinkle(hx - 5, hy + 2, t); twinkle(hx + im.width + 5, hy + 2, t + 240);
+  }
   G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
   G.pops.forEach(p => text(p.txt, p.x * T, p.y * T - 10 - p.t * 12, p.c));
   cx.restore();
+  px(2, 2, HP * 11 + 3, 9, LINE);
+  for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, 4);   // the health bar; a used-up bone goes dim
 }
+// Decided 28 Oct: the end of a world is a tally that counts up line by line,
+// with a tick for each number, and finishes on how much of the world is
+// complete. Each of the five pond pieces is 20%.
 function finishPond() {
   const first = !S.pond.beat;
   S.pond.beat = true; if (!S.have.includes('duck')) S.have.push('duck');
   const all = POND_PARTS.every(([k]) => S.pond[k]), newTrophy = all && !S.pond.trophy;
   if (all) S.pond.trophy = true;
-  persist(); sfx.win();
+  persist();
+  const pct = Math.round(POND_PARTS.filter(([k]) => S.pond[k]).length / POND_PARTS.length * 100);
+  const rows = [['Squirrels caught', G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`]];
   const parts = POND_PARTS.map(([k, n]) => `<span class="${S.pond[k] ? 'yes' : 'no'}">${S.pond[k] ? '✓' : '?'} ${n}</span>`).join('');
-  const lines = [first ? 'You won the duck costume!' : 'The pond is all clear again!', `Bread picked up ${G.trip} treats this trip.`];
-  if (newTrophy) lines.push('You found everything! The pond trophy goes on the shelf at home.');
-  else if (!all) lines.push('Something is still hidden at the pond. Come back and look!');
-  $('#card').innerHTML = `<h2>Bread found his squeaky bone!</h2>${lines.map((l, i) => `<p class="${i === 0 || (newTrophy && i === 2) ? 'big' : ''}">${newTrophy && i === 2 ? '🏆 ' : ''}${l}</p>`).join('')}<div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
+  const after = newTrophy ? '🏆 You found everything! The pond trophy goes on the shelf at home.' : all ? 'You found everything at the pond!' : 'Something is still hidden at the pond. Come back and look!';
+  $('#card').innerHTML = `<h2>Pond clear!</h2><p class="big">${first ? 'You won the duck costume!' : 'Bread found her squeaky bone!'}</p>`
+    + rows.map(([l, , end = '']) => `<p class="trow"><span>${l}</span><b><span>0</span>${end}</b></p>`).join('')
+    + `<p class="big pct">Pond complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
   $('#cover').hidden = false;
+  const card = $('#card'), trows = [...card.querySelectorAll('.trow')], pcts = [...card.querySelectorAll('.pct')];
+  const count = (el, to, step, fmt, done) => {
+    let n = 0;
+    const go = () => {
+      if (!card.isConnected) return;
+      n = Math.min(to, n + step); el.textContent = fmt(n); sfx.tick();
+      if (n < to) setTimeout(go, 45); else setTimeout(done, 380);
+    };
+    if (to <= 0) { el.textContent = fmt(0); setTimeout(done, 380); } else go();
+  };
+  const row = i => {
+    if (!card.isConnected) return;
+    if (i < rows.length) { trows[i].classList.add('on'); const to = rows[i][1]; count(trows[i].querySelector('b span'), to, Math.max(1, Math.ceil(to / 12)), n => n, () => row(i + 1)); return; }
+    pcts.forEach(p => p.classList.add('on'));
+    count(pcts[0].querySelector('b'), pct, 4, n => n + '%', () => { sfx.win(); if (newTrophy) sfx.sparkle(); });
+  };
+  setTimeout(() => row(0), 400);
   $('#homeRide').onclick = () => {
     $('#cover').hidden = true;
     drive(1, 0, () => goHome(first ? 'Welcome home! Try on the new duck costume in the closet.' : 'Welcome home!'));
@@ -698,6 +780,7 @@ addEventListener('keydown', e => {
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
   keys[k] = true;
   if ((k === ' ' || k === 'b') && !e.repeat) bark();
+  if ((k === 'p' || k === 'enter') && !e.repeat && screen === 'level') { e.preventDefault(); paw(); }
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
@@ -708,7 +791,7 @@ cv.addEventListener('pointerdown', e => {
   else if (screen === 'drive' && ride) ride.t = 1;                      // tap to skip the ride
   else if (screen === 'map' && Math.hypot(p.x - 14.3, (p.y - 4) * 1.6) < 3.2) $('#pondBtn').click();
   else if (screen === 'home') {
-    if (Math.abs(p.x - VW / 2) < 2.5 && p.y > 4.5 && p.y < 9.5) bark();   // pat Bread and he barks
+    if (Math.abs(p.x - VW / 2) < 2.5 && p.y > 4.5 && p.y < 9.5) bark();   // pat Bread and she barks
     else if (p.x > 1 && p.x < 5.6 && p.y > 2 && p.y < 3.4 && S.toys.length) sfx.squeak();
   }
 });
@@ -718,7 +801,7 @@ cv.addEventListener('pointercancel', () => goal = null);
 
 $('#playBtn').onclick = () => {
   $('#cover').hidden = true; resize();
-  goHome(S.pond.beat ? 'Welcome back to Bread\'s house!' : 'This is Bread! Pat him to hear him bark. When you are ready, go for a ride.');
+  goHome(S.pond.beat ? 'Welcome back to Bread\'s house!' : 'This is Bread! Pat her to hear her bark. When you are ready, go for a ride.');
 };
 
 // ---------- Main loop ----------
