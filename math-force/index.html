@@ -380,15 +380,17 @@ function newSector(n) {
     n, errs, worms, bolts: [], ebolts: [], fx: [], restored: [],
     p: { x: START[0], y: START[1], aim: 0, shield: shieldMax(), hurtT: 0 },
     ammo: magMax(), wrench: G?.wrench ?? wrenchMax(), wrenchBroken: G?.wrenchBroken ?? false,
-    swingT: 0, terminalUsed: false, stats: { right: 0, asked: 0, restored: 0 },
+    swingT: 0, fireT: 0, terminalUsed: false, stats: { right: 0, asked: 0, restored: 0 },
     tiles: MAP.map(r => [...r]), closed: new Set(), powered: false, crate: false, near: null,
     slow: 1, dist: null, distT: 0, running: true,
   };
   hud();
 }
+// Decided 27 Oct, from the kid designer's sheet (HP, damage, range): Basically
+// 1 HP, hits for 1. Armed 3-4 HP, hits for 1. Ranger 2 HP, shoots for 2 from up to 8 tiles.
 function makeErr(x, y, armored, kind = 'error') {
-  if (kind === 'shooter') return { x, y, armored: false, shooter: true, hp: 2, speed: 1, jit: Math.random() * 10, cool: 2 + Math.random() * 2 };
-  return { x, y, armored, hp: armored ? 3 : 1, speed: armored ? 1.2 : 1.7, jit: Math.random() * 10 };
+  if (kind === 'shooter') return { x, y, armored: false, shooter: true, hp: 2, dmg: 1, speed: 1, jit: Math.random() * 10, cool: 2 + Math.random() * 2 };
+  return { x, y, armored, hp: armored ? 3 + (Math.random() < .5) : 1, dmg: 1, speed: armored ? 1.2 : 1.7, jit: Math.random() * 10 };
 }
 // Can a Shooter see you? Walk the line between in small steps and stop at walls (and closed doors).
 function sees(a, b) {
@@ -471,39 +473,36 @@ function draw(t) {
     cx.fillStyle = '#0b1226'; cx.font = `${T * .26}px Lexend`; cx.textAlign = 'center'; cx.fillText('^‿^', r.x * T, (r.y - r.t * .5) * T + T * .02);
     cx.globalAlpha = 1;
   });
-  // errors: dark glitchy figures with a colour-split jitter
-  // A pink glow so the dark Errors stand out on the dark floor, drawn a bit larger than a tile's half.
+  // errors, drawn from the kid designer's sheet: a purple pentagon with a round
+  // face and two red triangle eyes that follow you. Armed wears grey plates and a
+  // helmet bar; Ranger carries a box gun on a black hose. They still glitch a little.
   G.errs.forEach(e => {
     const j = Math.sin(t / 60 + e.jit) > .7 ? (Math.random() - .5) * T * .12 : 0;
-    const ex = e.x * T + j, ey = e.y * T;
-    // Decided 22 Oct: the three kinds look clearly different. Regular: dark with a
-    // pink glow. Armored: silver plating, rivets, a helmet band, a steel-blue
-    // glow, a bit bulkier. Shooter: dark with a green block and a green glow.
-    const sc = e.armored ? 1.5 : 1.3;
-    cx.save(); cx.translate(ex, ey); cx.scale(sc, sc); cx.translate(-ex, -ey);
-    cx.shadowColor = e.armored ? 'rgba(140,190,255,.95)' : e.shooter ? 'rgba(95,224,122,.9)' : 'rgba(255,60,170,.9)'; cx.shadowBlur = T * .35;
-    const body = e.armored ? '#aeb8c6' : '#05070f';
-    [['rgba(255,0,140,.55)', -T * .05], ['rgba(0,230,255,.55)', T * .05], [body, 0]].forEach(([c, o]) => {
-      if (e.armored && o) return;                    // armor doesn't glitch
-      cx.fillStyle = c;
-      cx.beginPath(); cx.arc(ex + o, ey - T * .2, T * .16, 0, 7); cx.fill();
-      roundRect(ex - T * .2 + o, ey - T * .05, T * .4, T * .45, T * .1); cx.fill();
-    });
-    if (e.armored) {
-      cx.shadowBlur = 0;
-      cx.fillStyle = '#6b7b8f'; cx.fillRect(ex - T * .17, ey - T * .27, T * .34, T * .07);             // helmet band
-      cx.fillStyle = '#8693a6'; roundRect(ex - T * .2, ey + T * .1, T * .4, T * .08, T * .03); cx.fill(); // chest plate seam
-      cx.fillStyle = '#e8eef6'; [[-.13, .02], [.13, .02], [-.13, .3], [.13, .3]].forEach(([a, b]) => { cx.beginPath(); cx.arc(ex + T * a, ey + T * b, T * .03, 0, 7); cx.fill(); });   // rivets
+    const ex = e.x * T + j, ey = e.y * T, r = T * (e.armored ? .34 : .3);
+    const look = Math.atan2(G.p.y - e.y, G.p.x - e.x), lx = Math.cos(look) * T * .05, ly = Math.sin(look) * T * .05;
+    cx.lineWidth = T * .035; cx.strokeStyle = '#05070f'; cx.lineJoin = 'round';
+    if (e.shooter) {
+      cx.fillStyle = '#9b5cff'; roundRect(ex - r * 1.6, ey - r * .4, r * .85, r * 1.05, r * .12); cx.fill(); cx.stroke();
+      cx.lineWidth = T * .05; cx.beginPath(); cx.moveTo(ex - r * 1.3, ey - r * .4); cx.quadraticCurveTo(ex - r * 1.2, ey - r * .9, ex - r * .7, ey - r * .4); cx.stroke(); cx.lineWidth = T * .035;
     }
-    if (e.shooter) { cx.shadowBlur = 0; cx.fillStyle = '#5fe07a'; cx.fillRect(ex + T * .14, ey + T * .02, T * .16, T * .14); }   // the Shooter's little green block
-    cx.shadowBlur = 0;
-    cx.fillStyle = '#ff2d55'; cx.fillRect(ex - T * .09, ey - T * .23, T * .06, T * .04); cx.fillRect(ex + T * .03, ey - T * .23, T * .06, T * .04);
-    cx.restore();
+    cx.fillStyle = '#7b2ff7'; cx.shadowColor = 'rgba(170,110,255,.9)'; cx.shadowBlur = T * .3;
+    cx.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; cx[i ? 'lineTo' : 'moveTo'](ex + Math.cos(a) * r, ey + Math.sin(a) * r); } cx.closePath(); cx.fill(); cx.shadowBlur = 0; cx.stroke();
+    cx.lineWidth = T * .025; cx.beginPath(); cx.arc(ex, ey + r * .08, r * .62, 0, 7); cx.stroke();
+    if (e.armored) {
+      cx.lineWidth = T * .03; cx.fillStyle = '#b9bec6';
+      roundRect(ex - r * .55, ey - r * .95, r * 1.1, r * .22, r * .1); cx.fill(); cx.stroke();          // helmet bar
+      roundRect(ex - r * .75, ey + r * .1, r * 1.5, r * .85, r * .12); cx.fill(); cx.stroke();           // chest plates
+      cx.fillStyle = '#d8dce2'; roundRect(ex - r * .25, ey - r * .05, r * .5, r * 1.05, r * .1); cx.fill(); cx.stroke();
+    }
+    cx.fillStyle = '#ff5a3c'; cx.lineWidth = T * .02;
+    const ey0 = ey - (e.armored ? r * .25 : 0);
+    [-1, 1].forEach(s => { const x0 = ex + s * r * .28 + lx, y0 = ey0 + ly; cx.beginPath(); cx.moveTo(x0 - s * r * .12, y0 + r * .14); cx.lineTo(x0 + s * r * .1, y0 + r * .14); cx.lineTo(x0 + s * r * .02, y0 - r * .2); cx.closePath(); cx.fill(); cx.stroke(); });
   });
   // Shooter shots: slow green blobs
   G.ebolts.forEach(b => { cx.fillStyle = '#5fe07a'; cx.shadowColor = '#5fe07a'; cx.shadowBlur = T * .3; cx.beginPath(); cx.arc(b.x * T, b.y * T, T * .12, 0, 7); cx.fill(); cx.shadowBlur = 0; });
   // bolts
-  G.bolts.forEach(b => { cx.strokeStyle = '#41e3ff'; cx.lineWidth = T * .1; cx.lineCap = 'round'; cx.beginPath(); cx.moveTo(b.x * T, b.y * T); cx.lineTo((b.x - b.vx * .03) * T, (b.y - b.vy * .03) * T); cx.stroke(); });
+  // bolts: the long light-blue blobs from the kid designer's sketches
+  G.bolts.forEach(b => { cx.fillStyle = '#5ec8f5'; cx.shadowColor = '#41e3ff'; cx.shadowBlur = T * .25; cx.beginPath(); cx.ellipse(b.x * T, b.y * T, T * .17, T * .065, Math.atan2(b.vy, b.vx), 0, 7); cx.fill(); cx.shadowBlur = 0; });
   // sparks
   G.fx.forEach(f => { cx.globalAlpha = Math.max(0, 1 - f.t / .4); cx.fillStyle = f.c; cx.fillRect(f.x * T, f.y * T, T * .07, T * .07); cx.globalAlpha = 1; });
   drawPlayer(t);
@@ -512,20 +511,46 @@ function roundRect(x, y, w, h, r) { cx.beginPath(); cx.roundRect ? cx.roundRect(
 function drawPlayer(t) {
   const p = G.p, x = p.x * T, y = p.y * T;
   if (p.hurtT > 0 && Math.floor(t / 90) % 2) return;     // blink while recovering
-  // air tank on the back
-  cx.fillStyle = '#9aa7b8'; cx.save(); cx.translate(x, y); cx.rotate(p.aim);
-  roundRect(-T * .42, -T * .14, T * .16, T * .28, T * .06); cx.fill();
-  // debug blaster: chunky and toy-like, red with a cyan tip
-  cx.fillStyle = '#ff5f6d'; roundRect(T * .12, -T * .07, T * .32, T * .14, T * .05); cx.fill();
-  cx.fillStyle = '#41e3ff'; cx.fillRect(T * .42, -T * .05, T * .06, T * .1);
-  // wrench swing
-  if (G.swingT > 0) { cx.strokeStyle = '#e8f1ff'; cx.lineWidth = T * .08; cx.beginPath(); cx.arc(0, 0, T * .6, -1, 1); cx.stroke(); }
+  // Decided 27 Oct: the player is drawn from the kid designer's sketches: a round
+  // white suit, a blue visor at the front, yellow stripes on the helmet, a brown backpack behind,
+  // and a yellow blaster on the right hand. "Up" in the sketches is the way it aims.
+  // Only the first two guns are built (basic and Quad); the sketches have four more for later.
+  const line = T * .035;
+  cx.save(); cx.translate(x, y); cx.rotate(p.aim);
+  cx.lineWidth = line; cx.strokeStyle = '#05070f'; cx.lineJoin = 'round';
+  // the glow goes first, so it doesn't tint the backpack
+  cx.fillStyle = '#f4f7fb'; cx.shadowColor = 'rgba(65,227,255,.7)'; cx.shadowBlur = T * .3;
+  cx.beginPath(); cx.arc(0, 0, T * .3, 0, 7); cx.fill(); cx.shadowBlur = 0;
+  // brown backpack behind
+  cx.fillStyle = '#6b3f12'; cx.beginPath(); cx.ellipse(-T * .2, 0, T * .16, T * .36, 0, 0, 7); cx.fill(); cx.stroke();
+  // blaster on the right hand, with a little kick when it fires
+  const kick = G.fireT > 0 ? -T * .06 * G.fireT / .1 : 0;
+  // Once the Quad Blaster is bought it's the second sketch: a wider gun with two barrels.
+  if (S.quad) {
+    cx.fillStyle = '#ffd23f'; roundRect(-T * .02 + kick, T * .24, T * .4, T * .15, T * .03); cx.fill(); cx.stroke();
+    cx.fillStyle = '#fff'; [.27, .33].forEach(o => cx.fillRect(T * .06 + kick, T * o, T * .3, T * .025));
+  } else {
+    cx.fillStyle = '#ffd23f'; roundRect(-T * .02 + kick, T * .26, T * .36, T * .1, T * .03); cx.fill(); cx.stroke();
+    cx.fillStyle = '#fff'; cx.fillRect(T * .04 + kick, T * .295, T * .24, T * .03);
+  }
+  // cat ears (from the shop) sit above the visor and turn with the player
+  if (S.cat) { cx.fillStyle = '#f4f7fb'; [-1, 1].forEach(s => { cx.beginPath(); cx.moveTo(T * .26, s * T * .1); cx.lineTo(T * .44, s * T * .26); cx.lineTo(T * .16, s * T * .3); cx.fill(); cx.stroke(); }); }
+  // suit
+  cx.fillStyle = '#f4f7fb'; cx.beginPath(); cx.arc(0, 0, T * .3, 0, 7); cx.fill(); cx.stroke();
+  // yellow helmet stripes, front to back
+  cx.fillStyle = '#ffd23f'; [-.1, .06].forEach(o => { cx.fillRect(-T * .22, T * o, T * .26, T * .05); cx.strokeRect(-T * .22, T * o, T * .26, T * .05); });
+  // blue visor at the front
+  cx.fillStyle = '#5ec8f5'; cx.beginPath(); cx.ellipse(T * .14, 0, T * .1, T * .2, 0, 0, 7); cx.fill(); cx.stroke();
+  // wrench swing: the wrench sweeps across the front, left to right, with yellow swing lines
+  if (G.swingT > 0) {
+    const k = 1 - G.swingT / .2, a0 = -1.3, a = a0 + 2.6 * k;
+    cx.strokeStyle = '#ffd23f'; cx.lineWidth = T * .035; [.48, .56, .64].forEach(rr => { cx.beginPath(); cx.arc(0, 0, T * rr, Math.max(a0, a - 1.4), a); cx.stroke(); });
+    cx.rotate(a);
+    cx.fillStyle = '#9aa7b8'; cx.strokeStyle = '#05070f'; cx.lineWidth = line;
+    roundRect(T * .18, -T * .04, T * .38, T * .08, T * .03); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.arc(T * .6, 0, T * .1, .7, 5.58); cx.lineTo(T * .6, 0); cx.closePath(); cx.fill(); cx.stroke();
+  }
   cx.restore();
-  // suit and helmet
-  cx.fillStyle = '#2bb3a3'; cx.shadowColor = 'rgba(65,227,255,.8)'; cx.shadowBlur = T * .3; cx.beginPath(); cx.arc(x, y, T * .32, 0, 7); cx.fill(); cx.shadowBlur = 0;
-  if (S.cat) { cx.fillStyle = '#2bb3a3'; [[-1], [1]].forEach(([s]) => { cx.beginPath(); cx.moveTo(x + s * T * .1, y - T * .26); cx.lineTo(x + s * T * .26, y - T * .44); cx.lineTo(x + s * T * .3, y - T * .16); cx.fill(); }); }
-  cx.fillStyle = '#bdf6ff'; cx.beginPath(); cx.ellipse(x + Math.cos(p.aim) * T * .1, y + Math.sin(p.aim) * T * .1, T * .16, T * .12, p.aim, 0, 7); cx.fill();
-  cx.fillStyle = '#e8f1ff'; cx.font = `800 ${T * .16}px Lexend`; cx.textAlign = 'center'; cx.fillText('123', x, y + T * .22);
 }
 
 // ---------- Movement and AI ----------
@@ -555,7 +580,7 @@ function step(dt) {
   const m = Math.hypot(dx, dy);
   if (m > .1) { dx /= Math.max(1, m); dy /= Math.max(1, m); const v = S.boots ? 4.8 : 4; move(p, dx * v * sdt, dy * v * sdt, .28); }
   if (touchMode) { const tgt = nearest(); if (tgt) p.aim = Math.atan2(tgt.y - p.y, tgt.x - p.x); else if (m > .1) p.aim = Math.atan2(dy, dx); }
-  p.hurtT = Math.max(0, p.hurtT - dt); G.swingT = Math.max(0, G.swingT - dt);
+  p.hurtT = Math.max(0, p.hurtT - dt); G.swingT = Math.max(0, G.swingT - dt); G.fireT = Math.max(0, G.fireT - dt);
   // errors
   G.distT -= dt; if (G.distT <= 0 || !G.dist) { buildDist(); G.distT = .3; }
   G.errs.forEach(e => {
@@ -570,12 +595,12 @@ function step(dt) {
     if (e.shooter) {
       e.cool -= sdt;
       const d = Math.hypot(p.x - e.x, p.y - e.y);
-      if (e.cool <= 0 && d < 7 && sees(e, p)) {
+      if (e.cool <= 0 && d < 8 && sees(e, p)) {
         e.cool = 2.6 + Math.random();
         const a = Math.atan2(p.y - e.y, p.x - e.x);
-        G.ebolts.push({ x: e.x, y: e.y, vx: Math.cos(a) * 4.5, vy: Math.sin(a) * 4.5 }); tone(300, .12, 'square', 0, .03, 200);
+        G.ebolts.push({ x: e.x, y: e.y, vx: Math.cos(a) * 4.5, vy: Math.sin(a) * 4.5, dmg: 2 }); tone(300, .12, 'square', 0, .03, 200);
       }
-      if (d < 3) return;
+      if (d < 2) return;
     }
     move(e, gx / gl * e.speed * sdt, gy / gl * e.speed * sdt, .22);
     if (G.slow > 0 && Math.hypot(e.x - p.x, e.y - p.y) < .5 && p.hurtT <= 0) hurt(e);
@@ -587,7 +612,7 @@ function step(dt) {
     b.x += b.vx * dt; b.y += b.vy * dt;
     if (wall(Math.floor(b.x), Math.floor(b.y))) { spark(b.x, b.y, '#41e3ff', 3); return false; }
     const e = G.errs.find(e => Math.hypot(e.x - b.x, e.y - b.y) < .32);
-    if (e) { hitErr(e, 1); return false; }
+    if (e) { hitErr(e, b.dmg || 1); return false; }
     const wi = G.worms.findIndex(w => Math.hypot(w.x - b.x, w.y - b.y) < .25);
     if (wi >= 0) { G.worms.splice(wi, 1); S.bucks++; persist(); sfx.buck(); spark(b.x, b.y, '#c6f25a', 6); toast('+1 Math Buck'); hud(); return false; }
     return true;
@@ -682,7 +707,7 @@ function hitErr(e, dmg) {
   G.stats.restored++; S.bucks += 2; persist(); sfx.restore(); toast('Error restored! +2'); hud();
 }
 function hurt(e) {
-  const p = G.p; p.shield--; p.hurtT = 1.5; sfx.hurt();
+  const p = G.p; p.shield -= e.dmg || 1; p.hurtT = 1.5; sfx.hurt();
   const a = Math.atan2(p.y - e.y, p.x - e.x); move(p, Math.cos(a) * .8, Math.sin(a) * .8, .28);
   if (p.shield <= 0) {
     // A reboot, not a game over: back to the start with full shields, nothing lost.
@@ -695,19 +720,20 @@ function hurt(e) {
 function fire() {
   if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
   if (G.ammo <= 0) return openReload();
-  G.ammo--; sfx.zap();
+  G.ammo--; sfx.zap(); G.fireT = .1;
   const p = G.p, s = 14;
   G.bolts.push({ x: p.x + Math.cos(p.aim) * .45, y: p.y + Math.sin(p.aim) * .45, vx: Math.cos(p.aim) * s, vy: Math.sin(p.aim) * s });
   hud();
   if (G.ammo <= 0) openReload();
 }
 // Quad Blaster (from the kid designer's arsenal): all four barrels at once, in a spread, for 4 charges.
+// Decided 27 Oct (kid tester: the Quad was only good if all four shots hit): each bolt does 2.
 function quad() {
   if (!S.quad || !G?.running || !$('#reload').hidden || !$('#task').hidden) return;
   if (G.ammo < 4) return G.ammo <= 0 ? openReload() : toast('Quad Blast needs 4 charges.');
-  G.ammo -= 4; sfx.zap(); tone(600, .12, 'square', .03, .03, 200);
+  G.ammo -= 4; sfx.zap(); G.fireT = .1; tone(600, .12, 'square', .03, .03, 200);
   const p = G.p, s = 14;
-  [-.24, -.08, .08, .24].forEach(o => { const a = p.aim + o; G.bolts.push({ x: p.x + Math.cos(a) * .45, y: p.y + Math.sin(a) * .45, vx: Math.cos(a) * s, vy: Math.sin(a) * s }); });
+  [-.24, -.08, .08, .24].forEach(o => { const a = p.aim + o; G.bolts.push({ x: p.x + Math.cos(a) * .45, y: p.y + Math.sin(a) * .45, vx: Math.cos(a) * s, vy: Math.sin(a) * s, dmg: 2 }); });
   hud();
   if (G.ammo <= 0) openReload();
 }
