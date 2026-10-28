@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8">
+<!-- Renders the picture on each home page game card. Serve the repo root (python3 -m http.server), then for each game:
+     Chrome --headless=new --hide-scrollbars --window-size=576,352 --virtual-time-budget=5000 --screenshot=bread/card.png "http://localhost:8000/brand/capture.html?g=bread"
+     (Math Force and Treasure Trail at 800,500, saved to math-force/card.png and treasure-trail/card.png).
+     Decided 28 Oct: each scene is set up by hand below; Math Force takes the floor gem out first, so the card shows nothing a player is meant to find. -->
+<style>html,body{margin:0;overflow:hidden;background:#000}iframe{border:0;position:absolute;inset:0;width:100%;height:100%}canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:2}</style>
+<iframe id="f"></iframe><canvas id="c" hidden></canvas>
+<script>
+const g = new URLSearchParams(location.search).get('g'), f = document.getElementById('f'), c = document.getElementById('c');
+f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/' }[g];
+f.onload = () => {
+  const w = f.contentWindow, d = w.document;
+  if (g === 'bread') {
+    d.querySelector('#playBtn').click();
+    w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startPond();
+      G.bread.x = 14; G.bread.y = 15; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
+      const s = G.sq[0]; s.x = 15.9; s.y = 14.8; s.stun = 1e9; s.face = -1;
+      const s2 = G.sq[1]; s2.x = 10; s2.y = 16.5; s2.stun = 0;
+      G.fl[0].x = 17.5; G.fl[0].y = 16.2; G.fl[0].stun = 1e9;
+      G.pawT = performance.now() + 1e9; G.treats.push({x: 12, y: 16.5, v: 5}, {x: 11.5, y: 14, v: 2}, {x: 18, y: 14.2, v: 10});`);
+    setTimeout(() => { const lo = w.eval('lo'); c.width = lo.width; c.height = lo.height; c.hidden = false; const x = c.getContext('2d'); (function copy() { x.drawImage(lo, 0, 0); requestAnimationFrame(copy); })(); }, 600);
+  } else if (g === 'mf') {
+    w.eval(`$('#go').click(); G.gem = null;`);
+    const st = d.createElement('style'); st.textContent = 'button,.pill,.hud,.toast,.bar{visibility:hidden!important}'; d.head.appendChild(st);
+  } else if (g === 'tt') {
+    w.eval(`if (typeof startVoyage === 'function') { save.current = 0; player().setup = true; showMap(); }`);
+    const st = d.createElement('style'); st.textContent = '.pill,#hello{visibility:hidden!important}'; d.head.appendChild(st);
+  }
+};
+</script>

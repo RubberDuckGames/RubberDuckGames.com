@@ -29,6 +29,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
   from a 64 px render via `sips -s format ico`. Bump `?v=` in the meta tags when
   an image changes, or link previews keep the old one.
+- Each game folder has a `card.png`, the picture on its home page card (the
+  cards are arcade cabinets; the whole card is the link in, Play on the right).
+  They are rendered from `brand/capture.html`; how is written at its top.
 - `treasure-trail/index.html` is the whole game in one file ("Treasure Trail" is a working title): no build step,
   no libraries. It runs offline when you double-click it.
 
