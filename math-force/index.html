@@ -308,7 +308,10 @@ const SHOPS = {
 };
 const HOUSE_COLORS = ['#e07a5f', '#f2cc8f', '#81b29a', '#2bb3a3', '#9b8cff', '#e8a0bf'];
 const SOLID = '#bhHt123MXWw';
-function makeTown() {
+// Decided 28 Oct: the game starts in town too. The first town has no fixed
+// warehouse; you arrive on the street at one corner and the sector 1 warehouse
+// is on the block farthest away.
+function makeTown(first = false) {
   const bw = [0, 0, 0, 0].map(() => randInt(6, 9)), bh = [0, 0, 0].map(() => randInt(5, 7));
   const starts = sizes => { let a = 3; return sizes.map(n => { const at = a; a += n + 2; return at; }); };
   const bx = starts(bw), by = starts(bh);
@@ -328,7 +331,8 @@ function makeTown() {
   const far = b => Math.hypot(b.x0 - done.x0, b.y0 - done.y0);
   const next = others.reduce((a, b) => far(b) > far(a) ? b : a), rest = others.filter(b => b !== next);
   const warehouse = (b, door) => { fill(b, ';'); const w = Math.min(b.w, 7); return { ...build(b, b.x0 + randInt(0, b.w - w), w, 4, 'W', door), fixed: door === 'w' }; };
-  const warehouses = [warehouse(done, 'w'), warehouse(next, 'X')];
+  const warehouses = first ? [warehouse(next, 'X')] : [warehouse(done, 'w'), warehouse(next, 'X')];
+  if (first) rest.push(done);
   fill(plaza, ',');
   const statue = [plaza.x0 + (plaza.w >> 1) + .5, plaza.y0 + (plaza.h >> 1) + .5];
   m[Math.floor(statue[1])][Math.floor(statue[0])] = 'M';
@@ -341,8 +345,11 @@ function makeTown() {
     }
     for (let k = randInt(1, 3); k--;) { const x = b.x0 + randInt(0, b.w - 1), y = b.y0 + randInt(0, b.h - 3); if (m[y][x] === ';') m[y][x] = 't'; }
   });
-  // you start on the street outside the warehouse you just fixed
-  const out = warehouses[0], start = [out.dx + .5, out.y + out.h + 1], sx = out.dx, sy = out.y + out.h;
+  // you start on the street outside the warehouse you just fixed (or, the first
+  // time, on the street below the block you arrive at)
+  const out = warehouses[0];
+  const start = first ? [done.x0 + (done.w >> 1) + .5, done.y0 + done.h + 1] : [out.dx + .5, out.y + out.h + 1];
+  const sx = Math.floor(start[0]), sy = first ? done.y0 + done.h : out.y + out.h;
   // everything you can walk to from the start, for the gem and the Errors who live here
   const seen = new Set([sx + ',' + sy]), open = [[sx, sy]];
   while (open.length) {
@@ -353,7 +360,11 @@ function makeTown() {
   const corners = reach.filter(([x, y]) => m[y][x] === ';' && [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, c]) => SOLID.includes(m[y + c][x + a])).length >= 2);
   const away = corners.filter(([x, y]) => Math.hypot(x - start[0], y - start[1]) > 12), nooks = away.length ? away : corners;
   const gem = nooks[randInt(0, nooks.length - 1)];
-  return { tiles: m, W, H, shops, houses, warehouses, statue, start, reach, gem: gem && { x: gem[0] + .5, y: gem[1] + .5 } };
+  // patches of glitch; the biggest sits on the next warehouse, where it started,
+  // so following the purple leads you there
+  const nw = warehouses.at(-1);
+  const blight = [{ x: nw.dx + .5, y: nw.y + nw.h / 2, r: 8 }, ...shuffle(blocks).slice(0, 4).map(b => ({ x: b.x0 + b.w / 2, y: b.y0 + b.h / 2, r: randInt(3, 5) }))];
+  return { tiles: m, W, H, shops, houses, warehouses, statue, start, reach, first, blight, gem: gem && { x: gem[0] + .5, y: gem[1] + .5 } };
 }
 const GEM_COLORS = ['#ff4d6d', '#5fe07a', '#41a9ff', '#b16cff', '#ffc93c'];
 // The live tiles change as walls are drilled and the gate opens; doors open and close.
@@ -1072,9 +1083,19 @@ function newTown() {
     ...town, town: true, n: old.n, errs: [], worms: [], friends, bolts: [], ebolts: [], fx: [], restored: [],
     p: { x: town.start[0], y: town.start[1], aim: 0, shield: shieldMax(), hurtT: 0 }, cam: { x: 0, y: 0 },
     ammo: magMax(), wrench: old.wrench, wrenchBroken: old.wrenchBroken, swingT: 0, fireT: 0, spinT: 0, gift: false,
-    closed: new Set(), near: null, slow: 1, running: true, stats: old.stats,
+    closed: new Set(), near: null, slow: 1, running: true, stats: old.stats, lost: 0,
   };
-  setUse(null); hud(); toast('Welcome to town! Look around, visit the shops, then find the next warehouse.', 4000);
+  setUse(null); hud(); toast('Back in town. Look around, visit the shops, then find the next warehouse.', 4000);
+}
+function firstTown() {
+  const town = makeTown(true);
+  G = {
+    ...town, town: true, n: 0, errs: [], worms: [], friends: [], bolts: [], ebolts: [], fx: [], restored: [],
+    p: { x: town.start[0], y: town.start[1], aim: 0, shield: shieldMax(), hurtT: 0 }, cam: { x: 0, y: 0 },
+    ammo: magMax(), wrench: wrenchMax(), wrenchBroken: false, swingT: 0, fireT: 0, spinT: 0, gift: false,
+    closed: new Set(), near: null, slow: 1, running: true, stats: { right: 0, asked: 0, restored: 0 }, lost: 0,
+  };
+  setUse(null); hud();
 }
 function foundGem(x, y) {
   S.gems = (S.gems || 0) + 1; S.bucks += 5; persist(); sfx.gem(); hud();
@@ -1088,6 +1109,7 @@ function gemCheck() {
 function stepTown(dt) {
   if (!G.running) return;
   walk(dt, dt);
+  G.lost += dt;
   G.spinT = Math.max(0, G.spinT - dt);
   G.friends.forEach(w => { w.t += dt; w.a += (Math.random() - .5) * 3 * dt; const ox = w.x, oy = w.y; move(w, Math.cos(w.a) * .8 * dt, Math.sin(w.a) * .8 * dt, .2); if (ox === w.x && oy === w.y) w.a += 2; });
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .4));
@@ -1108,18 +1130,42 @@ function nearbyTown() {
   }
   return null;
 }
-const HOUSE_HELLO = ['Knock knock! A restored Error waves from the window.', 'Nobody home. They must be at the shops.', 'You hear happy humming inside.', 'A restored Error opens the door: "Thank you for fixing me!"'];
+const HOUSE_HELLO = ['Knock knock! A restored Error waves from behind the boards.', 'Nobody home. The door hangs off one hinge.', 'A quiet hum inside. Something in there still works.', 'A restored Error opens the door: "Thank you for fixing me!"'];
+// nobody has been restored yet in the first town
+const HOUSE_EMPTY = ['Nobody home. The windows are boarded up.', 'The walls buzz with glitches.', 'The door is stuck. Static crackles behind it.'];
 function useTown(nb) {
   if (!nb) return toast('Walk up to a door or the statue.');
   if (nb.kind === 'shop') return openShop(nb.shop);
-  if (nb.kind === 'house') { spark(nb.at[0], nb.at[1], '#5fe0a0', 6); sfx.gem(); return toast(HOUSE_HELLO[randInt(0, HOUSE_HELLO.length - 1)]); }
+  if (nb.kind === 'house') { spark(nb.at[0], nb.at[1], '#5fe0a0', 6); sfx.gem(); return toast(rand(G.friends.length ? HOUSE_HELLO : HOUSE_EMPTY)); }
   if (nb.kind === 'fixed') return toast('All fixed in there! The next warehouse is somewhere in town.');
-  if (nb.kind === 'exit') { newSector(G.n + 1); return toast(`Sector ${G.n}: more Errors this time`); }
+  if (nb.kind === 'exit') { newSector(G.n + 1); return toast(G.n === 1 ? 'Restore every Error in the sector!' : `Sector ${G.n}: more Errors this time`); }
   G.spinT = 1;
   const [sx, sy] = G.statue;
   if (G.gift) { spark(sx, sy, '#c9b6ff', 8); return toast('"For the Errors, who were only lost."'); }
   G.gift = true; foundGem(sx, sy);
   toast('"For the Errors, who were only lost." The statue gave you a gem! +5', 4000);
+}
+// Decided 28 Oct, from the kid designer: the town should look infected and
+// broken down, not happy. The first town had bright lawns, round green trees,
+// lit windows and candy-colored houses; it read as a little kid's town.
+const hsh = (x, y, k = 0) => { let h = Math.imul(x + 1, 374761393) + Math.imul(y + 1, 668265263) + Math.imul(k + 1, 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function faded(hex) {                         // the old paint: grayed out and darker
+  const n = parseInt(hex.slice(1), 16), mix = (v, g) => Math.round(v * .45 + g * .55);
+  return `rgb(${mix(n >> 16, 78)},${mix(n >> 8 & 255, 76)},${mix(n & 255, 80)})`;
+}
+function crack(X, Y, r) {
+  cx.strokeStyle = 'rgba(0,0,0,.55)'; cx.lineWidth = T * .035; cx.beginPath();
+  cx.moveTo(X + T * (.1 + r), Y + T * .1); cx.lineTo(X + T * (.35 + r * .5), Y + T * .45); cx.lineTo(X + T * (.2 + r), Y + T * .7); cx.lineTo(X + T * (.45 + r), Y + T * .95);
+  cx.moveTo(X + T * (.35 + r * .5), Y + T * .45); cx.lineTo(X + T * .8, Y + T * (.4 + r)); cx.stroke();
+}
+function stains(X, Y, W, H, k) {              // water stains and soot down the walls
+  cx.fillStyle = 'rgba(0,0,0,.18)';
+  for (let i = 0; i < 3; i++) { const sx = X + hsh(k, i) * (W - T * .3); cx.fillRect(sx, Y + T * .55, T * (.12 + hsh(k, i, 2) * .2), H * (.3 + hsh(k, i, 3) * .5)); }
+}
+function brokenWindow(x, y, w, h, kind) {
+  cx.fillStyle = '#101218'; cx.fillRect(x, y, w, h);
+  if (kind === 'crack') { cx.strokeStyle = 'rgba(200,210,230,.35)'; cx.lineWidth = T * .025; cx.beginPath(); cx.moveTo(x + w * .2, y); cx.lineTo(x + w * .5, y + h * .5); cx.lineTo(x + w * .3, y + h); cx.moveTo(x + w * .5, y + h * .5); cx.lineTo(x + w, y + h * .35); cx.stroke(); }
+  if (kind === 'boards') { cx.fillStyle = '#7a5d3e'; cx.fillRect(x - w * .1, y + h * .2, w * 1.2, h * .2); cx.fillRect(x - w * .1, y + h * .6, w * 1.2, h * .2); }
 }
 function drawTown(t) {
   cx.clearRect(0, 0, cv.width, cv.height);
@@ -1127,34 +1173,49 @@ function drawTown(t) {
   const cam = G.cam;
   cam.x = Math.max(0, Math.min(G.W - MW, G.p.x - MW / 2)); cam.y = Math.max(0, Math.min(G.H - MH, G.p.y - MH / 2));
   cx.save(); cx.translate(-cam.x * T, -cam.y * T);
-  for (let y = Math.floor(cam.y); y < Math.min(G.H, cam.y + MH + 1); y++) for (let x = Math.floor(cam.x); x < Math.min(G.W, cam.x + MW + 1); x++) {
-    const c = G.tiles[y][x], X = x * T, Y = y * T;
-    if (c === '#') {                          // hedges around the edge
-      cx.fillStyle = '#1d4a33'; cx.fillRect(X, Y, T, T);
-      cx.fillStyle = '#2a6b47'; cx.beginPath(); cx.arc(X + T / 2, Y + T / 2, T * .42, 0, 7); cx.fill();
+  const x0 = Math.floor(cam.x), x1 = Math.min(G.W, cam.x + MW + 1), y0 = Math.floor(cam.y), y1 = Math.min(G.H, cam.y + MH + 1);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.tiles[y][x], X = x * T, Y = y * T, r = hsh(x, y);
+    if (c === '#') {                          // a broken fence and rubble around the edge
+      cx.fillStyle = '#17181d'; cx.fillRect(X, Y, T, T);
+      cx.strokeStyle = '#34363f'; cx.lineWidth = T * .04; cx.beginPath();
+      for (let k = 0; k <= 1; k += .25) { cx.moveTo(X + k * T, Y); cx.lineTo(X + T, Y + (1 - k) * T); cx.moveTo(X, Y + k * T); cx.lineTo(X + (1 - k) * T, Y + T); }
+      cx.stroke();
+      if (r < .4) { cx.fillStyle = '#3c3a38'; cx.beginPath(); cx.arc(X + T * (.2 + r), Y + T * .75, T * .16, 0, 7); cx.fill(); }
     } else if (c === ';' || c === 't' || c === 'h' || c === 'H' || c === 'b' || SHOPS[c]) {
-      cx.fillStyle = '#2f6b47'; cx.fillRect(X, Y, T, T);
-      if (c === ';' && (x * 7 + y * 3) % 5 === 0) { cx.fillStyle = '#3f8a5c'; cx.fillRect(X + T * .3, Y + T * .4, T * .06, T * .2); cx.fillRect(X + T * .42, Y + T * .34, T * .06, T * .26); }
-      if (c === 't') {
-        cx.fillStyle = '#5a3a22'; cx.fillRect(X + T * .44, Y + T * .55, T * .12, T * .35);
-        cx.fillStyle = '#1f5a3a'; cx.beginPath(); cx.arc(X + T / 2, Y + T * .42, T * .38, 0, 7); cx.fill();
-        cx.fillStyle = '#3f8a5c'; cx.beginPath(); cx.arc(X + T * .4, Y + T * .32, T * .16, 0, 7); cx.fill();
+      cx.fillStyle = '#2c2b22'; cx.fillRect(X, Y, T, T);              // dead lawn
+      if (c === ';' && r < .3) { cx.fillStyle = '#56523c'; cx.fillRect(X + T * .3, Y + T * .45, T * .06, T * .18); cx.fillRect(X + T * .44, Y + T * .38, T * .06, T * .25); }
+      if (c === ';' && r > .85) { cx.fillStyle = '#2a2822'; cx.beginPath(); cx.ellipse(X + T / 2, Y + T / 2, T * .35, T * .22, 0, 0, 7); cx.fill(); }
+      if (c === 't') {                        // a dead tree
+        cx.strokeStyle = '#4a3526'; cx.lineCap = 'round'; cx.lineWidth = T * .1;
+        cx.beginPath(); cx.moveTo(X + T * .5, Y + T * .92); cx.lineTo(X + T * .5, Y + T * .35); cx.stroke();
+        cx.lineWidth = T * .05; cx.beginPath();
+        cx.moveTo(X + T * .5, Y + T * .55); cx.lineTo(X + T * .25, Y + T * .3); cx.moveTo(X + T * .5, Y + T * .45); cx.lineTo(X + T * .76, Y + T * .22);
+        cx.moveTo(X + T * .5, Y + T * .38); cx.lineTo(X + T * .42, Y + T * .1); cx.moveTo(X + T * .3, Y + T * .34); cx.lineTo(X + T * .2, Y + T * .2); cx.stroke();
+        cx.lineCap = 'butt';
       }
     } else if (c === ',' || c === 'M') {
-      cx.fillStyle = '#56617f'; cx.fillRect(X, Y, T, T);
-      cx.strokeStyle = 'rgba(255,255,255,.08)'; cx.lineWidth = 1; cx.strokeRect(X + 1, Y + 1, T - 2, T - 2);
-    } else {                                  // the street
-      cx.fillStyle = '#3a4566'; cx.fillRect(X, Y, T, T);
+      cx.fillStyle = '#44464f'; cx.fillRect(X, Y, T, T);              // cracked paving
+      cx.strokeStyle = 'rgba(0,0,0,.35)'; cx.lineWidth = T * .03; cx.strokeRect(X + 1, Y + 1, T - 2, T - 2);
+      if (r < .3) crack(X, Y, r);
+    } else {                                  // the street, cracked and potholed
+      cx.fillStyle = '#3a3c44'; cx.fillRect(X, Y, T, T);
+      if (r < .35) crack(X, Y, r);
+      else if (r > .95) { cx.fillStyle = '#141519'; cx.beginPath(); cx.ellipse(X + T / 2, Y + T / 2, T * .28, T * .18, r * 6, 0, 7); cx.fill(); }
     }
   }
   // the shops, front on, with their names
   G.shops.forEach(b => {
     const X = b.x * T, Y = b.y * T, W = b.w * T, H = b.h * T;
-    cx.fillStyle = b.shop.col; roundRect(X + T * .05, Y, W - T * .1, H, T * .15); cx.fill();
-    cx.fillStyle = 'rgba(0,0,0,.25)'; cx.fillRect(X + T * .05, Y, W - T * .1, T * .55);               // roof
-    cx.fillStyle = '#fff6d8'; roundRect(X + T * .4, Y + T * .8, W - T * .8, T * .75, T * .12); cx.fill(); // sign
+    cx.fillStyle = faded(b.shop.col); roundRect(X + T * .05, Y, W - T * .1, H, T * .08); cx.fill();
+    cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(X + T * .05, Y, W - T * .1, T * .55);               // roof
+    stains(X, Y, W, H, b.x);
+    // the sign still works, mostly: it flickers
+    const flick = hsh(b.x, Math.floor(t / 90)) > .9 ? .35 : 1;
+    cx.globalAlpha = flick; cx.fillStyle = '#d8cfb0'; roundRect(X + T * .4, Y + T * .8, W - T * .8, T * .75, T * .06); cx.fill();
     cx.fillStyle = '#05070f'; cx.font = `800 ${T * .4}px Lexend`; cx.textAlign = 'center'; cx.fillText(b.shop.sign, X + W / 2, Y + T * 1.32);
-    cx.fillStyle = '#ffe680'; [X + T * .45, X + W - T * 1.05].forEach(wx => { roundRect(wx, Y + T * 1.9, T * .6, T * .6, T * .08); cx.fill(); });
+    cx.globalAlpha = 1;
+    [X + T * .45, X + W - T * 1.05].forEach((wx, k) => brokenWindow(wx, Y + T * 1.9, T * .6, T * .6, k ? 'boards' : 'crack'));
     const DX = b.dx * T;
     cx.fillStyle = '#3b2414'; roundRect(DX + T * .15, Y + T * 2.05, T * .7, T * .95, T * .2); cx.fill();
     cx.fillStyle = '#ffc93c'; cx.beginPath(); cx.arc(DX + T * .7, Y + T * 2.6, T * .06, 0, 7); cx.fill();
@@ -1162,9 +1223,12 @@ function drawTown(t) {
   // small houses where the restored Errors live
   G.houses.forEach(b => {
     const X = b.x * T, Y = b.y * T, W = b.w * T, H = b.h * T, DX = b.dx * T;
-    cx.fillStyle = b.col; roundRect(X + T * .1, Y + T * .25, W - T * .2, H - T * .25, T * .1); cx.fill();
-    cx.fillStyle = '#5b3a4a'; cx.beginPath(); cx.moveTo(X, Y + T * .45); cx.lineTo(X + W / 2, Y - T * .2); cx.lineTo(X + W, Y + T * .45); cx.closePath(); cx.fill();   // roof
-    cx.fillStyle = '#ffe680'; [X + T * .3, X + W - T * .75].forEach(wx => { roundRect(wx, Y + T * .75, T * .45, T * .45, T * .06); cx.fill(); });
+    cx.fillStyle = faded(b.col); roundRect(X + T * .1, Y + T * .25, W - T * .2, H - T * .25, T * .06); cx.fill();
+    stains(X + T * .1, Y + T * .25, W - T * .2, H - T * .25, b.x * 3 + b.y);
+    // a sagging roof, some with a hole in it
+    cx.fillStyle = '#2f2a2e'; cx.beginPath(); cx.moveTo(X, Y + T * .45); cx.lineTo(X + W / 2, Y - T * .12); cx.lineTo(X + W, Y + T * .45); cx.closePath(); cx.fill();
+    if (hsh(b.x, b.y) < .5) { cx.fillStyle = '#0d0e12'; cx.beginPath(); cx.moveTo(X + W * .55, Y + T * .05); cx.lineTo(X + W * .72, Y + T * .22); cx.lineTo(X + W * .6, Y + T * .32); cx.closePath(); cx.fill(); }
+    [X + T * .3, X + W - T * .75].forEach((wx, k) => brokenWindow(wx, Y + T * .75, T * .45, T * .45, (k + b.x) % 2 ? 'boards' : 'dark'));
     cx.fillStyle = '#3b2414'; roundRect(DX + T * .22, Y + T * 1.25, T * .56, T * .75, T * .16); cx.fill();
   });
   // old warehouses: the one you fixed, and the next one with glitches glowing inside
@@ -1188,6 +1252,23 @@ function drawTown(t) {
     cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.lineWidth = T * .04;
     for (let y = Y + T * 1.8; y < Y + H - T * .35; y += T * .25) { cx.beginPath(); cx.moveTo(DX - T * .45, y); cx.lineTo(DX + T * 1.45, y); cx.stroke(); }
   });
+  // the glitch is spreading through town: purple patches that flicker on the
+  // ground and creep up the walls. Each sector you fix pushes it back a little.
+  const shrink = Math.max(.4, 1 - G.n * .1), tick = Math.floor(t / 160);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    if (G.tiles[y][x] === '#') continue;
+    const k = Math.max(...G.blight.map(b => 1 - Math.hypot(x + .5 - b.x, y + .5 - b.y) / (b.r * shrink)));
+    if (k <= 0 || hsh(x, y, 7) > k * 1.3) continue;
+    const X = x * T, Y = y * T;
+    cx.fillStyle = `rgba(110,40,190,${(.12 + k * .25).toFixed(2)})`; cx.fillRect(X, Y, T, T);
+    for (let k = 0; k < 3; k++) {
+      if (hsh(x, y, tick * 3 + k) > .55) continue;
+      cx.fillStyle = k ? '#b16cff' : '#ff4dd2';
+      const sz = T * (.08 + .1 * hsh(x, y, 30 + k));
+      cx.fillRect(X + hsh(x, y, 40 + k + tick) * (T - sz), Y + hsh(x, y, 50 + k + tick) * (T - sz), sz, sz);
+    }
+    if (hsh(x, y, tick + 99) < .05) { cx.fillStyle = 'rgba(177,108,255,.5)'; cx.fillRect(X - T * .2, Y + T * hsh(x, y, tick), T * 1.4, T * .08); }
+  }
   if (G.gem) twinkle(G.gem.x * T, G.gem.y * T, t, '#fff3b0');
   // the statue: an Error in stone, on a step, watching you
   const sx = G.statue[0] * T, sy = G.statue[1] * T, sr = T * .6, look = Math.atan2(G.p.y - G.statue[1], G.p.x - G.statue[0]);
@@ -1206,6 +1287,23 @@ function drawTown(t) {
   G.fx.forEach(f => { cx.globalAlpha = Math.max(0, 1 - f.t / .4); cx.fillStyle = f.c; cx.fillRect(f.x * T, f.y * T, T * .07, T * .07); cx.globalAlpha = 1; });
   drawPlayer(t);
   cx.restore();
+  const vg = cx.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * .35, cv.width / 2, cv.height / 2, cv.width * .7);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
+  cx.fillStyle = vg; cx.fillRect(0, 0, cv.width, cv.height);
+  // after a while, an arrow at the edge of the screen points the way to the
+  // next warehouse, so nobody wanders forever
+  const goal = G.warehouses.find(w => !w.fixed);
+  if (goal && G.lost > 25) {
+    const gx = (goal.dx + .5 - cam.x) * T, gy = (goal.y + goal.h - cam.y) * T, m = T;
+    if (gx < 0 || gy < 0 || gx > cv.width || gy > cv.height) {
+      const a = Math.atan2(gy - cv.height / 2, gx - cv.width / 2), bob = Math.sin(t / 200) * T * .1;
+      const ax = clamp(gx, m, cv.width - m), ay = clamp(gy, m, cv.height - m);
+      cx.save(); cx.translate(ax - Math.cos(a) * bob, ay - Math.sin(a) * bob); cx.rotate(a);
+      cx.fillStyle = '#b16cff'; cx.shadowColor = '#b16cff'; cx.shadowBlur = T * .5;
+      cx.strokeStyle = '#05070f'; cx.lineWidth = T * .06; cx.beginPath(); cx.moveTo(T * .65, 0); cx.lineTo(-T * .45, -T * .5); cx.lineTo(-T * .2, 0); cx.lineTo(-T * .45, T * .5); cx.closePath(); cx.fill(); cx.shadowBlur = 0; cx.stroke();
+      cx.restore();
+    }
+  }
 }
 
 // ---------- HUD and messages ----------
@@ -1272,7 +1370,7 @@ function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class=
 $('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
 $('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
 $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
-$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); newSector(1); toast('Restore every Error in the sector!'); };
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); firstTown(); toast('The town is glitching. Find the warehouse where it started: look for the purple glow.', 5000); };
 // Pause: everything that isn't the game lives here.
 function pause() {
   if (!G || $('#start').hidden === false || !$('#clear').hidden) return;
@@ -1310,7 +1408,7 @@ function loop(t) {
 }
 resize();
 G = null;
-newSector(1); G.running = false;          // draw the maze behind the start screen
+firstTown(); G.running = false;           // draw the town behind the start screen
 requestAnimationFrame(loop);
 </script>
 </body>
