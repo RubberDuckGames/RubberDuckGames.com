@@ -47,6 +47,23 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .panelbox{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:0.75rem 0.875rem;margin-top:0.75rem}
 .panelbox h3{margin:0 0 0.375rem;font-size:1.25rem}
 .panelbox .row{justify-content:flex-end}
+/* Decided 28 Oct: the closet is something to look through, not a list of
+   words. A mirror shows Bread in the outfit; each spot is a wooden shelf of
+   pictures; things not found yet are dark shapes with a ? (tap one for where
+   to look). The words stay as labels for screen readers. */
+#closet.panelbox{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(52rem,calc(100vw - 2rem));max-height:calc(100vh - 2rem)}
+.wardrobe{display:grid;grid-template-columns:minmax(9rem,14rem) 1fr;gap:1rem;align-items:start}
+.mirror{background:#b07a46;border:4px solid #3b2a1a;padding:.6rem;box-shadow:inset 0 0 0 4px #d9a86c}
+.mirror img{display:block;width:100%;background:linear-gradient(#e8f6ff,#bfe8ff);image-rendering:pixelated;aspect-ratio:1}
+.racks{display:grid;gap:.5rem 1rem;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+.rack{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.35rem .4rem .55rem;background:linear-gradient(transparent calc(100% - .45rem),#b07a46 0);border-bottom:3px solid #3b2a1a}
+.rack .lbl{font-family:"Press Start 2P",monospace;font-size:.55rem;color:var(--soft);width:100%}
+.tile{width:4.25rem;height:4.25rem;padding:.3rem;background:var(--panel);border:3px solid var(--line);box-shadow:.2rem .2rem 0 var(--line)}
+.tile img{display:block;width:100%;height:100%;image-rendering:pixelated}
+.tile.on{border-color:var(--green);box-shadow:0 0 0 3px var(--green)}
+.tile.locked{background:#e9dcc6}
+@media (max-width:43.75rem){.wardrobe{grid-template-columns:1fr}.mirror{width:100%;max-width:12rem;margin:0 auto}}
+@media (max-width:43.75rem) and (orientation:portrait){#closet.panelbox{position:static;transform:none;width:auto;max-height:none}}
 .slot{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.375rem 0}
 .slot b{min-width:5.625rem}
 .slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
@@ -132,7 +149,10 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   </div>
   <div class="panelbox" id="closet" hidden>
     <h3>Closet</h3>
-    <div id="closetList"></div>
+    <div class="wardrobe">
+      <div class="mirror"><img id="mirror" alt="Bread in the mirror"></div>
+      <div id="closetList" class="racks"></div>
+    </div>
     <div class="row"><button class="btn go" data-done>Done</button></div>
   </div>
   <div class="panelbox" id="shop" hidden>
@@ -458,21 +478,47 @@ function drawHome(t) {
   drawCrumb(240, 152, -1, t, false, 2);         // Crumb, on Bread's bed
   if (homeWoof > t) text('Woof!', W / 2 + 46, 82);
 }
+// Item pictures for the closet, each centered on a square just big enough for
+// it, so small things (the bow tie) still fill their tile. Things not found
+// yet are dark shapes.
+const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2] };
+const picCache = {};
+function pic(rows, dark) {
+  const key = rows.join('/') + dark;
+  if (picCache[key]) return picCache[key];
+  const map = {}; if (dark) rows.join('').split('').forEach(ch => { if (ch !== '.') map[ch] = '#8a7258'; });
+  const img = sprite(rows, { map }), c = document.createElement('canvas'), n = Math.max(10, img.width, img.height) + 2;
+  c.width = c.height = n; c.getContext('2d').drawImage(img, (n - img.width) >> 1, (n - img.height) >> 1);
+  return picCache[key] = c.toDataURL();
+}
+function drawMirror() {
+  const map = {};
+  if (S.wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
+  if (S.wear.feet === 'duckFeet') map.f = COL.b;
+  const img = sprite(breadRows(0, S.wear), { map }), c = document.createElement('canvas');
+  c.width = c.height = 30; c.getContext('2d').drawImage(img, 3, 3);
+  $('#mirror').src = c.toDataURL();
+}
 function openCloset() {
   showRow('closet');
-  const owned = Object.keys(ITEMS).filter(k => S.have.includes(k));
-  const list = $('#closetList');
-  if (!owned.length) { list.innerHTML = '<p>The closet is empty. Win costumes at the pond, or buy something in the treat shop.</p>'; return; }
-  list.innerHTML = '';
+  drawMirror();
+  const list = $('#closetList'); list.innerHTML = '';
   SLOTS.forEach(([slot, label]) => {
-    const mine = owned.filter(k => ITEMS[k].slot === slot);
-    if (!mine.length) return;
-    const row = document.createElement('div'); row.className = 'slot';
-    row.innerHTML = `<b>${label}</b>`;
-    [null, ...mine].forEach(k => {
-      const b = document.createElement('button'); b.className = 'btn' + ((S.wear[slot] || null) === k ? ' on' : '');
-      b.textContent = k ? ITEMS[k].name : 'None';
-      b.onclick = () => { S.wear[slot] = k; persist(); sfx.treat(1); openCloset(); };
+    const all = Object.keys(ITEMS).filter(k => ITEMS[k].slot === slot);
+    const row = document.createElement('div'); row.className = 'rack';
+    row.innerHTML = `<span class="lbl">${label}</span>`;
+    [null, ...all].forEach(k => {
+      const have = !k || S.have.includes(k), on = (S.wear[slot] || null) === k;
+      const b = document.createElement('button'); b.className = 'tile' + (on ? ' on' : '') + (have ? '' : ' locked');
+      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-label', !k ? `No ${label.toLowerCase()}` : have ? ITEMS[k].name : 'Not found yet');
+      b.title = b.getAttribute('aria-label');
+      b.innerHTML = `<img alt="" src="${pic(k ? ITEM_PIC[k] : HANGER, !have)}">`;
+      b.onclick = () => {
+        if (!have) return toast(ITEMS[k].cost ? `This one is in the treat shop, for ${ITEMS[k].cost} treats.` : 'This one is hidden at the pond. Keep looking!');
+        S.wear[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
+      };
       row.append(b);
     });
     list.append(row);

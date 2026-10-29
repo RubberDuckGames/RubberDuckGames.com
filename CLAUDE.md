@@ -42,7 +42,8 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   world, controls behind a ? button); the pond park has a hedge maze on each
   side; Bread can swim (squirrels and fleas can't) and shakes off when she
   climbs out; the rubber duck toy floats in the pond; the goal shows for a few
-  seconds when it changes and stays in the ? help bar;
+  seconds when it changes and stays in the ? help bar; the closet is a
+  wardrobe of pictures with a mirror, and things not found yet show as dark ? shapes;
   the paw aims itself at the nearest baddie in reach, marked with white corners.
   Progress is in localStorage under `bread-corgi:<player id>`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
