@@ -11,7 +11,7 @@ f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/' }[g];
 f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
-    d.querySelector('#who [data-id]').click();
+    w.eval('showTitle()'); d.querySelector('#who [data-id]').click();
     w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startWorld('pond');
       G.bread.x = 17; G.bread.y = 15.5; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
       const s = G.sq[0]; s.x = 18.9; s.y = 15.3; s.stun = 1e9; s.face = -1;

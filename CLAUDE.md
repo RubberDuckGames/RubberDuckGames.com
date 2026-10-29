@@ -53,6 +53,8 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   A phone turned sideways plays like a Switch: the game in the middle, the pad
   on a dark controller on the left, the buttons in a diamond on the right.
   Messages sit in a text box inside the game screen on phones.
+  The game opens on a title screen (logo, Bread and Crumb, blinking PRESS
+  START); any key, button or tap plays a start-up jingle, then Who's playing.
   Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
