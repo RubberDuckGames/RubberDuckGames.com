@@ -51,7 +51,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .slot b{min-width:5.625rem}
 .slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
 /* Decided 28 Oct: full screen, like Math Force. The top bar and the buttons
-   float over the world, the goal stays on screen in a level, and the controls
+   float over the world, a level's goal shows when it changes, and the controls
    are behind the ? button instead of a line under the game. */
 .bar{position:fixed;top:0;left:0;right:0;z-index:8;max-width:none;pointer-events:none}
 .bar>*{pointer-events:auto}
@@ -111,7 +111,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv"></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go. Bark: <b>Space</b>. Paw: <b>P</b> or <b>Enter</b>. Walk into the pond to swim. This help: <b>H</b>.</p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go. Bark: <b>Space</b>. Paw: <b>P</b> or <b>Enter</b>. Walk into the pond to swim. This help: <b>H</b>.</p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -119,7 +119,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     </div>
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
-      <p>Bread is a corgi. (She's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
+      <p>Bread is a corgi. (She's such a loaf.) Her puppy friend Crumb rides along everywhere, and keeps running off! Find Crumb, bring Crumb home, and win costumes.</p>
       <p class="big">Who's playing?</p>
       <div id="who"></div>
     </div></div>
@@ -242,6 +242,8 @@ const sfx = {
   treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
   bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
   paw: () => tone(500, .07, 'square', 0, .03, 1300),
+  yip: () => { tone(1100, .05, 'square', 0, .03, 1500); tone(1250, .06, 'square', .08, .03, 1700); },
+  gate: () => [392, 523, 659].forEach((f, i) => tone(f, .1, 'square', i * .08, .04)),
   splash: () => { tone(260, .16, 'square', 0, .03, 90); tone(1200, .06, 'square', .03, .02, 600); },
   shake: () => [720, 520, 720, 520, 720].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
   catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
@@ -372,6 +374,16 @@ const SQUIRREL = [
 const FLEA = ['........', '...mm...', '..mmmh..', '..mmmm..', '...mm...', '..m..m..', '........'];
 const DUCK = ['..............', '........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...', '..............'];
 const CLAW = [...Array(8)].map((_, r) => [...Array(15)].map((_, x) => [0, 3, 6].some(o => x - r - o === 0 || x - r - o === 1) ? 'h' : '.').join(''));   // three claw lines
+// Crumb, Bread's puppy friend: a mini corgi with Rottweiler colors (decided 28
+// Oct by the kid designer), black with tan eyebrows, muzzle, chest and legs
+const CRUMB = (() => {
+  // drawn on Bread's shape, smaller: tall ears with pink insides, a long tan
+  // snout with the nose at the tip, a tan eyebrow over the eye
+  const top = ['..........D..D....', '..........DD.DD...', '..........DpDDpD..', '.........DDDsDDD..', '.........DDDhDsss.', '.D.......DDDDssssn', '.DD.DDDDDDDDDsss..', '..DDDDDDDDDDsss...', '..DDDDDDDDDDss....', '...DDDDDDDDss.....'];
+  return [[...top, '...sD.....ss......', '...ss.....ss......', '..................'], [...top, '....sD.....ss.....', '....ss.....ss.....', '..................']];
+})();
+const CRUMB_HEAD = ['D..D.', 'DDDD.', 'DhDss', '.Dssn'];
+const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
 const DUCK_FEET = ['.b.b...b.b.', '.bbb...bbb.', 'bbbbb.bbbbb'];
@@ -383,11 +395,19 @@ const CHECK = ['........', '......L.', '.....LL.', '.L..LL..', '.LLLL...', '..LL
 const CAR = ['..........................', '......rrrrrrrr............', '.....rllllllllr...........', '....rllllllllllr..........', '...rrrrrrrrrrrrrrrrrrrr...', '..rrrrrrrrrrrrrrrrrrrrre..', '..rrrrrrrrrrrrrrrrrrrrrr..', '..RRRRRRRRRRRRRRRRRRRRRR..', '...DDDD.........DDDD......', '...DggD.........DggD......', '...DDDD.........DDDD......', '..........................'];
 const CAR_HEAD = ['o...o...', 'oo.oo...', 'ooooo...', 'oowonww.', 'oowwwwwn', '.wwwww..'];
 // (x, y) is the ground under the middle of the car
-function drawCar(x, y, face, t) {
+function drawCar(x, y, face, t, riders = true) {
   const img = sprite(CAR, { flip: face < 0 }), head = sprite(CAR_HEAD, { map: S.wear.body === 'duck' ? { o: COL.y } : {}, flip: face < 0 });
   const bob = Math.floor(t / 120) % 2, X = Math.round(x - 13), Y = Math.round(y - 12);
-  put(head, face > 0 ? X + 8 : X + 26 - 8 - head.width, Y - 3 + bob);
+  if (riders) {
+    put(sprite(CRUMB_HEAD, { flip: face < 0 }), face > 0 ? X + 2 : X + 26 - 2 - 5, Y - 3 + bob);   // Crumb, in the back seat
+    put(head, face > 0 ? X + 8 : X + 26 - 8 - head.width, Y - 3 + bob);
+  }
   put(img, X, Y + bob);
+}
+// (x, y) is the ground under the middle of Crumb
+function drawCrumb(x, y, face, t, moving, scale = 1) {
+  const img = sprite(CRUMB[moving && Math.floor(t / 110) % 2 ? 1 : 0], { flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
 }
 
 // ---------- Home ----------
@@ -395,9 +415,16 @@ let screen = 'title';
 function showRow(id) {
   ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
   $('#helpBtn').hidden = id !== 'levelBtns';
-  if (id !== 'levelBtns') { setGoal(''); help(false); }
+  if (id !== 'levelBtns') { setGoal(''); help(false); $('#toast').hidden = true; }
 }
-function setGoal(text) { $('#goal').textContent = text; $('#goal').hidden = !text; }
+// Decided 28 Oct: the goal shows for a few seconds when it changes, then goes
+// away; it's always at the start of the ? help bar. Kept on screen all the
+// time, it covered the world.
+let goalT;
+function setGoal(text) {
+  $('#goal').textContent = text; $('#goal').hidden = !text; $('#infoGoal').textContent = text ? text + '.' : '';
+  clearTimeout(goalT); if (text) goalT = setTimeout(() => $('#goal').hidden = true, 5000);
+}
 function help(open = $('#info').hidden) { $('#info').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open); }
 $('#helpBtn').onclick = () => help();
 $('#infoClose').onclick = () => help(false);
@@ -428,6 +455,7 @@ function drawHome(t) {
   put(sprite(blob(64, 16, 'N', 'N', 'N')), 208, 139);
   put(sprite(blob(112, 22, 'P', 'Q', 'P')), W / 2 - 56, 140);
   drawBread(W / 2, 153, 3, 1, t, false);
+  drawCrumb(240, 152, -1, t, false, 2);         // Crumb, on Bread's bed
   if (homeWoof > t) text('Woof!', W / 2 + 46, 82);
 }
 function openCloset() {
@@ -521,78 +549,110 @@ function drawMap(t) {
 const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
 // ---------- The pond ----------
 const LW = 36, LH = 22;
-// Decided 28 Oct, after the first play-tests: the park was too open, and
-// everyone wanted to take Bread into the pond. Now there's a hedge maze on each
-// side of the pond (the squirrels hide in it, and its dead ends are where to
-// corner them), and Bread can swim. Squirrels and fleas can't.
-const SOLID = '#TH', SOLID_LAND = '#THw';
+// Decided 28 Oct, from the kid designer: every world is a trip. Bread's puppy
+// friend Crumb rides along and runs off when they get there; you get through
+// the world to find Crumb, then bring Crumb back to the car. No timer, and
+// nothing locks behind you: a gate, once opened, stays open. The pond: a
+// fence with a locked gate (a squirrel has the key) splits the park; Crumb is
+// stuck on a floating dock in the middle of the pond, so Bread swims out. The hedge mazes on the
+// sides are for exploring; that's where the extras hide.
+// F is fence, G the gate, H hedge, d dock, b a bush to hide in.
+const SOLID_LAND = '#THwFG';              // squirrels and fleas can't swim or pass the fence
 let G = null;
+const breadSolid = () => G && G.gateOpen ? '#THF' : '#THFG';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
-// The left maze; the right one is its mirror. H is hedge, b a bush to hide in.
+// The left maze; the right one is its mirror. The top 13 rows sit beside the
+// pond, the last 6 below the fence, where the key squirrel hides.
 const MAZE = [
   '.b....H.', '.HHHH...', '.H....H.', '.H.HHHH.', '.H.H....', '...H.HHH', 'HHHH.H..', 'b....H.H', '.HHH.H.H', '.H...H..',
-  '.H.HHHH.', '.H.H....', '.H.H.HHH', '...H.H..', 'HHHH.H.H', 'b....H.H', '.HHH.H..', '.H......', '.H.HHHH.', 'b.......',
+  '.H.HHHH.', '.H.H....', 'bH......',
+  '.HHH.H..', '.H......', '.H.HHHH.', '.H.H....', '...H.HH.', 'b..H....',
 ];
-// The pond is the same place every visit, so it's a world you get to know.
-// The treats, squirrels and fleas move around each time.
 const POND = (() => {
   const r = seeded(11), m = [];
-  const pcx = 18, pcy = 9, rx = 7, ry = 4.2;
+  const pcx = 18, pcy = 7, rx = 7, ry = 4;
   const e = (x, y, a) => ((x + .5 - pcx) / (rx + a)) ** 2 + ((y + .5 - pcy) / (ry + a)) ** 2;
   for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
-  for (let y = 1; y < LH - 1; y++) for (let x = 1; x < LW - 1; x++) {
+  for (let y = 1; y < 14; y++) for (let x = 1; x < LW - 1; x++) {
     if (e(x, y, 0) < 1) m[y][x] = 'w';
     else if (e(x, y, .9) < 1 && (x < pcx - 2 || y < pcy - 1) && r() < .7) m[y][x] = 'r';
     else if (e(x, y, 2.1) < 1 && e(x, y, 1.3) >= 1) m[y][x] = 'p';
   }
-  // a dock out into the water from the bottom of the path
-  let ybot = 0; for (let y = 0; y < LH; y++) if (m[y][17] === 'w') ybot = y;
-  for (const x of [17, 18]) for (let y = ybot - 3; y <= ybot; y++) m[y][x] = 'd';
-  // the path down to where the car parks
+  // the little floating dock out in the middle that Crumb gets stuck on
+  for (const y of [4, 5]) for (let x = 16; x <= 19; x++) m[y][x] = 'd';
+  // a short dock from the shore, so it's a swim out to the floating one
+  let ybot = 0; for (let y = 0; y < 14; y++) if (m[y][17] === 'w') ybot = y;
+  for (const x of [17, 18]) for (let y = ybot - 1; y <= ybot; y++) m[y][x] = 'd';
+  // the fence across the park, with the gate on the path
+  for (let x = 1; x < LW - 1; x++) m[14][x] = x === 17 || x === 18 ? 'G' : 'F';
+  // the path from the car up through the gate to the pond
   for (let y = ybot + 1; y < LH - 1; y++) for (const x of [17, 18]) if (m[y][x] === '.') m[y][x] = 'p';
-  // the hedge mazes, on grass only, so the path around the pond stays open
-  MAZE.forEach((row, j) => [...row].forEach((ch, c) => { for (const x of [1 + c, LW - 2 - c]) if (m[1 + j][x] === '.') m[1 + j][x] = ch; }));
+  MAZE.forEach((row, j) => { const y = j < 13 ? 1 + j : 2 + j; [...row].forEach((ch, c) => { for (const x of [1 + c, LW - 2 - c]) if (m[y][x] === '.') m[y][x] = ch; }); });
   for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
     if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
   const reeds = [], bushes = [];
-  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b') bushes.push([x + .5, y + .5]); }
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b' && y < 14) bushes.push([x + .5, y + .5]); }
   reeds.sort((a, b) => a[0] - b[0]);
   return {
-    m, start: [18, LH - 2.6],
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], raft: [18, 5.3],
     // where the pieces hide: the end of the dock, deep in the reeds, and the
     // rubber duck out in the pond, so you have to swim for it
-    spots: { duckHat: [18, ybot - 3 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [22.5, 7.5] },
-    goldSpots: bushes,                       // the dead ends of the mazes
+    spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
+    goldSpots: bushes,                       // the dead ends of the mazes by the pond
   };
 })();
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
 const solidAt = (x, y, set) => set.includes(tileAt(x, y));
 function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
 function move(o, dx, dy, r, set = SOLID_LAND) { if (!hits(o.x + dx, o.y, r, set)) o.x += dx; if (!hits(o.x, o.y + dy, r, set)) o.y += dy; }
-function randOpen(minD = 0, kinds = '.p', ok = () => true) {
+function randOpen(minD = 0, kinds = '.p', ok = () => true) {   // ok(x, y) narrows where
   for (let i = 0; i < 500; i++) {
     const x = 1 + Math.floor(Math.random() * (LW - 2)), y = 1 + Math.floor(Math.random() * (LH - 2));
-    if (kinds.includes(G.m[y][x]) && ok(x) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
+    if (kinds.includes(G.m[y][x]) && ok(x, y) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
   }
   return [5.5, 5.5];
 }
 function startPond() {
   screen = 'level'; showRow('levelBtns');
-  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, toy: null, done: false, cam: { x: 0, y: 0 }, carHint: 0 };
+  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
+    stage: 'key', key: null, hasKey: false, gateOpen: false, lost: 0,
+    // Crumb hops out of the car and runs off up the path
+    crumb: { x: POND.start[0] + .8, y: POND.start[1], face: 1, mode: 'run', t: 0, itch: 0, yip: 0 } };
   const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2); G.treats.push({ x, y, v }); } };
   add(22, 1); add(6, 2); add(3, 5);
   const [gx, gy] = POND.goldSpots[Math.floor(Math.random() * POND.goldSpots.length)];
   G.treats.push({ x: gx, y: gy, v: 10 });
   G.sparkles = Object.entries(POND.spots).filter(([k]) => !S.pond[k]).map(([k, [x, y]]) => ({ k, x, y }));
-  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6, '.', x => i % 2 ? x > 26 : x < 9); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
-  for (let i = 0; i < 6; i++) { const [x, y] = randOpen(5); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+  // one squirrel has the gate key and hides in a maze below the fence; the
+  // others are up by the pond
+  const side = Math.random() < .5;
+  { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x > 26 : x < 9)); G.sq.push({ x, y, a: 0, t: 0, stun: 0, key: true }); }
+  { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x < 9 : x > 26)); G.sq.push({ x, y, a: 0, t: 0, stun: 0 }); }
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 14 && (i % 2 ? x > 26 : x < 9)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
+  for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
   for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
   hudLevel();
-  // Decided 28 Oct: play-testers weren't sure what to do at the pond, so the
-  // goal now stays on screen, and changes once the bone drops
-  setGoal('Goal: catch all the squirrels and fleas');
-  toast('Bread is at the pond! Bark to freeze the squirrels and fleas, then catch them with your paw. Some hide in the hedge mazes.');
+  setGoal('Goal: catch the squirrel with the gate key');
+  toast('Crumb jumped out of the car and squeezed under the park gate! A squirrel ran off with the key. Bark to freeze it, then catch it with your paw.');
   if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); }
+}
+// The goal changes as you go; the arrow at the screen edge points the way
+// after a while (straight away for the way back to the car).
+const GOALS = {
+  key: 'Goal: catch the squirrel with the gate key',
+  getKey: 'Goal: pick up the key',
+  gate: 'Goal: take the key to the gate',
+  find: 'Goal: find Crumb',
+  back: 'Goal: bring Crumb back to the car',
+};
+function stage(st, msg) { G.stage = st; G.lost = 0; setGoal(GOALS[st]); if (msg) toast(msg); }
+function stageTarget() {
+  if (G.stage === 'key') return G.sq.find(s => s.key);
+  if (G.stage === 'getKey') return G.key;
+  if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
+  if (G.stage === 'find') return G.crumb;
+  if (G.stage === 'back') return { x: POND.car[0], y: POND.car[1] };
+  return null;
 }
 // Decided 28 Oct: no "how many are left" counters on screen. The tally at the
 // end counts everything up instead, one line at a time.
@@ -606,7 +666,7 @@ const HP = 5;
 function hurt(o) {
   const b = G.bread; G.hp--; G.ouch = 1.5; sfx.ouch(); goal = null;
   const d = Math.hypot(b.x - o.x, b.y - o.y) || 1;
-  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3, SOLID);
+  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3, breadSolid());
   G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
   if (G.hp <= 0) { G.done = true; setTimeout(tiredPond, 700); }
 }
@@ -637,7 +697,7 @@ function stepLevel(dt, t) {
   const m = Math.hypot(dx, dy);
   G.shake = Math.max(0, (G.shake || 0) - dt);
   b.moving = m > .1 && !G.done && !G.shake;
-  if (b.moving) { const sp = b.swim ? 2.6 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, SOLID); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  if (b.moving) { const sp = b.swim ? 2.6 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
   // into the pond and out again, with a good shake
   const wet = tileAt(b.x, b.y) === 'w';
   if (wet !== !!b.swim) {
@@ -677,29 +737,45 @@ function stepLevel(dt, t) {
   });
   // fleas hop about, faster when Bread is close
   G.fl.forEach(f => {
+    if (f.on) { f.x = G.crumb.x + f.on; f.y = G.crumb.y - .3; f.h = 0; return; }
     if (f.stun > 0) { f.stun -= dt; if (!f.hop) return; }
     if (f.hop) {
       f.hop.t += dt / .45; const k = Math.min(1, f.hop.t);
       f.x = f.hop.x0 + (f.hop.x1 - f.hop.x0) * k; f.y = f.hop.y0 + (f.hop.y1 - f.hop.y0) * k; f.h = Math.sin(k * Math.PI);
-      if (k >= 1) { f.hop = null; f.h = 0; f.wait = .5 + Math.random() * .9; }
+      if (k >= 1) {
+        f.hop = null; f.h = 0; f.wait = .5 + Math.random() * .9;
+        // landing on Crumb: Crumb sits and scratches until Bread paws it off
+        const c = G.crumb;
+        if (c.mode === 'follow' && !c.swim && Math.hypot(f.x - c.x, f.y - c.y) < .7) { f.on = (Math.random() - .5) * .5; c.itch++; G.pops.push({ x: c.x, y: c.y - .7, txt: 'Itchy!', t: 0, c: COL.m }); if (c.itch === 1) toast('A flea jumped on Crumb! Paw it off.'); }
+      }
       return;
     }
     f.wait -= dt * (Math.hypot(f.x - b.x, f.y - b.y) < 2.5 ? 2.5 : 1);
     if (f.wait > 0) return;
+    const c = G.crumb, toC = c.mode === 'follow' && !c.swim && Math.hypot(c.x - f.x, c.y - f.y) < 3;
     for (let i = 0; i < 8; i++) {
-      const a = Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
+      const a = toC && i < 4 ? Math.atan2(c.y - f.y, c.x - f.x) + (Math.random() - .5) * .6 : Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
       if ('.prb'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
     }
     if (!f.hop) f.wait = .3;
   });
   G.ouch -= dt;
   if (G.ouch <= 0 && !G.done) {
-    const by = G.sq.find(s => s.stun <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < .6) || G.fl.find(f => f.stun <= 0 && f.h < .3 && Math.hypot(f.x - b.x, f.y - b.y) < .5);
+    const by = G.sq.find(s => s.stun <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < .6) || G.fl.find(f => !f.on && f.stun <= 0 && f.h < .3 && Math.hypot(f.x - b.x, f.y - b.y) < .5);
     if (by) hurt(by);
   }
-  if (G.toy && !G.done && Math.hypot(G.toy.x - b.x, G.toy.y - b.y) < .6) {
-    G.done = true; G.toy = null; sfx.squeak();
-    setTimeout(() => hold(S.pond.beat ? BIG_BONE : DUCK, S.pond.beat ? 'Bread found her squeaky bone!' : 'Bread found her squeaky bone, and won the duck costume!', finishPond), 300);
+  G.lost += dt;
+  // the key, the gate, and Crumb
+  if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'You got the gate key!'); stage('gate'); }
+  if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
+    G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
+    stage('find', 'The gate is open! Now find Crumb. Listen for the yips.');
+  }
+  stepCrumb(dt);
+  if (G.stage === 'back' && !G.done && Math.hypot(POND.car[0] - b.x, POND.car[1] - b.y) < 2 && Math.hypot(POND.car[0] - G.crumb.x, POND.car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) {
+    G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
+    if (S.pond.beat) setTimeout(finishPond, 500);
+    else setTimeout(() => hold(DUCK, 'Crumb is safe! And Bread won the duck costume!', finishPond), 300);
   }
   // ducks paddle, and quack at Bread
   G.ducks.forEach(d => {
@@ -725,12 +801,33 @@ function bark() {
   [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
 }
 $('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
+// Crumb: runs off at the start (up the path and under the gate), waits on the
+// floating dock, yipping, then follows Bread back. Crumb can't be hurt or lost; a
+// flea only makes Crumb stop and scratch.
+function stepCrumb(dt) {
+  const c = G.crumb, b = G.bread; c.t += dt;
+  const go = (tx, ty, v) => { const d = Math.hypot(tx - c.x, ty - c.y); if (d < .05) return d; const k = Math.min(1, v * dt / d), ox = c.x; c.x += (tx - c.x) * k; c.y += (ty - c.y) * k; if (Math.abs(c.x - ox) > .001) c.face = c.x > ox ? 1 : -1; return d; };
+  c.moving = false;
+  if (c.mode === 'run') {                    // the dash at the start; then Crumb is out of sight, on the floating dock
+    c.moving = true;
+    if (go(18, 13, 5.5) < .1) { c.mode = 'wait'; c.x = POND.raft[0]; c.y = POND.raft[1]; }
+  } else if (c.mode === 'wait') {
+    c.yip -= dt;
+    if (c.yip <= 0 && Math.hypot(c.x - b.x, c.y - b.y) < 9) { c.yip = 2.5; sfx.yip(); G.pops.push({ x: c.x, y: c.y - .7, txt: 'Yip!', t: 0, c: LINE }); }
+    if (G.gateOpen && Math.hypot(c.x - b.x, c.y - b.y) < 1.4) { c.mode = 'follow'; sfx.found(); burst(c.x, c.y); stage('back', 'You found Crumb! Bring Crumb back to the car. Watch out for fleas.'); }
+  } else if (c.mode === 'follow') {
+    c.swim = tileAt(c.x, c.y) === 'w';
+    if (c.itch) return;
+    const d = Math.hypot(b.x - c.x, b.y - c.y);
+    if (d > 1.3) { c.moving = true; const v = d > 4 ? 6 : 4.4, ox = c.x, oy = c.y; const nx = (b.x - c.x) / d, ny = (b.y - c.y) / d; move(c, nx * v * dt, ny * v * dt, .2, breadSolid()); if (c.x === ox && c.y === oy && d > 3) { c.x += nx * v * dt; c.y += ny * v * dt; } if (Math.abs(nx) > .2) c.face = nx > 0 ? 1 : -1; }
+  }
+}
 // Decided 28 Oct, after play-tests: lining the paw up by hand was tricky, so it
 // now aims itself at the nearest squirrel or flea in reach. White corners show
 // which one that is.
 function pawTarget() {
   const b = G.bread; let best = null, bd = 2.2;
-  [...G.sq, ...G.fl].forEach(o => { const d = Math.hypot(o.x - b.x, o.y - b.y); if (d < bd) { bd = d; best = o; } });
+  [...G.sq, ...G.fl.filter(f => !f.on || G.crumb.itch)].forEach(o => { const d = Math.hypot(o.x - b.x, o.y - b.y); if (d < bd) { bd = d; best = o; } });
   return best;
 }
 // Decided 28 Oct: Bread gets two moves. The bark freezes everything nearby, and
@@ -744,12 +841,10 @@ function paw() {
   const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
   const hit = o => o === tg || Math.hypot(o.x - hx, o.y - hy) < 1.1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
   let last = null;
-  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
-  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
+  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; if (s.key) { G.key = { x: s.x, y: s.y }; stage('getKey', 'It dropped the gate key! Pick it up.'); } G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
+  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; if (f.on) { G.crumb.itch = Math.max(0, G.crumb.itch - 1); if (!G.crumb.itch) toast('No more itchy! Crumb is ready to go.'); } G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
   if (!last) return;
   sfx.catch(); hudLevel();
-  // the last one drops Bread's lost toy
-  if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); setGoal('Goal: get the squeaky bone!'); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 
@@ -761,6 +856,7 @@ function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
   put(sprite(SQUIRREL[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 8 - (frame && s.stun <= 0 ? 1 : 0));
   if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
+  if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
 }
 function drawFlea(f, t) {
   put(sprite(FLEA), f.x * T - 4, f.y * T - 4 - f.h * 8);
@@ -788,6 +884,7 @@ function drawLevel(t) {
         if (G.m[y][x - 1] !== 'd') px(X, Y, 1, T, LINE);
         if (G.m[y][x + 1] !== 'd') px(X + T - 1, Y, 1, T, LINE);
         if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
+        if (G.m[y + 1]?.[x] === 'w') px(X, Y + T - 1, T, 1, LINE);   // the floating dock's far edge
       }
     } else if (c === 'p') {
       px(X, Y, T, T, '#ecd6a0');
@@ -801,6 +898,13 @@ function drawLevel(t) {
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
       }
       if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
+      if (c === 'F' || (c === 'G' && !G.gateOpen)) {   // the park fence; the gate is wooden, with a lock
+        const wood = c === 'G' ? '#b07a46' : '#fffaf0';
+        px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, wood); px(X, Y + 9, T, 1, LINE);
+        for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, wood); }
+        if (c === 'G' && x === 17) { px(X + 13, Y + 6, 6, 6, LINE); px(X + 14, Y + 7, 4, 4, COL.y); px(X + 14, Y + 4, 4, 1, LINE); px(X + 14, Y + 4, 1, 3, LINE); px(X + 17, Y + 4, 1, 3, LINE); px(X + 15, Y + 8, 2, 2, LINE); }
+      }
+      if (c === 'G' && G.gateOpen && x === 17) { px(X, Y + 2, 2, 13, LINE); px(X + 2 * T - 2, Y + 2, 2, 13, LINE); }   // just the posts once it's open
       if (c === 'H') {                        // a clipped hedge; its top is drawn later, over things behind it
         px(X, Y, T, T, '#2e6b45'); px(X, Y + T - 2, T, 2, '#1f4a30');
         if ((x + y) % 2) { px(X + 4, Y + 6, 2, 2, '#3f8a5c'); px(X + 10, Y + 10, 2, 2, '#3f8a5c'); }
@@ -810,9 +914,16 @@ function drawLevel(t) {
       }
     }
   }
-  drawCar(18 * T, (LH - .2) * T, 1, 0);       // parked by the gate
+  drawCar(18 * T, (LH - .2) * T, 1, 0, false);   // parked, waiting
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
-  if (G.toy) put(sprite(BIG_BONE), G.toy.x * T - 7, G.toy.y * T - 4 - (Math.floor(t / 200) % 2) * 2);
+  if (G.key) { put(sprite(GATE_KEY), G.key.x * T - 4, G.key.y * T - 3 - (Math.floor(t / 200) % 2) * 2); twinkle(G.key.x * T + 6, G.key.y * T - 5, t); }
+  // Crumb (hidden while dashing off and once safe in the car)
+  { const c = G.crumb, cy = c.y * T + 5, wig = c.itch ? (Math.floor(t / 70) % 2 ? 1 : -1) : 0;
+    if (c.mode !== 'home') {
+      if (c.swim) { cx.save(); cx.beginPath(); cx.rect(c.x * T - 12, cy - 30, 24, 26); cx.clip(); }
+      drawCrumb(c.x * T + wig, cy + (c.swim ? 2 : 0), c.face, t, c.moving || c.mode === 'run');
+      if (c.swim) { cx.restore(); px(c.x * T - 9, cy - 4, 6, 1, COL.l); px(c.x * T + 3, cy - 4, 6, 1, COL.l); }
+    } }
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
@@ -852,9 +963,11 @@ function drawLevel(t) {
   const hy = VH * T - 11;
   px(2, hy, HP * 11 + 3, 9, LINE);
   for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, hy + 2);
-  // once the bone has dropped, an arrow at the edge points to it if it's off screen
-  if (G.toy) {
-    const gx = (G.toy.x - cam.x) * T, gy = (G.toy.y - cam.y) * T, W = VW * T, H = VH * T;
+  // an arrow at the edge points to the goal if it's off screen: straight away on
+  // the way back to the car, otherwise after 20 seconds
+  const tgt = !G.done && stageTarget();
+  if (tgt && (G.stage === 'back' || G.lost > 20)) {
+    const gx = (tgt.x - cam.x) * T, gy = (tgt.y - cam.y) * T, W = VW * T, H = VH * T;
     if (gx < 0 || gy < 0 || gx > W || gy > H) {
       const a = Math.atan2(gy - H / 2, gx - W / 2), ax = Math.max(10, Math.min(W - 10, gx)), ay = Math.max(10, Math.min(H - 24, gy));   // stays above the health bar
       cx.save(); cx.translate(Math.round(ax), Math.round(ay)); cx.rotate(a);
@@ -878,7 +991,7 @@ function finishPond() {
   const rows = [['Squirrels caught', G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`]];
   const parts = POND_PARTS.map(([k, n]) => `<span class="${S.pond[k] ? 'yes' : 'no'}">${S.pond[k] ? '✓' : '?'} ${n}</span>`).join('');
   const after = newTrophy ? '🏆 You found everything! The pond trophy goes on the shelf at home.' : all ? 'You found everything at the pond!' : 'Something is still hidden at the pond. Come back and look!';
-  $('#card').innerHTML = `<h2>Pond clear!</h2><p class="big">${first ? 'You won the duck costume!' : 'Bread found her squeaky bone!'}</p>`
+  $('#card').innerHTML = `<h2>Crumb is safe!</h2><p class="big">${first ? 'You won the duck costume!' : 'Bread brought Crumb back to the car.'}</p>`
     + rows.map(([l, , end = '']) => `<p class="trow"><span>${l}</span><b><span>0</span>${end}</b></p>`).join('')
     + `<p class="big pct">Pond complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
   $('#cover').hidden = false;
