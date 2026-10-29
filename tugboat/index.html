@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tugboat Deliveries · Rubber Duck Games</title>
+<meta name="description" content="Drive a little tugboat around the harbor, pick up animals and crates, and take them to the right dock.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1f2f45;--soft:#4d6078;--bg:#d9f1ff;--panel:#fffdf7;--line:#b9dcf0;--accent:#e04848;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.stagebox{position:relative}
+canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;touch-action:none}
+/* the docket: what to pick up, and which dock it goes to, in pictures */
+.docket{position:absolute;bottom:.3rem;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:.5rem;background:var(--panel);border:4px solid var(--ink);padding:.4rem .6rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.25);cursor:pointer}
+.docket img{display:block;height:3rem;image-rendering:pixelated}
+.docket .to{width:1.6rem;height:1.6rem;fill:var(--ink)}
+.docket .dock{display:flex;align-items:center;gap:.3rem;padding:.25rem .45rem;color:#fff;font-family:"Press Start 2P",monospace;font-size:1.5rem;line-height:1}
+.docket .dock img{height:1.6rem}
+.docket.got .item{opacity:.35}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,40,60,.45);z-index:9;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;text-align:center;box-shadow:.4rem .4rem 0 rgba(0,0,0,.25)}
+.card h2{margin:0 0 .5rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.4rem 0;color:var(--soft)}
+.card input{display:block;width:100%;font:inherit;font-size:1.2rem;padding:.5rem .7rem;border:3px solid var(--ink);margin:.6rem 0}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.75rem}
+.btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
+/* touch controls: a thumb pad and a big horn, only on touch screens */
+.ctrl{display:none}
+@media (pointer:coarse){.ctrl{display:flex}}
+.ctrl{position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:center;padding:1rem;pointer-events:none}
+.ctrl>*{pointer-events:auto}
+.pad{display:grid;grid-template-columns:repeat(3,3.4rem);grid-template-rows:repeat(3,3.4rem);touch-action:none}
+.pad span{display:flex;align-items:center;justify-content:center;background:#1f2f45;color:#d9f1ff;border-radius:.3rem;box-shadow:0 .25rem 0 #0e1826}
+.pad span.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #0e1826}
+.pad [data-k=arrowup]{grid-area:1/2}.pad [data-k=arrowleft]{grid-area:2/1}.pad [data-k=arrowright]{grid-area:2/3}.pad [data-k=arrowdown]{grid-area:3/2}
+.tri{width:1.2rem;height:1.2rem;fill:currentColor}
+.horn{width:6rem;height:6rem;border-radius:50%;background:#e04848;color:#fff;font-family:"Press Start 2P",monospace;font-size:.8rem;box-shadow:0 .35rem 0 #a8302f}
+.horn:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #a8302f}
+/* a phone held upright: the harbor sits at the top, the docket just under it
+   (on the harbor it covered half the docks), the pad and horn at the bottom */
+@media (pointer:coarse) and (orientation:portrait){
+  .wrap{align-items:flex-start;padding-top:3.6rem}
+  .docket{top:calc(100% + .8rem);bottom:auto}
+  .docket img{height:2.6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <button class="pill" id="nameBtn">Boat name</button>
+  <span class="pill" id="hStars" aria-label="Deliveries">⭐ 0</span>
+  <span class="pill" id="hJar" aria-label="Sparkles">✨ 0</span>
+  <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
+</div>
+<div class="wrap">
+  <div class="stagebox" id="box">
+    <canvas id="cv" aria-label="The harbor"></canvas>
+    <button class="docket" id="docket" hidden aria-label="Hear the docket again">
+      <img class="item" id="dItem" alt="">
+      <svg class="to" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3.5h5V1l3.5 4L6 9V6.5H1z"/></svg>
+      <span class="dock" id="dDock"><span id="dNum"></span><img id="dShape" alt=""></span>
+    </button>
+    <div class="cover" id="cover" hidden><div class="card" id="card"></div></div>
+  </div>
+</div>
+<div class="ctrl" id="ctrl" hidden>
+  <div class="pad" id="pad" aria-label="Arrow pad">
+    <span data-k="arrowup"><svg class="tri" viewBox="0 0 10 10"><path d="M5 1.5 9 8.5H1z"/></svg></span>
+    <span data-k="arrowleft"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(-90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
+    <span data-k="arrowright"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
+    <span data-k="arrowdown"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(180deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
+  </div>
+  <button class="horn" id="hornBtn">Toot!</button>
+</div>
+
+<script>
+// Tugboat Deliveries. Decided 29 Oct, designed by the youngest kid tester (almost
+// 3, knows the arrow keys and the space bar): drive a little tugboat around one
+// harbor that fits the screen, pick up animals and crates, and take them to
+// the dock on the docket. The docket is all pictures, the dock is a big number
+// with a color and a shape, and a voice reads it out, because he can't read
+// yet. Nothing can go wrong: bumping things just boings, no timer, no losing.
+// 8-bit, drawn on a small canvas and scaled up with smoothing off, like Bread.
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), out = cv.getContext('2d');
+const VW = 20, VH = 12, T = 16;
+const lo = document.createElement('canvas'); lo.width = VW * T; lo.height = VH * T;
+const cx = lo.getContext('2d');
+cx.imageSmoothingEnabled = false;
+const PIX = '"Press Start 2P", monospace';
+
+// ---------- Saved progress (this browser only) ----------
+// The tugboat's name is typed in once and kept here, so the kid's name is only
+// ever on the family's own device, never on the public site.
+const KEY = 'tugboat';
+const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
+const title = () => S.name ? `Tugboat ${S.name}'s Deliveries` : 'Tugboat Deliveries';
+
+// ---------- Sounds and the voice ----------
+let ac;
+function tone(f, d, type = 'square', when = 0, vol = .05, to) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state !== 'running') ac.resume();
+    const t0 = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d + .02);
+  } catch (e) { }
+}
+const sfx = {
+  horn: () => { tone(196, .35, 'square', 0, .06); tone(147, .45, 'square', .38, .06); },
+  boing: () => tone(300, .18, 'square', 0, .04, 600),
+  hop: () => [523, 659, 784].forEach((f, i) => tone(f, .07, 'square', i * .06, .04)),
+  cheer: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .12, 'square', i * .1, .04)),
+  sparkle: () => [988, 1319, 1568].forEach((f, i) => tone(f, .08, 'square', i * .05, .03)),
+  start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
+};
+let voice = null;
+function pickVoice() { const vs = speechSynthesis.getVoices(); voice = vs.find(v => v.lang === 'en-US' && /Samantha|Google US|Aria|Jenny|Ava/.test(v.name)) || vs.find(v => v.lang.startsWith('en')) || null; }
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(t, cut = true) {
+  if (!S.sound || !('speechSynthesis' in window)) return;
+  if (cut) speechSynthesis.cancel(); else if (speechSynthesis.speaking) return;
+  const u = new SpeechSynthesisUtterance(t); if (voice) u.voice = voice; u.rate = .9; u.pitch = 1.15;
+  speechSynthesis.speak(u);
+}
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); if (!S.sound) speechSynthesis?.cancel(); };
+
+// ---------- Pixel art ----------
+const COL = {
+  k: '#1d1410', D: '#24242c', h: '#ffffff', r: '#e04848', R: '#a8302f', l: '#bfe8ff', g: '#8c8c96', y: '#ffd23f', Y: '#e0a800',
+  b: '#ff8a1f', t: '#8a4f2a', s: '#b8773a', c: '#f2d8b8', P: '#f4a6a0', Q: '#d9837d', G: '#5aa772', q: '#3f8a5c', u: '#3a6fd8', m: '#9b5cd8',
+  W: '#5bb8e8', V: '#3a8fc0', o: '#e8913a', p: '#f7c6d8', e: '#ffe680', n: '#2b2b33', a: '#7fd36b',
+};
+const LINE = COL.k, spriteCache = new Map();
+function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, grid = rows.map(r => [...r.padEnd(w, '.')]);
+  if (outline) {
+    const src = grid.map(r => r.slice());
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
+  }
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  spriteCache.set(key, c);
+  return c;
+}
+const put = (img, x, y, scale = 1) => cx.drawImage(img, Math.round(x), Math.round(y), img.width * scale, img.height * scale);
+const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
+function text(t, x, y, col = LINE, size = 8) { cx.font = `${size}px ${PIX}`; cx.textAlign = 'center'; cx.fillStyle = col; cx.fillText(t, Math.round(x), Math.round(y)); }
+const dataURL = (rows, opt) => { const s = sprite(rows, opt), c = document.createElement('canvas'), n = Math.max(s.width, s.height) + 2; c.width = c.height = n; c.getContext('2d').drawImage(s, (n - s.width) >> 1, (n - s.height) >> 1); return c.toDataURL(); };
+
+// the tugboat, facing right: a smokestack, a cabin with windows, a red hull with tires
+const TUG = ['..............DD........', '..............DD........', '..............rr........', '..............DD........', '..........hhhhhhhhh.....', '..........hllhllhlh.....', '..........hllhllhlh.....', '..........hhhhhhhhh.....', '.rrrrrrrrrrrrrrrrrrrrrr.', '..rrrgrrrrgrrrrgrrrrrrrr', '..rrrrrrrrrrrrrrrrrrrrr.', '...RRRRRRRRRRRRRRRRRRR..'];
+const SAIL = ['.....h........', '.....hh.......', '.....hhh......', '.....hhhh.....', '.....hhhhh....', '.....hhhhhh...', '.....D........', 'uuuuuuuuuuuuuu', '.uuuuuuuuuuuu.', '..VVVVVVVVVV..'];
+const FISHER = ['.......D.......', '.......D.......', '....yyyyy......', '....yllly......', 'GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG', '..qqqqqqqqqqqq.'];
+const BUOY = [['..rr..', '.rhhr.', '.rrrr.', 'hhhhhh', 'rrrrrr'], ['......', '..rr..', '.rhhr.', '.rrrr.', 'hhhhhh']];
+const SPARKLE = [
+  ['...h...', '...h...', '...e...', 'hheeehh', '...e...', '...h...', '...h...'],
+  ['.......', '...h...', '...e...', '.heeeh.', '...e...', '...h...', '.......'],
+  ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
+];
+// passengers and cargo
+const crate = top => [top, 'tttttttttttt', 'tssstsssstst', 'tssstssssts t'.replace(' ', ''), 'tttttttttttt', 'tsstssstssst', 'tttttttttttt'];
+const ITEMS = [
+  { key: 'cow', name: 'the cow', her: true, rows: ['..........hh', '.........hhD', 'hhhhhhhhhhhP', 'hDDhhhDhhhh.', 'hhhhDDhhhhh.', 'hhhhhhhhhh..', '.D.D...D.D..'] },
+  { key: 'pig', name: 'the pig', her: true, rows: ['..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPnPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...'] },
+  { key: 'duck', name: 'the duck', her: false, rows: ['........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...'] },
+  { key: 'cat', name: 'the cat', her: false, rows: ['.D..D.......', '.DDDD.......', '.DyDy.....D.', '.DDDD....D..', '..DDDDDDDD..', '..DDDDDDDD..', '..D.D..D.D..'] },
+  { key: 'frog', name: 'the frog', her: false, rows: ['.hD...hD.', '.hh...hh.', 'aaaaaaaaa', 'aaaaaaaaa', 'aaRRRRRaa', '.aaaaaaa.', 'aa.....aa'] },
+  { key: 'apples', name: 'the apples', rows: crate('.rr.rr.rr.r.') },
+  { key: 'bananas', name: 'the bananas', rows: crate('yy.yyy.yy.yy') },
+  { key: 'fish', name: 'the fish', rows: crate('.VVu.VVu.VVu') },
+  { key: 'toys', name: 'the toys', rows: crate('rr.uu.yy.mm.') },
+];
+// docks: a big number, a color and a shape, so he can find it three ways
+const SHAPES = {
+  circle: ['..xxx..', '.xxxxx.', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '.xxxxx.', '..xxx..'],
+  square: ['xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx'],
+  triangle: ['...x...', '..xxx..', '..xxx..', '.xxxxx.', '.xxxxx.', 'xxxxxxx', 'xxxxxxx'],
+  diamond: ['...x...', '..xxx..', '.xxxxx.', 'xxxxxxx', '.xxxxx.', '..xxx..', '...x...'],
+  heart: ['.xx.xx.', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '.xxxxx.', '..xxx..', '...x...'],
+};
+const DOCKS = [
+  { n: 1, x: 3, y: 2, col: '#e04848', color: 'red', shape: 'circle' },
+  { n: 2, x: 9, y: 2, col: '#3a6fd8', color: 'blue', shape: 'square' },
+  { n: 3, x: 15, y: 2, col: '#e0a800', color: 'yellow', shape: 'triangle' },
+  { n: 4, x: 5, y: 10, col: '#3f8a5c', color: 'green', shape: 'diamond' },
+  { n: 5, x: 13, y: 10, col: '#9b5cd8', color: 'purple', shape: 'heart' },
+];
+// each dock's pier is two tiles out into the water; the boat parks just off its end
+const upper = d => d.y < 6;   // a dock on the top shore (the rest are on the bottom)
+const berth = d => ({ x: d.x + 1, y: upper(d) ? d.y + 1.5 : d.y - .5 });
+const onPier = d => ({ x: d.x + 1, y: d.y + .5 });
+
+// ---------- The harbor ----------
+// Land along the top (two rows) and the bottom (one row); the docks stick out
+// into the water. Everything else is water to drive around.
+const land = (x, y) => y < 2 || y >= 11;
+const pier = (x, y) => DOCKS.some(d => Math.floor(y) === d.y && (Math.floor(x) === d.x || Math.floor(x) === d.x + 1));
+const solid = (x, y) => x < .2 || x > VW - .2 || land(x, y) || pier(x, y);
+const BUOYS = [{ x: 7, y: 5 }, { x: 13, y: 6.2 }, { x: 4, y: 7.6 }, { x: 17, y: 8.2 }, { x: 10.5, y: 8.6 }];
+let G = null, screen = 'press';
+function newHarbor() {
+  G = {
+    tug: { x: 10, y: 6.5, vx: 0, vy: 0, face: 1 }, job: null, wait: 0, carry: null, hop: null,
+    boats: [{ x: -2, y: 4.6, dir: 1, v: .9, img: SAIL }, { x: VW + 2, y: 7.3, dir: -1, v: .6, img: FISHER }],
+    sparkles: [], fx: [], smoke: [], bonk: 0, idle: 0,
+  };
+  for (let i = 0; i < 3; i++) addSparkle();
+  newJob();
+}
+function openWater(minFrom) {
+  for (let i = 0; i < 200; i++) {
+    const x = 1 + Math.random() * (VW - 2), y = 3.2 + Math.random() * 6.4;
+    if (solid(x, y) || BUOYS.some(b => Math.hypot(b.x - x, b.y - y) < 1.2)) continue;
+    if (minFrom && Math.hypot(minFrom.x - x, minFrom.y - y) < minFrom.d) continue;
+    return { x, y };
+  }
+  return { x: 10, y: 6 };
+}
+function addSparkle() { const p = openWater({ ...G.tug, d: 3 }); G.sparkles.push({ ...p, t: Math.random() * 9 }); }
+
+// ---------- Dockets ----------
+// Each docket is one thing waiting at one dock, going to another dock.
+function newJob() {
+  const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+  let from = DOCKS[Math.floor(Math.random() * DOCKS.length)], to;
+  do to = DOCKS[Math.floor(Math.random() * DOCKS.length)]; while (to === from);
+  G.job = { item, from, to, got: false };
+  showDocket();
+  say(`Pick up ${item.name} at dock ${from.n}!`);
+}
+function showDocket() {
+  const j = G.job, d = $('#docket');
+  d.hidden = !j; if (!j) return;
+  $('#dItem').src = dataURL(j.item.rows);
+  const dock = j.got ? j.to : j.from;
+  $('#dDock').style.background = dock.col; $('#dNum').textContent = dock.n;
+  $('#dShape').src = dataURL(SHAPES[dock.shape], { map: { x: '#ffffff' } });
+  d.classList.toggle('got', false);
+  d.setAttribute('aria-label', j.got ? `Take ${j.item.name} to dock ${j.to.n}. Tap to hear it again.` : `Pick up ${j.item.name} at dock ${j.from.n}. Tap to hear it again.`);
+}
+const docketLine = () => { const j = G.job; return j.got ? `Take ${j.item.name} to dock ${j.to.n}, the ${j.to.color} ${j.to.shape}!` : `Pick up ${j.item.name} at dock ${j.from.n}, the ${j.from.color} ${j.from.shape}!`; };
+$('#docket').onclick = () => { if (G?.job) say(docketLine()); };
+
+// ---------- Playing ----------
+const keys = {};
+function step(dt, t) {
+  const b = G.tug;
+  let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; G.idle = 0; } else G.idle += dt;
+  b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
+  const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
+  const drag = Math.max(0, 1 - 2.4 * dt); b.vx *= drag; b.vy *= drag;
+  if (Math.abs(b.vx) > .2) b.face = b.vx > 0 ? 1 : -1;
+  // move, bouncing gently off land, piers, buoys and boats
+  G.bonk -= dt;
+  const r = .45, hit = (x, y) => solid(x - r, y) || solid(x + r, y) || solid(x, y - r) || solid(x, y + r * .6);
+  const nx = b.x + b.vx * dt; if (hit(nx, b.y)) { b.vx *= -.4; bonk(); } else b.x = nx;
+  const ny = b.y + b.vy * dt; if (hit(b.x, ny)) { b.vy *= -.4; bonk(); } else b.y = ny;
+  for (const o of [...BUOYS, ...G.boats]) {
+    const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy), near = o.img ? 1.1 : .75;
+    if (d < near && d > 0) { const push = (near - d); b.x += dx / d * push; b.y += dy / d * push; b.vx += dx / d * 1.5; b.vy += dy / d * 1.5; bonk(); }
+  }
+  // other boats chug along their lanes and come round again
+  G.boats.forEach(o => { o.x += o.dir * o.v * dt; if (o.x > VW + 3) o.x = -3; if (o.x < -3) o.x = VW + 3; });
+  // smoke from the stack
+  if (Math.random() < dt * (3 + sp)) G.smoke.push({ x: b.x - b.face * .1, y: b.y - 1.1, t: 0 });
+  G.smoke = G.smoke.filter(s => (s.t += dt, s.y -= dt * .6, s.x -= b.face * dt * .2, s.t < 1.4));
+  // sparkles
+  G.sparkles = G.sparkles.filter(s => {
+    s.t += dt;
+    if (Math.hypot(s.x - b.x, s.y - b.y) > .8) return true;
+    S.sparkles++; persist(); hud(); sfx.sparkle(); burst(s.x, s.y, ['#ffe680', '#ffffff', '#bfe8ff']);
+    if (S.sparkles % 5 === 0) say(`${S.sparkles} sparkles!`, false);
+    setTimeout(() => G && addSparkle(), 2500);
+    return false;
+  });
+  // the job: pick up, then drop off
+  const j = G.job;
+  if (j && !G.hop) {
+    const at = j.got ? berth(j.to) : berth(j.from);
+    if (Math.hypot(at.x - b.x, at.y - b.y) < 1.5) {
+      if (!j.got) { G.hop = { from: onPier(j.from), to: 'boat', t: 0 }; sfx.hop(); }
+      else { G.hop = { from: 'boat', to: onPier(j.to), t: 0 }; }
+    }
+  }
+  if (G.hop) {
+    G.hop.t += dt / .6;
+    if (G.hop.t >= 1) {
+      const h = G.hop; G.hop = null;
+      if (h.to === 'boat') { j.got = true; showDocket(); say(docketLine()); }
+      else delivered();
+    }
+  }
+  // a gentle reminder if nothing has happened for a while
+  if (G.idle > 14 && j) { G.idle = 0; say(docketLine(), false); }
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
+}
+function bonk() { if (G.bonk <= 0) { G.bonk = .4; sfx.boing(); } }
+function burst(x, y, cols) { for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: cols[i % cols.length] }); } }
+function delivered() {
+  const j = G.job, p = onPier(j.to);
+  S.trips++; S.stickers.push(j.item.key); if (S.stickers.length > 60) S.stickers.shift(); persist(); hud();
+  sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
+  G.left = { item: j.item, ...p, t: 0 };
+  say(S.trips % 5 === 0 ? `Thank you! You did ${S.trips} deliveries!` : 'Thank you! You did it!');
+  G.job = null; showDocket();
+  setTimeout(() => { if (G) { G.left = null; newJob(); } }, 2600);
+}
+
+// ---------- Drawing ----------
+function drawHarbor(t) {
+  const W = VW * T, H = VH * T;
+  px(0, 0, W, H, COL.W);
+  for (let y = 2; y < 11; y++) for (let x = 0; x < VW; x++) if ((x * 3 + y * 5) % 4 === 0) { const o = Math.floor(t / 500 + x + y) % 4; px(x * T + 3 + o, y * T + 8, 5, 1, COL.l); }
+  // land: grass on top with a sand edge, grass along the bottom
+  px(0, 0, W, 2 * T, '#8fd17a'); px(0, 2 * T - 4, W, 4, '#ecd6a0'); px(0, 2 * T, W, 1, COL.V);
+  px(0, 11 * T, W, T, '#8fd17a'); px(0, 11 * T, W, 3, '#ecd6a0'); px(0, 11 * T - 1, W, 1, COL.V);
+  for (let x = 1; x < VW; x += 3) { px(x * T + 4, 6, 1, 3, '#79bd66'); px(x * T + 6, 5, 1, 4, '#79bd66'); }
+  // docks: a wooden pier and a sign with the number and the shape
+  DOCKS.forEach(d => {
+    const X = d.x * T, Y = d.y * T;
+    px(X, Y, 2 * T, T, '#b07a46'); for (let i = 3; i < T; i += 4) px(X, Y + i, 2 * T, 1, '#8d5c30');
+    px(X, Y, 1, T, LINE); px(X + 2 * T - 1, Y, 1, T, LINE); px(X, upper(d) ? Y + T - 1 : Y, 2 * T, 1, LINE);
+    px(X + 2, upper(d) ? Y + T : Y - 3, 2, 3, LINE); px(X + 2 * T - 4, upper(d) ? Y + T : Y - 3, 2, 3, LINE);   // posts
+    const sy = upper(d) ? 2 : 11 * T + 1, sx = X + 2;
+    px(sx - 1, sy - 1, 30, 14, LINE); px(sx, sy, 28, 12, d.col);
+    text(String(d.n), sx + 8, sy + 10, '#ffffff');
+    put(sprite(SHAPES[d.shape], { map: { x: '#ffffff' }, outline: false }), sx + 17, sy + 3);
+  });
+  // what's waiting on the pier, bobbing, with a sparkle so it's easy to spot
+  const j = G.job;
+  if (j && !j.got && !(G.hop && G.hop.to === 'boat')) { const p = onPier(j.from), img = sprite(j.item.rows); put(img, p.x * T - img.width / 2, p.y * T - img.height + 4 - (Math.floor(t / 300) % 2)); twinkle(p.x * T + 9, p.y * T - 10, t); }
+  if (G.left) { const img = sprite(G.left.item.rows); put(img, G.left.x * T - img.width / 2, G.left.y * T - img.height + 4 - (Math.floor(t / 150) % 2) * 2); }
+  // the destination dock blinks a ring when you're carrying something
+  if (j && j.got) { const d = j.to, X = d.x * T, Y = d.y * T; if (Math.floor(t / 300) % 2) { px(X - 2, Y - 2, 2 * T + 4, 2, '#ffffff'); px(X - 2, Y + T, 2 * T + 4, 2, '#ffffff'); px(X - 2, Y - 2, 2, T + 4, '#ffffff'); px(X + 2 * T, Y - 2, 2, T + 4, '#ffffff'); } }
+  // buoys, other boats, sparkles
+  BUOYS.forEach((o, i) => put(sprite(BUOY[Math.floor(t / 500 + i) % 2]), o.x * T - 3, o.y * T - 4));
+  G.boats.forEach(o => { const img = sprite(o.img, { flip: o.dir < 0 }); put(img, o.x * T - img.width / 2, o.y * T - img.height + 3 + (Math.floor(t / 400) % 2)); });
+  G.sparkles.forEach(s => twinkle(s.x * T, s.y * T, t + s.t * 300));
+  // the tugboat, with whatever it's carrying on the back deck
+  const b = G.tug, bob = Math.floor(t / 350) % 2, tug = sprite(TUG, { flip: b.face < 0 }), bx = b.x * T - tug.width / 2, by = b.y * T - tug.height + 4 + bob;
+  G.smoke.forEach(s => { const r = 2 + s.t * 3; px(s.x * T - r / 2, s.y * T - r / 2, r, r, s.t < .7 ? '#e8e8ee' : '#c9c9d4'); });
+  if (j && j.got && !G.hop) { const img = sprite(j.item.rows, { flip: b.face < 0 }); put(img, b.face > 0 ? bx + 1 : bx + tug.width - img.width - 1, by + 8 - img.height + 1); }
+  put(tug, bx, by);
+  // ripples behind when moving
+  if (Math.hypot(b.vx, b.vy) > .5) { const o = Math.floor(t / 120) % 2; px(bx + (b.face > 0 ? -4 - o : tug.width + o), by + tug.height - 2, 4, 1, COL.l); }
+  // hopping on or off: a little arc between the pier and the boat
+  if (G.hop) {
+    const h = G.hop, from = h.from === 'boat' ? { x: b.x, y: b.y - .3 } : h.from, to = h.to === 'boat' ? { x: b.x, y: b.y - .3 } : h.to;
+    const k = h.t, x = from.x + (to.x - from.x) * k, y = from.y + (to.y - from.y) * k - Math.sin(k * Math.PI) * 1.2, img = sprite(j.item.rows);
+    put(img, x * T - img.width / 2, y * T - img.height);
+  }
+  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+}
+function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
+
+// The title screen: the harbor behind, the name in big letters, PRESS START.
+let pressT = 0;
+function drawPress(t) {
+  const W = VW * T, H = VH * T;
+  px(0, 0, W, H * .55, '#9fdcff'); px(0, H * .55, W, H * .45, COL.W);
+  for (let x = 0; x < W; x += 14) px(x + (Math.floor(t / 300) % 4), H * .55 + 6 + (x % 3) * 9, 6, 1, COL.l);
+  cx.textAlign = 'center';
+  const big = (s, y, col, size) => { cx.font = `${size}px ${PIX}`; cx.fillStyle = '#7a3f12'; cx.fillText(s, W / 2 + 2, y + 2); cx.fillStyle = LINE; for (const [a, c] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(s, W / 2 + a, y + c); cx.fillStyle = col; cx.fillText(s, W / 2, y); };
+  big('TUGBOAT', 38, COL.r, 22);
+  if (S.name) big(`${S.name.toUpperCase()}'S`, 58, COL.y, 12);
+  big('DELIVERIES', S.name ? 76 : 62, '#ffffff', 12);
+  const tug = sprite(TUG), x = ((t / 40) % (W + 60)) - 30;
+  put(tug, x - tug.width, H * .55 + 18 + (Math.floor(t / 350) % 2), 2);
+  put(sprite(ITEMS[0].rows), x - tug.width + 6, H * .55 + 14, 1);
+  const flash = pressT && performance.now() - pressT < 900;
+  if (flash ? Math.floor(t / 80) % 2 : Math.floor(t / 520) % 2 === 0) text('PRESS START', W / 2, 100, flash ? COL.r : LINE);
+  text('RUBBER DUCK GAMES', W / 2, H - 5, '#1f5a8a');
+}
+
+// ---------- Screens ----------
+function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#nameBtn').hidden = false; }
+function pressStart() {
+  if (screen !== 'press' || pressT) return;
+  if (!S.name && !S.asked) return askName(true);
+  pressT = performance.now(); sfx.start();
+  setTimeout(play, 900);
+}
+function play() {
+  screen = 'play'; $('#nameBtn').hidden = true; $('#ctrl').hidden = false; resize();
+  newHarbor();
+  say(`Toot toot! ${S.name ? `${S.name}'s tugboat` : 'The tugboat'} is ready! ${docketLine()}`);
+}
+// Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
+function askName(thenStart) {
+  $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
+  $('#cover').hidden = false;
+  const f = $('#card form'); f.n.focus();
+  const done = () => { S.asked = true; persist(); $('#cover').hidden = true; if (thenStart) { pressT = 0; pressStart(); } };
+  $('#skipName').onclick = done;
+  f.onsubmit = e => { e.preventDefault(); S.name = f.n.value.trim().slice(0, 16); done(); };
+}
+$('#nameBtn').onclick = () => askName(false);
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (!$('#cover').hidden) return;
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (screen === 'press') { if (k === ' ' || k === 'enter' || k.startsWith('arrow')) pressStart(); return; }
+  keys[k] = true;
+  if (k === ' ' && !e.repeat) honk();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+cv.addEventListener('pointerdown', () => { if (screen === 'press' && $('#cover').hidden) pressStart(); });
+function honk() { sfx.horn(); if (G) for (let i = 0; i < 4; i++) G.smoke.push({ x: G.tug.x, y: G.tug.y - 1.1 - i * .15, t: i * .05 }); }
+$('#hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (screen === 'play') honk(); else pressStart(); });
+// the thumb pad: slide anywhere on it, like Bread's
+{
+  const pad = $('#pad'), dirs = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  const set = (on = {}) => dirs.forEach(k => { keys[k] = !!on[k]; pad.querySelector(`[data-k=${k}]`).classList.toggle('on', !!on[k]); });
+  const aim = e => { const r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), dead = r.width * .12; set({ arrowleft: dx < -dead, arrowright: dx > dead, arrowup: dy < -dead, arrowdown: dy > dead }); };
+  let finger = null;
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); finger = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (err) { } aim(e); });
+  pad.addEventListener('pointermove', e => { if (e.pointerId === finger) aim(e); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => pad.addEventListener(ev, e => { if (e.pointerId === finger) { finger = null; set(); } }));
+}
+
+// ---------- Screen size ----------
+// The harbor fills the window; on a touch screen it leaves room for the pad and
+// the horn (below it held upright, beside it turned sideways).
+function resize() {
+  const coarse = matchMedia('(pointer:coarse)').matches, sideways = innerWidth > innerHeight;
+  const room = { w: innerWidth - (coarse && sideways && screen === 'play' ? 2 * 8 * 16 : 0), h: innerHeight - 56 - (coarse && !sideways ? 18 * 16 : 0) };
+  let w = room.w, h = w * VH / VW; if (h > room.h) { h = room.h; w = h * VW / VH; }
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener('resize', resize);
+
+// ---------- Main loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+  if (screen === 'press') drawPress(t);
+  else if (G) { if ($('#cover').hidden) step(dt, t); drawHarbor(t); }
+  out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, cv.width, cv.height);
+  requestAnimationFrame(loop);
+}
+hud(); showPress(); resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
