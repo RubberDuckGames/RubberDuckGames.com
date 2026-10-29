@@ -21,12 +21,26 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .bar h1 b{color:var(--cyan)}
 .pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
 .wrap{max-width:1100px;margin:0 auto;padding:0 14px 20px}
-.hud{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
-.hud .pill{font-size:16px}
+/* Decided 28 Oct: the game fills the screen, and the bubbles sit on top of the
+   world instead of in a row above it. The how-to-move line used to sit under
+   the game all the time; now it's behind the ? button. */
+.hud{position:absolute;top:10px;left:10px;right:64px;z-index:4;display:flex;flex-wrap:wrap;gap:8px;margin:0;pointer-events:none}
+.hud .pill{font-size:16px;pointer-events:auto;background:rgba(16,26,54,.82)}
+.help{position:absolute;top:10px;right:10px;z-index:4;width:44px;height:44px;padding:0;font-size:20px;background:rgba(16,26,54,.82)}
+.info{position:absolute;top:60px;left:10px;right:10px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(16,26,54,.94);border:2px solid var(--cyan);border-radius:14px;padding:10px 12px 10px 16px}
+.info[hidden]{display:none}
+.info p{margin:0;flex:1;font-size:16px;color:var(--soft)}
+.info b{color:var(--ink)}
+.info .touchonly,body.touchdev .info .deskonly{display:none}
+body.touchdev .info .touchonly{display:block}
+.info:not([hidden]) ~ .toast{top:124px}
 /* Decided 21 Oct: in play, only the game. The top bar hides after Start and the
    pause button holds everything else. */
 body.playing .bar{display:none}
-body.playing .wrap{padding-top:10px}
+body.playing{overflow:hidden}
+body.playing .wrap{max-width:none;padding:0}
+body.playing canvas{border-radius:0;box-shadow:none}
+body.playing:not(.touchdev) .touch.on{position:fixed;right:16px;bottom:16px;margin:0;z-index:4}
 .pause{display:inline-flex;align-items:center;justify-content:center}
 .stagebox{position:relative;margin:0 auto;max-width:100%}
 canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow:0 0 0 2px var(--line),0 10px 30px rgba(0,0,0,.4);touch-action:none}
@@ -70,15 +84,12 @@ canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow
 .tbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
 .tbtn .key{display:none}
-.deskhelp{display:none;margin:0;color:var(--soft);font-size:15px}
-.deskhelp b{color:var(--ink)}
 body:not(.touchdev) .stick{display:none}
-body:not(.touchdev) .deskhelp{display:block}
 body:not(.touchdev) .tbtn{width:auto;height:auto;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:17px}
 body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700}
 .tbtn.glow{animation:glow .6s ease-in-out 5 alternate}
 @keyframes glow{to{box-shadow:0 0 0 6px rgba(255,201,60,.7);border-color:var(--gold)}}
-.toast{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
+.toast{position:absolute;top:62px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
 /* On a phone the maze is short, so screens and questions cover the whole
    screen instead of being squeezed into the maze box (seen on iPhone Chrome). */
 @media (max-width:700px), (orientation: landscape) and (max-height: 500px){
@@ -87,11 +98,22 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   #reload{position:fixed;left:50%;bottom:16px;z-index:20}
   #task{position:fixed;z-index:20;max-height:92vh;overflow:auto}
 }
+/* On a phone held upright the maze is a short strip, so the bubbles and the
+   help bar go back above it instead of covering it. */
+@media (max-width:700px) and (orientation: portrait){
+  .stagebox{display:flex;flex-direction:column}
+  .hud{position:static;order:-2;padding:6px 56px 6px 6px;gap:4px}
+  .hud .pill{font-size:14px;padding:4px 10px}
+  .help{top:6px;right:6px}
+  .info{position:static;order:-1;margin:0 0 6px}
+  .info p{font-size:15px}
+  .toast,.info:not([hidden]) ~ .toast{top:auto;bottom:8px}
+}
 /* A phone turned sideways: maze in the middle, stick bottom-left, buttons bottom-right. */
 @media (orientation: landscape) and (max-height: 500px){
   .bar{display:none}
   .wrap{padding:4px 8px}
-  .hud{margin:0 0 4px;gap:4px;justify-content:center}
+  .hud{gap:4px}
   .hud .pill{font-size:13px;padding:2px 9px;border-width:1px}
   body.touchdev .touch.on{position:fixed;inset:0;margin:0;pointer-events:none;z-index:6}
   body.touchdev .stick{position:fixed;left:10px;bottom:12px;width:104px;height:104px;pointer-events:auto}
@@ -111,16 +133,22 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
 </div>
 <div class="wrap">
-  <div class="hud" aria-live="polite">
-    <button class="pill pause" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 12 14" width="12" height="14" aria-hidden="true"><rect x="1" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="7.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
-    <span class="pill" id="hShield"></span>
-    <span class="pill" id="hAmmo"></span>
-    <span class="pill" id="hWrench"></span>
-    <span class="pill" id="hBucks"></span>
-    <span class="pill" id="hLeft"></span>
-  </div>
   <div class="stagebox" id="box">
     <canvas id="cv" aria-label="Math Force maze"></canvas>
+    <div class="hud" aria-live="polite">
+      <button class="pill pause" id="pauseBtn" aria-label="Pause"><svg viewBox="0 0 12 14" width="12" height="14" aria-hidden="true"><rect x="1" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="7.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+      <span class="pill" id="hShield"></span>
+      <span class="pill" id="hAmmo"></span>
+      <span class="pill" id="hWrench"></span>
+      <span class="pill" id="hBucks"></span>
+      <span class="pill" id="hLeft"></span>
+    </div>
+    <button class="pill help" id="helpBtn" aria-label="How to play" aria-expanded="false" aria-controls="info">?</button>
+    <div class="info" id="info" hidden>
+      <p class="deskonly">Move: <b>WASD</b> or <b>arrows</b> · Aim: <b>mouse</b> · Fire: <b>click</b> or <b>Space</b> · Wrench: <b>E</b> · Use: <b>F</b> · Reload: <b>R</b> · Pause: <b>Esc</b> · This help: <b>H</b></p>
+      <p class="touchonly">Drag the stick to move. <b>Fire</b> aims at the nearest target. <b>Wrench</b> is for armored Errors. <b>Use</b> opens doors and works panels.</p>
+      <button class="pill" id="infoClose" aria-label="Close help">✕</button>
+    </div>
     <div class="toast" id="toast" hidden></div>
 
     <div class="panel" id="reload" hidden>
@@ -195,7 +223,6 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   </div>
   <div class="touch" id="touch">
     <div class="stick" id="stick"><i id="knob"></i></div>
-    <p class="deskhelp">Move: <b>WASD</b> or <b>arrows</b> · Aim: <b>mouse</b> · Pause: <b>Esc</b></p>
     <div class="tbtns"><button class="tbtn" id="tUse"><span id="useLbl">🛠 Use</span><small class="key">F</small></button><button class="tbtn" id="tWrench">🔧 Wrench<small class="key">E</small></button><button class="tbtn" id="tQuad" hidden>💥 Quad<small class="key">Q</small></button><button class="tbtn" id="tFire">⚡ Fire<small class="key">Space</small></button></div>
   </div>
 </div>
@@ -517,7 +544,8 @@ function resize() {
   let w = box.clientWidth;
   const land = sideways() && touchMode;
   if (land) w = Math.min(w, innerWidth - 2 * 128);          // room for the stick and the buttons
-  const room = innerHeight - box.getBoundingClientRect().top - (land ? 8 : touchMode ? 150 : 24);
+  const playing = document.body.classList.contains('playing');
+  const room = innerHeight - box.getBoundingClientRect().top - (land ? 8 : touchMode ? 150 : playing ? 0 : 24);
   let h = w * MH / MW;
   if (h > room) { h = Math.max(140, room); w = h * MW / MH; }
   box.style.width = w + 'px';
@@ -1336,6 +1364,7 @@ addEventListener('keydown', e => {
   if (k === 'r' && G?.running && !G.town && G.ammo < magMax()) openReload();
   if (k === 'f' || (k === 'enter' && G?.near)) use();
   if (k === 'escape' || k === 'p') pause();
+  if (k === 'h') help();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
@@ -1370,7 +1399,12 @@ function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class=
 $('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
 $('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
 $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
-$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); firstTown(); toast('The town is glitching. Find the warehouse where it started: look for the purple glow.', 5000); };
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); firstTown(); if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); } toast('The town is glitching. Find the warehouse where it started: look for the purple glow.', 5000); };
+function help(open = $('#info').hidden) {
+  $('#info').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open);
+}
+$('#helpBtn').onclick = () => help();
+$('#infoClose').onclick = () => help(false);
 // Pause: everything that isn't the game lives here.
 function pause() {
   if (!G || $('#start').hidden === false || !$('#clear').hidden) return;
