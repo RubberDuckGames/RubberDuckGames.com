@@ -110,7 +110,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .bar h1{visibility:hidden}
 .wrap{max-width:none;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:0}
 canvas{box-shadow:none}
-#homeBtns,#mapBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
+#pressBtns,#homeBtns,#mapBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
 #closet,#shop{position:fixed;right:1rem;bottom:1rem;z-index:9;width:min(30rem,calc(100vw - 2rem));max-height:calc(100vh - 5rem);overflow:auto;margin:0}
 .tops{position:absolute;top:3.75rem;left:1rem;right:1rem;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.5rem;pointer-events:none}
 .tops .toast{position:static;transform:none}
@@ -125,9 +125,9 @@ canvas{box-shadow:none}
   .bar .pill:first-child{margin-right:auto}
   .bar h1{display:none}
   .wrap{display:block;min-height:0;padding:0 .875rem 1.25rem}
-  #homeBtns,#mapBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
+  #pressBtns,#homeBtns,#mapBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
   #closet,#shop{margin-top:.75rem}
-  #homeBtns,#mapBtns,#levelBtns{margin-top:.75rem}
+  #pressBtns,#homeBtns,#mapBtns,#levelBtns{margin-top:.75rem}
   /* messages sit in a text box at the bottom of the game screen, like an old
      handheld game. Below the screen, each one pushed the buttons down and
      back up again as it came and went. */
@@ -156,6 +156,8 @@ canvas{box-shadow:none}
   .pad .btn.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
   #barkBtn,#pawBtn,#digBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
   #barkBtn:active,#pawBtn:active,#digBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
+  #pressBtns{justify-content:center;margin-top:2.5rem}
+  #startBtn{border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.6rem;padding:.6rem 1.6rem;box-shadow:0 .2rem 0 #6f6b63}
   #levelBtns>[data-home]{grid-area:home;justify-self:center;border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.55rem;padding:.5rem 1.1rem;box-shadow:0 .2rem 0 #6f6b63}
   .acts{grid-area:acts;display:flex;justify-content:flex-end;align-items:flex-start;gap:.7rem;flex-wrap:wrap}
   #barkBtn{margin-top:1.8rem}   /* staggered, like the A and B buttons */
@@ -207,6 +209,9 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     </div></div>
   </div>
 
+  <div class="row" id="pressBtns" hidden>
+    <button class="btn go" id="startBtn">Start</button>
+  </div>
   <div class="row" id="homeBtns" hidden>
     <button class="btn" id="closetBtn">👕 Closet</button>
     <button class="btn" id="shopBtn">🦴 Treat shop</button>
@@ -359,6 +364,7 @@ const sfx = {
   ouch: () => { tone(400, .08, 'square', 0, .04, 200); tone(260, .12, 'square', .09, .04, 120); },
   tick: () => tone(1500, .03, 'square', 0, .025),
   found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
+  start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
 };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
@@ -537,7 +543,7 @@ function drawCrumb(x, y, face, t, moving, scale = 1) {
 // ---------- Home ----------
 let screen = 'title';
 function showRow(id) {
-  ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
+  ['pressBtns', 'homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
   $('#helpBtn').hidden = id !== 'levelBtns';
   if (id !== 'levelBtns') { setGoal(''); help(false); $('#toast').hidden = true; }
 }
@@ -1411,6 +1417,7 @@ function finishWorld() {
 // ---------- Input ----------
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (screen === 'press') { if (!e.metaKey && !e.ctrlKey && k !== 'tab') { e.preventDefault(); pressStart(); } return; }
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
   keys[k] = true;
   if (screen === 'map' && !e.repeat) {
@@ -1452,14 +1459,45 @@ function showTitle() {
   });
 }
 $('#whoBtn').onclick = showTitle;
-showTitle();
+// Decided 28 Oct: the game opens like a console game. A title screen with the
+// logo, Bread and Crumb, and a blinking PRESS START; any key, button or tap
+// plays a start-up jingle, then "Who's playing?". (The jingle waits for that
+// first press because browsers keep sound off until you touch the page.)
+let pressT = 0;
+function showPress() { screen = 'press'; G = null; ride = null; showRow('pressBtns'); $('#cover').hidden = true; pressT = 0; }
+function pressStart() {
+  if (screen !== 'press' || pressT) return;
+  pressT = performance.now(); sfx.start();
+  setTimeout(showTitle, 900);
+}
+function drawPress(t) {
+  const W = VW * T, H = VH * T, ground = 118;
+  px(0, 0, W, ground, '#9fdcff'); px(0, ground, W, H - ground, '#8fd17a'); px(0, ground, W, 1, '#79bd66');
+  for (let x = 6; x < W; x += 22) { px(x, ground + 9 + (x % 3) * 9, 1, 2, '#79bd66'); px(x + 2, ground + 8 + (x % 3) * 9, 1, 3, '#79bd66'); }
+  [[30, 22, 0], [190, 14, 1], [120, 30, 2]].forEach(([x, y, i]) => put(sprite(blob(30, 12, 'h', 'l', 'h')), (x + t / (90 + i * 40)) % (W + 40) - 40, y));
+  // the logo: big letters with a dark outline and a drop shadow
+  cx.textAlign = 'center'; cx.font = `24px ${PIX}`;
+  const logo = (txt, x, y, col) => { cx.fillStyle = '#7a3f12'; cx.fillText(txt, x + 2, y + 3); cx.fillStyle = LINE; for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(txt, x + a, y + b); cx.fillStyle = col; cx.fillText(txt, x, y); };
+  logo('BREAD', W / 2, 58 + Math.round(Math.sin(t / 400)), COL.o);
+  cx.font = `8px ${PIX}`; cx.fillStyle = LINE; cx.fillText('THE CORGI', W / 2, 74);
+  // Bread and Crumb trotting on the spot
+  drawBread(W / 2 - 22, 152, 2, 1, t, true);
+  drawCrumb(W / 2 + 44, 152, 1, t, true, 2);
+  const flash = pressT && performance.now() - pressT < 900;
+  if (flash ? Math.floor(t / 80) % 2 : Math.floor(t / 520) % 2 === 0) text('PRESS START', W / 2, 100, flash ? COL.r : LINE);
+  text('RUBBER DUCK GAMES', W / 2, H - 4, '#3f8a5c');
+}
+document.addEventListener('pointerdown', e => { if (screen === 'press' && !e.target.closest('a')) pressStart(); });
+$('#startBtn').onclick = pressStart;
+showPress();
 
 // ---------- Main loop ----------
 let last = 0;
 function loop(t) {
   const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
   cx.clearRect(0, 0, cv.width, cv.height);
-  if (screen === 'title' || screen === 'home') drawHome(t);
+  if (screen === 'press') drawPress(t);
+  else if (screen === 'title' || screen === 'home') drawHome(t);
   else if (screen === 'map') drawMap(t);
   else if (screen === 'drive') {
     ride.t = Math.min(1, ride.t + dt / ride.dur);
