@@ -46,6 +46,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   shows five paw prints (gold found, dark not yet) or its trophy. The results
   card shows the pieces as pictures, dark for not found. Messages are a few
   words, and only one line is on screen at a time.
+  Touch screens get an arrow pad (keyboard still works on computers; holding
+  a finger or the mouse on the world works on both). On a phone held upright
+  the page looks like a Game Boy: screen frame, black cross pad, round red
+  Paw, Bark and Dig buttons, and cards cover the whole screen.
   Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
