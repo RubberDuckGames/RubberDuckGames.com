@@ -32,6 +32,20 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   swims out, then leads Crumb back to the car while pawing fleas off Crumb. Her
   bark freezes squirrels and fleas and her paw swipe catches them. Each world is
   meant to teach a move (the pond: swimming) that opens spots in earlier worlds.
+  Worlds are data (`WORLDS` in the script: map, goals, setup, steps); progress
+  per world is `S.pond`, `S.farm`, and learned moves are `S.moves`. The farm
+  (opens after the pond): Crumb digs under the fence into a corn maze, the big
+  pig in the muddy pen teaches Bread to dig, Bread digs under, finds Crumb, and
+  leads Crumb back; crows instead of squirrels; the pig costume. Soft dirt at
+  the pond can be dug once Bread has learned. Crumb follows the trail Bread
+  walks, so Crumb never gets stuck on walls. The plan for the rest of the map
+  (cow, aquarium, ocean, museum) is on Trello #39.
+  The map is driven with the arrow keys (◀ ▶ buttons on touch): the car stops
+  at each place and Enter goes in; clicking places on the map does nothing.
+  Decided 28 Oct: fewer words. No names or check marks on the map; each place
+  shows five paw prints (gold found, dark not yet) or its trophy. The results
+  card shows the pieces as pictures, dark for not found. Messages are a few
+  words, and only one line is on screen at a time.
   Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;

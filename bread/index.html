@@ -35,6 +35,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .found{display:flex;flex-wrap:wrap;gap:0.375rem;justify-content:center;margin:0.625rem 0}
 .found span{border:2px solid var(--line);border-radius:999px;padding:0.25rem 0.75rem;font-size:0.9375rem;font-weight:700}
 .found .yes{border-color:var(--green);color:var(--green)}
+.found .tile{display:inline-block;padding:.3rem;border-radius:0}
+.found .tile.on{box-shadow:none}
 .found .no{color:var(--soft)}
 .row{display:flex;gap:0.625rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem}
 .btn{background:var(--panel);border:3px solid var(--line);border-radius:16px;padding:0.75rem 1.25rem;font-weight:800;font-size:1.25rem}
@@ -47,6 +49,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .panelbox{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:0.75rem 0.875rem;margin-top:0.75rem}
 .panelbox h3{margin:0 0 0.375rem;font-size:1.25rem}
 .panelbox .row{justify-content:flex-end}
+#backBtn,#onBtn{font-family:Lexend,Verdana,sans-serif;font-size:1.5rem;line-height:1;min-width:3.75rem}   /* the map arrows, big enough for a finger */
 /* Decided 28 Oct: the closet is something to look through, not a list of
    words. A mirror shows Bread in the outfit; each spot is a wooden shelf of
    pictures; things not found yet are dark shapes with a ? (tap one for where
@@ -128,7 +131,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv"></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p><b id="infoGoal"></b> Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go. Bark: <b>Space</b>. Paw: <b>P</b> or <b>Enter</b>. Walk into the pond to swim. This help: <b>H</b>.</p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b> or hold the mouse · Bark: <b>Space</b> · Paw: <b>P</b><span id="digHelp" hidden> · Dig: <b>X</b></span> · Help: <b>H</b></p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -136,7 +139,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     </div>
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
-      <p>Bread is a corgi. (She's such a loaf.) Her puppy friend Crumb rides along everywhere, and keeps running off! Find Crumb, bring Crumb home, and win costumes.</p>
+      <p>Bread is a corgi (such a loaf). Her puppy pal Crumb keeps running off. Find Crumb and win costumes!</p>
       <p class="big">Who's playing?</p>
       <div id="who"></div>
     </div></div>
@@ -161,12 +164,14 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <div class="row"><button class="btn go" data-done>Done</button></div>
   </div>
   <div class="row" id="mapBtns" hidden>
-    <button class="btn go" id="pondBtn">🦆 Drive to the pond</button>
-    <button class="btn" data-home>🏠 Back home</button>
+    <button class="btn" id="backBtn" aria-label="Drive back">◀</button>
+    <button class="btn" id="onBtn" aria-label="Drive on">▶</button>
+    <button class="btn go" id="inBtn">Go in</button>
   </div>
   <div class="row" id="levelBtns" hidden>
     <button class="btn go" id="barkBtn">🐶 Bark</button>
     <button class="btn go" id="pawBtn">🐾 Paw</button>
+    <button class="btn go" id="digBtn" hidden>⛏️ Dig</button>
     <button class="btn" data-home>🏠 Go home</button>
   </div>
 </div>
@@ -214,7 +219,7 @@ function snap() {
 // (shared/players.js). Sound is one setting for the whole computer, so it has
 // its own key and isn't part of a player's save.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, pond: {}, toys: [] };
+const DEF = { bank: 0, have: [], wear: {}, pond: {}, farm: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;
@@ -232,17 +237,23 @@ function usePlayer(p) {
 function persist() { if (me) { const { sound, ...rest } = S; Players.save(KEY, me.id, rest); } }
 
 const ITEMS = {
-  duck: { slot: 'body', name: 'Duck costume' },
-  duckHat: { slot: 'hat', name: 'Little duck hat' },
-  duckFeet: { slot: 'feet', name: 'Duck feet' },
+  duck: { slot: 'body', name: 'Duck costume', world: 'pond' },
+  duckHat: { slot: 'hat', name: 'Little duck hat', world: 'pond' },
+  duckFeet: { slot: 'feet', name: 'Duck feet', world: 'pond' },
+  pig: { slot: 'body', name: 'Pig costume', world: 'farm' },
+  pigSnout: { slot: 'face', name: 'Pig snout', world: 'farm' },
+  pigTail: { slot: 'back', name: 'Curly tail', world: 'farm' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
   cape: { slot: 'back', name: 'Hero cape', cost: 50 },
 };
 const SLOTS = [['body', 'Costume'], ['hat', 'Hat'], ['face', 'Face'], ['neck', 'Neck'], ['back', 'Back'], ['feet', 'Feet']];
-// what counts toward 100% at the pond
-const POND_PARTS = [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']];
+// what counts toward 100% in each world: always five pieces, so each is 20%
+const PARTS = {
+  pond: [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']],
+  farm: [['beat', 'Pig costume'], ['pigSnout', 'Pig snout'], ['pigTail', 'Curly tail'], ['chicken', 'Rubber chicken toy'], ['gold', 'Gold paw print']],
+};
 
 // ---------- Sounds ----------
 // Decided 28 Oct: no voice in this game, only chiptune beeps. Everything a
@@ -262,6 +273,10 @@ const sfx = {
   treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
   bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
   paw: () => tone(500, .07, 'square', 0, .03, 1300),
+  dig: () => [180, 140, 200, 150].forEach((f, i) => tone(f, .05, 'square', i * .07, .04, 90)),
+  splat: () => tone(220, .14, 'square', 0, .03, 70),
+  oink: () => { tone(260, .09, 'square', 0, .04, 200); tone(240, .1, 'square', .11, .04, 170); },
+  cluck: () => [700, 640, 760].forEach((f, i) => tone(f, .04, 'square', i * .07, .02)),
   yip: () => { tone(1100, .05, 'square', 0, .03, 1500); tone(1250, .06, 'square', .08, .03, 1700); },
   gate: () => [392, 523, 659].forEach((f, i) => tone(f, .1, 'square', i * .08, .04)),
   splash: () => { tone(260, .16, 'square', 0, .03, 90); tone(1200, .06, 'square', .03, .02, 600); },
@@ -366,6 +381,8 @@ const WEAR_PIX = {
   duck: [17, 4, ['bbbbbb', '.bbbbb']],             // the bill on the duck costume's hood
   bowtie: [12, 9, ['u.u', 'uuu', 'u.u']],
   shades: [13, 5, ['DDDDDDDD', '...DhDDD', '...DDDD.']],   // a band to the ear, a lens with a shine
+  pigSnout: [19, 6, ['PPP', 'QPQ', 'PPP']],
+  pigTail: [0, 4, ['.PP.', 'P..P', '..PP', '.P..']],
   duckHat: [13, -5, ['...yy..', '...ynbb', 'y..yyy.', 'yyyyyy.', '.yyyy..']],
   party: [14, -5, ['..r..', '..m..', '.mym.', '.mmm.', 'mmymm']],
 };
@@ -375,15 +392,22 @@ function breadRows(frame, wear) {
   if (wear.back === 'cape') over(WEAR_PIX.cape);
   if (wear.body === 'duck') over(WEAR_PIX.duck);
   if (wear.neck === 'bowtie') over(WEAR_PIX.bowtie);
-  if (wear.face === 'shades') over(WEAR_PIX.shades);
+  if (wear.face) over(WEAR_PIX[wear.face]);
+  if (wear.back === 'pigTail') over(WEAR_PIX.pigTail);
   if (wear.hat) over(WEAR_PIX[wear.hat]);
   return g.map(r => r.join(''));
 }
 // (x, y) is the ground under the middle of Bread
-function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
+// the costume colors: the duck is yellow, the pig pink
+function wearMap(wear) {
   const map = {};
   if (wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
+  if (wear.body === 'pig') Object.assign(map, { o: COL.P, d: COL.Q, p: COL.Q });
   if (wear.feet === 'duckFeet') map.f = COL.b;
+  return map;
+}
+function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
+  const map = wearMap(wear);
   const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0 });
   put(img, x - img.width * scale / 2, y - img.height * scale, scale);
 }
@@ -403,6 +427,16 @@ const CRUMB = (() => {
   return [[...top, '...sD.....ss......', '...ss.....ss......', '..................'], [...top, '....sD.....ss.....', '....ss.....ss.....', '..................']];
 })();
 const CRUMB_HEAD = ['D..D.', 'DDDD.', 'DhDss', '.Dssn'];
+const PIG = ['..............', '..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPhPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...', '..QQ.....QQ...'];
+const PIGLET = ['.P....P.', 'PPPPPPhP', 'PPPPPPPQ', '.Q...Q..'];
+const CROW = [
+  ['............', '.......DD...', '......DDhDy.', '..DDDDDDDDyy', '.DDDDDDDDD..', 'DDDDDDDDD...', '..DDDDDD....', '....y.y.....'],
+  ['............', '.D.....DD...', '.DD...DDhDy.', '..DDDDDDDDyy', '..DDDDDDDD..', '..DDDDDDD...', '...DDDDD....', '....y.y.....'],
+];
+const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
+const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
+// toys for the shelf at home
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -411,12 +445,11 @@ const BONE = ['..........', '.cc....cc.', '..cccccc..', '.cc....cc.', '.........
 const HP_BONE = ['.........', '.hh...hh.', '..hhhhh..', '.hh...hh.', '.........'];
 const BIG_BONE = ['..............', '.hh........hh.', '.hhh......hhh.', '..hhhhhhhhhh..', '.hhh......hhh.', '.hh........hh.', '..............'];
 const TROPHY = ['...........', '.y.yyyyy.y.', '.yyyyyyyyy.', '..yyyyyyy..', '...yyeyy...', '....yyy....', '.....y.....', '....YYY....', '...YYYYY...', '...........'];
-const CHECK = ['........', '......L.', '.....LL.', '.L..LL..', '.LLLL...', '..LL....', '........'];
 const CAR = ['..........................', '......rrrrrrrr............', '.....rllllllllr...........', '....rllllllllllr..........', '...rrrrrrrrrrrrrrrrrrrr...', '..rrrrrrrrrrrrrrrrrrrrre..', '..rrrrrrrrrrrrrrrrrrrrrr..', '..RRRRRRRRRRRRRRRRRRRRRR..', '...DDDD.........DDDD......', '...DggD.........DggD......', '...DDDD.........DDDD......', '..........................'];
 const CAR_HEAD = ['o...o...', 'oo.oo...', 'ooooo...', 'oowonww.', 'oowwwwwn', '.wwwww..'];
 // (x, y) is the ground under the middle of the car
 function drawCar(x, y, face, t, riders = true) {
-  const img = sprite(CAR, { flip: face < 0 }), head = sprite(CAR_HEAD, { map: S.wear.body === 'duck' ? { o: COL.y } : {}, flip: face < 0 });
+  const img = sprite(CAR, { flip: face < 0 }), head = sprite(CAR_HEAD, { map: wearMap(S.wear), flip: face < 0 });
   const bob = Math.floor(t / 120) % 2, X = Math.round(x - 13), Y = Math.round(y - 12);
   if (riders) {
     put(sprite(CRUMB_HEAD, { flip: face < 0 }), face > 0 ? X + 2 : X + 26 - 2 - 5, Y - 3 + bob);   // Crumb, in the back seat
@@ -442,7 +475,7 @@ function showRow(id) {
 // time, it covered the world.
 let goalT;
 function setGoal(text) {
-  $('#goal').textContent = text; $('#goal').hidden = !text; $('#infoGoal').textContent = text ? text + '.' : '';
+  $('#goal').textContent = text; $('#goal').hidden = !text; $('#infoGoal').textContent = text ? `Goal: ${text}.` : '';
   clearTimeout(goalT); if (text) goalT = setTimeout(() => $('#goal').hidden = true, 5000);
 }
 function help(open = $('#info').hidden) { $('#info').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open); }
@@ -466,8 +499,8 @@ function drawHome(t) {
   // shelf with toys and trophies
   px(15, 51, 76, 5, LINE); px(16, 52, 74, 3, '#7a4a2a');
   const shelf = [];
-  if (S.toys.includes('rubberDuck')) shelf.push(sprite(DUCK));
-  if (S.pond.trophy) shelf.push(sprite(TROPHY));
+  Object.keys(TOYS).forEach(k => { if (S.toys.includes(k)) shelf.push(sprite(TOYS[k].pic)); });
+  ['pond', 'farm'].forEach(w => { if (S[w].trophy) shelf.push(sprite(TROPHY)); });
   if (!shelf.length) text('Toys go here', 53, 46, '#b8854e');
   shelf.forEach((img, i) => put(img, 22 + i * 22, 52 - img.height + 1));
   // Bread's bed and rug
@@ -482,7 +515,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2] };
 const picCache = {};
 function pic(rows, dark) {
   const key = rows.join('/') + dark;
@@ -493,10 +526,7 @@ function pic(rows, dark) {
   return picCache[key] = c.toDataURL();
 }
 function drawMirror() {
-  const map = {};
-  if (S.wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
-  if (S.wear.feet === 'duckFeet') map.f = COL.b;
-  const img = sprite(breadRows(0, S.wear), { map }), c = document.createElement('canvas');
+  const img = sprite(breadRows(0, S.wear), { map: wearMap(S.wear) }), c = document.createElement('canvas');
   c.width = c.height = 30; c.getContext('2d').drawImage(img, 3, 3);
   $('#mirror').src = c.toDataURL();
 }
@@ -516,7 +546,7 @@ function openCloset() {
       b.title = b.getAttribute('aria-label');
       b.innerHTML = `<img alt="" src="${pic(k ? ITEM_PIC[k] : HANGER, !have)}">`;
       b.onclick = () => {
-        if (!have) return toast(ITEMS[k].cost ? `This one is in the treat shop, for ${ITEMS[k].cost} treats.` : 'This one is hidden at the pond. Keep looking!');
+        if (!have) return toast(ITEMS[k].cost ? `In the treat shop: 🦴 ${ITEMS[k].cost}` : slot === 'body' ? `Win it at the ${ITEMS[k].world}.` : `Hidden at the ${ITEMS[k].world}.`);
         S.wear[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
       };
       row.append(b);
@@ -534,9 +564,9 @@ function openShop() {
     else {
       b.innerHTML = `${it.name}<small>🦴 ${it.cost} treats</small>`;
       b.onclick = () => {
-        if (S.bank < it.cost) return toast(`${it.name} costs ${it.cost} treats. You have ${S.bank}. You need ${it.cost - S.bank} more.`);
+        if (S.bank < it.cost) return toast(`You need 🦴 ${it.cost - S.bank} more.`);
         S.bank -= it.cost; S.have.push(k); S.wear[it.slot] = k; persist(); bank(); sfx.sparkle();
-        toast(`You got the ${it.name}! Bread is wearing it.`); openShop();
+        toast('Bread is wearing it!'); openShop();
       };
     }
     row.append(b); list.append(row);
@@ -545,9 +575,9 @@ function openShop() {
 $('#closetBtn').onclick = openCloset;
 $('#shopBtn').onclick = openShop;
 document.querySelectorAll('[data-done]').forEach(b => b.onclick = () => showRow('homeBtns'));
-$('#rideBtn').onclick = () => { screen = 'map'; showRow('mapBtns'); toast('Where should Bread go?'); };
+$('#rideBtn').onclick = () => { mapAt = 0; atStop('Arrows drive. Enter goes in.'); };
 document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
-  if (screen === 'level') { drive(1, 0, () => goHome('Back home! The treats Bread found are saved.')); return; }
+  if (screen === 'level') { drive(W.stop, 0, () => goHome('Back home!')); return; }
   goHome();
 });
 
@@ -555,18 +585,44 @@ document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
 // Decided 28 Oct: the car ride is the level map. Bread's car drives along the
 // road from home to a place, and home again after. New places get added as
 // they're built.
-const ROAD = [[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]];
-const bez = t => { const u = 1 - t, [a, b, c, d] = ROAD; return [0, 1].map(i => u * u * u * a[i] + 3 * u * u * t * b[i] + 3 * u * t * t * c[i] + t * t * t * d[i]); };
+// The road comes in parts: 0 is home, 1 the pond, 2 the farm.
+const ROAD = [[[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]], [[11.6, 4.2], [13.2, 5.6], [11.4, 8.8], [13.9, 9.1]]];
+const bez = t => { const n = Math.min(ROAD.length - 1, Math.floor(t)), k = t - n, u = 1 - k, [a, b, c, d] = ROAD[n]; return [0, 1].map(i => u * u * u * a[i] + 3 * u * u * k * b[i] + 3 * u * k * k * c[i] + k * k * k * d[i]); };
 let ride = null;
-function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, then }; sfx.honk(); }
-$('#pondBtn').onclick = () => drive(0, 1, startPond);
+function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, dur: 1.5 * Math.abs(to - from), then }; sfx.honk(); }
+// Decided 28 Oct: you drive the map with the arrow keys, like an old game map,
+// instead of clicking places. The car stops at each place; Enter goes in. On a
+// touch screen the ◀ ▶ buttons do the same.
+const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }];
+let mapAt = 0;
+function atStop(msg) {
+  screen = 'map'; showRow('mapBtns');
+  const st = STOPS[mapAt];
+  $('#inBtn').textContent = st.go; $('#backBtn').disabled = mapAt === 0; $('#onBtn').disabled = mapAt === STOPS.length - 1;
+  if (msg) toast(msg);
+}
+function mapMove(step) {
+  if (screen !== 'map') return;
+  const to = mapAt + step, st = STOPS[to];
+  if (!st) return;
+  if (st.needs && !S[st.needs].beat) return toast(`Find Crumb at the ${st.needs} first.`);
+  drive(mapAt, to, () => { mapAt = to; atStop(); });
+}
+function mapGo() {
+  if (screen !== 'map') return;
+  const st = STOPS[mapAt];
+  if (st.world) startWorld(st.world); else goHome();
+}
+$('#backBtn').onclick = () => mapMove(-1);
+$('#onBtn').onclick = () => mapMove(1);
+$('#inBtn').onclick = mapGo;
 function drawMap(t) {
   const W = VW * T, H = VH * T;
   px(0, 0, W, H, '#9bd88a');
   for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) if ((x * 7 + y * 3) % 4 === 0) { px(x * T + 5, y * T + 8, 1, 2, '#79bd66'); px(x * T + 7, y * T + 7, 1, 3, '#79bd66'); }
   // the road, a tile at a time like an old game map
   const road = new Set();
-  for (let i = 0; i <= 100; i++) { const [x, y] = bez(i / 100); road.add(Math.floor(x) + ',' + Math.floor(y)); }
+  for (let i = 0; i <= 200; i++) { const [x, y] = bez(i / 100); road.add(Math.floor(x) + ',' + Math.floor(y)); }
   road.forEach(k => {
     const [x, y] = k.split(',').map(Number), X = x * T, Y = y * T;
     px(X, Y, T, T, '#ecd6a0');
@@ -579,18 +635,35 @@ function drawMap(t) {
   px(25, 113, 44, 34, LINE); px(26, 114, 42, 32, '#fff1d6');
   for (let i = 0; i < 12; i++) { px(21 + i * 2, 113 - i * 2, 52 - i * 4, 2, LINE); px(23 + i * 2, 113 - i * 2, 48 - i * 4, 2, '#c0623b'); }
   px(42, 127, 10, 19, LINE); px(43, 128, 8, 18, '#7a4a2a'); px(30, 121, 9, 9, LINE); px(31, 122, 7, 7, '#9fdcff');
-  plate('Home', 47, 162);
   // the pond
   put(sprite(blob(64, 36, 'W', 'V', 'l')), 197, 46);
   [[212, 56], [236, 64]].forEach(([dx, dy], i) => put(sprite(DUCK, { flip: Math.floor(t / 1600 + i) % 2 === 1 }), dx + Math.round(Math.sin(t / 900 + i) * 4), dy));
   for (let i = 0; i < 5; i++) { px(190 + i * 3, 44, 1, 10, '#3f8a5c'); px(189 + i * 3, 42, 3, 4, LINE); px(190 + i * 3, 43, 1, 2, '#7a4a2a'); }
-  plate('Pond', 229, 98);
-  if (S.pond.trophy) put(sprite(TROPHY), 252, 84);
-  else if (S.pond.beat) put(sprite(CHECK), 252, 88);
+  pips('pond', 229, 88);
+  // the farm: a red barn, a fence and a pig
+  { const X = 236, Y = 116;
+    px(X, Y + 6, 34, 24, LINE); px(X + 1, Y + 7, 32, 22, '#c0392b'); for (let i = 0; i < 9; i++) px(X - 2 + i * 2, Y + 6 - i, 38 - i * 4, 1, LINE);
+    for (let i = 0; i < 8; i++) px(X + 1 + i * 2, Y + 6 - i, 32 - i * 4, 1, '#8e2a20');
+    px(X + 12, Y + 16, 10, 13, LINE); px(X + 13, Y + 17, 8, 12, '#fff1d6'); px(X + 13, Y + 17, 8, 1, LINE); px(X + 16, Y + 17, 1, 12, LINE);
+    for (let i = 0; i < 4; i++) px(X - 22 + i * 6, Y + 20, 2, 10, LINE);
+    px(X - 22, Y + 23, 20, 1, LINE); px(X - 22, Y + 27, 20, 1, LINE);
+    put(sprite(PIG, { flip: Math.floor(t / 2000) % 2 === 1 }), X - 20, Y + 19);
+    if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
+    else pips('farm', X + 17, 152);
+  }
   // trees, for a nicer drive
-  [[96, 32], [48, 48], [176, 136], [264, 136], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
-  const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(0);
+  [[96, 32], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
+  const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(screen === 'map' ? mapAt : 0);
   drawCar(p[0] * T, p[1] * T + 6, ride && ride.to < ride.from ? -1 : 1, ride ? t : 0);
+}
+// Decided 28 Oct: no check marks or words on the map (no names either; the
+// pictures say what each place is, like an old game map). Under each place, five
+// little paw prints, one per piece: gold for found, dark for still hidden.
+// All five found shows the trophy instead.
+const PIP = ['.y.y.', 'y...y', '..y..', '.yyy.', '.yyy.'];
+function pips(w, x, y) {
+  if (S[w].trophy) return put(sprite(TROPHY), x - 5, y - 4);
+  PARTS[w].forEach(([k], i) => put(sprite(PIP, { map: { y: S[w][k] ? COL.y : '#4f7a46' } }), x - 21 + i * 8, y));
 }
 const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
 // ---------- The pond ----------
@@ -603,9 +676,12 @@ const LW = 36, LH = 22;
 // stuck on a floating dock in the middle of the pond, so Bread swims out. The hedge mazes on the
 // sides are for exploring; that's where the extras hide.
 // F is fence, G the gate, H hedge, d dock, b a bush to hide in.
-const SOLID_LAND = '#THwFG';              // squirrels and fleas can't swim or pass the fence
-let G = null;
-const breadSolid = () => G && G.gateOpen ? '#THF' : '#THFG';
+// what stops everyone: border, trees, hedges, fences, corn, the fence with a
+// hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
+// water stops everyone but Bread (and Crumb).
+const BLOCK = '#THFCXhB', SOLID_LAND = BLOCK + 'Gw';
+let G = null, W = null;
+const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
 // The left maze; the right one is its mirror. The top 13 rows sit beside the
 // pond, the last 6 below the fence, where the key squirrel hides.
@@ -636,15 +712,65 @@ const POND = (() => {
   MAZE.forEach((row, j) => { const y = j < 13 ? 1 + j : 2 + j; [...row].forEach((ch, c) => { for (const x of [1 + c, LW - 2 - c]) if (m[y][x] === '.') m[y][x] = ch; }); });
   for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
     if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
+  // soft dirt: nothing to do until Bread learns to dig at the farm
+  for (const [x, y] of [[12, 17], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
   const reeds = [], bushes = [];
   for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b' && y < 14) bushes.push([x + .5, y + .5]); }
   reeds.sort((a, b) => a[0] - b[0]);
   return {
-    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], raft: [18, 5.3],
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], run: [[18, 13]], crumbAt: [18, 5.3],
     // where the pieces hide: the end of the dock, deep in the reeds, and the
     // rubber duck out in the pond, so you have to swim for it
     spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
     goldSpots: bushes,                       // the dead ends of the mazes by the pond
+  };
+})();
+// The farm (decided 28 Oct with the kid designer: the pig costume, and the
+// move is digging). Crumb digs under the farmyard fence into a corn maze; the
+// hole is too small for Bread until the big pig in the muddy pen shows her how
+// to dig. C is corn, m mud, x soft dirt to dig, X the fence where Crumb dug,
+// h hay, B the barn.
+const FARM = (() => {
+  const r = seeded(7), m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  // the corn maze: paths on the odd squares, carved from the hole outward
+  for (let y = 1; y <= 11; y++) for (let x = 1; x <= 34; x++) m[y][x] = 'C';
+  const seen = new Set(['9,11']), stack = [[9, 11]]; m[11][9] = '.';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= 1 && a <= 33 && b >= 1 && b <= 11 && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = '.'; m[(y + ny) / 2][(x + nx) / 2] = '.'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  // a few extra gaps, so there's more than one way round
+  for (let y = 1; y <= 11; y++) for (let x = 2; x <= 32; x++) if (m[y][x] === 'C' && r() < .1 && ((m[y][x - 1] === '.' && m[y][x + 1] === '.') || (m[y - 1]?.[x] === '.' && m[y + 1]?.[x] === '.'))) m[y][x] = '.';
+  // Crumb ends up in the farthest corner of the maze
+  const dist = { '9,11': 0 }, q = [[9, 11]];
+  while (q.length) { const [x, y] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const k = (x + a) + ',' + (y + b); if (m[y + b]?.[x + a] === '.' && !(k in dist)) { dist[k] = dist[x + ',' + y] + 1; q.push([x + a, y + b]); } }); }
+  const ends = Object.keys(dist).map(k => k.split(',').map(Number)).filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => m[y + b][x + a] === 'C').length === 3).sort((a, b) => dist[b] - dist[a] || a[0] - b[0]);
+  const crumbAt = ends[0], picks = ends.slice(1).filter((e, i) => i % 2 === 0);
+  // the fence across the farm, with the spot where Crumb dug under it
+  for (let x = 1; x < LW - 1; x++) m[12][x] = x === 9 ? 'X' : 'F';
+  // the farmyard: the path from the car, the barn, hay, and the pig pen
+  for (let y = 13; y < LH - 1; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (let y = 14; y <= 16; y++) for (let x = 2; x <= 7; x++) m[y][x] = 'B';
+  for (const [x, y] of [[9, 15], [10, 15], [12, 18], [3, 19], [33, 20]]) m[y][x] = 'h';
+  for (let x = 22; x <= 31; x++) { m[14][x] = 'F'; m[19][x] = 'F'; }
+  for (let y = 14; y <= 19; y++) { m[y][31] = 'F'; if (y < 16 || y > 17) m[y][22] = 'F'; }
+  for (let y = 15; y <= 18; y++) for (let x = 23; x <= 30; x++) if (((x + .5 - 27) / 3.3) ** 2 + ((y + .5 - 16.5) / 1.6) ** 2 < 1) m[y][x] = 'm';
+  for (const [x, y] of [[13, 14], [6, 19]]) m[y][x] = 'x';
+  const tail = picks.at(-1), dug = picks.slice(0, Math.min(3, picks.length - 1));   // dead ends: mounds to dig, and one for the tail
+  for (const [x, y] of dug) m[y][x] = 'x';
+  for (const [x, y] of [[15, 19], [20, 15], [1 + 34, 13]]) if (m[y]?.[x] === '.') m[y][x] = 'T';
+  const mounds = []; for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if (m[y][x] === 'x') mounds.push([x, y]);
+  const chicken = picks[0];
+  return {
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], hole: [9.5, 12.5], run: [[18, 13.4], [9.5, 13.4], [9.5, 12.2]],
+    crumbAt: [crumbAt[0] + .5, crumbAt[1] + .5], pen: [23, 15, 30, 18], pig: [26.5, 16.5],
+    // where the pieces hide: the snout in the mud, the tail at a maze dead end,
+    // the rubber chicken buried in one mound and the gold paw in another
+    spots: { pigSnout: [28.5, 16.5], pigTail: [tail[0] + .5, tail[1] + .5] },
+    chickenMound: chicken, goldSpots: mounds.filter(([x, y]) => x !== chicken[0] || y !== chicken[1]),
   };
 })();
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
@@ -654,51 +780,137 @@ function move(o, dx, dy, r, set = SOLID_LAND) { if (!hits(o.x + dx, o.y, r, set)
 function randOpen(minD = 0, kinds = '.p', ok = () => true) {   // ok(x, y) narrows where
   for (let i = 0; i < 500; i++) {
     const x = 1 + Math.floor(Math.random() * (LW - 2)), y = 1 + Math.floor(Math.random() * (LH - 2));
-    if (kinds.includes(G.m[y][x]) && ok(x, y) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
+    if (kinds.includes(G.m[y][x]) && ok(x, y) && Math.hypot(x + .5 - W.map.start[0], y + .5 - W.map.start[1]) >= minD) return [x + .5, y + .5];
   }
   return [5.5, 5.5];
 }
-function startPond() {
+function startWorld(key) {
+  W = WORLDS[key]; const M = W.map;
   screen = 'level'; showRow('levelBtns');
-  G = { m: POND.m, bread: { x: POND.start[0], y: POND.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
-    stage: 'key', key: null, hasKey: false, gateOpen: false, lost: 0,
-    // Crumb hops out of the car and runs off up the path
-    crumb: { x: POND.start[0] + .8, y: POND.start[1], face: 1, mode: 'run', t: 0, itch: 0, yip: 0 } };
+  G = { world: key, m: M.m.map(r => [...r]), bread: { x: M.start[0], y: M.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], hens: [], piglets: [], pig: null, fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
+    stage: '', key: null, hasKey: false, gateOpen: false, holeDug: false, lost: 0, digT: 0, muddy: 0,
+    // Crumb hops out of the car and runs off
+    crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
   const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2); G.treats.push({ x, y, v }); } };
   add(22, 1); add(6, 2); add(3, 5);
-  const [gx, gy] = POND.goldSpots[Math.floor(Math.random() * POND.goldSpots.length)];
-  G.treats.push({ x: gx, y: gy, v: 10 });
-  G.sparkles = Object.entries(POND.spots).filter(([k]) => !S.pond[k]).map(([k, [x, y]]) => ({ k, x, y }));
-  // one squirrel has the gate key and hides in a maze below the fence; the
-  // others are up by the pond
-  const side = Math.random() < .5;
-  { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x > 26 : x < 9)); G.sq.push({ x, y, a: 0, t: 0, stun: 0, key: true }); }
-  { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x < 9 : x > 26)); G.sq.push({ x, y, a: 0, t: 0, stun: 0 }); }
-  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 14 && (i % 2 ? x > 26 : x < 9)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
-  for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
-  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
-  hudLevel();
-  setGoal('Goal: catch the squirrel with the gate key');
-  toast('Crumb jumped out of the car and squeezed under the park gate! A squirrel ran off with the key. Bark to freeze it, then catch it with your paw.');
+  // the gold paw print: in a bush at the pond, buried in a mound at the farm
+  const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
+  if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
+  G.sparkles = Object.entries(M.spots).filter(([k]) => !S[key][k]).map(([k, [x, y]]) => ({ k, x, y }));
+  W.setup();
+  hudLevel(); showDig();
   if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); }
 }
+const WORLDS = {
+  pond: {
+    key: 'pond', name: 'pond', Name: 'Pond', map: POND, stop: 1, costume: 'duck', pic: DUCK, baddies: 'Squirrels caught', soil: 5,
+    goals: {
+      key: 'Catch the squirrel with the key', getKey: 'Pick up the key', gate: 'Take the key to the gate',
+      find: 'Find Crumb', back: 'Bring Crumb to the car',
+    },
+    setup() {
+      // one squirrel has the gate key and hides in a maze below the fence; the
+      // others are up by the pond
+      const side = Math.random() < .5;
+      { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x > 26 : x < 9)); G.sq.push({ x, y, a: 0, t: 0, stun: 0, key: true }); }
+      { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x < 9 : x > 26)); G.sq.push({ x, y, a: 0, t: 0, stun: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 14 && (i % 2 ? x > 26 : x < 9)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
+      for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
+      stage('key', 'Crumb ran off under the gate!');
+    },
+    step(b) {
+      if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'The gate key!'); stage('gate'); }
+      if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
+        G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
+        stage('find', 'The gate is open!');
+      }
+    },
+    reached: () => G.gateOpen,
+    target() {
+      if (G.stage === 'key') return G.sq.find(s => s.key);
+      if (G.stage === 'getKey') return G.key;
+      if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
+    },
+  },
+  farm: {
+    key: 'farm', name: 'farm', Name: 'Farm', map: FARM, stop: 2, costume: 'pig', pic: PIG, baddies: 'Crows caught', soil: 2, buriedGold: true,
+    goals: {
+      pig: 'Find the big pig', dig: 'Dig under the fence',
+      find: 'Find Crumb in the corn', back: 'Bring Crumb to the car',
+    },
+    setup() {
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 12 && Math.hypot(x - 9, y - 11) > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crow: true }); }
+      for (let i = 0; i < 6; i++) { const [x, y] = randOpen(4, '.p', (x, y) => i < 3 ? y > 12 && x < 22 : y < 12); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+      G.pig = { x: FARM.pig[0], y: FARM.pig[1], a: 0, t: 0, oink: 0 };
+      G.piglets = [0, 1].map(i => ({ x: FARM.pig[0] - 1 - i, y: FARM.pig[1] + .4, t: i }));
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 12 && x < 21); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0 }); }
+      stage(S.moves.dig ? 'dig' : 'pig', 'Crumb dug under the fence!');
+    },
+    step(b, dt) {
+      const pg = G.pig, [x0, y0, x1, y1] = FARM.pen;
+      pg.t += dt; pg.oink -= dt; pg.a += (Math.random() - .5) * 2 * dt;
+      if (Math.sin(pg.t * .7) > 0) { pg.x = Math.max(x0 + .5, Math.min(x1 + .5, pg.x + Math.cos(pg.a) * .6 * dt)); pg.y = Math.max(y0 + .5, Math.min(y1 + .5, pg.y + Math.sin(pg.a) * .6 * dt)); }
+      G.piglets.forEach((l, i) => { l.t += dt; const tx = pg.x - 1 - i * .8, ty = pg.y + .4; l.x += (tx - l.x) * Math.min(1, dt * 2); l.y += (ty - l.y) * Math.min(1, dt * 2); });
+      const near = Math.hypot(pg.x - b.x, pg.y - b.y) < 1.8;
+      if (near && pg.oink <= 0) { pg.oink = 3; sfx.oink(); G.pops.push({ x: pg.x, y: pg.y - .8, txt: 'Oink!', t: 0, c: LINE }); }
+      if (near && !S.moves.dig) {
+        S.moves.dig = true; persist(); showDig();
+        hold(MOUND, 'The pig taught Bread to dig!');
+        stage('dig');
+      }
+      G.hens.forEach(h => {
+        h.t += dt; h.cluck -= dt;
+        const d = Math.hypot(h.x - b.x, h.y - b.y);
+        if (d < 2) { h.a = Math.atan2(h.y - b.y, h.x - b.x); if (h.cluck <= 0) { h.cluck = 2.5; sfx.cluck(); } } else h.a += (Math.random() - .5) * 3 * dt;
+        const v = d < 2 ? 2.2 : Math.sin(h.t) > .2 ? .6 : 0, ox = h.x, oy = h.y;
+        move(h, Math.cos(h.a) * v * dt, Math.sin(h.a) * v * dt, .25);
+        if (v && ox === h.x && oy === h.y) h.a += 2;
+        if (h.y < 13) h.y = 13;
+      });
+    },
+    reached: () => G.holeDug,
+    target() {
+      if (G.stage === 'pig') return G.pig;
+      if (G.stage === 'dig') return { x: FARM.hole[0], y: FARM.hole[1] };
+    },
+  },
+};
 // The goal changes as you go; the arrow at the screen edge points the way
 // after a while (straight away for the way back to the car).
-const GOALS = {
-  key: 'Goal: catch the squirrel with the gate key',
-  getKey: 'Goal: pick up the key',
-  gate: 'Goal: take the key to the gate',
-  find: 'Goal: find Crumb',
-  back: 'Goal: bring Crumb back to the car',
-};
-function stage(st, msg) { G.stage = st; G.lost = 0; setGoal(GOALS[st]); if (msg) toast(msg); }
+// One line on screen at a time: a short story message when there is one,
+// otherwise the goal. The goal is always in the ? help bar.
+function stage(st, msg) { G.stage = st; G.lost = 0; setGoal(W.goals[st]); if (msg) { $('#goal').hidden = true; toast(`${msg} ${W.goals[st]}.`); } }
 function stageTarget() {
-  if (G.stage === 'key') return G.sq.find(s => s.key);
-  if (G.stage === 'getKey') return G.key;
-  if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
   if (G.stage === 'find') return G.crumb;
-  if (G.stage === 'back') return { x: POND.car[0], y: POND.car[1] };
-  return null;
+  if (G.stage === 'back') return { x: W.map.car[0], y: W.map.car[1] };
+  return W.target();
+}
+// Decided 28 Oct: digging, learned from the farm pig. It works next to soft
+// dirt (treats, the rubber chicken, the gold paw at the farm) and on the
+// fence where Crumb dug under. Back at the pond there's soft dirt waiting.
+function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; }
+function digSpot() {
+  const b = G.bread; let best = null, bd = 1.5;
+  for (let y = Math.floor(b.y) - 1; y <= Math.floor(b.y) + 1; y++) for (let x = Math.floor(b.x) - 1; x <= Math.floor(b.x) + 1; x++) {
+    const c = G.m[y]?.[x]; if (c !== 'x' && c !== 'X') continue;
+    const d = Math.hypot(x + .5 - b.x, y + .5 - b.y); if (d < bd) { bd = d; best = [x, y]; }
+  }
+  return best;
+}
+function dig() {
+  if (screen !== 'level' || !G || G.done || G.digT > 0) return;
+  if (!S.moves.dig) return toast("Bread can't dig yet.");
+  const spot = digSpot();
+  if (!spot) return toast('No soft dirt here.');
+  const [x, y] = spot; G.digT = .5; sfx.dig();
+  for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: x + .5, y: y + .5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: ['#8a4f2a', '#b8773a', '#5a3a22'][i % 3] }); }
+  if (G.m[y][x] === 'X') { G.m[y][x] = 'u'; G.holeDug = true; stage('find', 'Bread dug under!'); return; }
+  G.m[y][x] = 'o';
+  const at = M => M && M[0] === x && M[1] === y;
+  if (at(W.map.chickenMound) && !S.farm.chicken) { S.farm.chicken = true; S.toys.push('chicken'); persist(); hold(CHICKEN, 'A rubber chicken!'); return; }
+  if (at(G.goldMound)) { G.treats.push({ x: x + .5, y: y + .5, v: 10 }); toast('Something shiny!'); return; }
+  G.treats.push({ x: x + .2, y: y + .5, v: W.soil }, { x: x + .8, y: y + .5, v: W.soil }); toast('Treats!');
 }
 // Decided 28 Oct: no "how many are left" counters on screen. The tally at the
 // end counts everything up instead, one line at a time.
@@ -714,14 +926,14 @@ function hurt(o) {
   const d = Math.hypot(b.x - o.x, b.y - o.y) || 1;
   move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3, breadSolid());
   G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
-  if (G.hp <= 0) { G.done = true; setTimeout(tiredPond, 700); }
+  if (G.hp <= 0) { G.done = true; setTimeout(tiredWorld, 700); }
 }
-function tiredPond() {
+function tiredWorld() {
   setGoal(''); help(false);
-  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so the squirrels and fleas freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
+  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so they freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
   $('#cover').hidden = false;
-  $('#again').onclick = () => { $('#cover').hidden = true; startPond(); };
-  $('#homeRide').onclick = () => { $('#cover').hidden = true; drive(1, 0, () => goHome('Bread had a nap. She is ready to go again!')); };
+  $('#again').onclick = () => { $('#cover').hidden = true; startWorld(W.key); };
+  $('#homeRide').onclick = () => { $('#cover').hidden = true; drive(W.stop, 0, () => goHome('Bread had a nap.')); };
 }
 // Decided 28 Oct: special finds get a moment. Bread stops, holds the find up
 // over her head, and a short rising tune plays, the way adventure games show
@@ -741,15 +953,21 @@ function stepLevel(dt, t) {
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
-  G.shake = Math.max(0, (G.shake || 0) - dt);
-  b.moving = m > .1 && !G.done && !G.shake;
-  if (b.moving) { const sp = b.swim ? 2.6 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  G.shake = Math.max(0, (G.shake || 0) - dt); G.digT = Math.max(0, G.digT - dt); G.muddy = Math.max(0, G.muddy - dt);
+  b.moving = m > .1 && !G.done && !G.shake && !G.digT;
+  // mud: slow, and Bread comes out muddy for a while
+  const inMud = tileAt(b.x, b.y) === 'm';
+  if (inMud && !b.mud) { sfx.splat(); G.muddy = 5; }
+  b.mud = inMud; if (inMud) G.muddy = Math.max(G.muddy, 3);
+  if (b.moving) { const sp = b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  // the trail Crumb follows home
+  if (G.crumb.mode === 'follow') { const l = G.trail.at(-1); if (!l || Math.hypot(l.x - b.x, l.y - b.y) > .2) G.trail.push({ x: b.x, y: b.y }); }
   // into the pond and out again, with a good shake
   const wet = tileAt(b.x, b.y) === 'w';
   if (wet !== !!b.swim) {
     b.swim = wet;
     for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: b.x, y: b.y - .2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: [COL.l, COL.W, COL.h][i % 3] }); }
-    if (wet) { sfx.splash(); if (!G.swam) { G.swam = true; toast('Splash! Bread is swimming. Squirrels and fleas can\'t follow her in here.'); } }
+    if (wet) { sfx.splash(); if (!G.swam) { G.swam = true; toast('Splash!'); } }
     else { sfx.shake(); G.shake = .7; G.pops.push({ x: b.x, y: b.y - .6, txt: 'Shake!', t: 0, c: COL.V }); }
   }
   // treats
@@ -757,15 +975,15 @@ function stepLevel(dt, t) {
     if (Math.hypot(tr.x - b.x, tr.y - b.y) > .5) return true;
     S.bank += tr.v; G.trip += tr.v; sfx.treat(tr.v); G.pops.push({ x: tr.x, y: tr.y, txt: '+' + tr.v, t: 0, c: TREAT_COL[tr.v] });
     persist(); hudLevel();
-    if (tr.v === 10) { S.pond.gold = true; burst(tr.x, tr.y); hold(GOLD_PAW, 'The gold paw print! It is worth 10 treats!'); }
+    if (tr.v === 10) { S[W.key].gold = true; burst(tr.x, tr.y); hold(GOLD_PAW, 'Gold paw print! +10'); }
     return false;
   });
   // hidden sparkles
   G.sparkles = G.sparkles.filter(sp => {
     if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
-    S.pond[sp.k] = true;
-    if (sp.k === 'rubberDuck') { S.toys.push('rubberDuck'); hold(DUCK, 'You found a rubber duck toy! It will be on the shelf at home.'); }
-    else { S.have.push(sp.k); hold(sp.k === 'duckHat' ? DUCK_HAT : DUCK_FEET, `You found the ${ITEMS[sp.k].name}! It's in the closet at home.`); }
+    S[W.key][sp.k] = true;
+    if (TOYS[sp.k]) { S.toys.push(sp.k); hold(TOYS[sp.k].pic, `A ${TOYS[sp.k].name}!`); }
+    else { S.have.push(sp.k); hold(ITEM_PIC[sp.k], `${ITEMS[sp.k].name}!`); }
     persist(); burst(sp.x, sp.y); return false;
   });
   // squirrels run from Bread and zig-zag; a bark makes them freeze
@@ -792,7 +1010,7 @@ function stepLevel(dt, t) {
         f.hop = null; f.h = 0; f.wait = .5 + Math.random() * .9;
         // landing on Crumb: Crumb sits and scratches until Bread paws it off
         const c = G.crumb;
-        if (c.mode === 'follow' && !c.swim && Math.hypot(f.x - c.x, f.y - c.y) < .7) { f.on = (Math.random() - .5) * .5; c.itch++; G.pops.push({ x: c.x, y: c.y - .7, txt: 'Itchy!', t: 0, c: COL.m }); if (c.itch === 1) toast('A flea jumped on Crumb! Paw it off.'); }
+        if (c.mode === 'follow' && !c.swim && Math.hypot(f.x - c.x, f.y - c.y) < .7) { f.on = (Math.random() - .5) * .5; c.itch++; G.pops.push({ x: c.x, y: c.y - .7, txt: 'Itchy!', t: 0, c: COL.m }); if (c.itch === 1) toast('Paw the flea off Crumb!'); }
       }
       return;
     }
@@ -801,7 +1019,7 @@ function stepLevel(dt, t) {
     const c = G.crumb, toC = c.mode === 'follow' && !c.swim && Math.hypot(c.x - f.x, c.y - f.y) < 3;
     for (let i = 0; i < 8; i++) {
       const a = toC && i < 4 ? Math.atan2(c.y - f.y, c.x - f.x) + (Math.random() - .5) * .6 : Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
-      if ('.prb'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
+      if ('.prbmxo'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
     }
     if (!f.hop) f.wait = .3;
   });
@@ -811,17 +1029,15 @@ function stepLevel(dt, t) {
     if (by) hurt(by);
   }
   G.lost += dt;
-  // the key, the gate, and Crumb
-  if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'You got the gate key!'); stage('gate'); }
-  if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
-    G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
-    stage('find', 'The gate is open! Now find Crumb. Listen for the yips.');
-  }
+  // this world's own steps (the gate key, the farm pig), then Crumb
+  W.step(b, dt);
+  if (!S.moves.dig && !G.digTip && digSpot()) { G.digTip = true; toast(W.key === 'farm' ? 'Soft dirt. Ask the pig?' : "Soft dirt. Bread can't dig yet."); }
   stepCrumb(dt);
-  if (G.stage === 'back' && !G.done && Math.hypot(POND.car[0] - b.x, POND.car[1] - b.y) < 2 && Math.hypot(POND.car[0] - G.crumb.x, POND.car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) {
+  const car = W.map.car;
+  if (G.stage === 'back' && !G.done && Math.hypot(car[0] - b.x, car[1] - b.y) < 2 && Math.hypot(car[0] - G.crumb.x, car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) {
     G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
-    if (S.pond.beat) setTimeout(finishPond, 500);
-    else setTimeout(() => hold(DUCK, 'Crumb is safe! And Bread won the duck costume!', finishPond), 300);
+    if (S[W.key].beat) setTimeout(finishWorld, 500);
+    else setTimeout(() => hold(W.pic, `You won the ${ITEMS[W.costume].name.toLowerCase()}!`, finishWorld), 300);
   }
   // ducks paddle, and quack at Bread
   G.ducks.forEach(d => {
@@ -832,7 +1048,7 @@ function stepLevel(dt, t) {
     if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
   });
   // the car at the bottom
-  if (b.y > LH - 2.4 && Math.abs(b.x - 18) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car! Press Go home whenever you want to ride home.'); }
+  if (b.y > LH - 2.4 && Math.abs(b.x - 18) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car. Go home any time.'); }
   G.carHint -= dt;
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
   G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
@@ -854,18 +1070,29 @@ function stepCrumb(dt) {
   const c = G.crumb, b = G.bread; c.t += dt;
   const go = (tx, ty, v) => { const d = Math.hypot(tx - c.x, ty - c.y); if (d < .05) return d; const k = Math.min(1, v * dt / d), ox = c.x; c.x += (tx - c.x) * k; c.y += (ty - c.y) * k; if (Math.abs(c.x - ox) > .001) c.face = c.x > ox ? 1 : -1; return d; };
   c.moving = false;
-  if (c.mode === 'run') {                    // the dash at the start; then Crumb is out of sight, on the floating dock
+  if (c.mode === 'run') {                    // the dash at the start; then Crumb is out of sight, where Crumb ends up
     c.moving = true;
-    if (go(18, 13, 5.5) < .1) { c.mode = 'wait'; c.x = POND.raft[0]; c.y = POND.raft[1]; }
+    const [tx, ty] = W.map.run[c.wp];
+    if (go(tx, ty, 5.5) < .1 && ++c.wp >= W.map.run.length) { c.mode = 'wait'; [c.x, c.y] = W.map.crumbAt; }
   } else if (c.mode === 'wait') {
     c.yip -= dt;
     if (c.yip <= 0 && Math.hypot(c.x - b.x, c.y - b.y) < 9) { c.yip = 2.5; sfx.yip(); G.pops.push({ x: c.x, y: c.y - .7, txt: 'Yip!', t: 0, c: LINE }); }
-    if (G.gateOpen && Math.hypot(c.x - b.x, c.y - b.y) < 1.4) { c.mode = 'follow'; sfx.found(); burst(c.x, c.y); stage('back', 'You found Crumb! Bring Crumb back to the car. Watch out for fleas.'); }
+    if (W.reached() && Math.hypot(c.x - b.x, c.y - b.y) < 1.4) { c.mode = 'follow'; G.trail = []; sfx.found(); burst(c.x, c.y); stage('back', 'You found Crumb!'); }
   } else if (c.mode === 'follow') {
     c.swim = tileAt(c.x, c.y) === 'w';
     if (c.itch) return;
-    const d = Math.hypot(b.x - c.x, b.y - c.y);
-    if (d > 1.3) { c.moving = true; const v = d > 4 ? 6 : 4.4, ox = c.x, oy = c.y; const nx = (b.x - c.x) / d, ny = (b.y - c.y) / d; move(c, nx * v * dt, ny * v * dt, .2, breadSolid()); if (c.x === ox && c.y === oy && d > 3) { c.x += nx * v * dt; c.y += ny * v * dt; } if (Math.abs(nx) > .2) c.face = nx > 0 ? 1 : -1; }
+    // Decided 28 Oct: Crumb walks the trail Bread left, like followers in old
+    // adventure games. Heading straight for Bread, Crumb got stuck on the corn
+    // maze walls and the fence.
+    const tr = G.trail;
+    if (tr.length > 60) tr.splice(0, tr.length - 60);   // fallen far behind: catch up
+    while (tr.length && Math.hypot(tr[0].x - c.x, tr[0].y - c.y) < .15) tr.shift();
+    if (tr.length && Math.hypot(b.x - c.x, b.y - c.y) > 1.2) {
+      c.moving = true;
+      const p = tr[0], d = Math.hypot(p.x - c.x, p.y - c.y), v = tr.length > 10 ? 6 : 4.4, k = Math.min(1, v * dt / d);
+      if (Math.abs(p.x - c.x) > .01) c.face = p.x > c.x ? 1 : -1;
+      c.x += (p.x - c.x) * k; c.y += (p.y - c.y) * k;
+    }
   }
 }
 // Decided 28 Oct, after play-tests: lining the paw up by hand was tricky, so it
@@ -887,12 +1114,13 @@ function paw() {
   const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
   const hit = o => o === tg || Math.hypot(o.x - hx, o.y - hy) < 1.1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
   let last = null;
-  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; if (s.key) { G.key = { x: s.x, y: s.y }; stage('getKey', 'It dropped the gate key! Pick it up.'); } G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
-  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; if (f.on) { G.crumb.itch = Math.max(0, G.crumb.itch - 1); if (!G.crumb.itch) toast('No more itchy! Crumb is ready to go.'); } G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
+  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; if (s.key) { G.key = { x: s.x, y: s.y }; stage('getKey', 'It dropped the key!'); } G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
+  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; if (f.on) { G.crumb.itch = Math.max(0, G.crumb.itch - 1);  } G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
   if (!last) return;
   sfx.catch(); hudLevel();
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
+$('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
 
 function drawTreat(x, y, v, t) {
   if (v === 10) { put(sprite(GOLD_PAW), x - 4, y - 4); twinkle(x + 5, y - 5, t); return; }
@@ -900,7 +1128,7 @@ function drawTreat(x, y, v, t) {
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
-  put(sprite(SQUIRREL[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 8 - (frame && s.stun <= 0 ? 1 : 0));
+  put(sprite((s.crow ? CROW : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 8 - (frame && s.stun <= 0 ? 1 : 0));
   if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
   if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
 }
@@ -932,6 +1160,12 @@ function drawLevel(t) {
         if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
         if (G.m[y + 1]?.[x] === 'w') px(X, Y + T - 1, T, 1, LINE);   // the floating dock's far edge
       }
+    } else if (c === 'C') {                  // corn rows on dirt; the tall stalks are drawn later, over things
+      px(X, Y, T, T, '#b98a4e'); px(X, Y + 4, T, 1, '#a0743c'); px(X, Y + 11, T, 1, '#a0743c');
+    } else if (c === 'm') {                  // mud
+      px(X, Y, T, T, '#7a5a3a');
+      if ((x + y) % 2) { px(X + 3, Y + 4, 4, 2, '#5f4428'); px(X + 10, Y + 10, 3, 2, '#5f4428'); }
+      px(X + 9 + (Math.floor(t / 600 + x) % 2), Y + 5, 2, 1, '#a07c56');
     } else if (c === 'p') {
       px(X, Y, T, T, '#ecd6a0');
       if ((x * 5 + y * 7) % 4 === 0) px(X + 4, Y + 10, 2, 1, '#d4bb82');
@@ -944,10 +1178,22 @@ function drawLevel(t) {
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
       }
       if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
-      if (c === 'F' || (c === 'G' && !G.gateOpen)) {   // the park fence; the gate is wooden, with a lock
+      if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
+      if (c === 'o') { px(X + 3, Y + 7, 10, 6, LINE); px(X + 4, Y + 8, 8, 4, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); }   // a dug hole
+      if (c === 'h') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }   // a hay bale
+      if (c === 'B') {                        // the red barn
+        px(X, Y, T, T, '#c0392b'); for (let i = 3; i < T; i += 5) px(X + i, Y, 1, T, '#8e2a20');
+        if (G.m[y - 1]?.[x] !== 'B') { px(X, Y, T, 3, '#fff1d6'); px(X, Y, T, 1, LINE); }
+        if (G.m[y + 1]?.[x] !== 'B') px(X, Y + T - 1, T, 1, LINE);
+        if (G.m[y][x - 1] !== 'B') px(X, Y, 1, T, LINE);
+        if (G.m[y][x + 1] !== 'B') px(X + T - 1, Y, 1, T, LINE);
+      }
+      if (c === 'F' || c === 'X' || c === 'u' || (c === 'G' && !G.gateOpen)) {   // fences; the park gate is wooden, with a lock
         const wood = c === 'G' ? '#b07a46' : '#fffaf0';
         px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, wood); px(X, Y + 9, T, 1, LINE);
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, wood); }
+        if (c === 'X') { px(X + 5, Y + 12, 6, 3, '#1d1410'); px(X + 2, Y + 13, 3, 2, '#8a4f2a'); px(X + 11, Y + 13, 3, 2, '#8a4f2a'); }   // where Crumb squeezed under
+        if (c === 'u') { px(X + 2, Y + 9, 12, 7, '#1d1410'); px(X, Y + 13, 3, 3, '#8a4f2a'); px(X + 13, Y + 13, 3, 3, '#8a4f2a'); }     // dug out, big enough for Bread
         if (c === 'G' && x === 17) { px(X + 13, Y + 6, 6, 6, LINE); px(X + 14, Y + 7, 4, 4, COL.y); px(X + 14, Y + 4, 4, 1, LINE); px(X + 14, Y + 4, 1, 3, LINE); px(X + 17, Y + 4, 1, 3, LINE); px(X + 15, Y + 8, 2, 2, LINE); }
       }
       if (c === 'G' && G.gateOpen && x === 17) { px(X, Y + 2, 2, 13, LINE); px(X + 2 * T - 2, Y + 2, 2, 13, LINE); }   // just the posts once it's open
@@ -970,6 +1216,11 @@ function drawLevel(t) {
       drawCrumb(c.x * T + wig, cy + (c.swim ? 2 : 0), c.face, t, c.moving || c.mode === 'run');
       if (c.swim) { cx.restore(); px(c.x * T - 9, cy - 4, 6, 1, COL.l); px(c.x * T + 3, cy - 4, 6, 1, COL.l); }
     } }
+  if (G.pig) {                               // the farm pig and her piglets, and the hens
+    put(sprite(PIG, { flip: Math.cos(G.pig.a) < 0 }), G.pig.x * T - 7, G.pig.y * T - 7);
+    G.piglets.forEach(l => put(sprite(PIGLET, { flip: l.x > G.pig.x }), l.x * T - 4, l.y * T - 3 + (Math.floor(t / 300 + l.t) % 2)));
+  }
+  G.hens.forEach(h => put(sprite(CHICKEN, { flip: Math.cos(h.a) < 0 }), h.x * T - 5, h.y * T - 6 - (Math.floor(t / 200 + h.t) % 2)));
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
@@ -982,7 +1233,9 @@ function drawLevel(t) {
     // swimming, only her head and back show above the water; shaking, she wiggles
     const by = b.y * T + 7, wig = G.shake ? (Math.floor(t / 50) % 2 ? 1 : -1) : 0;
     if (b.swim) { cx.save(); cx.beginPath(); cx.rect(b.x * T - 16, by - 40, 32, 33); cx.clip(); }
-    drawBread(b.x * T + wig, by + (b.swim ? 2 : 0), 1, b.face, t, b.moving && !G.hold);
+    const dw = G.digT ? (Math.floor(t / 60) % 2 ? 1 : -1) : 0;    // digging, she scrabbles
+    drawBread(b.x * T + wig + dw, by + (b.swim ? 2 : 0), 1, b.face, t, b.moving && !G.hold);
+    if (G.muddy && !b.swim) [[-7, -9], [-2, -6], [4, -10], [-5, -4], [2, -4]].forEach(([dx, dy], i) => { if (i < 2 + G.muddy) px(b.x * T + dx * b.face, by + dy, 2, 2, '#6b4a2a'); });   // muddy spots
     if (b.swim) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
   }
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
@@ -992,6 +1245,7 @@ function drawLevel(t) {
     const c = G.m[y][x], X = x * T, Y = y * T;
     if (c === 'T') put(sprite(blob(26, 22, 'G', 'q', 'L')), X - 5, Y - 15);
     if (c === 'b') put(sprite(blob(20, 16, 'G', 'q', 'L')), X - 2, Y);
+    if (c === 'C') { for (let i = 0; i < 3; i++) { const sx = X + 2 + i * 5 + (Math.floor(t / 900 + x + i) % 2); px(sx, Y - 8, 2, T + 6, '#4f8f3a'); px(sx - 2, Y - 4 + i, 2, 1, '#79bd66'); px(sx + 2, Y - 1 - i, 2, 1, '#79bd66'); px(sx, Y - 10, 2, 2, COL.y); } }
     if (c === 'H') { px(X, Y - 5, T, 6, '#3f8a5c'); px(X + 3 + (x % 3) * 3, Y - 3, 2, 1, '#5aa772'); if (G.m[y - 1]?.[x] !== 'H') px(X, Y - 6, T, 1, LINE); if (G.m[y][x - 1] !== 'H') px(X, Y - 6, 1, 6, LINE); if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y - 6, 1, 6, LINE); }
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
   }
@@ -1025,21 +1279,23 @@ function drawLevel(t) {
 }
 // Decided 28 Oct: the end of a world is a tally that counts up line by line,
 // with a tick for each number, and finishes on how much of the world is
-// complete. Each of the five pond pieces is 20%.
-function finishPond() {
+// complete. Each of a world's five pieces is 20%.
+function finishWorld() {
   setGoal(''); help(false);
-  const first = !S.pond.beat;
-  S.pond.beat = true; if (!S.have.includes('duck')) S.have.push('duck');
-  const all = POND_PARTS.every(([k]) => S.pond[k]), newTrophy = all && !S.pond.trophy;
-  if (all) S.pond.trophy = true;
+  const w = S[W.key], P = PARTS[W.key], first = !w.beat, costume = ITEMS[W.costume].name.toLowerCase();
+  w.beat = true; if (!S.have.includes(W.costume)) S.have.push(W.costume);
+  const all = P.every(([k]) => w[k]), newTrophy = all && !w.trophy;
+  if (all) w.trophy = true;
   persist();
-  const pct = Math.round(POND_PARTS.filter(([k]) => S.pond[k]).length / POND_PARTS.length * 100);
-  const rows = [['Squirrels caught', G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`]];
-  const parts = POND_PARTS.map(([k, n]) => `<span class="${S.pond[k] ? 'yes' : 'no'}">${S.pond[k] ? '✓' : '?'} ${n}</span>`).join('');
-  const after = newTrophy ? '🏆 You found everything! The pond trophy goes on the shelf at home.' : all ? 'You found everything at the pond!' : 'Something is still hidden at the pond. Come back and look!';
-  $('#card').innerHTML = `<h2>Crumb is safe!</h2><p class="big">${first ? 'You won the duck costume!' : 'Bread brought Crumb back to the car.'}</p>`
+  const pct = Math.round(P.filter(([k]) => w[k]).length / P.length * 100);
+  const rows = [[W.baddies, G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`]];
+  // the pieces as pictures: found in color, still hidden as dark shapes
+  const piecePic = k => k === 'beat' ? ITEM_PIC[W.costume] : k === 'gold' ? GOLD_PAW : TOYS[k] ? TOYS[k].pic : ITEM_PIC[k];
+  const parts = P.map(([k, n]) => `<span class="tile${w[k] ? ' on' : ' locked'}" role="img" aria-label="${w[k] ? n : 'Not found yet'}" title="${w[k] ? n : 'Not found yet'}"><img alt="" src="${pic(piecePic(k), !w[k])}"></span>`).join('');
+  const after = newTrophy ? '🏆 You found everything! A trophy for the shelf.' : '';
+  $('#card').innerHTML = `<h2>Crumb is safe!</h2>${first ? `<p class="big">You won the ${costume}!</p>` : ''}`
     + rows.map(([l, , end = '']) => `<p class="trow"><span>${l}</span><b><span>0</span>${end}</b></p>`).join('')
-    + `<p class="big pct">Pond complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
+    + `<p class="big pct">${W.Name} complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
   $('#cover').hidden = false;
   const card = $('#card'), trows = [...card.querySelectorAll('.trow')], pcts = [...card.querySelectorAll('.pct')];
   const count = (el, to, step, fmt, done) => {
@@ -1060,7 +1316,7 @@ function finishPond() {
   setTimeout(() => row(0), 400);
   $('#homeRide').onclick = () => {
     $('#cover').hidden = true;
-    drive(1, 0, () => goHome(first ? 'Welcome home! Try on the new duck costume in the closet.' : 'Welcome home!'));
+    drive(W.stop, 0, () => goHome(first ? `Try on the ${costume}!` : 'Home!'));
   };
 }
 
@@ -1069,9 +1325,17 @@ addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
   keys[k] = true;
+  if (screen === 'map' && !e.repeat) {
+    // forward along the road is right or down, back is left or up
+    if (k === 'arrowright' || k === 'arrowdown' || k === 'd' || k === 's') mapMove(1);
+    if (k === 'arrowleft' || k === 'arrowup' || k === 'a' || k === 'w') mapMove(-1);
+    if (k === 'enter' || k === ' ') { e.preventDefault(); mapGo(); }
+    return;
+  }
   if ((k === ' ' || k === 'b') && !e.repeat) bark();
   if ((k === 'p' || k === 'enter') && !e.repeat && screen === 'level') { e.preventDefault(); paw(); }
   if (k === 'h' && screen === 'level') help();
+  if (k === 'x' && !e.repeat && screen === 'level') dig();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
@@ -1080,7 +1344,6 @@ cv.addEventListener('pointerdown', e => {
   const p = toView(e);
   if (screen === 'level') { goal = p; cv.setPointerCapture(e.pointerId); }
   else if (screen === 'drive' && ride) ride.t = 1;                      // tap to skip the ride
-  else if (screen === 'map' && Math.hypot(p.x - 14.3, (p.y - 4) * 1.6) < 3.2) $('#pondBtn').click();
   else if (screen === 'home') {
     if (Math.abs(p.x - VW / 2) < 2.5 && p.y > 4.5 && p.y < 9.5) bark();   // pat Bread and she barks
     else if (p.x > 1 && p.x < 5.6 && p.y > 2 && p.y < 3.4 && S.toys.length) sfx.squeak();
@@ -1097,7 +1360,7 @@ function showTitle() {
   Players.mount($('#who'), p => {
     usePlayer(p);
     $('#cover').hidden = true; resize();
-    goHome(S.pond.beat ? `Welcome back, ${p.name}!` : 'This is Bread! Pat her to hear her bark. When you are ready, go for a ride.');
+    goHome(S.pond.beat ? `Hi, ${p.name}!` : 'This is Bread! Pat her, then go for a ride.');
   });
 }
 $('#whoBtn').onclick = showTitle;
@@ -1111,7 +1374,7 @@ function loop(t) {
   if (screen === 'title' || screen === 'home') drawHome(t);
   else if (screen === 'map') drawMap(t);
   else if (screen === 'drive') {
-    ride.t = Math.min(1, ride.t + dt / 3);
+    ride.t = Math.min(1, ride.t + dt / ride.dur);
     drawMap(t);
     if (ride.t >= 1) { const then = ride.then; ride = null; then(); }
   } else if (screen === 'level' && G) { if ($('#cover').hidden) stepLevel(dt, t); drawLevel(t); }
