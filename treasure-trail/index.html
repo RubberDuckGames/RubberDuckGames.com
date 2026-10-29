@@ -452,7 +452,7 @@ body.onmap #hello{background:rgba(255,253,247,.92);border-radius:999px;padding:4
   <a class="pill homelink" href="../" aria-label="All games"><span class="hduck" id="homeDuck" aria-hidden="true"></span><span class="long">All games</span></a>
   <h1>🗺️ Treasure Trail</h1>
   <button class="pill" id="playerBtn" hidden></button>
-  <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
+  <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
 </header>
 
 <section id="s-who" class="screen">
@@ -612,7 +612,10 @@ const sayWord = w => say(wordLine(w), .8);
 // can wait before moving on instead of cutting the sentence off. The timer is a
 // fallback for browsers that never send "end".
 function say(t, rate = .9) {
-  if (!t || !save.sound || !('speechSynthesis' in window)) return Promise.resolve();
+  // Decided 27 Oct: the games are spoken, so the voice always talks in a game.
+  // The bell turns off the sea, the beeps and the talking on the map, not the
+  // game itself. The 🔊 in a game is only "Hear it again", so there's one speaker.
+  if (!t || (!save.sound && screen !== 'game') || !('speechSynthesis' in window)) return Promise.resolve();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(t);
   if (voice) u.voice = voice;
@@ -687,8 +690,8 @@ function show(name) {
 const alive = c => cur === c && screen === 'game';
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2200); }
 
-$('#soundBtn').onclick = () => { save.sound = !save.sound; persist(); drawSound(); if (!save.sound) speechSynthesis?.cancel(); };
-function drawSound() { $('#soundBtn').textContent = save.sound ? '🔊' : '🔇'; }
+$('#soundBtn').onclick = () => { save.sound = !save.sound; persist(); drawSound(); if (!save.sound && screen !== 'game') speechSynthesis?.cancel(); };
+function drawSound() { $('#soundBtn').textContent = save.sound ? '🔔' : '🔕'; }
 $('#playerBtn').onclick = showWho;
 $('#hearBtn').onclick = () => say(cur?.say, cur?.slowSay ? .8 : .9);
 document.addEventListener('click', e => { if (e.target.closest('[data-go="map"]')) showMap(); });
