@@ -46,11 +46,38 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .btn.go small{color:#fff3e0}
 .panelbox{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:0.75rem 0.875rem;margin-top:0.75rem}
 .panelbox h3{margin:0 0 0.375rem;font-size:1.25rem}
+.panelbox .row{justify-content:flex-end}
 .slot{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.375rem 0}
 .slot b{min-width:5.625rem}
 .slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
-.keys{font-size:0.9375rem;color:var(--soft);margin-top:0.625rem;text-align:center}
-.keys b{color:var(--ink)}
+/* Decided 28 Oct: full screen, like Math Force. The top bar and the buttons
+   float over the world, the goal stays on screen in a level, and the controls
+   are behind the ? button instead of a line under the game. */
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;max-width:none;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar h1{visibility:hidden}
+.wrap{max-width:none;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:0}
+canvas{box-shadow:none}
+#homeBtns,#mapBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
+#closet,#shop{position:fixed;right:1rem;bottom:1rem;z-index:9;width:min(30rem,calc(100vw - 2rem));max-height:calc(100vh - 5rem);overflow:auto;margin:0}
+.tops{position:absolute;top:3.75rem;left:1rem;right:1rem;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.5rem;pointer-events:none}
+.tops .toast{position:static;transform:none}
+.goal{background:#3b2a1a;color:#fff6ea;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;padding:.5rem .9rem;box-shadow:.25rem .25rem 0 rgba(0,0,0,.25);text-align:center}
+.info{display:flex;align-items:center;gap:.75rem;width:100%;max-width:46rem;background:var(--panel);border:4px solid var(--line);padding:.6rem .75rem .6rem 1rem;pointer-events:auto;box-shadow:.25rem .25rem 0 rgba(90,52,24,.25)}
+.info p{margin:0;flex:1;font-size:1rem;color:var(--soft)}
+.info b{color:var(--ink)}
+/* On a phone held upright the world is a short strip, so the bar and the
+   buttons go back above and below it instead of covering it. */
+@media (max-width:43.75rem) and (orientation:portrait){
+  .bar{position:static;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+  .bar .pill:first-child{margin-right:auto}
+  .bar h1{display:none}
+  .wrap{display:block;min-height:0;padding:0 .875rem 1.25rem}
+  #homeBtns,#mapBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
+  #closet,#shop{margin-top:.75rem}
+  #homeBtns,#mapBtns,#levelBtns{margin-top:.75rem}
+  .tops{position:static;margin-top:.5rem}
+}
 @media (max-width:37.5rem){.bar h1{font-size:1.125rem}.btn{font-size:1.0625rem;padding:0.625rem 0.875rem}.toast{font-size:0.875rem}}
 /* 8-bit look: pixel font for buttons and titles, square corners, chunky
    borders with a hard shadow. Longer sentences stay in Lexend so they're easy
@@ -76,12 +103,20 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   <h1><b>BREAD</b> THE CORGI</h1>
   <button class="pill" id="whoBtn" hidden></button>
   <span class="pill" id="hBank" aria-label="Treats">🦴 0</span>
+  <button class="pill" id="helpBtn" hidden aria-label="How to play" aria-expanded="false" aria-controls="info">?</button>
   <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
 </div>
 <div class="wrap">
   <div class="stagebox" id="box">
     <canvas id="cv"></canvas>
-    <div class="toast" id="toast" hidden></div>
+    <div class="tops">
+      <div class="info" id="info" hidden>
+        <p>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go. Bark: <b>Space</b>. Paw: <b>P</b> or <b>Enter</b>. Walk into the pond to swim. This help: <b>H</b>.</p>
+        <button class="pill" id="infoClose" aria-label="Close help">✕</button>
+      </div>
+      <div class="goal" id="goal" hidden></div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
       <p>Bread is a corgi. (She's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
@@ -114,7 +149,6 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <button class="btn go" id="pawBtn">🐾 Paw</button>
     <button class="btn" data-home>🏠 Go home</button>
   </div>
-  <p class="keys" id="keys" hidden>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go · Bark: <b>Space</b> · Paw: <b>P</b> or <b>Enter</b></p>
 </div>
 
 <script src="../shared/players.js"></script>
@@ -208,6 +242,8 @@ const sfx = {
   treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
   bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
   paw: () => tone(500, .07, 'square', 0, .03, 1300),
+  splash: () => { tone(260, .16, 'square', 0, .03, 90); tone(1200, .06, 'square', .03, .02, 600); },
+  shake: () => [720, 520, 720, 520, 720].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
   catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
   sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, .09, 'square', i * .06, .03)),
   quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
@@ -230,8 +266,9 @@ function toast(m, ms = Math.max(2400, m.length * 70)) {
 function resize() {
   const box = $('#box'), dpr = Math.min(2, devicePixelRatio || 1);
   box.style.width = '';
-  let w = box.clientWidth;
-  const room = innerHeight - box.getBoundingClientRect().top - 130;
+  const upright = matchMedia('(max-width:43.75rem) and (orientation:portrait)').matches;
+  let w = upright ? box.clientWidth : innerWidth;
+  const room = upright ? innerHeight - box.getBoundingClientRect().top - 130 : innerHeight;
   let h = w * VH / VW;
   if (h > room) { h = Math.max(200, room); w = h * VW / VH; }
   box.style.width = w + 'px';
@@ -306,7 +343,7 @@ const WEAR_PIX = {
   cape: [3, 8, ['....rrrrr', '..rrrrrrr', 'rrrrrrrR.', 'rrrRR....']],
   duck: [17, 4, ['bbbbbb', '.bbbbb']],             // the bill on the duck costume's hood
   bowtie: [12, 9, ['u.u', 'uuu', 'u.u']],
-  shades: [16, 6, ['nhnnn']],
+  shades: [13, 5, ['DDDDDDDD', '...DhDDD', '...DDDD.']],   // a band to the ear, a lens with a shine
   duckHat: [13, -5, ['...yy..', '...ynbb', 'y..yyy.', 'yyyyyy.', '.yyyy..']],
   party: [14, -5, ['..r..', '..m..', '.mym.', '.mmm.', 'mmymm']],
 };
@@ -355,7 +392,15 @@ function drawCar(x, y, face, t) {
 
 // ---------- Home ----------
 let screen = 'title';
-function showRow(id) { ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id); $('#keys').hidden = id !== 'levelBtns'; }
+function showRow(id) {
+  ['homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
+  $('#helpBtn').hidden = id !== 'levelBtns';
+  if (id !== 'levelBtns') { setGoal(''); help(false); }
+}
+function setGoal(text) { $('#goal').textContent = text; $('#goal').hidden = !text; }
+function help(open = $('#info').hidden) { $('#info').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open); }
+$('#helpBtn').onclick = () => help();
+$('#infoClose').onclick = () => help(false);
 function bank() { $('#hBank').textContent = `🦴 ${S.bank}`; }
 function goHome(msg) {
   screen = 'home'; G = null; showRow('homeBtns'); bank();
@@ -475,15 +520,24 @@ function drawMap(t) {
 }
 const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
 // ---------- The pond ----------
-const LW = 30, LH = 20;
-const SOLID = '#wT';
+const LW = 36, LH = 22;
+// Decided 28 Oct, after the first play-tests: the park was too open, and
+// everyone wanted to take Bread into the pond. Now there's a hedge maze on each
+// side of the pond (the squirrels hide in it, and its dead ends are where to
+// corner them), and Bread can swim. Squirrels and fleas can't.
+const SOLID = '#TH', SOLID_LAND = '#THw';
 let G = null;
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
+// The left maze; the right one is its mirror. H is hedge, b a bush to hide in.
+const MAZE = [
+  '.b....H.', '.HHHH...', '.H....H.', '.H.HHHH.', '.H.H....', '...H.HHH', 'HHHH.H..', 'b....H.H', '.HHH.H.H', '.H...H..',
+  '.H.HHHH.', '.H.H....', '.H.H.HHH', '...H.H..', 'HHHH.H.H', 'b....H.H', '.HHH.H..', '.H......', '.H.HHHH.', 'b.......',
+];
 // The pond is the same place every visit, so it's a world you get to know.
 // The treats, squirrels and fleas move around each time.
 const POND = (() => {
   const r = seeded(11), m = [];
-  const pcx = 15, pcy = 8.5, rx = 7, ry = 4.2;
+  const pcx = 18, pcy = 9, rx = 7, ry = 4.2;
   const e = (x, y, a) => ((x + .5 - pcx) / (rx + a)) ** 2 + ((y + .5 - pcy) / (ry + a)) ** 2;
   for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
   for (let y = 1; y < LH - 1; y++) for (let x = 1; x < LW - 1; x++) {
@@ -492,32 +546,33 @@ const POND = (() => {
     else if (e(x, y, 2.1) < 1 && e(x, y, 1.3) >= 1) m[y][x] = 'p';
   }
   // a dock out into the water from the bottom of the path
-  let ybot = 0; for (let y = 0; y < LH; y++) if (m[y][14] === 'w') ybot = y;
-  for (const x of [14, 15]) for (let y = ybot - 3; y <= ybot; y++) m[y][x] = 'd';
+  let ybot = 0; for (let y = 0; y < LH; y++) if (m[y][17] === 'w') ybot = y;
+  for (const x of [17, 18]) for (let y = ybot - 3; y <= ybot; y++) m[y][x] = 'd';
   // the path down to where the car parks
-  for (let y = ybot + 1; y < LH - 1; y++) for (const x of [14, 15]) if (m[y][x] === '.') m[y][x] = 'p';
-  // bushes in the four corners, trees around
-  const bushes = [[2, 2], [26, 2], [2, 16], [26, 16]];
-  bushes.forEach(([bx, by]) => { for (let y = by; y < by + 2; y++) for (let x = bx; x < bx + 2; x++) m[y][x] = 'b'; });
-  for (let y = 1; y < LH - 1; y++) for (let x = 1; x < LW - 1; x++)
-    if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 14.5) > 3 && r() < .06) m[y][x] = 'T';
-  const reeds = []; for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if (m[y][x] === 'r') reeds.push([x, y]);
+  for (let y = ybot + 1; y < LH - 1; y++) for (const x of [17, 18]) if (m[y][x] === '.') m[y][x] = 'p';
+  // the hedge mazes, on grass only, so the path around the pond stays open
+  MAZE.forEach((row, j) => [...row].forEach((ch, c) => { for (const x of [1 + c, LW - 2 - c]) if (m[1 + j][x] === '.') m[1 + j][x] = ch; }));
+  for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
+    if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
+  const reeds = [], bushes = [];
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b') bushes.push([x + .5, y + .5]); }
   reeds.sort((a, b) => a[0] - b[0]);
   return {
-    m, start: [15, LH - 2.6],
-    // where the pieces hide: the end of the dock, deep in the reeds, a bush in the far corner
-    spots: { duckHat: [15, ybot - 3 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [27.5, 2.5] },
-    goldSpots: [[2.5, 2.5], [2.5, 16.5], [27.5, 16.5], [27.5, 3.5]],
+    m, start: [18, LH - 2.6],
+    // where the pieces hide: the end of the dock, deep in the reeds, and the
+    // rubber duck out in the pond, so you have to swim for it
+    spots: { duckHat: [18, ybot - 3 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [22.5, 7.5] },
+    goldSpots: bushes,                       // the dead ends of the mazes
   };
 })();
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
-const solidAt = (x, y) => SOLID.includes(tileAt(x, y));
-function hits(x, y, r) { return solidAt(x - r, y - r) || solidAt(x + r, y - r) || solidAt(x - r, y + r) || solidAt(x + r, y + r); }
-function move(o, dx, dy, r) { if (!hits(o.x + dx, o.y, r)) o.x += dx; if (!hits(o.x, o.y + dy, r)) o.y += dy; }
-function randOpen(minD = 0, kinds = '.p') {
+const solidAt = (x, y, set) => set.includes(tileAt(x, y));
+function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
+function move(o, dx, dy, r, set = SOLID_LAND) { if (!hits(o.x + dx, o.y, r, set)) o.x += dx; if (!hits(o.x, o.y + dy, r, set)) o.y += dy; }
+function randOpen(minD = 0, kinds = '.p', ok = () => true) {
   for (let i = 0; i < 500; i++) {
     const x = 1 + Math.floor(Math.random() * (LW - 2)), y = 1 + Math.floor(Math.random() * (LH - 2));
-    if (kinds.includes(G.m[y][x]) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
+    if (kinds.includes(G.m[y][x]) && ok(x) && Math.hypot(x + .5 - POND.start[0], y + .5 - POND.start[1]) >= minD) return [x + .5, y + .5];
   }
   return [5.5, 5.5];
 }
@@ -529,11 +584,15 @@ function startPond() {
   const [gx, gy] = POND.goldSpots[Math.floor(Math.random() * POND.goldSpots.length)];
   G.treats.push({ x: gx, y: gy, v: 10 });
   G.sparkles = Object.entries(POND.spots).filter(([k]) => !S.pond[k]).map(([k, [x, y]]) => ({ k, x, y }));
-  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
+  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6, '.', x => i % 2 ? x > 26 : x < 9); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
   for (let i = 0; i < 6; i++) { const [x, y] = randOpen(5); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
   for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
   hudLevel();
-  toast('Bread is at the pond! Bark to make the squirrels and fleas stop, then catch them with your paw.');
+  // Decided 28 Oct: play-testers weren't sure what to do at the pond, so the
+  // goal now stays on screen, and changes once the bone drops
+  setGoal('Goal: catch all the squirrels and fleas');
+  toast('Bread is at the pond! Bark to freeze the squirrels and fleas, then catch them with your paw. Some hide in the hedge mazes.');
+  if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); }
 }
 // Decided 28 Oct: no "how many are left" counters on screen. The tally at the
 // end counts everything up instead, one line at a time.
@@ -547,11 +606,12 @@ const HP = 5;
 function hurt(o) {
   const b = G.bread; G.hp--; G.ouch = 1.5; sfx.ouch(); goal = null;
   const d = Math.hypot(b.x - o.x, b.y - o.y) || 1;
-  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3);
+  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3, SOLID);
   G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
   if (G.hp <= 0) { G.done = true; setTimeout(tiredPond, 700); }
 }
 function tiredPond() {
+  setGoal(''); help(false);
   $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so the squirrels and fleas freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
   $('#cover').hidden = false;
   $('#again').onclick = () => { $('#cover').hidden = true; startPond(); };
@@ -575,8 +635,17 @@ function stepLevel(dt, t) {
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
-  b.moving = m > .1 && !G.done;
-  if (b.moving) { dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * 4.2 * dt, dy * 4.2 * dt, .3); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  G.shake = Math.max(0, (G.shake || 0) - dt);
+  b.moving = m > .1 && !G.done && !G.shake;
+  if (b.moving) { const sp = b.swim ? 2.6 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, SOLID); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  // into the pond and out again, with a good shake
+  const wet = tileAt(b.x, b.y) === 'w';
+  if (wet !== !!b.swim) {
+    b.swim = wet;
+    for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: b.x, y: b.y - .2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: [COL.l, COL.W, COL.h][i % 3] }); }
+    if (wet) { sfx.splash(); if (!G.swam) { G.swam = true; toast('Splash! Bread is swimming. Squirrels and fleas can\'t follow her in here.'); } }
+    else { sfx.shake(); G.shake = .7; G.pops.push({ x: b.x, y: b.y - .6, txt: 'Shake!', t: 0, c: COL.V }); }
+  }
   // treats
   G.treats = G.treats.filter(tr => {
     if (Math.hypot(tr.x - b.x, tr.y - b.y) > .5) return true;
@@ -641,7 +710,7 @@ function stepLevel(dt, t) {
     if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
   });
   // the car at the bottom
-  if (b.y > LH - 2.4 && Math.abs(b.x - 15) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car! Press Go home whenever you want to ride home.'); }
+  if (b.y > LH - 2.4 && Math.abs(b.x - 18) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car! Press Go home whenever you want to ride home.'); }
   G.carHint -= dt;
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
   G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
@@ -656,22 +725,31 @@ function bark() {
   [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
 }
 $('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
+// Decided 28 Oct, after play-tests: lining the paw up by hand was tricky, so it
+// now aims itself at the nearest squirrel or flea in reach. White corners show
+// which one that is.
+function pawTarget() {
+  const b = G.bread; let best = null, bd = 2.2;
+  [...G.sq, ...G.fl].forEach(o => { const d = Math.hypot(o.x - b.x, o.y - b.y); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
 // Decided 28 Oct: Bread gets two moves. The bark freezes everything nearby, and
 // the paw swipe is what catches. Before this, walking into a baddie caught it,
 // so there was nothing to press but Bark. The paw reaches about two tiles in
 // front of Bread, the way she last walked, so a frozen squirrel is easy to get.
 function paw() {
   if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
-  const b = G.bread; G.pawT = performance.now() + 250; sfx.paw();
+  const b = G.bread, tg = pawTarget(); G.pawT = performance.now() + 250; sfx.paw();
+  if (tg) { const d = Math.hypot(tg.x - b.x, tg.y - b.y) || 1; b.dx = (tg.x - b.x) / d; b.dy = (tg.y - b.y) / d; if (Math.abs(b.dx) > .2) b.face = b.dx > 0 ? 1 : -1; }
   const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
-  const hit = o => Math.hypot(o.x - hx, o.y - hy) < 1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
+  const hit = o => o === tg || Math.hypot(o.x - hx, o.y - hy) < 1.1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
   let last = null;
   G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
   G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
   if (!last) return;
   sfx.catch(); hudLevel();
   // the last one drops Bread's lost toy
-  if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
+  if (!G.sq.length && !G.fl.length && !G.toy) { G.toy = { x: last.x, y: last.y }; burst(last.x, last.y); setGoal('Goal: get the squeaky bone!'); toast("That was the last one! It dropped Bread's squeaky bone. Go get it!"); }
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 
@@ -723,15 +801,33 @@ function drawLevel(t) {
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
       }
       if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
+      if (c === 'H') {                        // a clipped hedge; its top is drawn later, over things behind it
+        px(X, Y, T, T, '#2e6b45'); px(X, Y + T - 2, T, 2, '#1f4a30');
+        if ((x + y) % 2) { px(X + 4, Y + 6, 2, 2, '#3f8a5c'); px(X + 10, Y + 10, 2, 2, '#3f8a5c'); }
+        if (G.m[y][x - 1] !== 'H') px(X, Y, 1, T, LINE);
+        if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y, 1, T, LINE);
+        if (G.m[y + 1]?.[x] !== 'H') px(X, Y + T - 1, T, 1, LINE);
+      }
     }
   }
-  drawCar(15 * T, (LH - .2) * T, 1, 0);       // parked by the gate
+  drawCar(18 * T, (LH - .2) * T, 1, 0);       // parked by the gate
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
   if (G.toy) put(sprite(BIG_BONE), G.toy.x * T - 7, G.toy.y * T - 4 - (Math.floor(t / 200) % 2) * 2);
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
-  if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, b.moving && !G.hold);
+  const tg = !G.done && pawTarget();
+  if (tg) {                                  // white corners on whoever the paw will reach
+    const X = Math.round(tg.x * T), Y = Math.round(tg.y * T) - 2, o = 7 + (Math.floor(t / 250) % 2);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { px(X + a * o - (a > 0 ? 2 : 0), Y + c * o, 3, 1, COL.h); px(X + a * o, Y + c * o - (c > 0 ? 2 : 0), 1, 3, COL.h); });
+  }
+  if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) {
+    // swimming, only her head and back show above the water; shaking, she wiggles
+    const by = b.y * T + 7, wig = G.shake ? (Math.floor(t / 50) % 2 ? 1 : -1) : 0;
+    if (b.swim) { cx.save(); cx.beginPath(); cx.rect(b.x * T - 16, by - 40, 32, 33); cx.clip(); }
+    drawBread(b.x * T + wig, by + (b.swim ? 2 : 0), 1, b.face, t, b.moving && !G.hold);
+    if (b.swim) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
+  }
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
   if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
   // tree tops, bushes and reeds go over everything, so things can hide behind them
@@ -739,24 +835,40 @@ function drawLevel(t) {
     const c = G.m[y][x], X = x * T, Y = y * T;
     if (c === 'T') put(sprite(blob(26, 22, 'G', 'q', 'L')), X - 5, Y - 15);
     if (c === 'b') put(sprite(blob(20, 16, 'G', 'q', 'L')), X - 2, Y);
+    if (c === 'H') { px(X, Y - 5, T, 6, '#3f8a5c'); px(X + 3 + (x % 3) * 3, Y - 3, 2, 1, '#5aa772'); if (G.m[y - 1]?.[x] !== 'H') px(X, Y - 6, T, 1, LINE); if (G.m[y][x - 1] !== 'H') px(X, Y - 6, 1, 6, LINE); if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y - 6, 1, 6, LINE); }
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
   }
   G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
   if (G.hold) {                              // Bread and the find she holds up go over the trees too
-    drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
+    if (!b.swim) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
     const im = G.hold.img, hx = b.x * T - im.width / 2, hy = Math.max(cam.y * T + 2, b.y * T - 26 - im.height);
     put(im, hx, hy); twinkle(hx - 5, hy + 2, t); twinkle(hx + im.width + 5, hy + 2, t + 240);
   }
   G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
   G.pops.forEach(p => text(p.txt, p.x * T, p.y * T - 10 - p.t * 12, p.c));
   cx.restore();
-  px(2, 2, HP * 11 + 3, 9, LINE);
-  for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, 4);   // the health bar; a used-up bone goes dim
+  // the health bar sits bottom-left, clear of the buttons and pills on top;
+  // a used-up bone goes dim
+  const hy = VH * T - 11;
+  px(2, hy, HP * 11 + 3, 9, LINE);
+  for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, hy + 2);
+  // once the bone has dropped, an arrow at the edge points to it if it's off screen
+  if (G.toy) {
+    const gx = (G.toy.x - cam.x) * T, gy = (G.toy.y - cam.y) * T, W = VW * T, H = VH * T;
+    if (gx < 0 || gy < 0 || gx > W || gy > H) {
+      const a = Math.atan2(gy - H / 2, gx - W / 2), ax = Math.max(10, Math.min(W - 10, gx)), ay = Math.max(10, Math.min(H - 24, gy));   // stays above the health bar
+      cx.save(); cx.translate(Math.round(ax), Math.round(ay)); cx.rotate(a);
+      cx.fillStyle = LINE; cx.beginPath(); cx.moveTo(9, 0); cx.lineTo(-6, -7); cx.lineTo(-6, 7); cx.closePath(); cx.fill();
+      cx.fillStyle = COL.h; cx.beginPath(); cx.moveTo(6, 0); cx.lineTo(-4, -5); cx.lineTo(-4, 5); cx.closePath(); cx.fill();
+      cx.restore();
+    }
+  }
 }
 // Decided 28 Oct: the end of a world is a tally that counts up line by line,
 // with a tick for each number, and finishes on how much of the world is
 // complete. Each of the five pond pieces is 20%.
 function finishPond() {
+  setGoal(''); help(false);
   const first = !S.pond.beat;
   S.pond.beat = true; if (!S.have.includes('duck')) S.have.push('duck');
   const all = POND_PARTS.every(([k]) => S.pond[k]), newTrophy = all && !S.pond.trophy;
@@ -800,6 +912,7 @@ addEventListener('keydown', e => {
   keys[k] = true;
   if ((k === ' ' || k === 'b') && !e.repeat) bark();
   if ((k === 'p' || k === 'enter') && !e.repeat && screen === 'level') { e.preventDefault(); paw(); }
+  if (k === 'h' && screen === 'level') help();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });

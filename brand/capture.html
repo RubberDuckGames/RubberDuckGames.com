@@ -13,11 +13,11 @@ f.onload = () => {
   if (g === 'bread') {
     d.querySelector('#who [data-id]').click();
     w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startPond();
-      G.bread.x = 14; G.bread.y = 15; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
-      const s = G.sq[0]; s.x = 15.9; s.y = 14.8; s.stun = 1e9; s.face = -1;
-      const s2 = G.sq[1]; s2.x = 10; s2.y = 16.5; s2.stun = 0;
-      G.fl[0].x = 17.5; G.fl[0].y = 16.2; G.fl[0].stun = 1e9;
-      G.pawT = performance.now() + 1e9; G.treats.push({x: 12, y: 16.5, v: 5}, {x: 11.5, y: 14, v: 2}, {x: 18, y: 14.2, v: 10});`);
+      G.bread.x = 17; G.bread.y = 15.5; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
+      const s = G.sq[0]; s.x = 18.9; s.y = 15.3; s.stun = 1e9; s.face = -1;
+      const s2 = G.sq[1]; s2.x = 13; s2.y = 17; s2.stun = 0;
+      G.fl[0].x = 20.5; G.fl[0].y = 16.7; G.fl[0].stun = 1e9;
+      G.pawT = performance.now() + 1e9; G.treats.push({x: 15, y: 17, v: 5}, {x: 14.5, y: 14.5, v: 2}, {x: 21, y: 14.7, v: 10});`);
     setTimeout(() => { const lo = w.eval('lo'); c.width = lo.width; c.height = lo.height; c.hidden = false; const x = c.getContext('2d'); (function copy() { x.drawImage(lo, 0, 0); requestAnimationFrame(copy); })(); }, 600);
   } else if (g === 'mf') {
     w.eval(`$('#who [data-id]').click(); $('#go').click(); G.gem = null;`);

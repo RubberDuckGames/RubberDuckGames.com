@@ -33,6 +33,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bumping an unfrozen baddie costs one, and running out is a nap, not a loss
   (she keeps her treats). No "left" counters during play; the end of a world
   is a tally that counts up and finishes on % complete (each piece is 20%).
+  Decided 28 Oct, after play-tests: full screen (bar and buttons float over the
+  world, controls behind a ? button); the pond park has a hedge maze on each
+  side; Bread can swim (squirrels and fleas can't) and shakes off when she
+  climbs out; the rubber duck toy floats in the pond; the goal stays on screen;
+  the paw aims itself at the nearest baddie in reach, marked with white corners.
   Progress is in localStorage under `bread-corgi:<player id>`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
