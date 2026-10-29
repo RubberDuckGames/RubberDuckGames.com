@@ -12,7 +12,7 @@ f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
     d.querySelector('#who [data-id]').click();
-    w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startPond();
+    w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startWorld('pond');
       G.bread.x = 17; G.bread.y = 15.5; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
       const s = G.sq[0]; s.x = 18.9; s.y = 15.3; s.stun = 1e9; s.face = -1;
       const s2 = G.sq[1]; s2.x = 13; s2.y = 17; s2.stun = 0;
