@@ -107,6 +107,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
 <div class="bar" id="bar">
   <a class="pill" href="../">← All games</a>
   <h1><b>MATH</b> FORCE</h1>
+  <button class="pill" id="whoBtn" hidden></button>
   <button class="pill" id="soundBtn" aria-label="Sound on or off">🔊</button>
 </div>
 <div class="wrap">
@@ -149,10 +150,16 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
       <div class="card">
         <h2>MATH FORCE</h2>
         <p>The maze has been corrupted. Errors are wandering the halls. Restore them with your Debug Blaster and Wrench. Your blaster runs on math.</p>
-        <p style="color:var(--ink);font-weight:700;margin-top:12px">Pick your math level</p>
-        <div class="row" id="levels"></div>
-        <div class="row"><button class="btn" id="catBtn">🐱 Cat-ear helmet: off</button></div>
-        <div class="row"><button class="btn go" id="go">Start</button></div>
+        <div id="whoStep">
+          <p style="color:var(--ink);font-weight:700;margin-top:12px">Who's playing?</p>
+          <div id="who"></div>
+        </div>
+        <div id="setup" hidden>
+          <p style="color:var(--ink);font-weight:700;margin-top:12px">Pick your math level</p>
+          <div class="row" id="levels"></div>
+          <div class="row"><button class="btn" id="catBtn">🐱 Cat-ear helmet: off</button></div>
+          <div class="row"><button class="btn go" id="go">Start</button></div>
+        </div>
         <div class="keys" id="keys"><b>WASD</b> or <b>arrows</b> move · <b>mouse</b> aims · <b>click</b> or <b>Space</b> fires · <b>E</b> wrench · <b>F</b> use (drill, doors, wire, terminal) · <b>R</b> reload</div>
       </div>
     </div>
@@ -193,6 +200,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   </div>
 </div>
 
+<script src="../shared/players.js"></script>
 <script>
 // Math Force: designed by one of our kid testers (the full design is on the
 // Rubber Duck Games board). Decided 20 Oct: the fix-the-glitch theme. Errors
@@ -205,10 +213,27 @@ const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { cons
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- Save data ----------
-const KEY = 'math-force';
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
-function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
-const S = Object.assign({ bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double: false, cat: false, sound: true, best: 0, shieldBonus: 0, boots: false, quad: false }, load() || {});
+// Decided 28 Oct: one save per player, using the players shared by every game
+// (shared/players.js), so each kid keeps their own math level, gear and Math
+// Bucks. Sound is one setting for the whole computer, with its own key.
+const KEY = 'math-force', SOUND = 'math-force-sound';
+const DEF = { bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double: false, cat: false, best: 0, shieldBonus: 0, boots: false, quad: false };
+const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
+const S = Object.assign({}, DEF, { sound: soundOn() });
+let me = null;
+function usePlayer(p) {
+  me = p;
+  const data = Players.load(KEY, p.id) || {};
+  try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
+  delete data.sound;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, DEF, data, { sound: soundOn() });
+  $('#whoBtn').hidden = false;
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${Players.esc(p.buddy)}</span> ${Players.esc(p.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `Player: ${p.name}. Change player`);
+}
+function persist() { if (me) { const { sound, ...rest } = S; Players.save(KEY, me.id, rest); } }
+const saveSound = () => { try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } };
 
 // ---------- Sound ----------
 let ac;
@@ -243,7 +268,7 @@ const sfx = {
   buck() { tone(1200, .06, 'triangle', 0, .04); },
   gem() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .1, 'triangle', i * .06, .05)); },
 };
-$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#soundBtn').onclick = () => { S.sound = !S.sound; saveSound(); $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
 $('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
 
 // ---------- The maze (one sector, 24 x 16 tiles) ----------
@@ -1258,9 +1283,23 @@ function pause() {
 }
 $('#pauseBtn').onclick = pause;
 $('#resume').onclick = () => { $('#paused').hidden = true; G.running = true; };
-$('#pSound').onclick = () => { S.sound = !S.sound; persist(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#pSound').onclick = () => { S.sound = !S.sound; saveSound(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
 $('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); resize(); pick = S.level; drawLevels(); $('#start').hidden = false; };
 drawLevels();
+// Who's playing comes first; the level and helmet below it are that player's.
+function showWho() {
+  if (G) G.running = false;
+  document.body.classList.remove('playing'); resize();
+  $('#paused').hidden = true; $('#clear').hidden = true;
+  $('#whoStep').hidden = false; $('#setup').hidden = true; $('#start').hidden = false;
+  Players.mount($('#who'), p => {
+    usePlayer(p); pick = S.level; drawLevels();
+    $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
+    $('#whoStep').hidden = true; $('#setup').hidden = false;
+  });
+}
+$('#whoBtn').onclick = showWho;
+showWho();
 
 // ---------- Loop ----------
 let last = 0;

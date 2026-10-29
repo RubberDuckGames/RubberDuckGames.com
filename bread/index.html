@@ -74,6 +74,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
 <div class="bar">
   <a class="pill" href="../">← All games</a>
   <h1><b>BREAD</b> THE CORGI</h1>
+  <button class="pill" id="whoBtn" hidden></button>
   <span class="pill" id="hBank" aria-label="Treats">🦴 0</span>
   <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
 </div>
@@ -84,7 +85,8 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
       <p>Bread is a corgi. (She's such a loaf.) Ride to the pond, chase off the squirrels and fleas, pick up treats, and win costumes!</p>
-      <div class="row"><button class="btn go" id="playBtn">Play</button></div>
+      <p class="big">Who's playing?</p>
+      <div id="who"></div>
     </div></div>
   </div>
 
@@ -115,6 +117,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   <p class="keys" id="keys" hidden>Walk: <b>arrows</b> or <b>WASD</b>, or hold the mouse or your finger where Bread should go · Bark: <b>Space</b> · Paw: <b>P</b> or <b>Enter</b></p>
 </div>
 
+<script src="../shared/players.js"></script>
 <script>
 // Bread the Corgi. Decided 27-28 Oct, designed by the middle kid tester: Bread
 // rides in the car from home to a small world, chases off the squirrels and
@@ -153,10 +156,26 @@ function snap() {
 }
 
 // ---------- Saved progress (this browser only) ----------
-const KEY = 'bread-corgi';
-const DEF = { bank: 0, have: [], wear: {}, pond: {}, toys: [], sound: true };
-const S = (() => { try { return Object.assign(structuredClone(DEF), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return structuredClone(DEF); } })();
-function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+// Decided 28 Oct: one save per player, using the players shared by every game
+// (shared/players.js). Sound is one setting for the whole computer, so it has
+// its own key and isn't part of a player's save.
+const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
+const DEF = { bank: 0, have: [], wear: {}, pond: {}, toys: [] };
+const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
+const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
+let me = null;
+function usePlayer(p) {
+  me = p;
+  const data = Players.load(KEY, p.id) || {};
+  try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
+  delete data.sound;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, structuredClone(DEF), data, { sound: soundOn() });
+  $('#whoBtn').hidden = false;
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${Players.esc(p.buddy)}</span> ${Players.esc(p.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `Player: ${p.name}. Change player`);
+}
+function persist() { if (me) { const { sound, ...rest } = S; Players.save(KEY, me.id, rest); } }
 
 const ITEMS = {
   duck: { slot: 'body', name: 'Duck costume' },
@@ -199,7 +218,7 @@ const sfx = {
   found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
 };
-$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
+$('#soundBtn').onclick = () => { S.sound = !S.sound; try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
 $('#soundBtn').textContent = S.sound ? '🔔' : '🔕';
 
 let toastT;
@@ -799,10 +818,18 @@ cv.addEventListener('pointermove', e => { if (goal) goal = toView(e); });
 cv.addEventListener('pointerup', () => goal = null);
 cv.addEventListener('pointercancel', () => goal = null);
 
-$('#playBtn').onclick = () => {
-  $('#cover').hidden = true; resize();
-  goHome(S.pond.beat ? 'Welcome back to Bread\'s house!' : 'This is Bread! Pat her to hear her bark. When you are ready, go for a ride.');
-};
+const TITLE = $('#card').innerHTML;
+function showTitle() {
+  screen = 'title'; G = null; ride = null; showRow(null);
+  $('#card').innerHTML = TITLE; $('#cover').hidden = false;
+  Players.mount($('#who'), p => {
+    usePlayer(p);
+    $('#cover').hidden = true; resize();
+    goHome(S.pond.beat ? `Welcome back, ${p.name}!` : 'This is Bread! Pat her to hear her bark. When you are ready, go for a ride.');
+  });
+}
+$('#whoBtn').onclick = showTitle;
+showTitle();
 
 // ---------- Main loop ----------
 let last = 0;

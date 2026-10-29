@@ -23,12 +23,18 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bumping an unfrozen baddie costs one, and running out is a nap, not a loss
   (she keeps her treats). No "left" counters during play; the end of a world
   is a tally that counts up and finishes on % complete (each piece is 20%).
-  Progress is in localStorage under `bread-corgi`.
+  Progress is in localStorage under `bread-corgi:<player id>`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
   from a 64 px render via `sips -s format ico`. Bump `?v=` in the meta tags when
   an image changes, or link previews keep the old one.
+- `shared/players.js` is the player list every game shares. Decided 28 Oct
+  (#41): one list for all the games, kept in Treasure Trail's save
+  (`treasure-trail`.players), with a permanent `id` added to each player. Bread
+  and Math Force start with "Who's playing?" and keep one save per player under
+  `<game>:<player id>`; a save from before players existed goes to whoever picks
+  first. Sound is one setting per game for the whole computer (`<game>-sound`).
 - Each game folder has a `card.png`, the picture on its home page card (the
   cards are arcade cabinets; the whole card is the link in, Play on the right).
   They are rendered from `brand/capture.html`; how is written at its top.
@@ -43,8 +49,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Commits use the studio identity, `Rubber Duck Games <hello@rubberduckgames.com>`,
   set in this repo's local git config. Check `git log --format='%an <%ae>'`
   before pushing.
-- Progress lives in the browser's localStorage (key `treasure-trail`). There's
-  no server and no account.
+- Progress lives in the browser's localStorage (`treasure-trail`, and one key
+  per player for each other game). There's no server and no account yet; a
+  database with a parent email sign-in is parked on #14.
   That includes each player's school spelling list (`player.words`), which a
   grown-up pastes in Spelling Words; older lists are kept in `player.oldWords`.
 - Letter Train never shows speed. Decided 20 Oct for a kid who's anxious about
@@ -60,3 +67,4 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Space Lab and Story Tree are on the map as "soon" and not built yet.
 - Bread's strings are inline, not in a catalogue, like Treasure Trail's.
 - The home page says every word can be read aloud; Math Force and Bread have no voice.
+- Bread and Math Force can add a player but not rename one; renaming is only in Treasure Trail.
