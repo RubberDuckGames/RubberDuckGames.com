@@ -204,7 +204,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <div class="cover" id="cover"><div class="card" id="card">
       <h2>Bread the Corgi</h2>
       <p>Bread is a corgi (such a loaf). Her puppy pal Crumb keeps running off. Find Crumb and win costumes!</p>
-      <p class="big">Who's playing?</p>
+      <p class="big">Pick a file</p>
       <div id="who"></div>
     </div></div>
   </div>
@@ -251,7 +251,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   </div>
 </div>
 
-<script src="../shared/players.js"></script>
+<script src="../shared/files.js"></script>
 <script>
 // Bread the Corgi. Decided 27-28 Oct, designed by the middle kid tester: Bread
 // rides in the car from home to a small world, chases off the squirrels and
@@ -290,26 +290,31 @@ function snap() {
 }
 
 // ---------- Saved progress (this browser only) ----------
-// Decided 28 Oct: one save per player, using the players shared by every game
-// (shared/players.js). Sound is one setting for the whole computer, so it has
-// its own key and isn't part of a player's save.
+// Decided 29 Oct: three save files, like a console game (shared/files.js).
+// Sound is one setting for the whole computer, so it has its own key and
+// isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
 const DEF = { bank: 0, have: [], wear: {}, pond: {}, farm: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
-let me = null;
-function usePlayer(p) {
-  me = p;
-  const data = Players.load(KEY, p.id) || {};
+let me = null;   // the open file's number
+function useFile(n, m) {
+  me = n;
+  const data = SaveFiles.load(KEY, n) || {};
   try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
   delete data.sound;
   Object.keys(S).forEach(k => delete S[k]);
   Object.assign(S, structuredClone(DEF), data, { sound: soundOn() });
   $('#whoBtn').hidden = false;
-  $('#whoBtn').innerHTML = `<span aria-hidden="true">${Players.esc(p.buddy)}</span> ${Players.esc(p.name)}`;
-  $('#whoBtn').setAttribute('aria-label', `Player: ${p.name}. Change player`);
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span> ${SaveFiles.esc(m.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
 }
-function persist() { if (me) { const { sound, ...rest } = S; Players.save(KEY, me.id, rest); } }
+function persist() { if (me) { const { sound, ...rest } = S; SaveFiles.save(KEY, me, rest); } }
+// a file's progress at a glance: pieces found, and treats
+function fileSummary(d) {
+  const found = Object.keys(PARTS).reduce((a, w) => a + PARTS[w].filter(([k]) => d[w]?.[k]).length, 0), all = Object.values(PARTS).flat().length;
+  return `🐾 ${found} of ${all} · 🦴 ${d.bank || 0}`;
+}
 
 const ITEMS = {
   duck: { slot: 'body', name: 'Duck costume', world: 'pond' },
@@ -1452,16 +1457,16 @@ const TITLE = $('#card').innerHTML;
 function showTitle() {
   screen = 'title'; G = null; ride = null; showRow(null);
   $('#card').innerHTML = TITLE; $('#cover').hidden = false;
-  Players.mount($('#who'), p => {
-    usePlayer(p);
+  SaveFiles.mount($('#who'), { game: KEY, summary: fileSummary, onPick: (n, m) => {
+    useFile(n, m);
     $('#cover').hidden = true; resize();
-    goHome(S.pond.beat ? `Hi, ${p.name}!` : 'This is Bread! Pat her, then go for a ride.');
-  });
+    goHome(S.pond.beat ? `Hi, ${m.name}!` : 'This is Bread! Pat her, then go for a ride.');
+  } });
 }
 $('#whoBtn').onclick = showTitle;
 // Decided 28 Oct: the game opens like a console game. A title screen with the
 // logo, Bread and Crumb, and a blinking PRESS START; any key, button or tap
-// plays a start-up jingle, then "Who's playing?". (The jingle waits for that
+// plays a start-up jingle, then "Pick a file". (The jingle waits for that
 // first press because browsers keep sound off until you touch the page.)
 let pressT = 0;
 function showPress() { screen = 'press'; G = null; ride = null; showRow('pressBtns'); $('#cover').hidden = true; pressT = 0; }

@@ -11,7 +11,7 @@ f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/' }[g];
 f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
-    w.eval('showTitle()'); d.querySelector('#who [data-id]').click();
+    w.eval(`useFile(1, { name: 'File 1', buddy: '🐕' }); $('#cover').hidden = true; goHome()`);
     w.eval(`S.wear.hat = 'duckHat'; S.wear.feet = 'duckFeet'; startWorld('pond');
       G.bread.x = 17; G.bread.y = 15.5; G.bread.face = 1; G.bread.dx = 1; G.bread.dy = 0; G.hp = 4;
       const s = G.sq[0]; s.x = 18.9; s.y = 15.3; s.stun = 1e9; s.face = -1;
@@ -20,7 +20,7 @@ f.onload = () => {
       G.pawT = performance.now() + 1e9; G.treats.push({x: 15, y: 17, v: 5}, {x: 14.5, y: 14.5, v: 2}, {x: 21, y: 14.7, v: 10});`);
     setTimeout(() => { const lo = w.eval('lo'); c.width = lo.width; c.height = lo.height; c.hidden = false; const x = c.getContext('2d'); (function copy() { x.drawImage(lo, 0, 0); requestAnimationFrame(copy); })(); }, 600);
   } else if (g === 'mf') {
-    w.eval(`$('#who [data-id]').click(); $('#go').click(); G.gem = null;`);
+    w.eval(`useFile(1, { name: 'File 1', buddy: '🐕' }); $('#go').click(); G.gem = null;`);
     const st = d.createElement('style'); st.textContent = 'button,.pill,.hud,.toast,.bar{visibility:hidden!important}'; d.head.appendChild(st);
   } else if (g === 'tt') {
     w.eval(`if (typeof startVoyage === 'function') { save.current = 0; player().setup = true; showMap(); }`);

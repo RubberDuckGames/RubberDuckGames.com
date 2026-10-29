@@ -54,7 +54,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   on a dark controller on the left, the buttons in a diamond on the right.
   Messages sit in a text box inside the game screen on phones.
   The game opens on a title screen (logo, Bread and Crumb, blinking PRESS
-  START); any key, button or tap plays a start-up jingle, then Who's playing.
+  START); any key, button or tap plays a start-up jingle, then Pick a file.
   Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
@@ -68,18 +68,21 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   seconds when it changes and stays in the ? help bar; the closet is a
   wardrobe of pictures with a mirror, and things not found yet show as dark ? shapes;
   the paw aims itself at the nearest baddie in reach, marked with white corners.
-  Progress is in localStorage under `bread-corgi:<player id>`.
+  Progress is in localStorage under `bread-corgi:file<n>`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
   from a 64 px render via `sips -s format ico`. Bump `?v=` in the meta tags when
   an image changes, or link previews keep the old one.
-- `shared/players.js` is the player list every game shares. Decided 28 Oct
-  (#41): one list for all the games, kept in Treasure Trail's save
-  (`treasure-trail`.players), with a permanent `id` added to each player. Bread
-  and Math Force start with "Who's playing?" and keep one save per player under
-  `<game>:<player id>`; a save from before players existed goes to whoever picks
-  first. Sound is one setting per game for the whole computer (`<game>-sound`).
+- `shared/files.js` is the save-file picker for Bread and Math Force. Decided
+  29 Oct (#44): like a console game, three save files per game that anyone can
+  play, with Copy and Erase (a copy into an empty file can be renamed). A file
+  is `<game>:file<n>` plus its name and buddy in `<game>:files`. This replaced
+  the shared player list from 28 Oct (#41): a save from before players went to
+  whoever picked first, with no way to give it to the right kid. The first
+  time, each player's save (`<game>:<player id>`) became a file named after
+  them; the old keys are left in place. Treasure Trail keeps its own players.
+  Sound is one setting per game for the whole computer (`<game>-sound`).
 - Each game folder has a `card.png`, the picture on its home page card (the
   cards are arcade cabinets; the whole card is the link in, Play on the right).
   They are rendered from `brand/capture.html`; how is written at its top.
@@ -95,7 +98,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   set in this repo's local git config. Check `git log --format='%an <%ae>'`
   before pushing.
 - Progress lives in the browser's localStorage (`treasure-trail`, and one key
-  per player for each other game). There's no server and no account yet; a
+  per save file for Bread and Math Force). There's no server and no account yet; a
   database with a parent email sign-in is parked on #14.
   That includes each player's school spelling list (`player.words`), which a
   grown-up pastes in Spelling Words; older lists are kept in `player.oldWords`.
@@ -112,4 +115,4 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Space Lab and Story Tree are on the map as "soon" and not built yet.
 - Bread's strings are inline, not in a catalogue, like Treasure Trail's.
 - The home page says every word can be read aloud; Math Force and Bread have no voice.
-- Bread and Math Force can add a player but not rename one; renaming is only in Treasure Trail.
+- A save file can't be renamed after it's made, except by copying it into an empty file.
