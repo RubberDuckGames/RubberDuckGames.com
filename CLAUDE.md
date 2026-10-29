@@ -17,6 +17,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   patches of purple glitch), and the glitch shrinks a little with each sector
   fixed. The biggest patch is on the next warehouse, and after 25 seconds an
   arrow at the screen edge points to it.
+  Decided 28 Oct (#43): in play the game fills the screen, the status bubbles
+  sit on top of the world, and the controls are behind a ? button (or H) that
+  opens an info bar; it opens by itself the first time each player starts. On
+  a phone held upright the bubbles and info bar sit above the maze instead.
 - `bread/index.html` is Bread the Corgi, a separate game designed by the middle
   kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 16 px to a tile on a
   small canvas, scaled up with smoothing off) and no voice, only chiptune beeps,
