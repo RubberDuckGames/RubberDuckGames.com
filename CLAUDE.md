@@ -11,6 +11,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (full design on Trello card #33). Decided 20 Oct: the fix-the-glitch theme;
   Errors are restored, not killed, and the blaster is a debug blaster, not a
   real-world gun. Single-player only; multiplayer needs a server and moderation.
+  Decided 28 Oct (#38): the game starts in town and you find the sector 1
+  warehouse; every town after a sector is new and random. The town looks
+  broken down and infected (dead lawns, cracked streets, boarded windows,
+  patches of purple glitch), and the glitch shrinks a little with each sector
+  fixed. The biggest patch is on the next warehouse, and after 25 seconds an
+  arrow at the screen edge points to it.
 - `bread/index.html` is Bread the Corgi, a separate game designed by the middle
   kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 16 px to a tile on a
   small canvas, scaled up with smoothing off) and no voice, only chiptune beeps,
