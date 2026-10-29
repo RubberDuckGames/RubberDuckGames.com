@@ -54,7 +54,9 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
    works too). It only shows on touch screens. */
 .pad{display:none;grid-template-columns:repeat(3,3.25rem);grid-template-rows:repeat(3,3.25rem);gap:.15rem;margin-right:auto}
 @media (pointer:coarse){.pad{display:grid}}
-.pad .btn{padding:0;font-family:Lexend,Verdana,sans-serif;font-size:1.25rem;line-height:1;touch-action:none}
+.pad{touch-action:none}
+.pad .btn{padding:0;font-family:Lexend,Verdana,sans-serif;font-size:1.25rem;line-height:1;touch-action:none;pointer-events:none}
+.pad .btn.on{transform:translate(.15rem,.15rem);box-shadow:none}
 .pad [data-k=arrowup]{grid-area:1/2}.pad [data-k=arrowleft]{grid-area:2/1}.pad [data-k=arrowright]{grid-area:2/3}.pad [data-k=arrowdown]{grid-area:3/2}
 #levelBtns{align-items:flex-end}
 .acts{display:contents}
@@ -125,7 +127,7 @@ canvas{box-shadow:none}
   #levelBtns{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"pad acts" "home home";align-items:center;gap:1rem}
   .pad{grid-area:pad;gap:0;grid-template-columns:repeat(3,3.4rem);grid-template-rows:repeat(3,3.4rem);margin:0}
   .pad .btn{background:#2a2a33;color:#c9c4b8;border:0;box-shadow:0 .25rem 0 #15151b;border-radius:.3rem}
-  .pad .btn:active{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
+  .pad .btn.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
   #barkBtn,#pawBtn,#digBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
   #barkBtn:active,#pawBtn:active,#digBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
   #levelBtns>[data-home]{grid-area:home;justify-self:center;border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.55rem;padding:.5rem 1.1rem;box-shadow:0 .2rem 0 #6f6b63}
@@ -1163,12 +1165,23 @@ function paw() {
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 $('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
-// the arrow pad: an arrow is held down for as long as a finger is on it
-document.querySelectorAll('#pad [data-k]').forEach(btn => {
-  const k = btn.dataset.k, up = () => { keys[k] = false; };
-  btn.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; try { btn.setPointerCapture(e.pointerId); } catch (err) { } });
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, up));
-});
+// The arrow pad works like a thumb pad. Decided 28 Oct, after playing it on a
+// phone: tapping one arrow at a time was fiddly, so you put your thumb
+// anywhere on the cross and slide it; Bread walks the way your thumb points
+// from the middle, diagonals too. Lifting the thumb stops her.
+{
+  const pad = $('#pad'), dirs = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  const set = (on = {}) => dirs.forEach(k => { keys[k] = !!on[k]; pad.querySelector(`[data-k=${k}]`).classList.toggle('on', !!on[k]); });
+  const aim = e => {
+    const r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), dead = r.width * .12;
+    set({ arrowleft: dx < -dead, arrowright: dx > dead, arrowup: dy < -dead, arrowdown: dy > dead });
+  };
+  let finger = null;
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); finger = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (err) { } aim(e); });
+  pad.addEventListener('pointermove', e => { if (e.pointerId === finger) aim(e); });
+  const up = e => { if (e.pointerId === finger) { finger = null; set(); } };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => pad.addEventListener(ev, up));
+}
 
 function drawTreat(x, y, v, t) {
   if (v === 10) { put(sprite(GOLD_PAW), x - 4, y - 4); twinkle(x + 5, y - 5, t); return; }
