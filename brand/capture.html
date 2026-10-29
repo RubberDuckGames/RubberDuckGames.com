@@ -1,13 +1,14 @@
 <!doctype html><meta charset="utf-8">
 <!-- Renders the picture on each home page game card. Serve the repo root (python3 -m http.server), then for each game:
      Chrome --headless=new --hide-scrollbars --window-size=576,352 --virtual-time-budget=5000 --screenshot=bread/card.png "http://localhost:8000/brand/capture.html?g=bread"
-     (Math Force and Treasure Trail at 800,500, saved to math-force/card.png and treasure-trail/card.png).
+     (Math Force and Treasure Trail at 800,500, saved to math-force/card.png and treasure-trail/card.png;
+     Tugboat Deliveries at 640,384, saved to tugboat/card.png).
      Decided 28 Oct: each scene is set up by hand below; Math Force takes the floor gem out first, so the card shows nothing a player is meant to find. -->
 <style>html,body{margin:0;overflow:hidden;background:#000}iframe{border:0;position:absolute;inset:0;width:100%;height:100%}canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:2}</style>
 <iframe id="f"></iframe><canvas id="c" hidden></canvas>
 <script>
 const g = new URLSearchParams(location.search).get('g'), f = document.getElementById('f'), c = document.getElementById('c');
-f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/' }[g];
+f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/', tug: '/tugboat/' }[g];
 f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
@@ -22,6 +23,11 @@ f.onload = () => {
   } else if (g === 'mf') {
     w.eval(`useFile(1, { name: 'File 1', buddy: '🐕' }); $('#go').click(); G.gem = null;`);
     const st = d.createElement('style'); st.textContent = 'button,.pill,.hud,.toast,.bar{visibility:hidden!important}'; d.head.appendChild(st);
+  } else if (g === 'tug') {
+    // no name on the card: the tugboat's name is only ever on the family's device
+    w.eval(`S.name = ''; S.asked = true; S.sound = false; play(); const a = berth(G.job.from); G.tug.x = 9; G.tug.y = 6.6; G.tug.face = 1; G.job.got = true; showDocket();`);
+    const st = d.createElement('style'); st.textContent = '.bar,.ctrl{visibility:hidden!important}'; d.head.appendChild(st);
+    setTimeout(() => { const lo = w.eval('lo'); c.width = lo.width; c.height = lo.height; c.hidden = false; const x = c.getContext('2d'); (function copy() { x.drawImage(lo, 0, 0); requestAnimationFrame(copy); })(); }, 600);
   } else if (g === 'tt') {
     w.eval(`if (typeof startVoyage === 'function') { save.current = 0; player().setup = true; showMap(); }`);
     const st = d.createElement('style'); st.textContent = '.pill,#hello{visibility:hidden!important}'; d.head.appendChild(st);

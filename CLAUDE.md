@@ -69,6 +69,17 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   wardrobe of pictures with a mirror, and things not found yet show as dark ? shapes;
   the paw aims itself at the nearest baddie in reach, marked with white corners.
   Progress is in localStorage under `bread-corgi:file<n>`.
+- `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
+  youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
+  and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
+  the screen, arrow keys drive, Space is the horn. A picture docket shows what
+  to pick up (an animal or a crate) and which dock it goes to (a big number, a
+  color and a shape), and a voice reads it out, because he can't read yet.
+  Loading and unloading happen by themselves near the dock. Bumping buoys and
+  boats just boings: no damage, no timer, no losing. Sparkles float on the
+  water to collect. The tugboat's name (his name) is typed in on the family's
+  device and stored there only, so the public title is "Tugboat Deliveries".
+  Progress is in localStorage under `tugboat`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
@@ -113,6 +124,6 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Treasure Trail sizes text in `px`; the parent rules want `rem`.
 - Treasure Trail's strings are inline, not in a catalogue.
 - Space Lab and Story Tree are on the map as "soon" and not built yet.
-- Bread's strings are inline, not in a catalogue, like Treasure Trail's.
+- Bread's and Tugboat's strings are inline, not in a catalogue, like Treasure Trail's.
 - The home page says every word can be read aloud; Math Force and Bread have no voice.
 - A save file can't be renamed after it's made, except by copying it into an empty file.
