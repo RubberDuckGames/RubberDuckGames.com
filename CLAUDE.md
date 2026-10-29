@@ -25,14 +25,25 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   kid tester (Trello card #39). Decided 28 Oct: 8-bit (drawn 16 px to a tile on a
   small canvas, scaled up with smoothing off) and no voice, only chiptune beeps,
   so everything a player needs is written on screen. Bread rides from home to a
-  small world; her bark freezes the squirrels and fleas and her paw swipe catches
-  them, and the last one drops her squeaky bone. Beating a world wins its
-  costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
+  small world with her puppy friend Crumb (a mini corgi in Rottweiler colors),
+  who runs off when they get there. Decided 28 Oct: each world is a trip with a
+  start and an end, no timer, nothing locked behind you. At the pond, a squirrel
+  has the gate key; past the gate, Crumb is stuck on a floating dock, so Bread
+  swims out, then leads Crumb back to the car while pawing fleas off Crumb. Her
+  bark freezes squirrels and fleas and her paw swipe catches them. Each world is
+  meant to teach a move (the pond: swimming) that opens spots in earlier worlds.
+  Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
   bumping an unfrozen baddie costs one, and running out is a nap, not a loss
   (she keeps her treats). No "left" counters during play; the end of a world
   is a tally that counts up and finishes on % complete (each piece is 20%).
+  Decided 28 Oct, after play-tests: full screen (bar and buttons float over the
+  world, controls behind a ? button); the pond park has a hedge maze on each
+  side; Bread can swim (squirrels and fleas can't) and shakes off when she
+  climbs out; the rubber duck toy floats in the pond; the goal shows for a few
+  seconds when it changes and stays in the ? help bar;
+  the paw aims itself at the nearest baddie in reach, marked with white corners.
   Progress is in localStorage under `bread-corgi:<player id>`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
