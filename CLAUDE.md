@@ -50,6 +50,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   a finger or the mouse on the world works on both). On a phone held upright
   the page looks like a Game Boy: screen frame, black cross pad, round red
   Paw, Bark and Dig buttons, and cards cover the whole screen.
+  A phone turned sideways plays like a Switch: the game in the middle, the pad
+  on a dark controller on the left, the buttons in a diamond on the right.
+  Messages sit in a text box inside the game screen on phones.
   Beating a world wins its costume; the extra pieces, the hidden sparkles and the gold paw print make 100%
   and the trophy. Special finds get a held-up moment with a short tune. Treats
   are the money. Bread is a girl pup (she/her). She has a health bar of 5 bones;
