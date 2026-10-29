@@ -179,7 +179,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
         <h2>MATH FORCE</h2>
         <p>The maze has been corrupted. Errors are wandering the halls. Restore them with your Debug Blaster and Wrench. Your blaster runs on math.</p>
         <div id="whoStep">
-          <p style="color:var(--ink);font-weight:700;margin-top:12px">Who's playing?</p>
+          <p style="color:var(--ink);font-weight:700;margin-top:12px">Pick a file</p>
           <div id="who"></div>
         </div>
         <div id="setup" hidden>
@@ -227,7 +227,7 @@ body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1p
   </div>
 </div>
 
-<script src="../shared/players.js"></script>
+<script src="../shared/files.js"></script>
 <script>
 // Math Force: designed by one of our kid testers (the full design is on the
 // Rubber Duck Games board). Decided 20 Oct: the fix-the-glitch theme. Errors
@@ -240,26 +240,26 @@ const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { cons
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- Save data ----------
-// Decided 28 Oct: one save per player, using the players shared by every game
-// (shared/players.js), so each kid keeps their own math level, gear and Math
-// Bucks. Sound is one setting for the whole computer, with its own key.
+// Decided 29 Oct: three save files, like a console game (shared/files.js); each
+// file keeps its own math level, gear and Math Bucks. Sound is one setting for
+// the whole computer, with its own key.
 const KEY = 'math-force', SOUND = 'math-force-sound';
 const DEF = { bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double: false, cat: false, best: 0, shieldBonus: 0, boots: false, quad: false };
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign({}, DEF, { sound: soundOn() });
-let me = null;
-function usePlayer(p) {
-  me = p;
-  const data = Players.load(KEY, p.id) || {};
+let me = null;   // the open file's number
+function useFile(n, m) {
+  me = n;
+  const data = SaveFiles.load(KEY, n) || {};
   try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
   delete data.sound;
   Object.keys(S).forEach(k => delete S[k]);
   Object.assign(S, DEF, data, { sound: soundOn() });
   $('#whoBtn').hidden = false;
-  $('#whoBtn').innerHTML = `<span aria-hidden="true">${Players.esc(p.buddy)}</span> ${Players.esc(p.name)}`;
-  $('#whoBtn').setAttribute('aria-label', `Player: ${p.name}. Change player`);
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span> ${SaveFiles.esc(m.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
 }
-function persist() { if (me) { const { sound, ...rest } = S; Players.save(KEY, me.id, rest); } }
+function persist() { if (me) { const { sound, ...rest } = S; SaveFiles.save(KEY, me, rest); } }
 const saveSound = () => { try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } };
 
 // ---------- Sound ----------
@@ -1418,17 +1418,17 @@ $('#resume').onclick = () => { $('#paused').hidden = true; G.running = true; };
 $('#pSound').onclick = () => { S.sound = !S.sound; saveSound(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
 $('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); resize(); pick = S.level; drawLevels(); $('#start').hidden = false; };
 drawLevels();
-// Who's playing comes first; the level and helmet below it are that player's.
+// Picking a file comes first; the level and helmet below it are that file's.
 function showWho() {
   if (G) G.running = false;
   document.body.classList.remove('playing'); resize();
   $('#paused').hidden = true; $('#clear').hidden = true;
   $('#whoStep').hidden = false; $('#setup').hidden = true; $('#start').hidden = false;
-  Players.mount($('#who'), p => {
-    usePlayer(p); pick = S.level; drawLevels();
+  SaveFiles.mount($('#who'), { game: KEY, summary: d => `Math level ${d.level || 1} · 💰 ${d.bucks || 0}`, onPick: (n, m) => {
+    useFile(n, m); pick = S.level; drawLevels();
     $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
     $('#whoStep').hidden = true; $('#setup').hidden = false;
-  });
+  } });
 }
 $('#whoBtn').onclick = showWho;
 showWho();
