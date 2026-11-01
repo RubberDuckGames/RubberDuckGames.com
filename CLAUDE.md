@@ -94,7 +94,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   in the moving green spot until the meter fills, like fishing in Stardew
   Valley; the tie is the same thing, shorter and harder. One button for both,
   so it plays on a phone. If the meter empties on the rope, the chase is back
-  on; the clock runs through all of it, and at 45 seconds the steer gets away. Decided 31 Oct: neighbors who race say other games are too
+  on; the clock runs through all of it, and at 90 seconds the steer gets away.
+  Three rounds on one clock, each harder than the last; the numbers are in
+  `ROUNDS`, and the best time counts all three. Decided 31 Oct: neighbors who race say other games are too
   slow or don't play well, so this tests only how the horse feels, with plain
   art: one cloverleaf, tap to run, stick or arrows to steer, a knocked barrel
   adds 5 seconds. Speed widens the turn; the numbers are in `TUNE`. The rule
