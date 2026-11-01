@@ -116,17 +116,24 @@ const TUNE = {
   wrong: .7,     // share of its turning it has on the wrong lead
   wrongDrag: 40, // extra speed lost a second on the wrong lead
   // Roping
-  steer: 92,     // how fast the steer runs, arena pixels a second
-  flee: 18,      // extra speed once the horse is close
-  range: 42,     // how close the horse has to be to cast
-  swing: .22,    // seconds GO has to be held before it's a swing, not a tap
-  lift: 2.6,     // how hard GO lifts the dot
-  fall: 1.9,     // how hard the dot falls without it
-  green: .17,    // half the height of the green spot, out of the whole meter
-  fill: .5,      // meter gained a second in the green
-  drain: .3,     // meter lost a second out of it
-  drift: .55,    // how fast the green spot moves
+  range: 50,     // how close the horse has to be to cast
+  swing: .16,    // seconds GO has to be held before it's a swing, not a tap
+  grace: .7,     // a cast still counts this long after the steer was in range
+  fill: .6,      // meter gained a second in the green
+  drain: .2,     // meter lost a second out of it
 };
+// Decided 31 Oct: roping is three rounds, three steers on one clock. A tester
+// who's good at Stardew fishing needed three tries with one setting, so round 1
+// is gentle and it builds from there. steer: how fast it runs. flee: extra speed
+// once the horse is close. lift and fall: how hard GO lifts the dot and how hard
+// it drops. green: half the height of the green spot. drift: how fast that moves.
+const ROUNDS = [
+  { steer: 58, flee: 0, lift: 1.5, fall: 1.1, green: .27, drift: .22 },
+  { steer: 72, flee: 5, lift: 1.9, fall: 1.4, green: .21, drift: .34 },
+  { steer: 86, flee: 10, lift: 2.3, fall: 1.7, green: .17, drift: .48 },
+];
+const ROPE = { sum: 0 };   // the clock so far, across the rounds
+const R = () => ROUNDS[G.round - 1];
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), out = cv.getContext('2d');
 const W = 320, H = 200;
@@ -176,8 +183,9 @@ const sfx = {
 // ---------- The run ----------
 let G = null;
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
-function newRun(ev = C) {
+function newRun(ev = C, round = 1) {
   C = ev;
+  if (round === 1) ROPE.sum = 0;
   // the right barrel first, turned to the right; then the left and far ones turned to the left
   G = {
     state: 'ready', t: 0, pen: 0, next: 0, dust: [], pop: null, hoof: 0, bump: 0,
@@ -185,7 +193,7 @@ function newRun(ev = C) {
     barrels: [{ x: 235, y: 112, sign: 1 }, { x: 85, y: 112, sign: -1 }, { x: 160, y: 40, sign: -1 }].map(b => ({ ...b, sum: 0, last: null, done: false, hit: false })),
     poles: Array.from({ length: POLE.n }, (_, i) => ({ x: POLE.x0 + i * POLE.gap, y: POLE.y, hit: false })),
     dir0: null,
-    phase: 'chase', held: false, heldT: 0, cool: 0,
+    round, phase: 'chase', held: false, heldT: 0, cool: 0,
     steer: { x: 85, y: POLE.y, hd: 0, s: 0, wait: .4 }, meter: { m: 0, dot: .5, v: 0, c: .5, to: .5, wait: 0 },
   };
   $('#cover').hidden = true; hud();
@@ -233,7 +241,9 @@ function step(dt) {
     h.hd = wrap(h.hd + turn);
   } else h.calm += dt;
   if (h.wrong) h.s -= TUNE.wrongDrag * dt;
-  h.s -= (TUNE.drag + TUNE.dragV * h.s) * dt;
+  // a thumb swinging the rope can't tap too, so the horse keeps its speed;
+  // when it slowed down, the steer was gone before the cast (seen 31 Oct)
+  if (!(C.rope && G.heldT >= TUNE.swing)) h.s -= (TUNE.drag + TUNE.dragV * h.s) * dt;
   h.s -= TUNE.scrub * (Math.abs(turn) / dt / TUNE.spin) * h.s * dt;
   h.s = Math.max(TUNE.cruise, h.s);
   const k = Math.min(1, TUNE.slip * dt), vx = Math.cos(h.hd) * h.s, vy = Math.sin(h.hd) * h.s;
@@ -252,7 +262,7 @@ function step(dt) {
   const was = C.inside(ox, oy), now = C.inside(h.x, h.y), crossedIn = !was && now, crossedOut = was && !now;
   if (G.state === 'run' && crossedIn) { G.state = 'clock'; sfx.bell(); }
   if (G.state === 'clock') G.t += dt;
-  if (C === EVENTS.barrels) trackBarrels(h); else if (C === EVENTS.poles) trackPoles(h, oy); else stepSteer(dt, TUNE.steer);
+  if (C === EVENTS.barrels) trackBarrels(h); else if (C === EVENTS.poles) trackPoles(h, oy); else stepSteer(dt, R().steer);
   if (G.state === 'clock' && crossedOut && inGate && G.next === courseLength()) return finish(true);
   if (C.out(h)) return finish(false);
   // hooves and dust
@@ -290,10 +300,12 @@ function trackPoles(h, oy) {
 // in the moving green spot until the meter fills. The tie is the same thing,
 // shorter and harder. One button, so it plays on a phone with one thumb.
 const steerClose = () => Math.hypot(G.h.x - G.steer.x, G.h.y - G.steer.y);
+const canCast = () => !G.cool && performance.now() - (G.nearT || -1e9) < TUNE.grace * 1000;
 function stepSteer(dt, speed) {
   const s = G.steer, F = FENCE, near = steerClose() < 45;
   G.cool = Math.max(0, G.cool - dt);
-  s.s = speed + (near && G.phase === 'chase' ? TUNE.flee : 0);
+  if (steerClose() <= TUNE.range) G.nearT = performance.now();
+  s.s = speed + (near && G.phase === 'chase' ? R().flee : 0);
   s.wait -= dt;
   if (s.wait <= 0) { s.want = s.hd + (Math.random() - .5) * 2.4; s.wait = .5 + Math.random() * .8; }
   if (s.x < F.x0 + 34 || s.x > F.x1 - 34 || s.y < F.y0 + 30 || s.y > F.y1 - 30) s.want = Math.atan2(93 - s.y, 160 - s.x);
@@ -301,21 +313,23 @@ function stepSteer(dt, speed) {
   s.x = Math.max(F.x0 + 8, Math.min(F.x1 - 8, s.x + Math.cos(s.hd) * s.s * dt));
   s.y = Math.max(F.y0 + 8, Math.min(F.y1 - 8, s.y + Math.sin(s.hd) * s.s * dt));
   if (Math.random() < dt * 8) G.dust.push({ x: s.x - Math.cos(s.hd) * 8, y: s.y - Math.sin(s.hd) * 8, t: 0 });
-  if (G.t > 45) finish(false);
+  if (G.t > 90) finish(false);
   if (G.state === 'clock' && G.phase === 'chase' && G.held) G.heldT += dt;
 }
 function press() { G.held = true; G.heldT = 0; }
 function release() {
   const swung = G.held && G.heldT >= TUNE.swing;
-  G.held = false; G.heldT = 0;
+  G.heldNow = G.heldT; G.held = false; G.heldT = 0;
+  const held = G.heldNow || 0;
   if (!C.rope || G.phase !== 'chase' || !swung || G.cool > 0) return;
+  if (!canCast() && held < .35) return;   // a long tap, not a cast
   tone(520, .15, 'square', 0, .03, 900);
-  if (steerClose() > TUNE.range) { G.cool = .7; G.pop = { x: G.h.x, y: G.h.y - 12, t: 0, say: 'MISS' }; tone(150, .1, 'square', .1, .04); return; }
+  if (!canCast()) { G.cool = .7; G.pop = { x: G.h.x, y: G.h.y - 12, t: 0, say: 'MISS' }; tone(150, .1, 'square', .1, .04); return; }
   startMeter('rope', .3);
 }
 function startMeter(phase, m) { G.phase = phase; G.meter = { m, dot: .5, v: 0, c: .5, to: .7, wait: .5 }; }
 function stepMeter(dt) {
-  const M = G.meter, h = G.h, s = G.steer, tie = G.phase === 'tie', half = TUNE.green * (tie ? .75 : 1);
+  const M = G.meter, h = G.h, s = G.steer, tie = G.phase === 'tie', half = R().green * (tie ? .85 : 1);
   G.t += dt;
   if (tie) G.h.s = 0;
   else {
@@ -325,12 +339,12 @@ function stepMeter(dt) {
     if (steerClose() > 24) { h.x += Math.cos(h.hd) * 42 * dt; h.y += Math.sin(h.hd) * 42 * dt; }
   }
   stepDust(dt);
-  M.v += (G.held ? TUNE.lift : -TUNE.fall) * dt;
+  M.v += (G.held ? R().lift : -R().fall) * dt;
   M.dot += M.v * dt;
   if (M.dot < 0) { M.dot = 0; M.v = 0; } if (M.dot > 1) { M.dot = 1; M.v = 0; }
   M.wait -= dt;
   if (M.wait <= 0) { M.to = half + Math.random() * (1 - 2 * half); M.wait = .5 + Math.random() * .7; }
-  const r = TUNE.drift * (tie ? 1.4 : 1) * dt; M.c += Math.max(-r, Math.min(r, M.to - M.c));
+  const r = R().drift * (tie ? 1.2 : 1) * dt; M.c += Math.max(-r, Math.min(r, M.to - M.c));
   const on = Math.abs(M.dot - M.c) < half;
   M.m += (on ? TUNE.fill : -TUNE.drain) * dt;
   if (M.m >= 1) {
@@ -351,19 +365,23 @@ function bump(h) { h.s *= .6; if (G.bump <= 0) { G.bump = .4; tone(90, .12, 'squ
 function stepDust(dt) { if (!G) return; G.dust = G.dust.filter(d => (d.t += dt, d.t < .6)); if (G.pop) { G.pop.t += dt; if (G.pop.t > 1) G.pop = null; } }
 function finish(clean) {
   G.state = 'done'; G.doneT = performance.now();
-  const total = G.t + G.pen, hits = (C === EVENTS.poles ? G.poles : G.barrels).filter(b => b.hit).length;
-  let line;
-  if (clean) {
+  if (C.rope && clean) ROPE.sum += G.t;
+  const total = C.rope ? ROPE.sum : G.t + G.pen, hits = (C === EVENTS.poles ? G.poles : G.barrels).filter(b => b.hit).length;
+  let line, again = 'Run again';
+  if (C.rope && clean && G.round < ROUNDS.length) {
+    sfx.ding(); G.nextRound = G.round + 1; again = 'Next round';
+    line = `<h2>Round ${G.round}</h2><p>${total.toFixed(2)} so far</p>`;
+  } else if (clean) {
     const best = !S[C.best] || total < S[C.best]; if (best) { S[C.best] = total; persist(); hud(); }
-    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} ${C.noun}${hits > 1 ? 's' : ''} ${G.pen}.00` : C.rope ? 'Roped and tied!' : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
+    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} ${C.noun}${hits > 1 ? 's' : ''} ${G.pen}.00` : C.rope ? 'All three roped and tied!' : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
   } else {
     const missed = C === EVENTS.poles ? 'A pole was missed.' : `Barrel ${G.next + 1} was missed.`;
     line = `<h2>No time</h2><p>${C.rope ? 'The steer got away.' : G.next < courseLength() ? missed : 'Come home through the gate.'}</p>`;
   }
-  $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="eventsBtn">Events</button><button class="btn" id="againBtn">Run again</button></div>`;
-  $('#cover').hidden = false; $('#againBtn').onclick = () => newRun(); $('#eventsBtn').onclick = showMenu;
+  $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="eventsBtn">Events</button><button class="btn" id="againBtn">${again}</button></div>`;
+  $('#cover').hidden = false; $('#againBtn').onclick = () => newRun(C, G.nextRound); $('#eventsBtn').onclick = showMenu;
 }
-function again() { if (performance.now() - G.doneT > 1000) newRun(); }
+function again() { if (performance.now() - G.doneT > 1000) newRun(C, G.nextRound); }
 
 // ---------- Drawing ----------
 const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -515,10 +533,11 @@ function draw(t) {
   if (C.rope) drawLoop(t);
   if (G.pop) text(G.pop.say || '+5', G.pop.x, G.pop.y - G.pop.t * 12, '#c0392b');
   // the clock, and a bar for how fast the horse is going
-  const secs = G.t + G.pen;
+  const secs = C.rope ? ROPE.sum + (G.state === 'done' ? 0 : G.t) : G.t + G.pen;
   px(W - 84, H - 17, 68, 14, '#3b2a1a'); text(secs.toFixed(2), W - 50, H - 6, G.pen ? '#ffb3a8' : '#ffffff');
   px(16, H - 12, 62, 7, '#3b2a1a'); px(17, H - 11, 60 * G.h.s / TUNE.max, 5, G.h.s > 105 ? '#e04848' : '#3f9d5d');
   if (G.state === 'ready') text(matchMedia('(pointer:coarse)').matches ? 'TAP GO TO RUN' : 'TAP SPACE TO RUN', W / 2, 145);
+  if (C.rope && G.state === 'ready') text(`ROUND ${G.round}`, W / 2, 125);
   if (C.rope && G.phase !== 'chase') drawMeter();
 }
 function drawSteer(t) {
@@ -532,7 +551,7 @@ function drawSteer(t) {
   blob(11, 4, 1, '#f2e6c8'); blob(11, -4, 1, '#f2e6c8'); blob(10, 3, 1, '#f2e6c8'); blob(10, -3, 1, '#f2e6c8');   // horns
 }
 function drawLoop(t) {
-  const h = G.h, s = G.steer, cast = !G.cool && steerClose() <= TUNE.range;
+  const h = G.h, s = G.steer, cast = canCast();
   if (G.phase === 'chase' && G.state !== 'done') {
     if (G.state === 'clock') for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t / 500; px(s.x + Math.cos(a) * 16 - 1, s.y + Math.sin(a) * 16 - 1, 2, 2, cast ? '#3f9d5d' : '#ffffff'); }
     const key = matchMedia('(pointer:coarse)').matches ? 'GO' : 'SPACE';
@@ -546,7 +565,7 @@ function drawLoop(t) {
   }
 }
 function drawMeter() {
-  const M = G.meter, tie = G.phase === 'tie', half = TUNE.green * (tie ? .75 : 1), x = 148, top = 34, tall = 112, on = Math.abs(M.dot - M.c) < half;
+  const M = G.meter, tie = G.phase === 'tie', half = R().green * (tie ? .85 : 1), x = 148, top = 34, tall = 112, on = Math.abs(M.dot - M.c) < half;
   px(x - 12, top - 22, 48, tall + 28, '#3b2a1a');
   text(tie ? 'TIE' : 'ROPE', x + 12, top - 8, '#ffffff');
   px(x, top, 16, tall, '#1d1410');
