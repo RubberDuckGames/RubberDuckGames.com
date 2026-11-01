@@ -19,7 +19,9 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-off
 .bar>*{pointer-events:auto}
 .bar .grow{flex:1}
 .pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
-.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+/* 100dvh, because 100vh on iPhone Safari counts the space under its toolbar, so
+   a sideways arena centered in it sat too low and lost its bottom edge (31 Oct) */
+.wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center}
 .stagebox{position:relative}
 canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;background:#d9b67a;touch-action:none}
 .cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,40,20,.45);z-index:9;padding:1rem}
