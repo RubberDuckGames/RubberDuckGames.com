@@ -294,6 +294,20 @@ cv.addEventListener('pointerdown', () => { if (!matchMedia('(pointer:coarse)').m
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => st.addEventListener(ev, end));
 }
 
+// A thumb on the stick and a thumb on GO look like a pinch to iPhone Safari, and
+// fast taps look like a double tap, so the screen kept zooming mid-run (31 Oct).
+// touch-action in the CSS wasn't enough. Only during a run, so the results card
+// can still be zoomed to read.
+{
+  const riding = () => G && G.state !== 'done';
+  const stop = e => { if (riding() && e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
+  ['#goBtn', '#stick'].forEach(s => $(s).addEventListener('touchstart', stop, { passive: false }));
+  let lastEnd = 0;
+  document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
+}
+
 // ---------- Screen size ----------
 function resize() {
   const box = $('#box'), upright = matchMedia('(pointer:coarse) and (orientation:portrait)').matches, sideways = matchMedia('(pointer:coarse) and (orientation:landscape)').matches;
