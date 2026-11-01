@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rodeo Test · Rubber Duck Games</title>
-<meta name="description" content="A small test of rodeo racing: one horse, barrels and poles, against the clock.">
+<meta name="description" content="A small test of rodeo racing: one horse, barrels, poles and roping, against the clock.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -93,8 +93,8 @@ canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;backgrou
 // Rodeo Test (Trello #46). Decided 31 Oct: neighbors who barrel race say the
 // games they've tried are too slow or don't play well, so this tests only how
 // the horse feels: one horse, the clock, and two events. They played the
-// barrels, loved it, and asked for pole bending, so that came next. Horse
-// colors, saddles, the ride-in and roping are still to come.
+// barrels, loved it, and asked for pole bending, so that came next, then
+// steer roping. Horse colors, saddles and the ride-in are still to come.
 // The main rule: speed widens the turn. Come in flat out and you swing wide or
 // clip the barrel; ease off, turn tight, then drive out. All in these numbers:
 const TUNE = {
@@ -114,6 +114,17 @@ const TUNE = {
   wrongT: .3,    // how long the wrong lead lasts, seconds
   wrong: .7,     // share of its turning it has on the wrong lead
   wrongDrag: 40, // extra speed lost a second on the wrong lead
+  // Roping
+  steer: 92,     // how fast the steer runs, arena pixels a second
+  flee: 18,      // extra speed once the horse is close
+  range: 42,     // how close the horse has to be to cast
+  swing: .22,    // seconds GO has to be held before it's a swing, not a tap
+  lift: 2.6,     // how hard GO lifts the dot
+  fall: 1.9,     // how hard the dot falls without it
+  green: .17,    // half the height of the green spot, out of the whole meter
+  fill: .5,      // meter gained a second in the green
+  drain: .3,     // meter lost a second out of it
+  drift: .55,    // how fast the green spot moves
 };
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), out = cv.getContext('2d');
@@ -129,6 +140,7 @@ const POLE = { x0: 62, gap: 40, y: 93, n: 6, line: 28, gate: [63, 123] };
 const EVENTS = {
   barrels: { title: 'Barrels', best: 'best', noun: 'barrel', gate: 'bottom', start: { x: 160, y: 190, hd: -Math.PI / 2 }, inside: (x, y) => y < LINE, inGate: h => h.x > GATE[0] && h.x < GATE[1], out: h => h.y > 196 },
   poles: { title: 'Poles', best: 'bestPoles', noun: 'pole', leads: true, gate: 'left', start: { x: 6, y: POLE.y, hd: 0 }, inside: x => x > POLE.line, inGate: h => h.y > POLE.gate[0] && h.y < POLE.gate[1], out: h => h.x < 1 },
+  rope: { title: 'Roping', best: 'bestRope', rope: true, gate: 'none', start: { x: 22, y: POLE.y, hd: 0 }, inside: () => true, inGate: () => false, out: () => false },
 };
 
 // ---------- Saved best time (this browser only) ----------
@@ -172,6 +184,8 @@ function newRun(ev = C) {
     barrels: [{ x: 235, y: 112, sign: 1 }, { x: 85, y: 112, sign: -1 }, { x: 160, y: 40, sign: -1 }].map(b => ({ ...b, sum: 0, last: null, done: false, hit: false })),
     poles: Array.from({ length: POLE.n }, (_, i) => ({ x: POLE.x0 + i * POLE.gap, y: POLE.y, hit: false })),
     dir0: null,
+    phase: 'chase', held: false, heldT: 0, cool: 0,
+    steer: { x: 85, y: POLE.y, hd: 0, s: 0, wait: .4 }, meter: { m: 0, dot: .5, v: 0, c: .5, to: .5, wait: 0 },
   };
   $('#cover').hidden = true; hud();
 }
@@ -189,7 +203,8 @@ function showMenu() {
 function urge() {
   if (!G || G.state === 'menu') return;
   if (G.state === 'done') return again();
-  if (G.state === 'ready') { G.state = 'run'; sfx.bell(); }
+  if (G.state === 'ready') { G.state = C.rope ? 'clock' : 'run'; sfx.bell(); }
+  if (C.rope && G.phase !== 'chase') return;
   G.h.s = Math.min(TUNE.max, Math.max(G.h.s, TUNE.cruise) + TUNE.tap);
 }
 function wanted() {
@@ -199,6 +214,7 @@ function wanted() {
 }
 function step(dt) {
   if (!G || G.state === 'ready' || G.state === 'done' || G.state === 'menu') { stepDust(dt); return; }
+  if (C.rope && G.phase !== 'chase') return stepMeter(dt);
   const h = G.h, want = wanted();
   let turn = 0;
   h.wrong = Math.max(0, h.wrong - dt);
@@ -234,7 +250,7 @@ function step(dt) {
   const was = C.inside(ox, oy), now = C.inside(h.x, h.y), crossedIn = !was && now, crossedOut = was && !now;
   if (G.state === 'run' && crossedIn) { G.state = 'clock'; sfx.bell(); }
   if (G.state === 'clock') G.t += dt;
-  if (C === EVENTS.barrels) trackBarrels(h); else trackPoles(h, oy);
+  if (C === EVENTS.barrels) trackBarrels(h); else if (C === EVENTS.poles) trackPoles(h, oy); else stepSteer(dt, TUNE.steer);
   if (G.state === 'clock' && crossedOut && inGate && G.next === courseLength()) return finish(true);
   if (C.out(h)) return finish(false);
   // hooves and dust
@@ -267,6 +283,63 @@ function trackPoles(h, oy) {
   if (!G.dir0) G.dir0 = way;
   G.next++; tone(660, .05, 'square', 0, .03);
 }
+// Roping. Decided 31 Oct: the catch works like fishing in Stardew Valley. Ride
+// up on the steer, hold GO to swing the loop, let go to cast, then keep the dot
+// in the moving green spot until the meter fills. The tie is the same thing,
+// shorter and harder. One button, so it plays on a phone with one thumb.
+const steerClose = () => Math.hypot(G.h.x - G.steer.x, G.h.y - G.steer.y);
+function stepSteer(dt, speed) {
+  const s = G.steer, F = FENCE, near = steerClose() < 45;
+  G.cool = Math.max(0, G.cool - dt);
+  s.s = speed + (near && G.phase === 'chase' ? TUNE.flee : 0);
+  s.wait -= dt;
+  if (s.wait <= 0) { s.want = s.hd + (Math.random() - .5) * 2.4; s.wait = .5 + Math.random() * .8; }
+  if (s.x < F.x0 + 34 || s.x > F.x1 - 34 || s.y < F.y0 + 30 || s.y > F.y1 - 30) s.want = Math.atan2(93 - s.y, 160 - s.x);
+  if (s.want !== undefined) { const d = wrap(s.want - s.hd), r = 2.6 * dt; s.hd = wrap(s.hd + Math.max(-r, Math.min(r, d))); }
+  s.x = Math.max(F.x0 + 8, Math.min(F.x1 - 8, s.x + Math.cos(s.hd) * s.s * dt));
+  s.y = Math.max(F.y0 + 8, Math.min(F.y1 - 8, s.y + Math.sin(s.hd) * s.s * dt));
+  if (Math.random() < dt * 8) G.dust.push({ x: s.x - Math.cos(s.hd) * 8, y: s.y - Math.sin(s.hd) * 8, t: 0 });
+  if (G.t > 45) finish(false);
+  if (G.state === 'clock' && G.phase === 'chase' && G.held) G.heldT += dt;
+}
+function press() { G.held = true; G.heldT = 0; }
+function release() {
+  const swung = G.held && G.heldT >= TUNE.swing;
+  G.held = false; G.heldT = 0;
+  if (!C.rope || G.phase !== 'chase' || !swung || G.cool > 0) return;
+  tone(520, .15, 'square', 0, .03, 900);
+  if (steerClose() > TUNE.range) { G.cool = .7; G.pop = { x: G.h.x, y: G.h.y - 12, t: 0, say: 'MISS' }; tone(150, .1, 'square', .1, .04); return; }
+  startMeter('rope', .3);
+}
+function startMeter(phase, m) { G.phase = phase; G.meter = { m, dot: .5, v: 0, c: .5, to: .7, wait: .5 }; }
+function stepMeter(dt) {
+  const M = G.meter, h = G.h, s = G.steer, tie = G.phase === 'tie', half = TUNE.green * (tie ? .75 : 1);
+  G.t += dt;
+  if (tie) G.h.s = 0;
+  else {
+    // the steer runs on at a lope with the horse behind it on the rope
+    stepSteer(dt, 40);
+    h.hd = Math.atan2(s.y - h.y, s.x - h.x);
+    if (steerClose() > 24) { h.x += Math.cos(h.hd) * 42 * dt; h.y += Math.sin(h.hd) * 42 * dt; }
+  }
+  stepDust(dt);
+  M.v += (G.held ? TUNE.lift : -TUNE.fall) * dt;
+  M.dot += M.v * dt;
+  if (M.dot < 0) { M.dot = 0; M.v = 0; } if (M.dot > 1) { M.dot = 1; M.v = 0; }
+  M.wait -= dt;
+  if (M.wait <= 0) { M.to = half + Math.random() * (1 - 2 * half); M.wait = .5 + Math.random() * .7; }
+  const r = TUNE.drift * (tie ? 1.4 : 1) * dt; M.c += Math.max(-r, Math.min(r, M.to - M.c));
+  const on = Math.abs(M.dot - M.c) < half;
+  M.m += (on ? TUNE.fill : -TUNE.drain) * dt;
+  if (M.m >= 1) {
+    if (tie) return finish(true);
+    sfx.ding(); s.s = 0; startMeter('tie', .4); return;
+  }
+  if (M.m > 0) return;
+  // the rope slips and the chase is back on; a missed tie just starts over
+  if (tie) { M.m = .4; tone(150, .1, 'square', 0, .04); return; }
+  G.phase = 'chase'; G.held = false; G.cool = .7; h.s = 70; h.vx = h.vy = 0; G.pop = { x: h.x, y: h.y - 12, t: 0, say: 'SLIPPED' }; tone(150, .15, 'square', 0, .04);
+}
 function gapX(g) { return POLE.x0 + (g + .5) * POLE.gap; }
 function wrongLead(h) {
   h.wrong = TUNE.wrongT; tone(150, .08, 'square', 0, .04);
@@ -280,10 +353,10 @@ function finish(clean) {
   let line;
   if (clean) {
     const best = !S[C.best] || total < S[C.best]; if (best) { S[C.best] = total; persist(); hud(); }
-    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} ${C.noun}${hits > 1 ? 's' : ''} ${G.pen}.00` : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
+    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} ${C.noun}${hits > 1 ? 's' : ''} ${G.pen}.00` : C.rope ? 'Roped and tied!' : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
   } else {
     const missed = C === EVENTS.poles ? 'A pole was missed.' : `Barrel ${G.next + 1} was missed.`;
-    line = `<h2>No time</h2><p>${G.next < courseLength() ? missed : 'Come home through the gate.'}</p>`;
+    line = `<h2>No time</h2><p>${C.rope ? 'The steer got away.' : G.next < courseLength() ? missed : 'Come home through the gate.'}</p>`;
   }
   $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="eventsBtn">Events</button><button class="btn" id="againBtn">Run again</button></div>`;
   $('#cover').hidden = false; $('#againBtn').onclick = () => newRun(); $('#eventsBtn').onclick = showMenu;
@@ -310,12 +383,14 @@ function draw(t) {
   px(0, 0, W, H, '#d9b67a');
   for (let i = 0; i < 90; i++) px((i * 83) % W, (i * 47) % H, 2, 1, '#c9a468');
   // fence with the gate, and the timer line
-  const fence = '#fffaf0', left = C.gate === 'left';
+  const fence = '#fffaf0', left = C.gate === 'left', closed = C.gate === 'none';
   px(FENCE.x0 - 3, FENCE.y0 - 3, FENCE.x1 - FENCE.x0 + 6, 3, fence); px(FENCE.x1, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
   if (left) {
     px(FENCE.x0 - 3, FENCE.y0, 3, POLE.gate[0] - FENCE.y0, fence); px(FENCE.x0 - 3, POLE.gate[1], 3, FENCE.y1 - POLE.gate[1] + 3, fence);
     px(FENCE.x0 - 3, FENCE.y1, FENCE.x1 - FENCE.x0 + 6, 3, fence);
     for (let y = POLE.gate[0]; y < POLE.gate[1]; y += 8) px(POLE.line, y, 2, 4, '#fffaf0');
+  } else if (closed) {
+    px(FENCE.x0 - 3, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence); px(FENCE.x0 - 3, FENCE.y1, FENCE.x1 - FENCE.x0 + 6, 3, fence);
   } else {
     px(FENCE.x0 - 3, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
     px(FENCE.x0 - 3, FENCE.y1, GATE[0] - FENCE.x0 + 3, 3, fence); px(GATE[1], FENCE.y1, FENCE.x1 - GATE[1] + 3, 3, fence);
@@ -327,20 +402,57 @@ function draw(t) {
     // the next gap to ride through is marked with a ring of dots
     if (riding && G.next < WEAVE.length) ring(gapX(WEAVE[G.next]), POLE.y, 9, 1);
     G.poles.forEach(p => { circle(p.x, p.y, 3, '#1d1410'); circle(p.x, p.y, 2, p.hit ? '#8c8c96' : '#fffaf0'); if (!p.hit) px(p.x - 1, p.y - 1, 3, 2, '#e04848'); });
-  } else G.barrels.forEach((b, i) => {
+  } else if (C === EVENTS.barrels) G.barrels.forEach((b, i) => {
     // the next barrel is marked: dots circling the way to go round it
     if (i === G.next && riding) ring(b.x, b.y, 18, b.sign);
     circle(b.x, b.y, 6, '#1d1410'); circle(b.x, b.y, 5, b.hit ? '#8c8c96' : b.done ? '#3f9d5d' : '#3a6fd8'); circle(b.x, b.y, 2, b.hit ? '#6f6f78' : '#bfe8ff');
     text(String(i + 1), b.x + 1, b.y - 9, '#3b2a1a');
   });
   G.dust.forEach(d => { const r = 1 + Math.round(d.t * 4); px(d.x - r / 2, d.y - r / 2, r, r, d.t < .3 ? '#efd9ad' : '#e3c994'); });
+  if (C.rope) drawSteer(t);
   drawHorse(G.h, t);
-  if (G.pop) text('+5', G.pop.x, G.pop.y - G.pop.t * 12, '#c0392b');
+  if (C.rope) drawLoop(t);
+  if (G.pop) text(G.pop.say || '+5', G.pop.x, G.pop.y - G.pop.t * 12, '#c0392b');
   // the clock, and a bar for how fast the horse is going
   const secs = G.t + G.pen;
   px(W - 84, H - 17, 68, 14, '#3b2a1a'); text(secs.toFixed(2), W - 50, H - 6, G.pen ? '#ffb3a8' : '#ffffff');
   px(16, H - 12, 62, 7, '#3b2a1a'); px(17, H - 11, 60 * G.h.s / TUNE.max, 5, G.h.s > 105 ? '#e04848' : '#3f9d5d');
   if (G.state === 'ready') text(matchMedia('(pointer:coarse)').matches ? 'TAP GO TO RUN' : 'TAP SPACE TO RUN', W / 2, 145);
+  if (C.rope && G.phase !== 'chase') drawMeter();
+}
+function drawSteer(t) {
+  const s = G.steer, c = Math.cos(s.hd), n = Math.sin(s.hd), at = (f, side) => [s.x + c * f - n * side, s.y + n * f + c * side];
+  const blob = (f, side, r, col) => { const [x, y] = at(f, side); circle(x, y, r, col); };
+  const stride = s.s ? Math.sin(t / 60) * 2 : 0;
+  [[4, 4, stride], [4, -4, -stride], [-5, 4, -stride], [-5, -4, stride]].forEach(([f, sd, g]) => blob(f + g, sd, 1, '#3b2a1a'));
+  [-6, -3, 0, 3, 6].forEach(f => blob(f, 0, 4, '#1d1410'));
+  [-6, -3, 0, 3, 6].forEach(f => blob(f, 0, 3, '#c9722e'));
+  blob(-2, 1, 2, '#fff4e0'); blob(9, 0, 3, '#1d1410'); blob(9, 0, 2, '#fff4e0');   // a spot and a white face
+  blob(11, 4, 1, '#f2e6c8'); blob(11, -4, 1, '#f2e6c8'); blob(10, 3, 1, '#f2e6c8'); blob(10, -3, 1, '#f2e6c8');   // horns
+}
+function drawLoop(t) {
+  const h = G.h, s = G.steer, cast = !G.cool && steerClose() <= TUNE.range;
+  if (G.phase === 'chase' && G.state !== 'done') {
+    if (G.state === 'clock') for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + t / 500; px(s.x + Math.cos(a) * 16 - 1, s.y + Math.sin(a) * 16 - 1, 2, 2, cast ? '#3f9d5d' : '#ffffff'); }
+    const key = matchMedia('(pointer:coarse)').matches ? 'GO' : 'SPACE';
+    if (G.heldT >= TUNE.swing) {
+      for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5 + t / 60; px(h.x + Math.cos(a) * 11, h.y + Math.sin(a) * 6 - 3, 2, 2, '#f2e6c8'); }
+      text(cast ? 'LET GO' : 'GET CLOSER', W / 2, 24, cast ? '#2c7a45' : '#3b2a1a');
+    } else if (cast) text(`HOLD ${key}`, W / 2, 24, '#2c7a45');
+  } else if (G.phase !== 'chase') {
+    const n = Math.max(6, Math.round(steerClose() / 3));
+    for (let i = 0; i <= n; i++) px(h.x + (s.x - h.x) * i / n, h.y + (s.y - h.y) * i / n, 1, 1, '#f2e6c8');
+  }
+}
+function drawMeter() {
+  const M = G.meter, tie = G.phase === 'tie', half = TUNE.green * (tie ? .75 : 1), x = 148, top = 34, tall = 112, on = Math.abs(M.dot - M.c) < half;
+  px(x - 12, top - 22, 48, tall + 28, '#3b2a1a');
+  text(tie ? 'TIE' : 'ROPE', x + 12, top - 8, '#ffffff');
+  px(x, top, 16, tall, '#1d1410');
+  px(x, top + (1 - M.c - half) * tall, 16, half * 2 * tall, '#3f9d5d');
+  px(x + 3, top + (1 - M.dot) * tall - 5, 10, 10, on ? '#ffffff' : '#ffb3a8');
+  px(x + 20, top, 6, tall, '#1d1410');
+  px(x + 21, top + (1 - M.m) * tall, 4, M.m * tall, '#ffd23f');
 }
 
 // ---------- Input ----------
@@ -350,13 +462,15 @@ addEventListener('keydown', e => {
   if (G?.state === 'menu') return;   // Space and Enter press the event buttons
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   keys[k] = true;
-  if (k === ' ' && !e.repeat) urge();
+  if (k === ' ' && !e.repeat) { urge(); press(); }
   if (k === 'enter' && G?.state === 'done') again();
 });
-addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; if (e.key === ' ') release(); });
 addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
-$('#goBtn').addEventListener('pointerdown', e => { e.preventDefault(); urge(); });
-cv.addEventListener('pointerdown', () => { if (!matchMedia('(pointer:coarse)').matches) urge(); });
+let goId = null;   // only this finger lets go of GO, not the one on the stick
+$('#goBtn').addEventListener('pointerdown', e => { e.preventDefault(); goId = e.pointerId; urge(); press(); });
+cv.addEventListener('pointerdown', e => { if (!matchMedia('(pointer:coarse)').matches) { goId = e.pointerId; urge(); press(); } });
+['pointerup', 'pointercancel'].forEach(ev => addEventListener(ev, e => { if (e.pointerId === goId) { goId = null; release(); } }));
 // the stick works like Math Force's: push it the way you want the horse to go
 {
   const st = $('#stick'), knob = $('#knob');

@@ -88,7 +88,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   The horse changes leads by itself: steering smoothly is clean, snapping
   across costs turning and speed for a moment. Leads are in the poles only, so
   the barrels stay as the racers liked them. The racers' spacing is 21 feet;
-  the game's is whatever lets this horse make the weave. Decided 31 Oct: neighbors who race say other games are too
+  the game's is whatever lets this horse make the weave. Roping is the third
+  event: chase the steer, hold GO to swing, let go to cast, then keep the dot
+  in the moving green spot until the meter fills, like fishing in Stardew
+  Valley; the tie is the same thing, shorter and harder. One button for both,
+  so it plays on a phone. If the meter empties on the rope, the chase is back
+  on; the clock runs through all of it, and at 45 seconds the steer gets away. Decided 31 Oct: neighbors who race say other games are too
   slow or don't play well, so this tests only how the horse feels, with plain
   art: one cloverleaf, tap to run, stick or arrows to steer, a knocked barrel
   adds 5 seconds. Speed widens the turn; the numbers are in `TUNE`. The rule
