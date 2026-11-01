@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barrel Race Test · Rubber Duck Games</title>
+<meta name="description" content="A small test of barrel racing: one horse, three barrels, against the clock.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#3b2a1a;--soft:#7a6450;--bg:#f3e3c3;--panel:#fffdf7;--line:#d8c096;--accent:#c0392b;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;touch-action:manipulation}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.stagebox{position:relative}
+canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;background:#d9b67a;touch-action:none}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,40,20,.45);z-index:9;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:26rem;width:100%;text-align:center;box-shadow:.4rem .4rem 0 rgba(0,0,0,.25)}
+.card h2{margin:0 0 .5rem;font-family:"Press Start 2P",monospace;font-size:1.4rem;line-height:1.5}
+.card p{margin:.3rem 0;color:var(--soft)}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.9rem}
+.btn{background:var(--accent);color:#fff;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+/* touch: the stick on the left, a big Go on the right, only on touch screens */
+.ctrl{display:none;position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:center;padding:1.2rem;pointer-events:none}
+@media (pointer:coarse){.ctrl{display:flex}}
+.ctrl>*{pointer-events:auto}
+.stick{position:relative;width:8rem;height:8rem;border-radius:50%;background:rgba(59,42,26,.15);border:3px solid rgba(59,42,26,.4);touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.5rem;height:3.5rem;margin:-1.75rem;border-radius:50%;background:var(--ink);opacity:.8}
+.go{width:7rem;height:7rem;border-radius:50%;background:var(--accent);color:#fff;font-family:"Press Start 2P",monospace;font-size:1rem;box-shadow:0 .35rem 0 #7f241a;touch-action:none}
+.go:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #7f241a}
+/* Decided 31 Oct: phone first, the same two ways Bread plays. Held upright it's
+   a Game Boy: the arena in a dark screen frame, the stick and a round red GO
+   below it, and the results cover the whole screen because the arena is short.
+   Turned sideways it goes as full screen as a phone allows: the arena is as
+   tall as the screen, the sides are the same dirt, and the stick and GO sit on
+   them where the thumbs are. */
+@media (pointer:coarse) and (orientation:portrait){
+  html,body{background:#c9c4b8}
+  body{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  .bar{position:static}
+  .pill{background:#e2ddd2;border-color:#a8a294;box-shadow:.2rem .2rem 0 #a8a294}
+  .wrap{display:block;min-height:0;padding:0 .75rem}
+  .stagebox{background:#4a4a58;padding:.9rem .9rem 1.6rem;border-radius:.6rem .6rem 2.4rem .6rem;box-shadow:inset 0 0 0 3px #3a3a46}
+  .stagebox::after{content:"RODEO";position:absolute;left:1rem;bottom:.35rem;font-family:"Press Start 2P",monospace;font-size:.5rem;color:#b9b9c9;letter-spacing:.1em}
+  canvas{border:3px solid #2a2a33}
+  .cover{position:fixed;overflow:auto}
+  .ctrl{position:static;flex:1;padding:1rem 1.5rem calc(1rem + env(safe-area-inset-bottom))}
+  .stick{width:8.5rem;height:8.5rem;background:#b3ae9f;border-color:#a8a294}
+  .stick i{background:#2a2a33;opacity:1}
+  .go{width:6.5rem;height:6.5rem;background:#a3244a;box-shadow:0 .35rem 0 #6e1631}
+  .go:active{box-shadow:0 .1rem 0 #6e1631}
+}
+@media (pointer:coarse) and (orientation:landscape){
+  html,body{background:#d9b67a}
+  .bar{padding:.4rem max(.5rem,env(safe-area-inset-right)) .4rem max(.5rem,env(safe-area-inset-left))}
+  .pill{font-size:.5rem;padding:.3rem .5rem}
+  .ctrl{top:0;padding:0 max(.6rem,env(safe-area-inset-right)) 0 max(.6rem,env(safe-area-inset-left))}
+  .stick{width:6.5rem;height:6.5rem}
+  .stick i{width:3rem;height:3rem;margin:-1.5rem}
+  .go{width:6rem;height:6rem;opacity:.9}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <span class="pill" id="hBest" aria-label="Best time">Best --</span>
+  <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
+</div>
+<div class="wrap">
+  <div class="stagebox" id="box">
+    <canvas id="cv" aria-label="The arena"></canvas>
+    <div class="cover" id="cover" hidden><div class="card" id="card"></div></div>
+  </div>
+</div>
+<div class="ctrl">
+  <div class="stick" id="stick" aria-label="Steering stick"><i id="knob"></i></div>
+  <button class="go" id="goBtn">GO</button>
+</div>
+
+<script>
+// Barrel Race Test (Trello #46). Decided 31 Oct: neighbors who barrel race say
+// the games they've tried are too slow or don't play well, so this tests only
+// how the horse feels: one horse, one cloverleaf, the clock. Horse colors,
+// saddles, the ride-in and roping wait until racers say this feels right.
+// The main rule: speed widens the turn. Come in flat out and you swing wide or
+// clip the barrel; ease off, turn tight, then drive out. All in these numbers:
+const TUNE = {
+  max: 165,      // top speed, arena pixels a second
+  tap: 30,       // speed each tap adds
+  drag: 50,      // speed lost a second just by not tapping...
+  dragV: .32,    // ...plus this share of the current speed
+  cruise: 30,    // the slowest the horse goes once it's running
+  grip: 430,     // how hard it can turn: a higher number means tighter at speed
+  spin: 5.2,     // fastest it can turn at low speed, radians a second
+  slip: 7,       // how quickly it stops sliding after a turn
+  scrub: .55,    // speed a hard turn costs
+};
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), out = cv.getContext('2d');
+const W = 320, H = 200;
+const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
+const cx = lo.getContext('2d');
+const PIX = '"Press Start 2P", monospace';
+const LINE = 165, GATE = [130, 190], FENCE = { x0: 10, x1: W - 10, y0: 8, y1: 178 };
+
+// ---------- Saved best time (this browser only) ----------
+const KEY = 'rodeo-test';
+const S = Object.assign({ best: null, sound: true }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function hud() { $('#hBest').textContent = `Best ${S.best ? S.best.toFixed(2) : '--'}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
+
+// ---------- Sounds ----------
+let ac;
+function tone(f, d, type = 'square', when = 0, vol = .04, to) {
+  if (!S.sound) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state !== 'running') ac.resume();
+    const t0 = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d + .02);
+  } catch (e) { }
+}
+const sfx = {
+  hoof: () => tone(110, .04, 'square', 0, .025),
+  clang: () => { tone(220, .25, 'square', 0, .05, 80); tone(330, .2, 'square', .03, .03, 120); },
+  ding: () => [784, 1047].forEach((f, i) => tone(f, .08, 'square', i * .06, .035)),
+  bell: () => [523, 784].forEach((f, i) => tone(f, .1, 'square', i * .08, .04)),
+  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .12, 'square', i * .1, .04)),
+};
+
+// ---------- The run ----------
+let G = null;
+const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+function newRun() {
+  // the right barrel first, turned to the right; then the left and far ones turned to the left
+  G = {
+    state: 'ready', t: 0, pen: 0, next: 0, dust: [], pop: null, hoof: 0, bump: 0,
+    h: { x: 160, y: 190, hd: -Math.PI / 2, vx: 0, vy: 0, s: 0 },
+    barrels: [{ x: 235, y: 112, sign: 1 }, { x: 85, y: 112, sign: -1 }, { x: 160, y: 40, sign: -1 }].map(b => ({ ...b, sum: 0, last: null, done: false, hit: false })),
+  };
+  $('#cover').hidden = true;
+}
+function urge() {
+  if (!G) return;
+  if (G.state === 'done') return again();
+  if (G.state === 'ready') { G.state = 'run'; sfx.bell(); }
+  G.h.s = Math.min(TUNE.max, Math.max(G.h.s, TUNE.cruise) + TUNE.tap);
+}
+function wanted() {
+  if (stick.on && Math.hypot(stick.x, stick.y) > .25) return Math.atan2(stick.y, stick.x);
+  const x = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), y = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+  return x || y ? Math.atan2(y, x) : null;
+}
+function step(dt) {
+  if (!G || G.state === 'ready' || G.state === 'done') { stepDust(dt); return; }
+  const h = G.h, want = wanted();
+  let turn = 0;
+  if (want !== null) {
+    const rate = Math.min(TUNE.spin, TUNE.grip / Math.max(h.s, 1));
+    const d = wrap(want - h.hd); turn = Math.max(-rate * dt, Math.min(rate * dt, d));
+    h.hd = wrap(h.hd + turn);
+  }
+  h.s -= (TUNE.drag + TUNE.dragV * h.s) * dt;
+  h.s -= TUNE.scrub * (Math.abs(turn) / dt / TUNE.spin) * h.s * dt;
+  h.s = Math.max(TUNE.cruise, h.s);
+  const k = Math.min(1, TUNE.slip * dt), vx = Math.cos(h.hd) * h.s, vy = Math.sin(h.hd) * h.s;
+  const sliding = Math.hypot(vx - h.vx, vy - h.vy);
+  h.vx += (vx - h.vx) * k; h.vy += (vy - h.vy) * k;
+  const ox = h.x, oy = h.y;
+  h.x += h.vx * dt; h.y += h.vy * dt;
+  // the fence: the only gap is the gate at the bottom
+  G.bump -= dt;
+  const inGate = h.x > GATE[0] && h.x < GATE[1];
+  if (h.x < FENCE.x0 + 6 || h.x > FENCE.x1 - 6) { h.x = Math.max(FENCE.x0 + 6, Math.min(FENCE.x1 - 6, h.x)); h.vx *= -.3; bump(h); }
+  if (h.y < FENCE.y0 + 6) { h.y = FENCE.y0 + 6; h.vy *= -.3; bump(h); }
+  if (h.y > FENCE.y1 - 6 && !inGate && oy <= FENCE.y1 - 6) { h.y = FENCE.y1 - 6; h.vy *= -.3; bump(h); }
+  // the clock runs from crossing the line going in to crossing it coming home
+  const crossedIn = oy >= LINE && h.y < LINE, crossedOut = oy < LINE && h.y >= LINE;
+  if (G.state === 'run' && crossedIn) { G.state = 'clock'; sfx.bell(); }
+  if (G.state === 'clock') G.t += dt;
+  // barrels: touch one and it tips over, plus 5 seconds
+  G.barrels.forEach((b, i) => {
+    if (!b.hit && Math.hypot(h.x - b.x, h.y - b.y) < 10) { b.hit = true; G.pen += 5; G.pop = { x: b.x, y: b.y - 10, t: 0 }; sfx.clang(); }
+    // going all the way round it the right way counts; the wrong way doesn't
+    if (i === G.next && !b.done) {
+      const a = Math.atan2(h.y - b.y, h.x - b.x), d = Math.hypot(h.x - b.x, h.y - b.y);
+      if (d > 110) { b.sum = 0; b.last = null; }
+      else { if (b.last !== null) b.sum = Math.max(0, b.sum + wrap(a - b.last) * b.sign); b.last = a; }
+      if (b.sum > 5.2) { b.done = true; G.next++; sfx.ding(); }
+    }
+  });
+  if (G.state === 'clock' && crossedOut && inGate && G.next === 3) return finish(true);
+  if (h.y > 196) return finish(false);
+  // hooves and dust
+  G.hoof -= Math.hypot(h.vx, h.vy) * dt;
+  if (G.hoof <= 0) { G.hoof = 34; sfx.hoof(); }
+  if (Math.random() < dt * (h.s / 12 + sliding / 8)) G.dust.push({ x: h.x - Math.cos(h.hd) * 7, y: h.y - Math.sin(h.hd) * 7, t: 0 });
+  stepDust(dt);
+}
+function bump(h) { h.s *= .6; if (G.bump <= 0) { G.bump = .4; tone(90, .12, 'square', 0, .05); } }
+function stepDust(dt) { if (!G) return; G.dust = G.dust.filter(d => (d.t += dt, d.t < .6)); if (G.pop) { G.pop.t += dt; if (G.pop.t > 1) G.pop = null; } }
+function finish(clean) {
+  G.state = 'done'; G.doneT = performance.now();
+  const total = G.t + G.pen, hits = G.barrels.filter(b => b.hit).length;
+  let line;
+  if (clean) {
+    const best = !S.best || total < S.best; if (best) { S.best = total; persist(); hud(); }
+    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} barrel${hits > 1 ? 's' : ''} ${G.pen}.00` : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
+  } else line = `<h2>No time</h2><p>${G.next < 3 ? `Barrel ${G.next + 1} was missed.` : 'Come home through the gate.'}</p>`;
+  $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="againBtn">Run again</button></div>`;
+  $('#cover').hidden = false; $('#againBtn').onclick = () => newRun();
+}
+function again() { if (performance.now() - G.doneT > 1000) newRun(); }
+
+// ---------- Drawing ----------
+const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
+function text(t, x, y, col = '#3b2a1a', size = 8) { cx.font = `${size}px ${PIX}`; cx.textAlign = 'center'; cx.fillStyle = col; cx.fillText(t, Math.round(x), Math.round(y)); }
+function circle(x, y, r, c) { for (let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); px(x - w, y + dy, w * 2 + 1, 1, c); } }
+function drawHorse(h, t) {
+  const c = Math.cos(h.hd), s = Math.sin(h.hd), at = (f, side) => [h.x + c * f - s * side, h.y + s * f + c * side];
+  const blob = (f, side, r, col) => { const [x, y] = at(f, side); circle(x, y, r, col); };
+  const stride = Math.sin(t / Math.max(45, 170 - h.s)) * 2;
+  [[4, 3, stride], [4, -3, -stride], [-4, 3, -stride], [-4, -3, stride]].forEach(([f, sd, g]) => blob(f + g, sd, 1, '#3b2a1a'));   // legs
+  blob(-9, 0, 1, '#3b2a1a'); blob(-7, 0, 2, '#3b2a1a');          // tail
+  [-5, -3, -1, 1, 3, 5].forEach(f => blob(f, 0, 3, '#1d1410'));   // an outline under the body
+  [-5, -3, -1, 1, 3, 5].forEach(f => blob(f, 0, 2, '#8a4f2a'));   // the body
+  blob(8, 0, 2, '#1d1410'); blob(8, 0, 1, '#8a4f2a'); blob(10, 0, 1, '#f2d8b8');   // neck and nose
+  blob(-1, 0, 2, '#e04848'); blob(0, 0, 1, '#f2d8b8');            // the rider
+}
+function draw(t) {
+  px(0, 0, W, H, '#d9b67a');
+  for (let i = 0; i < 90; i++) px((i * 83) % W, (i * 47) % H, 2, 1, '#c9a468');
+  // fence with the gate at the bottom
+  const fence = '#fffaf0';
+  px(FENCE.x0 - 3, FENCE.y0 - 3, FENCE.x1 - FENCE.x0 + 6, 3, fence); px(FENCE.x0 - 3, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence); px(FENCE.x1, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
+  px(FENCE.x0 - 3, FENCE.y1, GATE[0] - FENCE.x0 + 3, 3, fence); px(GATE[1], FENCE.y1, FENCE.x1 - GATE[1] + 3, 3, fence);
+  for (let x = GATE[0]; x < GATE[1]; x += 8) px(x, LINE, 4, 2, '#fffaf0');   // the timer line
+  // barrels, with the next one marked: dots circling the way to go round it
+  G.barrels.forEach((b, i) => {
+    if (i === G.next && G.state !== 'done') for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + b.sign * t / 400; px(b.x + Math.cos(a) * 18 - 1, b.y + Math.sin(a) * 18 - 1, 3, 3, k === 0 ? '#ffffff' : '#e04848'); }
+    circle(b.x, b.y, 6, '#1d1410'); circle(b.x, b.y, 5, b.hit ? '#8c8c96' : b.done ? '#3f9d5d' : '#3a6fd8'); circle(b.x, b.y, 2, b.hit ? '#6f6f78' : '#bfe8ff');
+    text(String(i + 1), b.x + 1, b.y - 9, '#3b2a1a');
+  });
+  G.dust.forEach(d => { const r = 1 + Math.round(d.t * 4); px(d.x - r / 2, d.y - r / 2, r, r, d.t < .3 ? '#efd9ad' : '#e3c994'); });
+  drawHorse(G.h, t);
+  if (G.pop) text('+5', G.pop.x, G.pop.y - G.pop.t * 12, '#c0392b');
+  // the clock, and a bar for how fast the horse is going
+  const secs = G.t + G.pen;
+  px(W - 84, H - 17, 68, 14, '#3b2a1a'); text(secs.toFixed(2), W - 50, H - 6, G.pen ? '#ffb3a8' : '#ffffff');
+  px(16, H - 12, 62, 7, '#3b2a1a'); px(17, H - 11, 60 * G.h.s / TUNE.max, 5, G.h.s > 105 ? '#e04848' : '#3f9d5d');
+  if (G.state === 'ready') text(matchMedia('(pointer:coarse)').matches ? 'TAP GO TO RUN' : 'TAP SPACE TO RUN', W / 2, 145);
+}
+
+// ---------- Input ----------
+const keys = {}, stick = { x: 0, y: 0, on: false, id: null };
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys[k] = true;
+  if (k === ' ' && !e.repeat) urge();
+  if (k === 'enter' && G?.state === 'done') again();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+$('#goBtn').addEventListener('pointerdown', e => { e.preventDefault(); urge(); });
+cv.addEventListener('pointerdown', () => { if (!matchMedia('(pointer:coarse)').matches) urge(); });
+// the stick works like Math Force's: push it the way you want the horse to go
+{
+  const st = $('#stick'), knob = $('#knob');
+  const upd = e => {
+    const r = st.getBoundingClientRect(), max = r.width * .42;
+    let x = (e.clientX - r.left - r.width / 2) / max, y = (e.clientY - r.top - r.height / 2) / max; const l = Math.hypot(x, y);
+    if (l > 1) { x /= l; y /= l; }
+    stick.x = x; stick.y = y; knob.style.transform = `translate(${x * max * .7}px,${y * max * .7}px)`;
+  };
+  st.addEventListener('pointerdown', e => { stick.id = e.pointerId; stick.on = true; try { st.setPointerCapture(e.pointerId); } catch (err) { } upd(e); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
+  const end = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.on = false; stick.x = stick.y = 0; knob.style.transform = ''; };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => st.addEventListener(ev, end));
+}
+
+// ---------- Screen size ----------
+function resize() {
+  const box = $('#box'), upright = matchMedia('(pointer:coarse) and (orientation:portrait)').matches, sideways = matchMedia('(pointer:coarse) and (orientation:landscape)').matches;
+  const room = { w: innerWidth, h: sideways ? innerHeight : innerHeight - 56 };
+  if (upright) {   // inside the screen frame, leaving room for the stick and GO
+    room.w = box.clientWidth - 2 * parseFloat(getComputedStyle(box).paddingLeft);
+    room.h = innerHeight - box.getBoundingClientRect().top - 40 - 11 * 16;
+  }
+  let w = room.w, h = w * H / W; if (h > room.h) { h = room.h; w = h * W / H; }
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener('resize', resize);
+
+// ---------- Main loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+  step(dt); draw(t);
+  out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, cv.width, cv.height);
+  requestAnimationFrame(loop);
+}
+hud(); newRun(); resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -80,6 +80,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   water to collect. The tugboat's name (his name) is typed in on the family's
   device and stored there only, so the public title is "Tugboat Deliveries".
   Progress is in localStorage under `tugboat`.
+- `rodeo/index.html` is the Barrel Race Test (Trello #46), not linked from the
+  home page yet. Decided 31 Oct: neighbors who race say other games are too
+  slow or don't play well, so this tests only how the horse feels, with plain
+  art: one cloverleaf, tap to run, stick or arrows to steer, a knocked barrel
+  adds 5 seconds. Speed widens the turn; the numbers are in `TUNE`. The rule
+  against timers is for the learning games; racing against the clock is this
+  game's point. Phone first: upright is a Game Boy with the stick and GO below
+  the screen; sideways the arena is as tall as the screen, with the stick and
+  GO on the dirt at each side. Best time is in localStorage under `rodeo-test`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
