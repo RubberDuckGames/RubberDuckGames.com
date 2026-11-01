@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rodeo Test · Rubber Duck Games</title>
+<title>Rodeo · Rubber Duck Games</title>
 <meta name="description" content="A small test of rodeo racing: one horse, barrels, poles and roping, against the clock.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -62,6 +62,7 @@ canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;backgrou
 }
 @media (pointer:coarse) and (orientation:landscape){
   html,body{background:#d9b67a}
+  html.title,html.title body{background:linear-gradient(#8fd0f0 59%,#7fb35a 59% 67%,#d9b67a 67%)}   /* the title scene runs out to the edges */
   .bar{padding:.4rem max(.5rem,env(safe-area-inset-right)) .4rem max(.5rem,env(safe-area-inset-left))}
   .pill{font-size:.5rem;padding:.3rem .5rem}
   .ctrl{top:0;padding:0 max(.6rem,env(safe-area-inset-right)) 0 max(.6rem,env(safe-area-inset-left))}
@@ -195,13 +196,14 @@ function newRun(ev = C) {
 const WEAVE = (() => { const end = POLE.n - 1, s = []; for (let g = end; g >= -1; g--) s.push(g); for (let g = 0; g <= end; g++) s.push(g); return s; })();
 const courseLength = () => C === EVENTS.poles ? WEAVE.length : G.barrels.length;
 function showMenu() {
-  G.state = 'menu';
+  G.state = 'menu'; document.documentElement.classList.remove('title');
   $('#card').innerHTML = `<h2>Rodeo</h2><div class="row">${Object.keys(EVENTS).map(k => `<button class="btn" data-ev="${k}">${EVENTS[k].title}</button>`).join('')}</div>`;
   $('#cover').hidden = false;
   $('#card').querySelectorAll('[data-ev]').forEach(b => b.onclick = () => newRun(EVENTS[b.dataset.ev]));
 }
 function urge() {
   if (!G || G.state === 'menu') return;
+  if (G.state === 'title') return pressStart();
   if (G.state === 'done') return again();
   if (G.state === 'ready') { G.state = C.rope ? 'clock' : 'run'; sfx.bell(); }
   if (C.rope && G.phase !== 'chase') return;
@@ -213,7 +215,7 @@ function wanted() {
   return x || y ? Math.atan2(y, x) : null;
 }
 function step(dt) {
-  if (!G || G.state === 'ready' || G.state === 'done' || G.state === 'menu') { stepDust(dt); return; }
+  if (!G || G.state === 'ready' || G.state === 'done' || G.state === 'menu' || G.state === 'title') { stepDust(dt); return; }
   if (C.rope && G.phase !== 'chase') return stepMeter(dt);
   const h = G.h, want = wanted();
   let turn = 0;
@@ -379,7 +381,106 @@ function drawHorse(h, t) {
   blob(8, 0, 2, '#1d1410'); blob(8, 0, 1, '#8a4f2a'); blob(10, 0, 1, '#f2d8b8');   // neck and nose
   blob(-1, 0, 2, '#e04848'); blob(0, 0, 1, '#f2d8b8');            // the rider
 }
+// Decided 31 Oct: the game opens like Bread does, with a title screen, a blinking
+// PRESS START and a cowgirl racing across. The pictures are written out pixel by
+// pixel; each frame of the gallop is the horse's near legs over its far legs
+// (the next frame's, in a darker brown), with the rider on top and one dark
+// outline around the whole thing.
+const SPR = {
+  body: [
+    '...........................t.t',
+    '..........................mbbb',
+    '.........................mmbkbb',
+    '........................mmbbbbbbb',
+    '.......................mmbbbbbbbbp',
+    '......................mmbbbb..bbbp',
+    '.....................mmbbbb',
+    '...mmm...bbbbbbbbbbbmmbbbbb',
+    '.mmmmbbbbbbbbbbbbbbbbbbbbbb',
+    'mmm.bbbbbbbbbbbbbbbbbbbbbbb',
+    'mm..bbbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbb',
+    '.....bbbbbddddddddbbbbb',
+  ],
+  legs: [
+    ['..bb....................bbb', '.bb.......................bb', 'bb.........................bb', 'b...........................bb', 'h............................hh'],
+    ['.....bb..............bb', '......bb............bb', '.......bb...........bb', '.......bb..........bb', '.......hh..........hh'],
+    ['.....bbb........bbb', '.......bbb....bbb', '.........bbbbb', '........hh..hh'],
+    ['....bb.................bb', '...bb....................bb', '..bb.......................b', '..bb........................b', '..hh.........................h'],
+  ],
+  // the rider: a cowboy hat, a braid flying behind her, and her hands on the reins
+  girl: [
+    '.....HHHH',
+    '....HHHHHH',
+    '....nnnnnn',
+    '.HHHHHHHHHHHH',
+    '..yyffffff',
+    '.yyyfffkff',
+    'yy.yffffff',
+    'y...rrrrr',
+    '....rrrrrrrf',
+    '....rrrrr..ff',
+    '....rrrr',
+    '....ssssss',
+    '....jjjjjj',
+    '.....jjjj',
+    '.....jjj',
+    '.....jjj',
+    '.....kkk',
+  ],
+};
+const PAL = { b: '#8a4f2a', d: '#5e3319', m: '#2a1a12', t: '#8a4f2a', k: '#1d1410', p: '#c98a6a', h: '#1d1410', r: '#d8343f', s: '#6b3a1a', f: '#f2c8a0', y: '#e8b33f', j: '#3a6fd8', H: '#c9853f', n: '#6b3a1a', e: '#b8362f' };
+const RIDER = [0, 1, 2, 3].map(f => {
+  const w = 40, h = 30, top = 4, grid = Array.from({ length: h }, () => Array(w).fill('.'));
+  const put = (rows, x, y, as) => rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') grid[y + j][x + i] = as && ch !== 'h' ? as : ch; }));
+  put(SPR.legs[(f + 1) % 4], 3, top + 14, 'd');
+  put(SPR.legs[f], 1, top + 14);
+  put(SPR.body, 1, top);
+  put(['eeeeeeeeee', 'eeeeeeeeee', 'eeeeeeeeee'], 10, top + 7);
+  put(['ssssssss'], 11, top + 6);
+  put(SPR.girl, 7, f % 2 ? 0 : 1);
+  const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+  const x = c.getContext('2d'), solid = (i, j) => grid[j]?.[i] && grid[j][i] !== '.';
+  grid.forEach((row, j) => row.forEach((ch, i) => {
+    if (ch !== '.') { x.fillStyle = PAL[ch]; x.fillRect(i + 1, j + 1, 1, 1); return; }
+    if (solid(i - 1, j) || solid(i + 1, j) || solid(i, j - 1) || solid(i, j + 1)) { x.fillStyle = '#1d1410'; x.fillRect(i + 1, j + 1, 1, 1); }
+  }));
+  return c;
+});
+const TITLE = { still: false, at: 0 };   // still: held in the middle, for the picture on the home page card
+function pressStart() {
+  if (TITLE.at) return;
+  TITLE.at = performance.now(); sfx.win();
+  setTimeout(showMenu, 700);
+}
+function drawTitle(t) {
+  const ground = 118, track = 134;
+  px(0, 0, W, ground, '#8fd0f0');
+  [[40, 26], [214, 16], [130, 38]].forEach(([x, y], i) => { const at = (x + t / (120 + i * 50)) % (W + 40) - 40; px(at, y, 30, 6, '#ffffff'); px(at + 6, y - 4, 16, 4, '#ffffff'); });
+  for (let x = -20; x < W; x += 46) { px(x, ground - 8, 44, 8, '#9dbf72'); px(x + 10, ground - 13, 22, 5, '#9dbf72'); }
+  px(0, ground, W, track - ground, '#7fb35a');
+  px(0, track, W, H - track, '#d9b67a');
+  for (let i = 0; i < 40; i++) px((i * 83) % W, track + 4 + (i * 47) % (H - track - 6), 2, 1, '#c9a468');
+  // the arena rail behind the track
+  for (let x = 6; x < W; x += 40) px(x, 118, 3, 20, '#fffaf0');
+  px(0, 122, W, 3, '#fffaf0'); px(0, 130, W, 3, '#fffaf0');
+  cx.textAlign = 'center'; cx.font = `30px ${PIX}`;
+  const y = 60 + Math.round(Math.sin(t / 400));
+  cx.fillStyle = '#7a3f12'; cx.fillText('RODEO', W / 2 + 3, y + 4);
+  cx.fillStyle = '#1d1410'; for (const [a, b] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) cx.fillText('RODEO', W / 2 + a, y + b);
+  cx.fillStyle = '#ffd23f'; cx.fillText('RODEO', W / 2, y);
+  const flash = TITLE.at && performance.now() - TITLE.at < 700;
+  if (!TITLE.still && (flash ? Math.floor(t / 80) % 2 : Math.floor(t / 520) % 2 === 0)) text('PRESS START', W / 2, 94, flash ? '#d8343f' : '#1d1410');
+  // racing across, with a little rest off screen between passes
+  const speed = .17, span = W + 200, x = TITLE.still ? W / 2 - 42 : (t * speed) % span - 100, f = Math.floor(t / 75) % 4;
+  for (let i = 1; i < 6; i++) { const r = 2 + i, a = x + 12 - i * 11; px(a, 186 - (i * 3) % 7 - r / 2, r, r, i < 3 ? '#efd9ad' : '#e3c994'); }
+  cx.imageSmoothingEnabled = false;
+  cx.drawImage(RIDER[TITLE.still ? 0 : f], Math.round(x), 128, 84, 64);
+  text('RUBBER DUCK GAMES', W / 2, H - 3, '#7a5a30', 8);
+}
 function draw(t) {
+  if (G.state === 'title') return drawTitle(t);
   px(0, 0, W, H, '#d9b67a');
   for (let i = 0; i < 90; i++) px((i * 83) % W, (i * 47) % H, 2, 1, '#c9a468');
   // fence with the gate, and the timer line
@@ -459,6 +560,10 @@ function drawMeter() {
 const keys = {}, stick = { x: 0, y: 0, on: false, id: null };
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (G?.state === 'title') {
+    if (!e.metaKey && !e.ctrlKey && k !== 'tab' && !document.activeElement.closest?.('a,button')) { e.preventDefault(); pressStart(); }
+    return;
+  }
   if (G?.state === 'menu') return;   // Space and Enter press the event buttons
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   keys[k] = true;
@@ -467,6 +572,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; if (e.key === ' ') release(); });
 addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+document.addEventListener('pointerdown', e => { if (G?.state === 'title' && !e.target.closest('a,#soundBtn')) pressStart(); });
 let goId = null;   // only this finger lets go of GO, not the one on the stick
 $('#goBtn').addEventListener('pointerdown', e => { e.preventDefault(); goId = e.pointerId; urge(); press(); });
 cv.addEventListener('pointerdown', e => { if (!matchMedia('(pointer:coarse)').matches) { goId = e.pointerId; urge(); press(); } });
@@ -491,7 +597,7 @@ cv.addEventListener('pointerdown', e => { if (!matchMedia('(pointer:coarse)').ma
 // touch-action in the CSS wasn't enough. Only during a run, so the results card
 // can still be zoomed to read.
 {
-  const riding = () => G && G.state !== 'done' && G.state !== 'menu';
+  const riding = () => G && !['done', 'menu', 'title'].includes(G.state);
   const stop = e => { if (riding() && e.cancelable) e.preventDefault(); };
   ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
   document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
@@ -523,7 +629,7 @@ function loop(t) {
   out.drawImage(lo, 0, 0, cv.width, cv.height);
   requestAnimationFrame(loop);
 }
-hud(); newRun(); showMenu(); resize();
+hud(); newRun(); G.state = 'title'; document.documentElement.classList.add('title'); resize();
 requestAnimationFrame(loop);
 </script>
 </body>

@@ -80,8 +80,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   water to collect. The tugboat's name (his name) is typed in on the family's
   device and stored there only, so the public title is "Tugboat Deliveries".
   Progress is in localStorage under `tugboat`.
-- `rodeo/index.html` is the Rodeo Test (Trello #46), not linked from the home
-  page yet. Decided 31 Oct, after the racers played it and loved it: pole
+- `rodeo/index.html` is Rodeo (Trello #46), the last card on the home page. It
+  opens on a title screen with a cowgirl racing across and PRESS START, then
+  the choice of event. Decided 31 Oct, after the racers played it and loved it: pole
   bending is the second event, picked on the opening screen (the stables will
   lead to this choice later). Six poles; the gate is at the end of the line, so
   the poles run the long way across the arena; rings of dots mark the next gap.
@@ -146,5 +147,4 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - Treasure Trail's strings are inline, not in a catalogue.
 - Space Lab and Story Tree are on the map as "soon" and not built yet.
 - Bread's and Tugboat's strings are inline, not in a catalogue, like Treasure Trail's.
-- The home page says every word can be read aloud; Math Force and Bread have no voice.
 - A save file can't be renamed after it's made, except by copying it into an empty file.
