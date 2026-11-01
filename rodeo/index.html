@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Barrel Race Test · Rubber Duck Games</title>
-<meta name="description" content="A small test of barrel racing: one horse, three barrels, against the clock.">
+<title>Rodeo Test · Rubber Duck Games</title>
+<meta name="description" content="A small test of rodeo racing: one horse, barrels and poles, against the clock.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -90,10 +90,11 @@ canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;backgrou
 </div>
 
 <script>
-// Barrel Race Test (Trello #46). Decided 31 Oct: neighbors who barrel race say
-// the games they've tried are too slow or don't play well, so this tests only
-// how the horse feels: one horse, one cloverleaf, the clock. Horse colors,
-// saddles, the ride-in and roping wait until racers say this feels right.
+// Rodeo Test (Trello #46). Decided 31 Oct: neighbors who barrel race say the
+// games they've tried are too slow or don't play well, so this tests only how
+// the horse feels: one horse, the clock, and two events. They played the
+// barrels, loved it, and asked for pole bending, so that came next. Horse
+// colors, saddles, the ride-in and roping are still to come.
 // The main rule: speed widens the turn. Come in flat out and you swing wide or
 // clip the barrel; ease off, turn tight, then drive out. All in these numbers:
 const TUNE = {
@@ -106,6 +107,13 @@ const TUNE = {
   spin: 5.2,     // fastest it can turn at low speed, radians a second
   slip: 7,       // how quickly it stops sliding after a turn
   scrub: .55,    // speed a hard turn costs
+  // Leads: a loping horse balances on the front leg that matches its turn, so
+  // it changes leads when the turn flips. Steer straight for a moment between
+  // turns and the change is clean; snap across and it's on the wrong lead.
+  straight: .12, // seconds of going straight that make a clean change
+  wrongT: .3,    // how long the wrong lead lasts, seconds
+  wrong: .7,     // share of its turning it has on the wrong lead
+  wrongDrag: 40, // extra speed lost a second on the wrong lead
 };
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), out = cv.getContext('2d');
@@ -114,12 +122,21 @@ const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
 const cx = lo.getContext('2d');
 const PIX = '"Press Start 2P", monospace';
 const LINE = 165, GATE = [130, 190], FENCE = { x0: 10, x1: W - 10, y0: 8, y1: 178 };
+// Pole bending: six poles in a line. Racers' poles are 21 feet apart; the gap
+// here is whatever lets this horse make the weave. The gate is at the end of
+// the line, as it is in a real arena, so the poles run the long way.
+const POLE = { x0: 62, gap: 40, y: 93, n: 6, line: 28, gate: [63, 123] };
+const EVENTS = {
+  barrels: { title: 'Barrels', best: 'best', noun: 'barrel', gate: 'bottom', start: { x: 160, y: 190, hd: -Math.PI / 2 }, inside: (x, y) => y < LINE, inGate: h => h.x > GATE[0] && h.x < GATE[1], out: h => h.y > 196 },
+  poles: { title: 'Poles', best: 'bestPoles', noun: 'pole', leads: true, gate: 'left', start: { x: 6, y: POLE.y, hd: 0 }, inside: x => x > POLE.line, inGate: h => h.y > POLE.gate[0] && h.y < POLE.gate[1], out: h => h.x < 1 },
+};
 
 // ---------- Saved best time (this browser only) ----------
 const KEY = 'rodeo-test';
 const S = Object.assign({ best: null, sound: true }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
-function hud() { $('#hBest').textContent = `Best ${S.best ? S.best.toFixed(2) : '--'}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
+let C = EVENTS.barrels;
+function hud() { $('#hBest').textContent = `Best ${S[C.best] ? S[C.best].toFixed(2) : '--'}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
 $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
 
 // ---------- Sounds ----------
@@ -146,17 +163,31 @@ const sfx = {
 // ---------- The run ----------
 let G = null;
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
-function newRun() {
+function newRun(ev = C) {
+  C = ev;
   // the right barrel first, turned to the right; then the left and far ones turned to the left
   G = {
     state: 'ready', t: 0, pen: 0, next: 0, dust: [], pop: null, hoof: 0, bump: 0,
-    h: { x: 160, y: 190, hd: -Math.PI / 2, vx: 0, vy: 0, s: 0 },
+    h: { ...C.start, vx: 0, vy: 0, s: 0, lead: 0, calm: 1, wrong: 0 },
     barrels: [{ x: 235, y: 112, sign: 1 }, { x: 85, y: 112, sign: -1 }, { x: 160, y: 40, sign: -1 }].map(b => ({ ...b, sum: 0, last: null, done: false, hit: false })),
+    poles: Array.from({ length: POLE.n }, (_, i) => ({ x: POLE.x0 + i * POLE.gap, y: POLE.y, hit: false })),
+    dir0: null,
   };
-  $('#cover').hidden = true;
+  $('#cover').hidden = true; hud();
+}
+// the gaps to ride through, in order: round the far pole, weave back up the
+// line, round the first pole, weave down it, round the far pole again. -1 is
+// outside the first pole and n-1 is outside the last one.
+const WEAVE = (() => { const end = POLE.n - 1, s = []; for (let g = end; g >= -1; g--) s.push(g); for (let g = 0; g <= end; g++) s.push(g); return s; })();
+const courseLength = () => C === EVENTS.poles ? WEAVE.length : G.barrels.length;
+function showMenu() {
+  G.state = 'menu';
+  $('#card').innerHTML = `<h2>Rodeo</h2><div class="row">${Object.keys(EVENTS).map(k => `<button class="btn" data-ev="${k}">${EVENTS[k].title}</button>`).join('')}</div>`;
+  $('#cover').hidden = false;
+  $('#card').querySelectorAll('[data-ev]').forEach(b => b.onclick = () => newRun(EVENTS[b.dataset.ev]));
 }
 function urge() {
-  if (!G) return;
+  if (!G || G.state === 'menu') return;
   if (G.state === 'done') return again();
   if (G.state === 'ready') { G.state = 'run'; sfx.bell(); }
   G.h.s = Math.min(TUNE.max, Math.max(G.h.s, TUNE.cruise) + TUNE.tap);
@@ -167,14 +198,23 @@ function wanted() {
   return x || y ? Math.atan2(y, x) : null;
 }
 function step(dt) {
-  if (!G || G.state === 'ready' || G.state === 'done') { stepDust(dt); return; }
+  if (!G || G.state === 'ready' || G.state === 'done' || G.state === 'menu') { stepDust(dt); return; }
   const h = G.h, want = wanted();
   let turn = 0;
+  h.wrong = Math.max(0, h.wrong - dt);
   if (want !== null) {
-    const rate = Math.min(TUNE.spin, TUNE.grip / Math.max(h.s, 1));
-    const d = wrap(want - h.hd); turn = Math.max(-rate * dt, Math.min(rate * dt, d));
+    const d = wrap(want - h.hd), way = Math.abs(d) > .12 ? Math.sign(d) : 0;
+    if (!way) h.calm += dt;
+    else {
+      // leads are only in the poles: the barrels stay the way the racers liked them
+      if (way !== h.lead) { if (C.leads && h.calm < TUNE.straight && !h.wrong) wrongLead(h); h.lead = way; }
+      h.calm = 0;
+    }
+    const rate = Math.min(TUNE.spin, TUNE.grip / Math.max(h.s, 1)) * (h.wrong ? TUNE.wrong : 1);
+    turn = Math.max(-rate * dt, Math.min(rate * dt, d));
     h.hd = wrap(h.hd + turn);
-  }
+  } else h.calm += dt;
+  if (h.wrong) h.s -= TUNE.wrongDrag * dt;
   h.s -= (TUNE.drag + TUNE.dragV * h.s) * dt;
   h.s -= TUNE.scrub * (Math.abs(turn) / dt / TUNE.spin) * h.s * dt;
   h.s = Math.max(TUNE.cruise, h.s);
@@ -183,16 +223,27 @@ function step(dt) {
   h.vx += (vx - h.vx) * k; h.vy += (vy - h.vy) * k;
   const ox = h.x, oy = h.y;
   h.x += h.vx * dt; h.y += h.vy * dt;
-  // the fence: the only gap is the gate at the bottom
+  // the fence: the only gap is the gate
   G.bump -= dt;
-  const inGate = h.x > GATE[0] && h.x < GATE[1];
-  if (h.x < FENCE.x0 + 6 || h.x > FENCE.x1 - 6) { h.x = Math.max(FENCE.x0 + 6, Math.min(FENCE.x1 - 6, h.x)); h.vx *= -.3; bump(h); }
+  const inGate = C.inGate(h), leftGate = C.gate === 'left', bottomGate = C.gate === 'bottom';
+  if (h.x > FENCE.x1 - 6) { h.x = FENCE.x1 - 6; h.vx *= -.3; bump(h); }
+  if (h.x < FENCE.x0 + 6 && (!leftGate || (!inGate && ox >= FENCE.x0 + 6))) { h.x = FENCE.x0 + 6; h.vx *= -.3; bump(h); }
   if (h.y < FENCE.y0 + 6) { h.y = FENCE.y0 + 6; h.vy *= -.3; bump(h); }
-  if (h.y > FENCE.y1 - 6 && !inGate && oy <= FENCE.y1 - 6) { h.y = FENCE.y1 - 6; h.vy *= -.3; bump(h); }
+  if (h.y > FENCE.y1 - 6 && (!bottomGate || (!inGate && oy <= FENCE.y1 - 6))) { h.y = FENCE.y1 - 6; h.vy *= -.3; bump(h); }
   // the clock runs from crossing the line going in to crossing it coming home
-  const crossedIn = oy >= LINE && h.y < LINE, crossedOut = oy < LINE && h.y >= LINE;
+  const was = C.inside(ox, oy), now = C.inside(h.x, h.y), crossedIn = !was && now, crossedOut = was && !now;
   if (G.state === 'run' && crossedIn) { G.state = 'clock'; sfx.bell(); }
   if (G.state === 'clock') G.t += dt;
+  if (C === EVENTS.barrels) trackBarrels(h); else trackPoles(h, oy);
+  if (G.state === 'clock' && crossedOut && inGate && G.next === courseLength()) return finish(true);
+  if (C.out(h)) return finish(false);
+  // hooves and dust
+  G.hoof -= Math.hypot(h.vx, h.vy) * dt;
+  if (G.hoof <= 0) { G.hoof = 34; sfx.hoof(); }
+  if (Math.random() < dt * (h.s / 12 + sliding / 8)) G.dust.push({ x: h.x - Math.cos(h.hd) * 7, y: h.y - Math.sin(h.hd) * 7, t: 0 });
+  stepDust(dt);
+}
+function trackBarrels(h) {
   // barrels: touch one and it tips over, plus 5 seconds
   G.barrels.forEach((b, i) => {
     if (!b.hit && Math.hypot(h.x - b.x, h.y - b.y) < 10) { b.hit = true; G.pen += 5; G.pop = { x: b.x, y: b.y - 10, t: 0 }; sfx.clang(); }
@@ -204,26 +255,38 @@ function step(dt) {
       if (b.sum > 5.2) { b.done = true; G.next++; sfx.ding(); }
     }
   });
-  if (G.state === 'clock' && crossedOut && inGate && G.next === 3) return finish(true);
-  if (h.y > 196) return finish(false);
-  // hooves and dust
-  G.hoof -= Math.hypot(h.vx, h.vy) * dt;
-  if (G.hoof <= 0) { G.hoof = 34; sfx.hoof(); }
-  if (Math.random() < dt * (h.s / 12 + sliding / 8)) G.dust.push({ x: h.x - Math.cos(h.hd) * 7, y: h.y - Math.sin(h.hd) * 7, t: 0 });
-  stepDust(dt);
+}
+function trackPoles(h, oy) {
+  G.poles.forEach(p => { if (!p.hit && Math.hypot(h.x - p.x, h.y - p.y) < 6) { p.hit = true; G.pen += 5; G.pop = { x: p.x, y: p.y - 10, t: 0 }; sfx.clang(); } });
+  // each time the horse crosses the line of poles: the right gap, going the
+  // opposite way to the last crossing, counts. Anything else doesn't, and the
+  // rings stay put until it's ridden right.
+  if ((oy - POLE.y) * (h.y - POLE.y) > 0 || oy === h.y || G.next >= WEAVE.length) return;
+  const gap = Math.max(-1, Math.min(POLE.n - 1, Math.floor((h.x - POLE.x0) / POLE.gap))), way = Math.sign(h.y - oy);
+  if (gap !== WEAVE[G.next] || (G.dir0 && way !== G.dir0 * (G.next % 2 ? -1 : 1))) return;
+  if (!G.dir0) G.dir0 = way;
+  G.next++; tone(660, .05, 'square', 0, .03);
+}
+function gapX(g) { return POLE.x0 + (g + .5) * POLE.gap; }
+function wrongLead(h) {
+  h.wrong = TUNE.wrongT; tone(150, .08, 'square', 0, .04);
+  for (let i = 0; i < 4; i++) G.dust.push({ x: h.x + (i - 1.5) * 3, y: h.y + (i % 2 ? 3 : -3), t: 0 });
 }
 function bump(h) { h.s *= .6; if (G.bump <= 0) { G.bump = .4; tone(90, .12, 'square', 0, .05); } }
 function stepDust(dt) { if (!G) return; G.dust = G.dust.filter(d => (d.t += dt, d.t < .6)); if (G.pop) { G.pop.t += dt; if (G.pop.t > 1) G.pop = null; } }
 function finish(clean) {
   G.state = 'done'; G.doneT = performance.now();
-  const total = G.t + G.pen, hits = G.barrels.filter(b => b.hit).length;
+  const total = G.t + G.pen, hits = (C === EVENTS.poles ? G.poles : G.barrels).filter(b => b.hit).length;
   let line;
   if (clean) {
-    const best = !S.best || total < S.best; if (best) { S.best = total; persist(); hud(); }
-    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} barrel${hits > 1 ? 's' : ''} ${G.pen}.00` : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
-  } else line = `<h2>No time</h2><p>${G.next < 3 ? `Barrel ${G.next + 1} was missed.` : 'Come home through the gate.'}</p>`;
-  $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="againBtn">Run again</button></div>`;
-  $('#cover').hidden = false; $('#againBtn').onclick = () => newRun();
+    const best = !S[C.best] || total < S[C.best]; if (best) { S[C.best] = total; persist(); hud(); }
+    sfx.win(); line = `<h2>${total.toFixed(2)}</h2><p>${hits ? `Run ${G.t.toFixed(2)} + ${hits} ${C.noun}${hits > 1 ? 's' : ''} ${G.pen}.00` : 'Clean run!'}</p>${best ? '<p><b>New best!</b></p>' : ''}`;
+  } else {
+    const missed = C === EVENTS.poles ? 'A pole was missed.' : `Barrel ${G.next + 1} was missed.`;
+    line = `<h2>No time</h2><p>${G.next < courseLength() ? missed : 'Come home through the gate.'}</p>`;
+  }
+  $('#card').innerHTML = `${line}<div class="row"><button class="btn" id="eventsBtn">Events</button><button class="btn" id="againBtn">Run again</button></div>`;
+  $('#cover').hidden = false; $('#againBtn').onclick = () => newRun(); $('#eventsBtn').onclick = showMenu;
 }
 function again() { if (performance.now() - G.doneT > 1000) newRun(); }
 
@@ -235,7 +298,8 @@ function drawHorse(h, t) {
   const c = Math.cos(h.hd), s = Math.sin(h.hd), at = (f, side) => [h.x + c * f - s * side, h.y + s * f + c * side];
   const blob = (f, side, r, col) => { const [x, y] = at(f, side); circle(x, y, r, col); };
   const stride = Math.sin(t / Math.max(45, 170 - h.s)) * 2;
-  [[4, 3, stride], [4, -3, -stride], [-4, 3, -stride], [-4, -3, stride]].forEach(([f, sd, g]) => blob(f + g, sd, 1, '#3b2a1a'));   // legs
+  // the front leg on the lead side reaches further
+  [[4 + (h.lead > 0 ? 2 : 0), 3, stride], [4 + (h.lead < 0 ? 2 : 0), -3, -stride], [-4, 3, -stride], [-4, -3, stride]].forEach(([f, sd, g]) => blob(f + g, sd, 1, '#3b2a1a'));   // legs
   blob(-9, 0, 1, '#3b2a1a'); blob(-7, 0, 2, '#3b2a1a');          // tail
   [-5, -3, -1, 1, 3, 5].forEach(f => blob(f, 0, 3, '#1d1410'));   // an outline under the body
   [-5, -3, -1, 1, 3, 5].forEach(f => blob(f, 0, 2, '#8a4f2a'));   // the body
@@ -245,14 +309,27 @@ function drawHorse(h, t) {
 function draw(t) {
   px(0, 0, W, H, '#d9b67a');
   for (let i = 0; i < 90; i++) px((i * 83) % W, (i * 47) % H, 2, 1, '#c9a468');
-  // fence with the gate at the bottom
-  const fence = '#fffaf0';
-  px(FENCE.x0 - 3, FENCE.y0 - 3, FENCE.x1 - FENCE.x0 + 6, 3, fence); px(FENCE.x0 - 3, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence); px(FENCE.x1, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
-  px(FENCE.x0 - 3, FENCE.y1, GATE[0] - FENCE.x0 + 3, 3, fence); px(GATE[1], FENCE.y1, FENCE.x1 - GATE[1] + 3, 3, fence);
-  for (let x = GATE[0]; x < GATE[1]; x += 8) px(x, LINE, 4, 2, '#fffaf0');   // the timer line
-  // barrels, with the next one marked: dots circling the way to go round it
-  G.barrels.forEach((b, i) => {
-    if (i === G.next && G.state !== 'done') for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + b.sign * t / 400; px(b.x + Math.cos(a) * 18 - 1, b.y + Math.sin(a) * 18 - 1, 3, 3, k === 0 ? '#ffffff' : '#e04848'); }
+  // fence with the gate, and the timer line
+  const fence = '#fffaf0', left = C.gate === 'left';
+  px(FENCE.x0 - 3, FENCE.y0 - 3, FENCE.x1 - FENCE.x0 + 6, 3, fence); px(FENCE.x1, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
+  if (left) {
+    px(FENCE.x0 - 3, FENCE.y0, 3, POLE.gate[0] - FENCE.y0, fence); px(FENCE.x0 - 3, POLE.gate[1], 3, FENCE.y1 - POLE.gate[1] + 3, fence);
+    px(FENCE.x0 - 3, FENCE.y1, FENCE.x1 - FENCE.x0 + 6, 3, fence);
+    for (let y = POLE.gate[0]; y < POLE.gate[1]; y += 8) px(POLE.line, y, 2, 4, '#fffaf0');
+  } else {
+    px(FENCE.x0 - 3, FENCE.y0, 3, FENCE.y1 - FENCE.y0 + 3, fence);
+    px(FENCE.x0 - 3, FENCE.y1, GATE[0] - FENCE.x0 + 3, 3, fence); px(GATE[1], FENCE.y1, FENCE.x1 - GATE[1] + 3, 3, fence);
+    for (let x = GATE[0]; x < GATE[1]; x += 8) px(x, LINE, 4, 2, '#fffaf0');
+  }
+  const ring = (x, y, r, sign) => { for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + sign * t / 400; px(x + Math.cos(a) * r - 1, y + Math.sin(a) * r - 1, 3, 3, k === 0 ? '#ffffff' : '#e04848'); } };
+  const riding = G.state !== 'done' && G.state !== 'menu';
+  if (C === EVENTS.poles) {
+    // the next gap to ride through is marked with a ring of dots
+    if (riding && G.next < WEAVE.length) ring(gapX(WEAVE[G.next]), POLE.y, 9, 1);
+    G.poles.forEach(p => { circle(p.x, p.y, 3, '#1d1410'); circle(p.x, p.y, 2, p.hit ? '#8c8c96' : '#fffaf0'); if (!p.hit) px(p.x - 1, p.y - 1, 3, 2, '#e04848'); });
+  } else G.barrels.forEach((b, i) => {
+    // the next barrel is marked: dots circling the way to go round it
+    if (i === G.next && riding) ring(b.x, b.y, 18, b.sign);
     circle(b.x, b.y, 6, '#1d1410'); circle(b.x, b.y, 5, b.hit ? '#8c8c96' : b.done ? '#3f9d5d' : '#3a6fd8'); circle(b.x, b.y, 2, b.hit ? '#6f6f78' : '#bfe8ff');
     text(String(i + 1), b.x + 1, b.y - 9, '#3b2a1a');
   });
@@ -270,6 +347,7 @@ function draw(t) {
 const keys = {}, stick = { x: 0, y: 0, on: false, id: null };
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (G?.state === 'menu') return;   // Space and Enter press the event buttons
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   keys[k] = true;
   if (k === ' ' && !e.repeat) urge();
@@ -299,7 +377,7 @@ cv.addEventListener('pointerdown', () => { if (!matchMedia('(pointer:coarse)').m
 // touch-action in the CSS wasn't enough. Only during a run, so the results card
 // can still be zoomed to read.
 {
-  const riding = () => G && G.state !== 'done';
+  const riding = () => G && G.state !== 'done' && G.state !== 'menu';
   const stop = e => { if (riding() && e.cancelable) e.preventDefault(); };
   ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
   document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
@@ -331,7 +409,7 @@ function loop(t) {
   out.drawImage(lo, 0, 0, cv.width, cv.height);
   requestAnimationFrame(loop);
 }
-hud(); newRun(); resize();
+hud(); newRun(); showMenu(); resize();
 requestAnimationFrame(loop);
 </script>
 </body>
