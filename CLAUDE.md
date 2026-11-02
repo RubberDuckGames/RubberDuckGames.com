@@ -74,7 +74,8 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
   the screen, arrow keys drive, Space is the horn. A picture docket shows what
   to pick up (an animal or a crate) and which dock it goes to (a big number, a
-  color and a shape), and a voice reads it out, because he can't read yet.
+  color and a shape), because he can't read yet. Decided 2 Nov: no voice, only
+  chiptune sounds, like Bread.
   Loading and unloading happen by themselves near the dock. Bumping buoys and
   boats just boings: no damage, no timer, no losing. Sparkles float on the
   water to collect. The tugboat's name (his name) is typed in on the family's

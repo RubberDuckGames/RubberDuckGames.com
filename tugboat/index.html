@@ -23,7 +23,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(-
 .stagebox{position:relative}
 canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;touch-action:none}
 /* the docket: what to pick up, and which dock it goes to, in pictures */
-.docket{position:absolute;bottom:.3rem;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:.5rem;background:var(--panel);border:4px solid var(--ink);padding:.4rem .6rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.25);cursor:pointer}
+.docket{position:absolute;bottom:.3rem;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:.5rem;background:var(--panel);border:4px solid var(--ink);padding:.4rem .6rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.25)}
 .docket img{display:block;height:3rem;image-rendering:pixelated}
 .docket .to{width:1.6rem;height:1.6rem;fill:var(--ink)}
 .docket .dock{display:flex;align-items:center;gap:.3rem;padding:.25rem .45rem;color:#fff;font-family:"Press Start 2P",monospace;font-size:1.5rem;line-height:1}
@@ -72,11 +72,11 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 <div class="wrap">
   <div class="stagebox" id="box">
     <canvas id="cv" aria-label="The harbor"></canvas>
-    <button class="docket" id="docket" hidden aria-label="Hear the docket again">
+    <div class="docket" id="docket" hidden role="status">
       <img class="item" id="dItem" alt="">
       <svg class="to" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3.5h5V1l3.5 4L6 9V6.5H1z"/></svg>
       <span class="dock" id="dDock"><span id="dNum"></span><img id="dShape" alt=""></span>
-    </button>
+    </div>
     <div class="cover" id="cover" hidden><div class="card" id="card"></div></div>
   </div>
 </div>
@@ -95,8 +95,8 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 // 3, knows the arrow keys and the space bar): drive a little tugboat around one
 // harbor that fits the screen, pick up animals and crates, and take them to
 // the dock on the docket. The docket is all pictures, the dock is a big number
-// with a color and a shape, and a voice reads it out, because he can't read
-// yet. Nothing can go wrong: bumping things just boings, no timer, no losing.
+// with a color and a shape, because he can't read yet. Decided 2 Nov: no voice,
+// only chiptune sounds, like Bread; the pictures carry it. Nothing can go wrong: bumping things just boings, no timer, no losing.
 // 8-bit, drawn on a small canvas and scaled up with smoothing off, like Bread.
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), out = cv.getContext('2d');
@@ -115,7 +115,7 @@ function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch
 function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
 const title = () => S.name ? `Tugboat ${S.name}'s Deliveries` : 'Tugboat Deliveries';
 
-// ---------- Sounds and the voice ----------
+// ---------- Sounds ----------
 let ac;
 function tone(f, d, type = 'square', when = 0, vol = .05, to) {
   if (!S.sound) return;
@@ -136,16 +136,7 @@ const sfx = {
   sparkle: () => [988, 1319, 1568].forEach((f, i) => tone(f, .08, 'square', i * .05, .03)),
   start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
 };
-let voice = null;
-function pickVoice() { const vs = speechSynthesis.getVoices(); voice = vs.find(v => v.lang === 'en-US' && /Samantha|Google US|Aria|Jenny|Ava/.test(v.name)) || vs.find(v => v.lang.startsWith('en')) || null; }
-if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-function say(t, cut = true) {
-  if (!S.sound || !('speechSynthesis' in window)) return;
-  if (cut) speechSynthesis.cancel(); else if (speechSynthesis.speaking) return;
-  const u = new SpeechSynthesisUtterance(t); if (voice) u.voice = voice; u.rate = .9; u.pitch = 1.15;
-  speechSynthesis.speak(u);
-}
-$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); if (!S.sound) speechSynthesis?.cancel(); };
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
 
 // ---------- Pixel art ----------
 const COL = {
@@ -253,7 +244,6 @@ function newJob() {
   do to = DOCKS[Math.floor(Math.random() * DOCKS.length)]; while (to === from);
   G.job = { item, from, to, got: false };
   showDocket();
-  say(`Pick up ${item.name} at dock ${from.n}!`);
 }
 function showDocket() {
   const j = G.job, d = $('#docket');
@@ -263,10 +253,8 @@ function showDocket() {
   $('#dDock').style.background = dock.col; $('#dNum').textContent = dock.n;
   $('#dShape').src = dataURL(SHAPES[dock.shape], { map: { x: '#ffffff' } });
   d.classList.toggle('got', false);
-  d.setAttribute('aria-label', j.got ? `Take ${j.item.name} to dock ${j.to.n}. Tap to hear it again.` : `Pick up ${j.item.name} at dock ${j.from.n}. Tap to hear it again.`);
+  d.setAttribute('aria-label', j.got ? `Take ${j.item.name} to dock ${j.to.n}.` : `Pick up ${j.item.name} at dock ${j.from.n}.`);
 }
-const docketLine = () => { const j = G.job; return j.got ? `Take ${j.item.name} to dock ${j.to.n}, the ${j.to.color} ${j.to.shape}!` : `Pick up ${j.item.name} at dock ${j.from.n}, the ${j.from.color} ${j.from.shape}!`; };
-$('#docket').onclick = () => { if (G?.job) say(docketLine()); };
 
 // ---------- Playing ----------
 const keys = {};
@@ -297,7 +285,6 @@ function step(dt, t) {
     s.t += dt;
     if (Math.hypot(s.x - b.x, s.y - b.y) > .8) return true;
     S.sparkles++; persist(); hud(); sfx.sparkle(); burst(s.x, s.y, ['#ffe680', '#ffffff', '#bfe8ff']);
-    if (S.sparkles % 5 === 0) say(`${S.sparkles} sparkles!`, false);
     setTimeout(() => G && addSparkle(), 2500);
     return false;
   });
@@ -314,12 +301,10 @@ function step(dt, t) {
     G.hop.t += dt / .6;
     if (G.hop.t >= 1) {
       const h = G.hop; G.hop = null;
-      if (h.to === 'boat') { j.got = true; showDocket(); say(docketLine()); }
+      if (h.to === 'boat') { j.got = true; showDocket(); }
       else delivered();
     }
   }
-  // a gentle reminder if nothing has happened for a while
-  if (G.idle > 14 && j) { G.idle = 0; say(docketLine(), false); }
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
 }
 function bonk() { if (G.bonk <= 0) { G.bonk = .4; sfx.boing(); } }
@@ -329,7 +314,6 @@ function delivered() {
   S.trips++; S.stickers.push(j.item.key); if (S.stickers.length > 60) S.stickers.shift(); persist(); hud();
   sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
   G.left = { item: j.item, ...p, t: 0 };
-  say(S.trips % 5 === 0 ? `Thank you! You did ${S.trips} deliveries!` : 'Thank you! You did it!');
   G.job = null; showDocket();
   setTimeout(() => { if (G) { G.left = null; newJob(); } }, 2600);
 }
@@ -411,7 +395,6 @@ function pressStart() {
 function play() {
   screen = 'play'; $('#nameBtn').hidden = true; $('#ctrl').hidden = false; resize();
   newHarbor();
-  say(`Toot toot! ${S.name ? `${S.name}'s tugboat` : 'The tugboat'} is ready! ${docketLine()}`);
 }
 // Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
 function askName(thenStart) {
