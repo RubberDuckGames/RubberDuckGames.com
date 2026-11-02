@@ -167,8 +167,12 @@ const dataURL = (rows, opt) => { const s = sprite(rows, opt), c = document.creat
 
 // the tugboat, facing right: a smokestack, a cabin with windows, a red hull with tires
 const TUG = ['..............DD........', '..............DD........', '..............rr........', '..............DD........', '..........hhhhhhhhh.....', '..........hllhllhlh.....', '..........hllhllhlh.....', '..........hhhhhhhhh.....', '.rrrrrrrrrrrrrrrrrrrrrr.', '..rrrgrrrrgrrrrgrrrrrrrr', '..rrrrrrrrrrrrrrrrrrrrr.', '...RRRRRRRRRRRRRRRRRRR..'];
-const SAIL = ['.....h........', '.....hh.......', '.....hhh......', '.....hhhh.....', '.....hhhhh....', '.....hhhhhh...', '.....D........', 'uuuuuuuuuuuuuu', '.uuuuuuuuuuuu.', '..VVVVVVVVVV..'];
-const FISHER = ['.......D.......', '.......D.......', '....yyyyy......', '....yllly......', 'GGGGGGGGGGGGGG.', '.GGGGGGGGGGGGGG', '..qqqqqqqqqqqq.'];
+// the other boats, both facing right like the tugboat (flipped when they go
+// left). Decided 2 Nov: the first drawings had the sail in front of the mast
+// and no clear bow, so they looked like they were going backwards. Now the
+// sail trails behind the mast and the bow leans forward at the front, the way a real bow does.
+const SAIL = ['.........h.....', '........hh.....', '.......hhh.....', '......hhhh.....', '.....hhhhh.....', '....hhhhhh.....', '.........D.....', 'uuuuuuuuuuuuuuu', 'uuuuuuuuuuuuuu.', '.VVVVVVVVVVV...'];
+const FISHER = ['....D..........', '....D..........', '..yyyyy........', '..yllly........', 'GGGGGGGGGGGGGGG', 'GGGGGGGGGGGGGG.', '.qqqqqqqqqqq...'];
 const BUOY = [['..rr..', '.rhhr.', '.rrrr.', 'hhhhhh', 'rrrrrr'], ['......', '..rr..', '.rhhr.', '.rrrr.', 'hhhhhh']];
 const SPARKLE = [
   ['...h...', '...h...', '...e...', 'hheeehh', '...e...', '...h...', '...h...'],
