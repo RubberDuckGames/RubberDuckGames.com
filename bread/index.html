@@ -207,7 +207,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv"></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span> · Help: <b>H</b></p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> · Help: <b>H</b></p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -302,7 +302,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, pond: {}, farm: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, pond: {}, farm: {}, barn: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -331,6 +331,9 @@ const ITEMS = {
   pig: { slot: 'body', name: 'Pig costume', world: 'farm' },
   pigSnout: { slot: 'face', name: 'Pig snout', world: 'farm' },
   pigTail: { slot: 'back', name: 'Curly tail', world: 'farm' },
+  cow: { slot: 'body', name: 'Cow costume', world: 'barn' },
+  cowbell: { slot: 'neck', name: 'Cowbell', world: 'barn' },
+  horns: { slot: 'hat', name: 'Little horns', world: 'barn' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
@@ -341,6 +344,7 @@ const SLOTS = [['body', 'Costume'], ['hat', 'Hat'], ['face', 'Face'], ['neck', '
 const PARTS = {
   pond: [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']],
   farm: [['beat', 'Pig costume'], ['pigSnout', 'Pig snout'], ['pigTail', 'Curly tail'], ['chicken', 'Rubber chicken toy'], ['gold', 'Gold paw print']],
+  barn: [['beat', 'Cow costume'], ['cowbell', 'Cowbell'], ['horns', 'Little horns'], ['milk', 'Milk bottle toy'], ['gold', 'Gold paw print']],
 };
 
 // ---------- Sounds ----------
@@ -375,6 +379,8 @@ const sfx = {
   quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
   squeak: () => tone(1400, .12, 'square', 0, .03, 1900),
   honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
+  moo: () => tone(190, .5, 'square', 0, .04, 120),
+  push: () => { tone(120, .12, 'square', 0, .05, 80); tone(90, .1, 'square', .1, .04, 70); },
   ouch: () => { tone(400, .08, 'square', 0, .04, 200); tone(260, .12, 'square', .09, .04, 120); },
   tick: () => tone(1500, .03, 'square', 0, .025),
   found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
@@ -476,24 +482,29 @@ const WEAR_PIX = {
   pigTail: [0, 4, ['.PP.', 'P..P', '..PP', '.P..']],
   duckHat: [13, -5, ['...yy..', '...ynbb', 'y..yyy.', 'yyyyyy.', '.yyyy..']],
   party: [14, -5, ['..r..', '..m..', '.mym.', '.mmm.', 'mmymm']],
+  cowSpots: [5, 8, ['.nn..nn.', 'nnn..nn.', '.n.....n']],   // black spots on the cow costume
+  cowbell: [12, 9, ['.g.', 'yyy', 'yyy', '.Y.']],
+  horns: [14, 1, ['t..t', '.tt.']],
 };
 function breadRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
   const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
   if (wear.back === 'cape') over(WEAR_PIX.cape);
   if (wear.body === 'duck') over(WEAR_PIX.duck);
-  if (wear.neck === 'bowtie') over(WEAR_PIX.bowtie);
+  if (wear.body === 'cow') over(WEAR_PIX.cowSpots);
+  if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
   if (wear.back === 'pigTail') over(WEAR_PIX.pigTail);
   if (wear.hat) over(WEAR_PIX[wear.hat]);
   return g.map(r => r.join(''));
 }
 // (x, y) is the ground under the middle of Bread
-// the costume colors: the duck is yellow, the pig pink
+// the costume colors: the duck is yellow, the pig pink, the cow white with black spots
 function wearMap(wear) {
   const map = {};
   if (wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
   if (wear.body === 'pig') Object.assign(map, { o: COL.P, d: COL.Q, p: COL.Q });
+  if (wear.body === 'cow') Object.assign(map, { o: COL.h, d: COL.g, p: COL.P });
   if (wear.feet === 'duckFeet') map.f = COL.b;
   return map;
 }
@@ -533,10 +544,21 @@ const GOOSE = [
   ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '.....b..b.......', '.....b..b.......', '....bb.bb.......'],
   ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '....b...b.......', '....b...b.......', '...bb..bb.......'],
 ];
+// The barn (decided 3 Nov from the testers' asks: go inside the barn, and a
+// dairy cow level). Cows in the pasture, the dairy cow in her stall, mice in the barn.
+const COW = [
+  '...............c.c..', '..............hhhhh.', '.hhhhhhhhhhhhhhhnhh.', 'hnnhhhhhnnnhhhhhhhPP', 'hnnnhhhhnnhhhhhhhhPP', 'hhnhhhhhhhhhnnhhhh..',
+  'hhhhhhhhhhhnnnhhhh..', '.ggggggPPggggggggg..', '.hh.hh.PP....hh.hh..', '.hh.hh.......hh.hh..', '.nn.nn.......nn.nn..',
+];
+const MOUSE = [
+  ['......pp..', '...gggggg.', '..ggggggng', 'p.gggggggp', '.pggggggg.', '...p...p..'],
+  ['......pp..', '...gggggg.', '..ggggggng', '.pgggggggp', 'p.ggggggg.', '..p...p...'],
+];
+const MILK = ['..rr..', '..hh..', '.hhhh.', 'hhhhhh', 'huuuuh', 'huuuuh', 'hhhhhh', '.hhhh.'];
 const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
 const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -569,6 +591,9 @@ const CRUMB_WEAR = {
   pigTail: [0, 3, ['.PP.', 'P..P', '..PP', '.P..']],
   duckHat: [9, -5, WEAR_PIX.duckHat[2]],
   party: [10, -5, WEAR_PIX.party[2]],
+  cowSpots: [3, 6, ['..nn..nn', '.nnn..n.']],
+  cowbell: [9, 7, WEAR_PIX.cowbell[2]],
+  horns: [10, -2, ['t..t', '.tt.']],
 };
 function crumbRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
@@ -576,7 +601,8 @@ function crumbRows(frame, wear) {
   if (wear.feet === 'duckFeet') for (const y of [pad + 10, pad + 11]) g[y] = g[y].map(ch => ch === 's' ? 'b' : ch);
   if (wear.back === 'cape') over(CRUMB_WEAR.cape);
   if (wear.body === 'duck') over(CRUMB_WEAR.duck);
-  if (wear.neck === 'bowtie') over(CRUMB_WEAR.bowtie);
+  if (wear.body === 'cow') over(CRUMB_WEAR.cowSpots);
+  if (wear.neck) over(CRUMB_WEAR[wear.neck]);
   if (wear.face) over(CRUMB_WEAR[wear.face]);
   if (wear.back === 'pigTail') over(CRUMB_WEAR.pigTail);
   if (wear.hat) over(CRUMB_WEAR[wear.hat]);
@@ -585,6 +611,7 @@ function crumbRows(frame, wear) {
 function crumbMap(wear) {
   if (wear.body === 'duck') return { D: COL.y, s: COL.Y, p: COL.y };
   if (wear.body === 'pig') return { D: COL.P, s: COL.Q, p: COL.Q };
+  if (wear.body === 'cow') return { D: COL.h, s: COL.g, p: COL.P };
   return {};
 }
 // (x, y) is the ground under the middle of Crumb
@@ -630,7 +657,7 @@ function drawHome(t) {
   px(15, 51, 76, 5, LINE); px(16, 52, 74, 3, '#7a4a2a');
   const shelf = [];
   Object.keys(TOYS).forEach(k => { if (S.toys.includes(k)) shelf.push(sprite(TOYS[k].pic)); });
-  ['pond', 'farm'].forEach(w => { if (S[w].trophy) shelf.push(sprite(TROPHY)); });
+  Object.keys(PARTS).forEach(w => { if (S[w].trophy) shelf.push(sprite(TROPHY)); });
   if (!shelf.length) text('Toys go here', 53, 46, '#b8854e');
   shelf.forEach((img, i) => put(img, 22 + i * 22, 52 - img.height + 1));
   // Bread's bed and rug
@@ -645,7 +672,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2] };
 const picCache = {};
 function pic(rows, dark) {
   const key = rows.join('/') + dark;
@@ -719,15 +746,15 @@ document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
 // Decided 28 Oct: the car ride is the level map. Bread's car drives along the
 // road from home to a place, and home again after. New places get added as
 // they're built.
-// The road comes in parts: 0 is home, 1 the pond, 2 the farm.
-const ROAD = [[[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]], [[11.6, 4.2], [13.2, 5.6], [11.4, 8.8], [13.9, 9.1]]];
+// The road comes in parts: 0 is home, 1 the pond, 2 the farm, 3 the barn.
+const ROAD = [[[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]], [[11.6, 4.2], [13.2, 5.6], [11.4, 8.8], [13.9, 9.1]], [[13.9, 9.1], [17.6, 10.4], [17.2, -.6], [6.4, 2.2]]];
 const bez = t => { const n = Math.min(ROAD.length - 1, Math.floor(t)), k = t - n, u = 1 - k, [a, b, c, d] = ROAD[n]; return [0, 1].map(i => u * u * u * a[i] + 3 * u * u * k * b[i] + 3 * u * k * k * c[i] + k * k * k * d[i]); };
 let ride = null;
 function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, dur: 1.5 * Math.abs(to - from), then }; sfx.honk(); }
 // Decided 28 Oct: you drive the map with the arrow keys, like an old game map,
 // instead of clicking places. The car stops at each place; Enter goes in. On a
 // touch screen the ◀ ▶ buttons do the same.
-const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }];
+const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }, { name: 'barn', go: 'Go to the barn', world: 'barn', needs: 'farm' }];
 let mapAt = 0;
 function atStop(msg) {
   screen = 'map'; showRow('mapBtns');
@@ -756,7 +783,7 @@ function drawMap(t) {
   for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) if ((x * 7 + y * 3) % 4 === 0) { px(x * T + 5, y * T + 8, 1, 2, '#79bd66'); px(x * T + 7, y * T + 7, 1, 3, '#79bd66'); }
   // the road, a tile at a time like an old game map
   const road = new Set();
-  for (let i = 0; i <= 200; i++) { const [x, y] = bez(i / 100); road.add(Math.floor(x) + ',' + Math.floor(y)); }
+  for (let i = 0; i <= ROAD.length * 100; i++) { const [x, y] = bez(i / 100); road.add(Math.floor(x) + ',' + Math.floor(y)); }
   road.forEach(k => {
     const [x, y] = k.split(',').map(Number), X = x * T, Y = y * T;
     px(X, Y, T, T, '#ecd6a0');
@@ -785,8 +812,19 @@ function drawMap(t) {
     if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
     else pips('farm', X + 17, 152);
   }
+  // the barn: a big red barn with a white X on the doors, a silo, and a cow
+  { const X = 108, Y = 10;
+    px(X, Y + 8, 36, 24, LINE); px(X + 1, Y + 9, 34, 22, '#c0392b'); for (let i = 3; i < 34; i += 5) px(X + 1 + i, Y + 9, 1, 22, '#8e2a20');
+    for (let i = 0; i < 10; i++) { px(X - 2 + i * 2, Y + 8 - i, 40 - i * 4, 1, LINE); if (i) px(X - 1 + i * 2, Y + 8 - i, 38 - i * 4, 1, '#8e2a20'); }
+    px(X + 11, Y + 16, 14, 15, LINE); px(X + 12, Y + 17, 12, 14, '#fff1d6'); px(X + 13, Y + 18, 10, 12, '#c0392b');
+    for (let i = 0; i < 10; i++) { px(X + 13 + i, Y + 18 + Math.round(i * 1.1), 1, 1, '#fff1d6'); px(X + 22 - i, Y + 18 + Math.round(i * 1.1), 1, 1, '#fff1d6'); }
+    px(X + 39, Y + 2, 10, 30, LINE); px(X + 40, Y + 3, 8, 28, '#c9c9d4'); px(X + 40, Y + 3, 8, 3, '#8e2a20');
+    put(sprite(COW, { flip: Math.floor(t / 2300) % 2 === 1 }), X - 52, Y + 44);
+    if (!S.farm.beat) { const lx = X + 13, ly = Y + 22; px(lx, ly, 12, 10, LINE); px(lx + 1, ly + 1, 10, 8, COL.y); px(lx + 2, ly - 5, 8, 1, LINE); px(lx + 2, ly - 5, 1, 6, LINE); px(lx + 9, ly - 5, 1, 6, LINE); }
+    else pips('barn', X + 18, Y + 36);
+  }
   // trees, for a nicer drive
-  [[96, 32], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
+  [[24, 24], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
   const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(screen === 'map' ? mapAt : 0);
   drawCar(p[0] * T, p[1] * T + 6, ride && ride.to < ride.from ? -1 : 1, ride ? t : 0);
 }
@@ -813,7 +851,7 @@ const LW = 36, LH = 22;
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhB', SOLID_LAND = BLOCK + 'Gw';
+const BLOCK = '#THFCXhBKRP', SOLID_LAND = BLOCK + 'Gw';
 let G = null, W = null;
 const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
@@ -907,6 +945,46 @@ const FARM = (() => {
     chickenMound: chicken, goldSpots: mounds.filter(([x, y]) => x !== chicken[0] || y !== chicken[1]),
   };
 })();
+// The barn (decided 3 Nov: the testers wanted to go inside the barn, and a
+// dairy cow level). Crumb runs across the cow pasture, into the big red barn,
+// and squeezes through the hay into the back room. The dairy cow in her stall
+// teaches Bread to push, and Bread pushes the hay bales out of the way. The
+// barn's roof hides the inside until Bread walks in the door. K is the barn
+// wall, n its floor, R a stall rail, P a hay bale Bread can push.
+// The hay puzzles can't get stuck: each bale has room to go, and one push
+// opens the way.
+const BARN = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 1; y <= 12; y++) for (let x = 4; x <= 31; x++) m[y][x] = y === 1 || y === 12 || x === 4 || x === 31 ? 'K' : 'n';
+  for (const x of [17, 18]) m[12][x] = 'n';                                      // the big doors, open
+  // two stalls on the left: the dairy cow's, and one with a bale in its gate
+  for (let y = 2; y <= 4; y++) { m[y][8] = 'R'; m[y][12] = 'R'; }
+  for (let x = 5; x <= 12; x++) if (x !== 6 && x !== 10) m[5][x] = 'R';
+  m[5][10] = 'P';
+  // the feed pen below them, with a bale in its gate
+  for (let x = 5; x <= 9; x++) m[7][x] = 'R';
+  for (let y = 8; y <= 11; y++) m[y][9] = 'R';
+  m[9][9] = 'P';
+  // the back room where Crumb ends up, closed off by three bales
+  for (let y = 2; y <= 7; y++) m[y][22] = 'K';
+  for (let x = 22; x <= 30; x++) m[7][x] = x >= 25 && x <= 27 ? 'P' : 'K';
+  // hay stacked against the walls
+  for (const [x, y] of [[14, 2], [15, 2], [14, 3], [19, 2], [20, 2], [20, 3], [29, 10], [30, 10], [30, 9], [23, 11]]) m[y][x] = 'h';
+  // the pasture: the path from the car to the barn doors, trees and bushes
+  for (let y = 13; y < LH - 1; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (const [x, y] of [[2, 14], [34, 16], [9, 18], [27, 19], [6, 15]]) m[y][x] = 'T';
+  for (const [x, y] of [[33, 19], [2, 19], [33, 14], [12, 14]]) m[y][x] = 'b';
+  return {
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], run: [[18, 13.4], [18, 9.5], [26.5, 9.5], [26.5, 6.5]], crumbAt: [28.5, 4.5],
+    rect: [4, 1, 31, 12], cow: [6.5, 3.6], gate: [26.5, 8.5],
+    // where the pieces hide: the cowbell in the stall with the bale, the horns
+    // in the feed pen, the milk bottle under a bush in the pasture
+    spots: { cowbell: [11.5, 2.5], horns: [6.5, 10.5], milk: [33.5, 19.5] },
+    goldSpots: [[29.5, 2.5], [5.5, 8.5], [2.5, 19.5], [33.5, 14.5]],
+  };
+})();
+const inBarn = (x, y) => { const [x0, y0, x1, y1] = BARN.rect; return G.world === 'barn' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
 const solidAt = (x, y, set) => set.includes(tileAt(x, y));
 function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
@@ -920,12 +998,13 @@ function randOpen(minD = 0, kinds = '.p', ok = () => true) {   // ok(x, y) narro
 }
 function startWorld(key) {
   W = WORLDS[key]; const M = W.map;
+  if (!S[key]) S[key] = {};
   screen = 'level'; showRow('levelBtns');
-  G = { world: key, m: M.m.map(r => [...r]), bread: { x: M.start[0], y: M.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], hens: [], piglets: [], pig: null, fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
+  G = { world: key, m: M.m.map(r => [...r]), bread: { x: M.start[0], y: M.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], hens: [], piglets: [], pig: null, cows: [], cow: null, fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
     stage: '', key: null, hasKey: false, gateOpen: false, holeDug: false, lost: 0, digT: 0, muddy: 0,
     // Crumb hops out of the car and runs off
     crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
-  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2); G.treats.push({ x, y, v }); } };
+  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p'); G.treats.push({ x, y, v }); } };
   add(22, 1); add(6, 2); add(3, 5);
   // the gold paw print: in a bush at the pond, buried in a mound at the farm
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
@@ -1014,7 +1093,64 @@ const WORLDS = {
       if (G.stage === 'dig') return { x: FARM.hole[0], y: FARM.hole[1] };
     },
   },
+  barn: {
+    key: 'barn', name: 'barn', Name: 'Barn', map: BARN, stop: 3, costume: 'cow', pic: COW, baddies: 'Mice caught', soil: 2, open: '.pn',
+    goals: { cow: 'Find the dairy cow in the barn', push: 'Push the hay out of the way', find: 'Find Crumb', back: 'Bring Crumb to the car' },
+    setup() {
+      const loose = (x, y) => (x >= 11 && x <= 21 && y >= 6 && y <= 11) || (x >= 23 && x <= 30 && y >= 8 && y <= 11) || (x >= 13 && x <= 21 && y >= 2);
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, 'n', loose); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, mouse: true }); }
+      for (let i = 0; i < 5; i++) { const [x, y] = randOpen(4, '.', (x, y) => y > 13); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 13 && Math.abs(x - 17.5) > 3); G.cows.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, moo: 0, face: 1 }); }
+      G.cow = { x: BARN.cow[0], y: BARN.cow[1], moo: 0, t: 0 };
+      stage(S.moves.push ? 'push' : 'cow', 'Crumb ran into the barn!');
+    },
+    step(b, dt) {
+      const near = Math.hypot(G.cow.x - b.x, G.cow.y - b.y) < 2.4;
+      G.cow.t += dt; G.cow.moo -= dt;
+      if (near && G.cow.moo <= 0) { G.cow.moo = 3.5; sfx.moo(); G.pops.push({ x: G.cow.x, y: G.cow.y - 1, txt: 'Moo!', t: 0, c: LINE }); }
+      if (near && !S.moves.push) {
+        S.moves.push = true; persist(); showDig();
+        hold(HAY_PIC, 'The cow taught Bread to push!');
+        stage('push');
+      }
+      if (!G.hayOpen && [25, 26, 27].some(x => G.m[7][x] !== 'P')) { G.hayOpen = true; stage('find', 'The hay moved!'); }
+      // the cows out in the pasture graze, wander and moo when Bread comes by
+      G.cows.forEach(c => {
+        c.t += dt; c.moo -= dt;
+        const d = Math.hypot(c.x - b.x, c.y - b.y);
+        if (d < 2 && c.moo <= 0) { c.moo = 4; sfx.moo(); G.pops.push({ x: c.x, y: c.y - 1, txt: 'Moo!', t: 0, c: LINE }); }
+        c.a += (Math.random() - .5) * 1.5 * dt;
+        const v = Math.sin(c.t * .5) > .4 ? .5 : 0, ox = c.x;
+        move(c, Math.cos(c.a) * v * dt, Math.sin(c.a) * v * dt, .45);
+        if (v && ox === c.x) c.a += 2;
+        if (c.y < 13.8) { c.y = 13.8; c.a = 1.5; }
+        if (Math.abs(c.x - ox) > .001) c.face = c.x > ox ? 1 : -1;
+      });
+    },
+    reached: () => G.hayOpen,
+    target() {
+      if (G.stage === 'cow') return G.cow;
+      if (G.stage === 'push') return { x: BARN.gate[0], y: BARN.gate[1] };
+    },
+  },
 };
+// Decided 3 Nov: pushing, learned from the dairy cow. Walking into a hay bale
+// for a moment slides it one tile, if the tile past it is empty floor. Only
+// straight pushes, the way old adventure games do it, so a bale goes where
+// you'd expect.
+const HAY_PIC = ['yyyyyyyyyyyy', 'yytYYYYYtYYy', 'yytyyyyytyyy', 'yytYYYYYtYYy', 'yytyyyyytyyy', 'YYtYYYYYtYYY'];
+function tryPush(b, dx, dy, dt) {
+  const ax = Math.abs(dx) > .7 ? Math.sign(dx) : 0, ay = !ax && Math.abs(dy) > .7 ? Math.sign(dy) : 0;
+  const tx = Math.floor(b.x + ax * .6), ty = Math.floor(b.y + ay * .6);
+  if ((!ax && !ay) || G.m[ty]?.[tx] !== 'P') { G.pushT = 0; return; }
+  if (!S.moves.push) { if (!G.pushTip) { G.pushTip = true; toast('Too heavy. Ask the cow?'); } return; }
+  G.pushT = (G.pushT || 0) + dt; if (G.pushT < .3) return;
+  G.pushT = 0;
+  const nx = tx + ax, ny = ty + ay, c = G.crumb;
+  if (!'.pn'.includes(G.m[ny]?.[nx]) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
+  G.m[ny][nx] = 'P'; G.m[ty][tx] = inBarn(tx, ty) ? 'n' : '.'; sfx.push();
+  for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 1.5; G.fx.push({ x: tx + .5, y: ty + .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: ['#e8c35a', '#c9a03a', '#fff1d6'][i % 3] }); }
+}
 // The boss goose. It waddles after Bread when she comes close and goes back to
 // Crumb when she leaves; bumping it costs a bone. A bark makes it stop and stare
 // for a moment, and a paw then counts as a hit. Three hits and it flaps off.
@@ -1057,7 +1193,7 @@ function stageTarget() {
 // Decided 28 Oct: digging, learned from the farm pig. It works next to soft
 // dirt (treats, the rubber chicken, the gold paw at the farm) and on the
 // fence where Crumb dug under. Back at the pond there's soft dirt waiting.
-function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; }
+function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; $('#pushHelp').hidden = !S.moves.push; }
 function digSpot() {
   const b = G.bread; let best = null, bd = 1.5;
   for (let y = Math.floor(b.y) - 1; y <= Math.floor(b.y) + 1; y++) for (let x = Math.floor(b.x) - 1; x <= Math.floor(b.x) + 1; x++) {
@@ -1141,7 +1277,7 @@ function stepLevel(dt, t) {
   const inMud = tileAt(b.x, b.y) === 'm';
   if (inMud && !b.mud) { sfx.splat(); G.muddy = 5; }
   b.mud = inMud; if (inMud) G.muddy = Math.max(G.muddy, 3);
-  if (b.moving) { const sp = b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; }
+  if (b.moving) { const sp = b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; tryPush(b, dx, dy, dt); } else G.pushT = 0;
   // the trail Crumb follows home
   if (G.crumb.mode === 'follow') { const l = G.trail.at(-1); if (!l || Math.hypot(l.x - b.x, l.y - b.y) > .2) G.trail.push({ x: b.x, y: b.y }); }
   // into the pond and out again, with a good shake
@@ -1201,7 +1337,7 @@ function stepLevel(dt, t) {
     const c = G.crumb, toC = c.mode === 'follow' && !c.swim && Math.hypot(c.x - f.x, c.y - f.y) < 3;
     for (let i = 0; i < 8; i++) {
       const a = toC && i < 4 ? Math.atan2(c.y - f.y, c.x - f.x) + (Math.random() - .5) * .6 : Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
-      if ('.prbmxo'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
+      if ('.prbmxon'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
     }
     if (!f.hop) f.wait = .3;
   });
@@ -1340,7 +1476,7 @@ function drawTreat(x, y, v, t) {
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
-  put(sprite((s.crow ? CROW : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - (s.crow ? 10 : 8) - (frame && s.stun <= 0 ? 1 : 0));
+  put(sprite((s.crow ? CROW : s.mouse ? MOUSE : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - (s.mouse ? 5 : 6), s.y * T - (s.crow ? 10 : s.mouse ? 4 : 8) - (frame && s.stun <= 0 ? 1 : 0));
   if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
   if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
 }
@@ -1379,6 +1515,25 @@ function drawLevel(t) {
         if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
         if (G.m[y + 1]?.[x] === 'w') px(X, Y + T - 1, T, 1, LINE);   // the floating dock's far edge
       }
+    } else if (inBarn(x, y)) {               // inside the barn: plank floor, walls, stall rails, hay
+      px(X, Y, T, T, '#c9925a'); for (let i = 3; i < T; i += 5) px(X, Y + i, T, 1, '#a8743f');
+      if ((x * 3 + y) % 4 === 0) px(X + 6, Y, 1, 3, '#a8743f');
+      const isK = (i, j) => G.m[j]?.[i] === 'K';
+      if (c === 'K') {
+        px(X, Y, T, T, '#8e2a20'); px(X, Y, T, 4, '#c0392b');
+        if (!isK(x, y - 1)) px(X, Y, T, 1, LINE);
+        if (!isK(x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
+        if (!isK(x - 1, y)) px(X, Y, 1, T, LINE);
+        if (!isK(x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
+      }
+      if (c === 'R') {
+        const rail = (i, j) => 'RK'.includes(G.m[j]?.[i] ?? '.');
+        if ((rail(x, y - 1) || rail(x, y + 1)) && !rail(x - 1, y) && !rail(x + 1, y)) sideFence(X, Y, '#b07a46');
+        else { px(X, Y + 5, T, 1, LINE); px(X, Y + 6, T, 3, '#b07a46'); px(X, Y + 9, T, 1, LINE); px(X, Y + 11, T, 1, LINE); px(X, Y + 12, T, 2, '#8d5c30'); px(X, Y + 14, T, 1, LINE); for (const sx of [X + 1, X + 12]) { px(sx, Y + 3, 4, 13, LINE); px(sx + 1, Y + 4, 2, 11, '#b07a46'); } }
+      }
+      if (c === 'h' || c === 'P') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }
+      if (c === 'P') { px(X + 4, Y + 3, 1, T - 4, '#7a4a2a'); px(X + 11, Y + 3, 1, T - 4, '#7a4a2a'); }   // a loose bale, tied with twine
+      if (x === 6 && y === 2) { px(X - 15, Y + 1, 46, 5, LINE); px(X - 14, Y + 2, 44, 3, '#7a4a2a'); px(X - 13, Y + 1, 42, 1, '#9fd17a'); }   // the cow's feed box
     } else if (c === 'C') {                  // corn rows on dirt; the tall stalks are drawn later, over things
       px(X, Y, T, T, '#b98a4e'); px(X, Y + 4, T, 1, '#a0743c'); px(X, Y + 11, T, 1, '#a0743c');
     } else if (c === 'm') {                  // mud
@@ -1442,6 +1597,8 @@ function drawLevel(t) {
     put(sprite(PIG, { flip: Math.cos(G.pig.a) < 0 }), G.pig.x * T - 7, G.pig.y * T - 7);
     G.piglets.forEach(l => put(sprite(PIGLET, { flip: l.x > G.pig.x }), l.x * T - 4, l.y * T - 3 + (Math.floor(t / 300 + l.t) % 2)));
   }
+  G.cows.forEach(c => put(sprite(COW, { flip: c.face < 0 }), c.x * T - 10, c.y * T - 9 + (Math.floor(t / 600 + c.t) % 2 && Math.sin(c.t * .5) > .4 ? -1 : 0)));
+  if (G.cow) { put(sprite(COW), G.cow.x * T - 10, G.cow.y * T - 9); px(G.cow.x * T + 6, G.cow.y * T - 1, 3, 3, LINE); px(G.cow.x * T + 7, G.cow.y * T, 1, 1, COL.y); }   // the dairy cow, with her bell
   G.hens.forEach(h => put(sprite(CHICKEN, { flip: Math.cos(h.a) < 0 }), h.x * T - 5, h.y * T - 6 - (Math.floor(t / 200 + h.t) % 2)));
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
@@ -1471,6 +1628,16 @@ function drawLevel(t) {
     if (c === 'C') { for (let i = 0; i < 3; i++) { const sx = X + 2 + i * 5 + (Math.floor(t / 900 + x + i) % 2); px(sx, Y - 8, 2, T + 6, '#4f8f3a'); px(sx - 2, Y - 4 + i, 2, 1, '#79bd66'); px(sx + 2, Y - 1 - i, 2, 1, '#79bd66'); px(sx, Y - 10, 2, 2, COL.y); } }
     if (c === 'H') { px(X, Y - 5, T, 6, '#3f8a5c'); px(X + 3 + (x % 3) * 3, Y - 3, 2, 1, '#5aa772'); if (G.m[y - 1]?.[x] !== 'H') px(X, Y - 6, T, 1, LINE); if (G.m[y][x - 1] !== 'H') px(X, Y - 6, 1, 6, LINE); if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y - 6, 1, 6, LINE); }
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
+  }
+  // the barn roof hides the inside until Bread goes in the door
+  if (G.world === 'barn' && !(b.x > 4 && b.x < 32 && b.y > 1 && b.y < 12.9)) {
+    const [x0, y0, x1, y1] = BARN.rect, X = x0 * T, Y = y0 * T - 8, w = (x1 - x0 + 1) * T, h = (y1 - y0) * T - 2;
+    px(X - 2, Y - 1, w + 4, h + 2, LINE); px(X - 1, Y, w + 2, h, '#8e2a20');
+    for (let j = 4; j < h; j += 6) for (let i = (j / 6 % 2) * 6; i < w; i += 12) px(X - 1 + i, Y + j, 10, 2, '#a8302f');
+    px(X - 1, Y + h / 2 - 1, w + 2, 3, '#c0392b'); px(X - 1, Y + h / 2 - 2, w + 2, 1, LINE);
+    const fy = Y + h, fw = (y1 + 1) * T - fy;   // the front wall, with the doors
+    px(X - 2, fy, w + 4, fw, LINE); px(X - 1, fy + 1, w + 2, fw - 2, '#c0392b'); for (let i = 3; i < w; i += 6) px(X + i, fy + 1, 1, fw - 2, '#8e2a20');
+    px(17 * T - 2, fy, 2 * T + 4, fw, LINE); px(17 * T, fy + 1, 2 * T, fw - 1, '#3b2a1a'); px(17 * T - 1, fy, 2 * T + 2, 2, '#fff1d6');
   }
   G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
   if (G.hold) {                              // Bread and the find she holds up go over the trees too

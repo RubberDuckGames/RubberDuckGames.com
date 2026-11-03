@@ -33,7 +33,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bark freezes squirrels and fleas and her paw swipe catches them. Each world is
   meant to teach a move (the pond: swimming) that opens spots in earlier worlds.
   Worlds are data (`WORLDS` in the script: map, goals, setup, steps); progress
-  per world is `S.pond`, `S.farm`, and learned moves are `S.moves`. The farm
+  per world is `S.pond`, `S.farm`, `S.barn`, and learned moves are `S.moves`. The farm
   (opens after the pond): Crumb digs under the fence into a corn maze, the big
   pig in the muddy pen teaches Bread to dig, Bread digs under, finds Crumb, and
   leads Crumb back; crows instead of squirrels; the pig costume. Soft dirt at
@@ -75,6 +75,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Crumb in the farm's corn and takes a bark then a paw, three times; crows
   stand up like birds; fences running up and down are drawn end on; and the
   closet dresses Crumb too (`S.crumbWear`, the same pieces placed for Crumb).
+  Decided 3 Nov: the barn is the third world (after the farm), from the
+  testers' asks to go inside the barn and to have a dairy cow level. Crumb runs
+  across the cow pasture into the red barn and through the hay into the back
+  room. The roof hides the inside until Bread walks in the doors. The dairy cow
+  in her stall teaches Bread to push (`S.moves.push`): walking into a loose
+  hay bale slides it one tile, straight only. Each bale has room to move, so
+  the hay can't get stuck. Mice are the baddies. The prize is the cow costume;
+  the cowbell, the little horns, a milk bottle toy and the gold paw are the
+  other pieces. A cowboy rodeo level on the farm is next (Trello #39).
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
