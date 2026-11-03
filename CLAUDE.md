@@ -87,6 +87,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   boats just boings: no damage, no timer, no losing. Sparkles float on the
   water to collect. The tugboat's name (his name) is typed in on the family's
   device and stored there only, so the public title is "Tugboat Deliveries".
+  Decided 2 Nov: a second level, the river. After PRESS START a card picks
+  Harbor, River A B C or River 1 2 3 (arrows and Space work on it; the ⛵ Pick
+  button brings it back). The river scrolls by on its own; the next letter or
+  number to get is shown big at the top, a wrong one floats past, a bump boings.
+  Runs are five long (A to E, then F to J next time, numbers up to 20), saved as
+  `S.abc` and `S.num`.
   Progress is in localStorage under `tugboat`.
 - `rodeo/index.html` is Rodeo (Trello #46), the last card on the home page. It
   opens on a title screen with a cowgirl racing across and PRESS START, then
