@@ -12,7 +12,8 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
-body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html{touch-action:manipulation}
 button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .bar{display:flex;align-items:center;gap:0.625rem;padding:0.625rem 0.875rem;max-width:62.5rem;margin:0 auto}
@@ -58,6 +59,11 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .pad .btn{padding:0;font-family:Lexend,Verdana,sans-serif;font-size:1.25rem;line-height:1;touch-action:none;pointer-events:none}
 .pad .btn.on{transform:translate(.15rem,.15rem);box-shadow:none}
 .pad [data-k=arrowup]{grid-area:1/2}.pad [data-k=arrowleft]{grid-area:2/1}.pad [data-k=arrowright]{grid-area:2/3}.pad [data-k=arrowdown]{grid-area:3/2}
+/* Decided 2 Nov: a stick like Math Force's instead of the cross. The testers
+   asked for it; push it the way Bread should go, as far as you like. */
+.pad.stickpad{display:none;position:relative;width:8.5rem;height:8.5rem;border-radius:50%;background:rgba(59,42,26,.15);border:3px solid rgba(59,42,26,.4);padding:0}
+@media (pointer:coarse){.pad.stickpad{display:block}}
+.stickpad i{position:absolute;left:50%;top:50%;width:3.6rem;height:3.6rem;margin:-1.8rem;border-radius:50%;background:#3b2a1a;opacity:.85;pointer-events:none}
 #levelBtns{align-items:flex-end}
 .acts{display:contents}
 @media (pointer:coarse) and (min-width:43.76rem) and (orientation:portrait){#levelBtns{left:1rem}}
@@ -73,6 +79,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
   .pad,.acts{position:fixed;top:50%;transform:translateY(-50%);background:#33364a;border-radius:2.5rem;padding:1rem .7rem;box-shadow:inset 0 0 0 3px #262839}
   .pad{left:.6rem;grid-template-columns:repeat(3,3rem);grid-template-rows:repeat(3,3rem);gap:0;margin:0}
   .pad .btn{background:#1d1f2b;color:#cfd1dc;border:0;border-radius:.3rem;box-shadow:0 .2rem 0 #111}
+  .pad.stickpad{width:8rem;height:8rem;border-radius:50%;background:#1d1f2b;border:3px solid #262839;box-shadow:none}
+  .stickpad i{background:#cfd1dc}
   .acts{right:.6rem;display:grid;grid-template-columns:repeat(3,3rem);grid-template-rows:repeat(3,3rem);gap:0}
   #pawBtn{grid-area:2/3}#barkBtn{grid-area:3/2}#digBtn{grid-area:2/1}
   #barkBtn,#pawBtn,#digBtn{width:3.4rem;height:3.4rem;margin:-.2rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.45rem;box-shadow:0 .25rem 0 #6e1631}
@@ -99,6 +107,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .tile.locked{background:#e9dcc6}
 @media (max-width:43.75rem){.wardrobe{grid-template-columns:1fr}.mirror{width:100%;max-width:12rem;margin:0 auto}}
 @media (max-width:43.75rem) and (orientation:portrait){#closet.panelbox{position:static;transform:none;width:auto;max-height:none}}
+.who-pick{display:flex;gap:.5rem;margin:0 0 .75rem}
+.who-pick .btn[aria-pressed="true"]{outline:3px solid var(--line);outline-offset:2px}
 .slot{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.375rem 0}
 .slot b{min-width:5.625rem}
 .slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
@@ -153,6 +163,8 @@ canvas{box-shadow:none}
   #levelBtns{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"pad acts" "home home";align-items:center;gap:1rem}
   .pad{grid-area:pad;gap:0;grid-template-columns:repeat(3,3.4rem);grid-template-rows:repeat(3,3.4rem);margin:0}
   .pad .btn{background:#2a2a33;color:#c9c4b8;border:0;box-shadow:0 .25rem 0 #15151b;border-radius:.3rem}
+  .pad.stickpad{width:9rem;height:9rem;background:#b3ae9f;border-color:#a8a294}
+  .stickpad i{background:#2a2a33;opacity:1}
   .pad .btn.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
   #barkBtn,#pawBtn,#digBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
   #barkBtn:active,#pawBtn:active,#digBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
@@ -219,6 +231,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
   </div>
   <div class="panelbox" id="closet" hidden>
     <h3>Closet</h3>
+    <div class="who-pick"><button class="btn" data-who="bread" aria-pressed="true">Bread</button><button class="btn" data-who="crumb" aria-pressed="false">Crumb</button></div>
     <div class="wardrobe">
       <div class="mirror"><img id="mirror" alt="Bread in the mirror"></div>
       <div id="closetList" class="racks"></div>
@@ -236,12 +249,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <button class="btn go" id="inBtn">Go in</button>
   </div>
   <div class="row" id="levelBtns" hidden>
-    <div class="pad" id="pad" aria-label="Arrow pad">
-      <button class="btn" data-k="arrowup" aria-label="Up"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(0deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-      <button class="btn" data-k="arrowleft" aria-label="Left"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(-90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-      <button class="btn" data-k="arrowright" aria-label="Right"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-      <button class="btn" data-k="arrowdown" aria-label="Down"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(180deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-    </div>
+    <div class="pad stickpad" id="pad" aria-label="Steering stick"><i id="knob"></i></div>
     <div class="acts">
       <button class="btn go" id="barkBtn">🐶 Bark</button>
       <button class="btn go" id="pawBtn">🐾 Paw</button>
@@ -294,7 +302,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, pond: {}, farm: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, pond: {}, farm: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -363,6 +371,7 @@ const sfx = {
   shake: () => [720, 520, 720, 520, 720].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
   catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
   sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, .09, 'square', i * .06, .03)),
+  honk: () => { tone(330, .12, 'square', 0, .05, 260); tone(300, .14, 'square', .14, .05, 220); },
   quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
   squeak: () => tone(1400, .12, 'square', 0, .03, 1900),
   honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
@@ -511,9 +520,18 @@ const CRUMB = (() => {
 const CRUMB_HEAD = ['D..D.', 'DDDD.', 'DhDss', '.Dssn'];
 const PIG = ['..............', '..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPhPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...', '..QQ.....QQ...'];
 const PIGLET = ['.P....P.', 'PPPPPPhP', 'PPPPPPPQ', '.Q...Q..'];
+// Decided 2 Nov: the first crows were long and low and read as little dogs.
+// Now they stand up like birds: a round head, a long beak, a gray wing, a
+// fanned tail low behind, and thin legs. The second frame flaps.
 const CROW = [
-  ['............', '.......DD...', '......DDhDy.', '..DDDDDDDDyy', '.DDDDDDDDD..', 'DDDDDDDDD...', '..DDDDDD....', '....y.y.....'],
-  ['............', '.D.....DD...', '.DD...DDhDy.', '..DDDDDDDDyy', '..DDDDDDDD..', '..DDDDDDD...', '...DDDDD....', '....y.y.....'],
+  ['......DDD....', '.....DDDhD...', '.....DDDDyyy.', '....DDDDD....', '...DDDgDD....', '..DDDggDD....', '.DDDDDDDD....', 'DDD.DDDD.....', '.....y.y.....', '.....y.y.....'],
+  ['..D...DDD....', '..DD.DDDhD...', '...DDDDDDyyy.', '...DDDDDD....', '....DDDDD....', '..DDDDDDD....', '.DDDDDDD.....', 'DD...DD......', '.....y.y.....', '.............'],
+];
+// The farm's boss: a big white goose guarding Crumb in the corn (asked for by
+// the testers, 2 Nov). Drawn half again as big as everything else.
+const GOOSE = [
+  ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '.....b..b.......', '.....b..b.......', '....bb.bb.......'],
+  ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '....b...b.......', '....b...b.......', '...bb..bb.......'],
 ];
 const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
 const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
@@ -539,9 +557,39 @@ function drawCar(x, y, face, t, riders = true) {
   }
   put(img, X, Y + bob);
 }
+// Decided 2 Nov: Crumb can dress up too, from the same closet. The same pieces,
+// placed for Crumb's smaller shape. Crumb is black and tan, so the costumes
+// recolor those, and the shades get a gray band so they show on black fur.
+const CRUMB_WEAR = {
+  cape: [2, 6, ['..rrrr', 'rrrrrr', 'rrrrR.']],
+  duck: [14, 4, ['.bbbb', 'bbbbb']],
+  bowtie: [9, 7, ['u.u', 'uuu', 'u.u']],
+  shades: [10, 3, ['gggggg', '..DhDD', '..DDD.']],
+  pigSnout: [15, 4, ['PPP', 'QPQ']],
+  pigTail: [0, 3, ['.PP.', 'P..P', '..PP', '.P..']],
+  duckHat: [9, -5, WEAR_PIX.duckHat[2]],
+  party: [10, -5, WEAR_PIX.party[2]],
+};
+function crumbRows(frame, wear) {
+  const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
+  const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
+  if (wear.feet === 'duckFeet') for (const y of [pad + 10, pad + 11]) g[y] = g[y].map(ch => ch === 's' ? 'b' : ch);
+  if (wear.back === 'cape') over(CRUMB_WEAR.cape);
+  if (wear.body === 'duck') over(CRUMB_WEAR.duck);
+  if (wear.neck === 'bowtie') over(CRUMB_WEAR.bowtie);
+  if (wear.face) over(CRUMB_WEAR[wear.face]);
+  if (wear.back === 'pigTail') over(CRUMB_WEAR.pigTail);
+  if (wear.hat) over(CRUMB_WEAR[wear.hat]);
+  return g.map(r => r.join(''));
+}
+function crumbMap(wear) {
+  if (wear.body === 'duck') return { D: COL.y, s: COL.Y, p: COL.y };
+  if (wear.body === 'pig') return { D: COL.P, s: COL.Q, p: COL.Q };
+  return {};
+}
 // (x, y) is the ground under the middle of Crumb
-function drawCrumb(x, y, face, t, moving, scale = 1) {
-  const img = sprite(CRUMB[moving && Math.floor(t / 110) % 2 ? 1 : 0], { flip: face < 0 });
+function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
+  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0 });
   put(img, x - img.width * scale / 2, y - img.height * scale, scale);
 }
 
@@ -607,11 +655,15 @@ function pic(rows, dark) {
   c.width = c.height = n; c.getContext('2d').drawImage(img, (n - img.width) >> 1, (n - img.height) >> 1);
   return picCache[key] = c.toDataURL();
 }
+let closetWho = 'bread';   // who the closet is dressing: Bread or Crumb
+const wearing = () => closetWho === 'crumb' ? (S.crumbWear = S.crumbWear || {}) : S.wear;
 function drawMirror() {
-  const img = sprite(breadRows(0, S.wear), { map: wearMap(S.wear) }), c = document.createElement('canvas');
-  c.width = c.height = 30; c.getContext('2d').drawImage(img, 3, 3);
-  $('#mirror').src = c.toDataURL();
+  const w = wearing(), img = closetWho === 'crumb' ? sprite(crumbRows(0, w), { map: crumbMap(w) }) : sprite(breadRows(0, w), { map: wearMap(w) }), c = document.createElement('canvas');
+  c.width = c.height = 30; c.getContext('2d').drawImage(img, (30 - img.width) >> 1, 30 - img.height - 2);
+  $('#mirror').src = c.toDataURL(); $('#mirror').alt = closetWho === 'crumb' ? 'Crumb in the mirror' : 'Bread in the mirror';
+  document.querySelectorAll('[data-who]').forEach(b => b.setAttribute('aria-pressed', b.dataset.who === closetWho));
 }
+document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { closetWho = b.dataset.who; openCloset(); });
 function openCloset() {
   showRow('closet');
   drawMirror();
@@ -621,7 +673,7 @@ function openCloset() {
     const row = document.createElement('div'); row.className = 'rack';
     row.innerHTML = `<span class="lbl">${label}</span>`;
     [null, ...all].forEach(k => {
-      const have = !k || S.have.includes(k), on = (S.wear[slot] || null) === k;
+      const have = !k || S.have.includes(k), on = (wearing()[slot] || null) === k;
       const b = document.createElement('button'); b.className = 'tile' + (on ? ' on' : '') + (have ? '' : ' locked');
       b.setAttribute('aria-pressed', on);
       b.setAttribute('aria-label', !k ? `No ${label.toLowerCase()}` : have ? ITEMS[k].name : 'Not found yet');
@@ -629,7 +681,7 @@ function openCloset() {
       b.innerHTML = `<img alt="" src="${pic(k ? ITEM_PIC[k] : HANGER, !have)}">`;
       b.onclick = () => {
         if (!have) return toast(ITEMS[k].cost ? `In the treat shop: 🦴 ${ITEMS[k].cost}` : slot === 'body' ? `Win it at the ${ITEMS[k].world}.` : `Hidden at the ${ITEMS[k].world}.`);
-        S.wear[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
+        wearing()[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
       };
       row.append(b);
     });
@@ -919,7 +971,7 @@ const WORLDS = {
     key: 'farm', name: 'farm', Name: 'Farm', map: FARM, stop: 2, costume: 'pig', pic: PIG, baddies: 'Crows caught', soil: 2, buriedGold: true,
     goals: {
       pig: 'Find the big pig', dig: 'Dig under the fence',
-      find: 'Find Crumb in the corn', back: 'Bring Crumb to the car',
+      find: 'Find Crumb in the corn', goose: 'Chase off the goose', back: 'Bring Crumb to the car',
     },
     setup() {
       for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 12 && Math.hypot(x - 9, y - 11) > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crow: true }); }
@@ -927,6 +979,9 @@ const WORLDS = {
       G.pig = { x: FARM.pig[0], y: FARM.pig[1], a: 0, t: 0, oink: 0 };
       G.piglets = [0, 1].map(i => ({ x: FARM.pig[0] - 1 - i, y: FARM.pig[1] + .4, t: i }));
       for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 12 && x < 21); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0 }); }
+      // the goose stands in the corn next to Crumb
+      const [cx0, cy0] = FARM.crumbAt, spot = [[0, 1], [1, 0], [-1, 0], [0, -1], [0, 2], [2, 0], [-2, 0], [0, -2]].map(([a, b]) => [cx0 + a, cy0 + b]).find(([x, y]) => !SOLID_LAND.includes(tileAt(x, y))) || [cx0, cy0];
+      G.goose = { x: spot[0], y: spot[1], home: spot, hp: 3, stun: 0, hitT: 0, honk: 0, t: 0, face: -1 };
       stage(S.moves.dig ? 'dig' : 'pig', 'Crumb dug under the fence!');
     },
     step(b, dt) {
@@ -941,6 +996,7 @@ const WORLDS = {
         hold(MOUND, 'The pig taught Bread to dig!');
         stage('dig');
       }
+      stepGoose(b, dt);
       G.hens.forEach(h => {
         h.t += dt; h.cluck -= dt;
         const d = Math.hypot(h.x - b.x, h.y - b.y);
@@ -951,13 +1007,43 @@ const WORLDS = {
         if (h.y < 13) h.y = 13;
       });
     },
-    reached: () => G.holeDug,
+    reached: () => G.holeDug && !G.goose,
     target() {
+      if (G.stage === 'goose') return G.goose;
       if (G.stage === 'pig') return G.pig;
       if (G.stage === 'dig') return { x: FARM.hole[0], y: FARM.hole[1] };
     },
   },
 };
+// The boss goose. It waddles after Bread when she comes close and goes back to
+// Crumb when she leaves; bumping it costs a bone. A bark makes it stop and stare
+// for a moment, and a paw then counts as a hit. Three hits and it flaps off.
+function stepGoose(b, dt) {
+  const g = G.goose; if (!g) return;
+  g.t += dt; g.honk -= dt; g.hitT -= dt;
+  const d = Math.hypot(g.x - b.x, g.y - b.y);
+  if (G.holeDug && G.stage === 'find' && d < 6) stage('goose', 'A big goose is guarding Crumb!');
+  if (d < 5 && g.honk <= 0) { g.honk = 2.2; sfx.honk(); G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'HONK!', t: 0, c: LINE }); }
+  if (g.stun > 0) { g.stun -= dt; return; }
+  const [tx, ty] = d < 4.5 && G.holeDug ? [b.x, b.y] : g.home, dx = tx - g.x, dy = ty - g.y, l = Math.hypot(dx, dy);
+  if (l > .3) { const v = d < 4.5 ? 2.3 : 1.4; move(g, dx / l * v * dt, dy / l * v * dt, .35); if (Math.abs(dx) > .1) g.face = dx > 0 ? 1 : -1; g.moving = true; } else g.moving = false;
+  if (d < .9 && G.ouch <= 0 && !G.done) hurt(g);
+}
+function hitGoose() {
+  const g = G.goose, b = G.bread;
+  if (!g || g.stun <= 0 || g.hitT > 0 || Math.hypot(g.x - b.x, g.y - b.y) > 2.2) return false;
+  g.hp--; g.hitT = .6; g.stun = 0; sfx.honk(); burst(g.x, g.y - .5);
+  const d = Math.hypot(g.x - b.x, g.y - b.y) || 1; move(g, (g.x - b.x) / d * 1.2, (g.y - b.y) / d * 1.2, .35);
+  if (g.hp > 0) { G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'Honk!', t: 0, c: COL.r }); return true; }
+  G.goose = null; sfx.catch(); stage('find', 'The goose ran off!');
+  return true;
+}
+function drawGoose(t) {
+  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0 }), k = 1.5;
+  put(img, g.x * T - img.width * k / 2, g.y * T - img.height * k + 2, k);
+  if (g.stun > 0) text('!', g.x * T, g.y * T - img.height * k - 2);
+  for (let i = 0; i < 3; i++) px(g.x * T - 7 + i * 5, g.y * T + 4, 4, 2, i < g.hp ? COL.r : COL.g);   // how many hits it has left
+}
 // The goal changes as you go; the arrow at the screen edge points the way
 // after a while (straight away for the way back to the car).
 // One line on screen at a time: a short story message when there is one,
@@ -1010,6 +1096,18 @@ function hurt(o) {
   G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
   if (G.hp <= 0) { G.done = true; setTimeout(tiredWorld, 700); }
 }
+function askHome() {
+  G.asked = true; G.ask = true; stick.on = false; $('#toast').hidden = true;
+  $('#card').innerHTML = `<h2>Go home?</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">Go home</button></div>`;
+  $('#cover').hidden = false; $('#homeGo').focus();
+  $('#stayBtn').onclick = () => { $('#cover').hidden = true; G.ask = false; };
+  $('#homeGo').onclick = () => {
+    $('#cover').hidden = true; G.ask = false;
+    G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
+    if (S[W.key].beat) setTimeout(finishWorld, 500);
+    else setTimeout(() => hold(W.pic, `You won the ${ITEMS[W.costume].name.toLowerCase()}!`, finishWorld), 300);
+  };
+}
 function tiredWorld() {
   setGoal(''); help(false);
   $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so they freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
@@ -1026,6 +1124,7 @@ function hold(rows, msg, then) {
 }
 function stepLevel(dt, t) {
   const b = G.bread;
+  if (G.ask) return;
   if (G.hold) {
     if (performance.now() < G.hold.until) { G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6)); G.pops = G.pops.filter(p => (p.t += dt, p.t < .9)); return; }
     const then = G.hold.then; G.hold = null; if (then) then();
@@ -1033,6 +1132,7 @@ function stepLevel(dt, t) {
   }
   let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { dx = stick.x; dy = stick.y; }
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
   G.shake = Math.max(0, (G.shake || 0) - dt); G.digT = Math.max(0, G.digT - dt); G.muddy = Math.max(0, G.muddy - dt);
@@ -1116,11 +1216,11 @@ function stepLevel(dt, t) {
   if (!S.moves.dig && !G.digTip && digSpot()) { G.digTip = true; toast(W.key === 'farm' ? 'Soft dirt. Ask the pig?' : "Soft dirt. Bread can't dig yet."); }
   stepCrumb(dt);
   const car = W.map.car;
-  if (G.stage === 'back' && !G.done && Math.hypot(car[0] - b.x, car[1] - b.y) < 2 && Math.hypot(car[0] - G.crumb.x, car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) {
-    G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
-    if (S[W.key].beat) setTimeout(finishWorld, 500);
-    else setTimeout(() => hold(W.pic, `You won the ${ITEMS[W.costume].name.toLowerCase()}!`, finishWorld), 300);
-  }
+  // Decided 2 Nov: the car asks first. Walking past it with Crumb ended the trip
+  // straight away, even when the kids wanted to keep looking around.
+  const atCar = Math.hypot(car[0] - b.x, car[1] - b.y) < 2;
+  if (G.stage === 'back' && !G.done && !G.asked && atCar && Math.hypot(car[0] - G.crumb.x, car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) askHome();
+  if (G.asked && Math.hypot(car[0] - b.x, car[1] - b.y) > 3.5) G.asked = false;
   // ducks paddle, and quack at Bread
   G.ducks.forEach(d => {
     d.quack -= dt; d.a += (Math.random() - .5) * 2 * dt;
@@ -1143,6 +1243,7 @@ function bark() {
   G.woofT = performance.now() + 700; sfx.bark();
   const b = G.bread;
   [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
+  if (G.goose && Math.hypot(G.goose.x - b.x, G.goose.y - b.y) < 4.5) G.goose.stun = 1.3;
 }
 $('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
 // Crumb: runs off at the start (up the path and under the gate), waits on the
@@ -1198,27 +1299,39 @@ function paw() {
   let last = null;
   G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; if (s.key) { G.key = { x: s.x, y: s.y }; stage('getKey', 'It dropped the key!'); } G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
   G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; if (f.on) { G.crumb.itch = Math.max(0, G.crumb.itch - 1);  } G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
-  if (!last) return;
+  if (!last) { hitGoose(); return; }
   sfx.catch(); hudLevel();
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 $('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
-// The arrow pad works like a thumb pad. Decided 28 Oct, after playing it on a
-// phone: tapping one arrow at a time was fiddly, so you put your thumb
-// anywhere on the cross and slide it; Bread walks the way your thumb points
-// from the middle, diagonals too. Lifting the thumb stops her.
+// The stick, like Math Force's. Decided 28 Oct the cross became a pad you slide
+// a thumb on; decided 2 Nov, after more play-tests, it's a round stick: Bread
+// walks the way it's pushed, any direction. Lifting the thumb stops her.
+const stick = { x: 0, y: 0, on: false, id: null };
 {
-  const pad = $('#pad'), dirs = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-  const set = (on = {}) => dirs.forEach(k => { keys[k] = !!on[k]; pad.querySelector(`[data-k=${k}]`).classList.toggle('on', !!on[k]); });
-  const aim = e => {
-    const r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), dead = r.width * .12;
-    set({ arrowleft: dx < -dead, arrowright: dx > dead, arrowup: dy < -dead, arrowdown: dy > dead });
+  const st = $('#pad'), knob = $('#knob');
+  const upd = e => {
+    const r = st.getBoundingClientRect(), max = r.width * .42;
+    let x = (e.clientX - r.left - r.width / 2) / max, y = (e.clientY - r.top - r.height / 2) / max; const l = Math.hypot(x, y);
+    if (l > 1) { x /= l; y /= l; }
+    stick.x = x; stick.y = y; knob.style.transform = `translate(${x * max * .7}px,${y * max * .7}px)`;
   };
-  let finger = null;
-  pad.addEventListener('pointerdown', e => { e.preventDefault(); finger = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (err) { } aim(e); });
-  pad.addEventListener('pointermove', e => { if (e.pointerId === finger) aim(e); });
-  const up = e => { if (e.pointerId === finger) { finger = null; set(); } };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => pad.addEventListener(ev, up));
+  st.addEventListener('pointerdown', e => { e.preventDefault(); stick.id = e.pointerId; stick.on = true; try { st.setPointerCapture(e.pointerId); } catch (err) { } upd(e); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
+  const end = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.on = false; stick.x = stick.y = 0; knob.style.transform = ''; };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => st.addEventListener(ev, end));
+}
+// A thumb on the stick and a thumb on Bark or Paw look like a pinch to iPhone
+// Safari, and quick taps look like a double tap, so the screen zoomed in mid
+// play (seen 2 Nov, the same as in Rodeo). Only while playing a world.
+{
+  const playing = () => screen === 'level' && G && !G.done && !G.ask;
+  const stop = e => { if (playing() && e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
+  ['#pad', '#barkBtn', '#pawBtn', '#digBtn'].forEach(q => $(q).addEventListener('touchstart', stop, { passive: false }));
+  let lastEnd = 0;
+  document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
 }
 
 function drawTreat(x, y, v, t) {
@@ -1227,13 +1340,20 @@ function drawTreat(x, y, v, t) {
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
-  put(sprite((s.crow ? CROW : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 8 - (frame && s.stun <= 0 ? 1 : 0));
+  put(sprite((s.crow ? CROW : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - (s.crow ? 10 : 8) - (frame && s.stun <= 0 ? 1 : 0));
   if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
   if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
 }
 function drawFlea(f, t) {
   put(sprite(FLEA), f.x * T - 4, f.y * T - 4 - f.h * 8);
   if (f.stun > 0) text('!', f.x * T, f.y * T - 8);
+}
+// A fence running up and down the screen is seen end on: one rail with the
+// tops of the posts along it. Decided 2 Nov, after a tester pointed out that the
+// side fences were drawn front on, the same as the ones running across.
+function sideFence(X, Y, wood) {
+  px(X + 6, Y, 1, T, LINE); px(X + 7, Y, 2, T, wood); px(X + 9, Y, 1, T, LINE);
+  for (const py of [1, 9]) { px(X + 5, Y + py, 6, 6, LINE); px(X + 6, Y + py + 1, 4, 4, wood); px(X + 6, Y + py + 4, 4, 1, '#d8cbb0'); }
 }
 function drawLevel(t) {
   const b = G.bread, cam = G.cam;
@@ -1272,7 +1392,8 @@ function drawLevel(t) {
     } else {
       px(X, Y, T, T, '#8fd17a');
       if ((x * 7 + y * 3) % 5 === 0) { px(X + 5, Y + 8, 1, 2, '#79bd66'); px(X + 7, Y + 7, 1, 3, '#79bd66'); px(X + 9, Y + 8, 1, 2, '#79bd66'); }
-      if (c === '#') {                      // white picket fence
+      if (c === '#' && (x === 0 || x === LW - 1) && y > 0 && y < LH - 1) sideFence(X, Y, '#fffaf0');
+      else if (c === '#') {                 // white picket fence
         px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, '#fffaf0'); px(X, Y + 9, T, 1, LINE);
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
       }
@@ -1287,7 +1408,9 @@ function drawLevel(t) {
         if (G.m[y][x - 1] !== 'B') px(X, Y, 1, T, LINE);
         if (G.m[y][x + 1] !== 'B') px(X + T - 1, Y, 1, T, LINE);
       }
-      if (c === 'F' || c === 'X' || c === 'u' || (c === 'G' && !G.gateOpen)) {   // fences; the park gate is wooden, with a lock
+      const fenceAt = (i, j) => 'FXuG'.includes(G.m[j]?.[i] ?? '.');
+      if (c === 'F' && (fenceAt(x, y - 1) || fenceAt(x, y + 1)) && !fenceAt(x - 1, y) && !fenceAt(x + 1, y)) sideFence(X, Y, '#fffaf0');
+      else if (c === 'F' || c === 'X' || c === 'u' || (c === 'G' && !G.gateOpen)) {   // fences; the park gate is wooden, with a lock
         const wood = c === 'G' ? '#b07a46' : '#fffaf0';
         px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, wood); px(X, Y + 9, T, 1, LINE);
         for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, wood); }
@@ -1323,6 +1446,7 @@ function drawLevel(t) {
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
+  if (G.goose) drawGoose(t);
   const tg = !G.done && pawTarget();
   if (tg) {                                  // white corners on whoever the paw will reach
     const X = Math.round(tg.x * T), Y = Math.round(tg.y * T) - 2, o = 7 + (Math.floor(t / 250) % 2);

@@ -46,8 +46,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   shows five paw prints (gold found, dark not yet) or its trophy. The results
   card shows the pieces as pictures, dark for not found. Messages are a few
   words, and only one line is on screen at a time.
-  Touch screens get an arrow pad you slide a thumb on (keyboard still works on computers; holding
-  a finger or the mouse on the world works on both). On a phone held upright
+  Touch screens get a round stick like Math Force's (decided 2 Nov, after
+  play-tests; it replaced an arrow pad you slid a thumb on). The keyboard still
+  works on computers, and holding a finger or the mouse on the world works on
+  both. During play, pinch and double-tap zoom are blocked, as in Rodeo. On a phone held upright
   the page looks like a Game Boy: screen frame, black cross pad, round red
   Paw, Bark and Dig buttons, and cards cover the whole screen.
   A phone turned sideways plays like a Switch: the game in the middle, the pad
@@ -68,6 +70,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   seconds when it changes and stays in the ? help bar; the closet is a
   wardrobe of pictures with a mirror, and things not found yet show as dark ? shapes;
   the paw aims itself at the nearest baddie in reach, marked with white corners.
+  Decided 2 Nov, from play-tests: walking up to the car with Crumb asks "Go
+  home?" (Not yet / Go home) instead of ending the trip; a big boss goose guards
+  Crumb in the farm's corn and takes a bark then a paw, three times; crows
+  stand up like birds; fences running up and down are drawn end on; and the
+  closet dresses Crumb too (`S.crumbWear`, the same pieces placed for Crumb).
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
