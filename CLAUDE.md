@@ -131,7 +131,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
   from a 64 px render via `sips -s format ico`. Bump `?v=` in the meta tags when
-  an image changes, or link previews keep the old one.
+  an image changes, or link previews keep the old one. Decided 3 Nov: the duck
+  is 8-bit, and the two share pictures are 8-bit scenes drawn by
+  `brand/pixel-scene.js` ("games for kids, by kids", with sprites copied from
+  the games instead of emoji). They wait for the pixel font, so render them
+  with `--virtual-time-budget=6000`.
 - `shared/files.js` is the save-file picker for Bread and Math Force. Decided
   29 Oct (#44): like a console game, three save files per game that anyone can
   play, with Copy and Erase (a copy into an empty file can be renamed). A file
