@@ -100,8 +100,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Harbor, River A B C or River 1 2 3 (arrows and Space work on it; the ⛵ Pick
   button brings it back). The river scrolls by on its own; the next letter or
   number to get is shown big at the top, a wrong one floats past, a bump boings.
-  Runs are five long (A to E, then F to J next time, numbers up to 20), saved as
-  `S.abc` and `S.num`.
+  Decided 2 Nov, after his first go: a run is the whole set, A to Z or 1 to
+  20, from the start each time, with more room on the water. One wanted letter
+  floats by at a time between ducks, lily pads, logs and boats, and a missed
+  one comes back a few seconds later until he gets it (the gaps are in `GAP`).
+  `S.abc` and `S.num` count finished runs.
   Progress is in localStorage under `tugboat`.
 - `rodeo/index.html` is Rodeo (Trello #46), the last card on the home page. It
   opens on a title screen with a cowgirl racing across and PRESS START, then

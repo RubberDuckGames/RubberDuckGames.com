@@ -139,6 +139,7 @@ const sfx = {
   hop: () => [523, 659, 784].forEach((f, i) => tone(f, .07, 'square', i * .06, .04)),
   cheer: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .12, 'square', i * .1, .04)),
   sparkle: () => [988, 1319, 1568].forEach((f, i) => tone(f, .08, 'square', i * .05, .03)),
+  quack: () => { tone(620, .09, 'square', 0, .04, 420); tone(560, .12, 'square', .1, .04, 380); },
   start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
 };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
@@ -332,32 +333,44 @@ function delivered() {
 // down a river that scrolls by on its own, and picks up letters (or numbers) in
 // order: the next one to get is shown big at the top. A wrong one floats past,
 // nothing bad. Boats to steer around (a bump boings), sparkles to collect.
-// Runs are five letters long, A to E, then F to J next time, so a run is short.
-const RUN = 5, ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', NUMS = Array.from({ length: 20 }, (_, i) => String(i + 1));
+// Decided 2 Nov, after his first go: a run is the whole set, A to Z or 1 to 20,
+// from the start every time. The first runs were five long with the one he
+// needed (and the one after) floating in every second or so, which crowded the
+// river. Now one wanted letter is on the water at a time: ducks, lily pads,
+// logs and boats float by in between, and if he misses it, it comes round
+// again a few seconds later until he gets it. Wrong letters are rare.
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', NUMS = Array.from({ length: 20 }, (_, i) => String(i + 1));
 const TOKEN_COL = ['#e04848', '#3a6fd8', '#e0a800', '#3f8a5c', '#9b5cd8'];
 const RIVER = { top: 2.6, bot: 10.2, flow: 2.2 };
+// seconds: between other things, before the next letter after one is got, and before a missed one comes back
+const GAP = { other: [1.5, 2.3], next: [2.5, 4], again: [1.5, 3] };
+const rand = ([a, b]) => a + Math.random() * (b - a);
 function newRiver(kind) {
-  const set = kind === 'abc' ? ABC.split('') : NUMS, start = S[kind] % set.length;
+  const set = kind === 'abc' ? ABC.split('') : NUMS;
   G = {
-    mode: 'river', kind, run: Array.from({ length: RUN }, (_, i) => set[(start + i) % set.length]), got: 0, set,
-    tug: { x: 4, y: 6.4, vx: 0, vy: 0, face: 1 }, things: [], sparkles: [], fx: [], smoke: [], bonk: 0, scroll: 0, spawn: .6, sinceNext: 0, done: false,
+    mode: 'river', kind, run: set, got: 0, set,
+    tug: { x: 4, y: 6.4, vx: 0, vy: 0, face: 1 }, things: [], sparkles: [], fx: [], smoke: [], bonk: 0, scroll: 0, spawn: .8, wait: 2, done: false,
   };
   $('#docket').hidden = true;
 }
+function riverY() { return RIVER.top + .6 + Math.random() * (RIVER.bot - RIVER.top - 1.2); }
 function spawnThing() {
-  const y = RIVER.top + .6 + Math.random() * (RIVER.bot - RIVER.top - 1.2), x = VW + 1.5, need = G.run[G.got];
-  const r = Math.random();
-  // the one he needs comes round often; wrong ones are always ones from the set
-  // the one after next floats in too, so it's already on its way when he gets one
-  if (G.sinceNext > 2.4 || r < .45) { const ahead = G.run[G.got + 1] && Math.random() < .4; G.things.push({ kind: 'token', ch: ahead ? G.run[G.got + 1] : need, x, y }); if (!ahead) G.sinceNext = 0; return; }
-  if (r < .6) { let ch; do ch = G.set[Math.floor(Math.random() * G.set.length)]; while (ch === need); G.things.push({ kind: 'token', ch, x, y }); return; }
-  if (r < .8) { G.things.push({ kind: 'boat', img: Math.random() < .5 ? SAIL : FISHER, x: x + 1, y, v: .5 + Math.random() * .6 }); return; }
-  G.things.push({ kind: 'sparkle', x, y, t: Math.random() * 9 });
+  const y = riverY(), x = VW + 1.5, need = G.run[G.got], r = Math.random();
+  if (r < .1) { let ch; do ch = G.set[Math.floor(Math.random() * G.set.length)]; while (ch === need); G.things.push({ kind: 'token', ch, x, y }); return; }
+  if (r < .35) { G.things.push({ kind: 'boat', img: Math.random() < .5 ? SAIL : FISHER, x: x + 1, y, v: .5 + Math.random() * .6 }); return; }
+  if (r < .55) { G.things.push({ kind: 'sparkle', x, y, t: Math.random() * 9 }); return; }
+  if (r < .75) { G.things.push({ kind: 'lily', x, y, t: Math.random() * 9 }); return; }
+  if (r < .9) { G.things.push({ kind: 'duck', x, y, t: Math.random() * 9 }); return; }
+  G.things.push({ kind: 'log', x: x + 1, y });
 }
 function stepRiver(dt) {
   const b = G.tug;
-  G.scroll += RIVER.flow * dt; G.sinceNext += dt;
-  if (!G.done && (G.spawn -= dt) <= 0) { spawnThing(); G.spawn = .9 + Math.random() * .6; }
+  G.scroll += RIVER.flow * dt;
+  if (!G.done && (G.spawn -= dt) <= 0) { spawnThing(); G.spawn = rand(GAP.other); }
+  // the letter he needs: one on the water at a time, kept clear of whatever just floated in
+  if (!G.done && !G.things.some(o => o.kind === 'token' && o.ch === G.run[G.got]) && (G.wait -= dt) <= 0) {
+    G.things.push({ kind: 'token', ch: G.run[G.got], x: VW + 1.5, y: riverY() }); G.spawn = Math.max(G.spawn, .8);
+  }
   let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
   const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; }
   b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
@@ -371,13 +384,14 @@ function stepRiver(dt) {
   G.smoke = G.smoke.filter(s => (s.t += dt, s.y -= dt * .6, s.x -= dt * (.2 + RIVER.flow * .3), s.t < 1.4));
   G.things = G.things.filter(o => {
     o.x -= (RIVER.flow + (o.v || 0)) * dt; if (o.t !== undefined) o.t += dt;
-    if (o.x < -2) return false;
+    if (o.x < -2) { if (o.kind === 'token' && o.ch === G.run[G.got]) G.wait = rand(GAP.again); return false; }
     const d = Math.hypot(o.x - b.x, o.y - b.y);
-    if (o.kind === 'boat' && d < 1.1 && d > 0) { const dx = b.x - o.x, dy = b.y - o.y; b.vx += dx / d * 2; b.vy += dy / d * 2; b.x += dx / d * (1.1 - d); b.y = Math.max(RIVER.top + .3, Math.min(RIVER.bot - .1, b.y + dy / d * (1.1 - d))); bonk(); }
+    if (o.kind === 'duck' && d < .9 && !o.q) { o.q = 1; sfx.quack(); o.v = -.6; }
+    if ((o.kind === 'boat' || o.kind === 'log') && d < 1.1 && d > 0) { const dx = b.x - o.x, dy = b.y - o.y; b.vx += dx / d * 2; b.vy += dy / d * 2; b.x += dx / d * (1.1 - d); b.y = Math.max(RIVER.top + .3, Math.min(RIVER.bot - .1, b.y + dy / d * (1.1 - d))); bonk(); }
     if (o.kind === 'sparkle' && d < .8) { S.sparkles++; persist(); hud(); sfx.sparkle(); burst(o.x, o.y, ['#ffe680', '#ffffff', '#bfe8ff']); return false; }
     if (o.kind === 'token' && d < .9 && !G.done && o.ch === G.run[G.got]) {
-      G.got++; sfx.cheer(); burst(o.x, o.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
-      if (G.got === RUN) riverDone();
+      G.got++; G.wait = rand(GAP.next); sfx.cheer(); burst(o.x, o.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
+      if (G.got === G.run.length) riverDone();
       return false;
     }
     return true;
@@ -385,7 +399,7 @@ function stepRiver(dt) {
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
 }
 function riverDone() {
-  G.done = true; S[G.kind] = (S[G.kind] + RUN) % G.set.length; S.trips++; persist(); hud();
+  G.done = true; S[G.kind]++; S.trips++; persist(); hud();
   sfx.start();
   for (let i = 0; i < 5; i++) setTimeout(() => G && burst(4 + i * 3, 5 + (i % 2), ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']), i * 220);
   setTimeout(() => { if (G && G.mode === 'river') showPick(G.kind); }, 2200);
@@ -403,6 +417,9 @@ function drawRiver(t) {
   G.things.forEach(o => {
     const X = o.x * T, Y = o.y * T;
     if (o.kind === 'sparkle') return twinkle(X, Y, t + o.t * 300);
+    if (o.kind === 'lily') { px(X - 7, Y - 3, 14, 6, '#3f8a5c'); px(X - 6, Y - 4, 12, 8, '#5aa772'); px(X, Y - 4, 2, 4, COL.W); if (Math.floor(o.t) % 3 === 0) { px(X - 3, Y - 6, 3, 3, '#f7c6d8'); px(X - 2, Y - 7, 1, 1, '#ffffff'); } return; }
+    if (o.kind === 'duck') { const bb = Math.floor(t / 300 + o.t) % 2; px(X - 5, Y - 4 + bb, 10, 5, LINE); px(X - 4, Y - 3 + bb, 8, 3, COL.y); px(X - 6, Y - 8 + bb, 5, 5, LINE); px(X - 5, Y - 7 + bb, 3, 3, COL.y); px(X - 8, Y - 6 + bb, 2, 2, COL.b); px(X - 4, Y - 6 + bb, 1, 1, LINE); return; }
+    if (o.kind === 'log') { px(X - 13, Y - 4, 26, 7, LINE); px(X - 12, Y - 3, 24, 5, '#8a4f2a'); px(X - 12, Y - 3, 24, 1, '#b8773a'); px(X + 9, Y - 3, 3, 5, '#d9a066'); px(X + 10, Y - 2, 1, 3, '#8a4f2a'); return; }
     if (o.kind === 'boat') { const img = sprite(o.img, { flip: true }); return put(img, X - img.width / 2, Y - img.height + 3 + (Math.floor(t / 400) % 2)); }
     const bob = Math.floor(t / 350 + o.x) % 2, col = TOKEN_COL[G.set.indexOf(o.ch) % TOKEN_COL.length];
     px(X - 9, Y - 9 + bob, 18, 18, LINE); px(X - 8, Y - 10 + bob, 16, 20, LINE); px(X - 10, Y - 8 + bob, 20, 16, LINE);
@@ -415,11 +432,11 @@ function drawRiver(t) {
   put(tug, bx, by);
   const o = Math.floor(t / 120) % 2; px(bx - 4 - o, by + tug.height - 2, 4, 1, COL.l);
   G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
-  // along the top: the five to get, the ones got filled in, the next one blinking
-  const w = 22, x0 = W / 2 - (RUN * w) / 2;
-  px(x0 - 5, 0, RUN * w + 8, 25, '#6fae5a');
-  G.run.forEach((ch, i) => {
-    const X = x0 + i * w, got = i < G.got, next = i === G.got && !G.done, col = TOKEN_COL[G.set.indexOf(ch) % TOKEN_COL.length];
+  // along the top: seven of the run at a time, got ones filled in, the next one blinking in the middle
+  const w = 22, n = 7, first = Math.max(0, Math.min(G.run.length - n, G.got - 3)), x0 = W / 2 - (n * w) / 2;
+  px(x0 - 5, 0, n * w + 8, 25, '#6fae5a');
+  G.run.slice(first, first + n).forEach((ch, j) => {
+    const i = first + j, X = x0 + j * w, got = i < G.got, next = i === G.got && !G.done, col = TOKEN_COL[G.set.indexOf(ch) % TOKEN_COL.length];
     if (next && Math.floor(t / 300) % 2) px(X - 2, 1, 22, 22, '#ffffff');
     px(X, 3, 18, 18, LINE); px(X + 1, 4, 16, 16, got || next ? col : '#cfe3c4');
     if (got || next) big1(ch, X + 9 + (ch.length > 1 ? 0 : 1), 17); else text(ch, X + 9, 16, '#9fb596', 8);
