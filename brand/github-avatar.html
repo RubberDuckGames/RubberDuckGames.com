@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- The GitHub org picture: the 8-bit duck on its pond, no words (GitHub shows
+     it small and square). Rendered with headless Chrome at 512x512 to
+     brand/github-avatar.png, then uploaded in the org's settings by hand. -->
+<style>html,body{margin:0;width:512px;height:512px;overflow:hidden}canvas{display:block}</style></head><body>
+<canvas id="c" width="512" height="512"></canvas>
+<script src="pixel-scene.js"></script>
+<script>
+const N = 64, lo = document.createElement('canvas'); lo.width = lo.height = N;
+const x = lo.getContext('2d'), px = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(a, b, w, h); };
+['#cfeaff', '#d9efff', '#e3f3ff', '#ecf7ff'].forEach((c, i) => px(0, i * 10, N, 10, c));
+px(6, 8, 7, 2, '#ffffff'); px(4, 10, 12, 2, '#ffffff'); px(46, 14, 7, 2, '#ffffff'); px(44, 16, 12, 2, '#ffffff');
+px(0, 40, N, 24, '#a6e08f'); px(0, 40, N, 1, '#cdeeb8');
+for (let j = -7; j <= 7; j++) { const half = Math.round(27 * Math.sqrt(1 - (j / 7.5) ** 2)); px(32 - half, 49 + j, half * 2, 1, j > 4 ? '#5fb4e6' : '#8fd3f5'); }
+px(10, 50, 5, 1, '#ffffff'); px(50, 47, 4, 1, '#ffffff');
+const k = 2, w = 20;
+for (let j = -1; j <= DUCK.length; j++) for (let i = -1; i <= w; i++) {
+  const at = (a, b) => (DUCK[b] || '')[a] || '.', ch = at(i, j), X = 12 + i * k, Y = 13 + j * k;
+  if (ch !== '.') px(X, Y, k, k, DUCK_COL[ch]);
+}
+const out = document.getElementById('c').getContext('2d'); out.imageSmoothingEnabled = false; out.drawImage(lo, 0, 0, 512, 512);
+</script>
+</body></html>
