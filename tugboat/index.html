@@ -36,6 +36,10 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 .card input{display:block;width:100%;font:inherit;font-size:1.2rem;padding:.5rem .7rem;border:3px solid var(--ink);margin:.6rem 0}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.75rem}
 .btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+@media (max-width:30rem){#pickBtn .lbl{display:none}.bar{gap:.35rem;padding-left:.5rem;padding-right:.5rem}.bar .pill{padding:.3rem .5rem;font-size:.6rem}}   /* the bar has to fit a phone held upright */
+.picks{display:grid;gap:.7rem;margin-top:.8rem}
+.picks .btn{font-size:1rem;padding:1rem;text-align:left}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
 /* touch controls: a thumb pad and a big horn, only on touch screens */
@@ -65,6 +69,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
   <a class="pill" href="../">← All games</a>
   <span class="grow"></span>
   <button class="pill" id="nameBtn">Boat name</button>
+  <button class="pill" id="pickBtn" hidden aria-label="Pick harbor or river">⛵<span class="lbl"> Pick</span></button>
   <span class="pill" id="hStars" aria-label="Deliveries">⭐ 0</span>
   <span class="pill" id="hJar" aria-label="Sparkles">✨ 0</span>
   <button class="pill" id="soundBtn" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
@@ -110,7 +115,7 @@ const PIX = '"Press Start 2P", monospace';
 // The tugboat's name is typed in once and kept here, so the kid's name is only
 // ever on the family's own device, never on the public site.
 const KEY = 'tugboat';
-const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
+const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true, abc: 0, num: 0 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
 const title = () => S.name ? `Tugboat ${S.name}'s Deliveries` : 'Tugboat Deliveries';
@@ -322,6 +327,111 @@ function delivered() {
   setTimeout(() => { if (G) { G.left = null; newJob(); } }, 2600);
 }
 
+// ---------- The river ----------
+// Decided 2 Nov: a second level, asked for by the family. The tugboat floats
+// down a river that scrolls by on its own, and picks up letters (or numbers) in
+// order: the next one to get is shown big at the top. A wrong one floats past,
+// nothing bad. Boats to steer around (a bump boings), sparkles to collect.
+// Runs are five letters long, A to E, then F to J next time, so a run is short.
+const RUN = 5, ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', NUMS = Array.from({ length: 20 }, (_, i) => String(i + 1));
+const TOKEN_COL = ['#e04848', '#3a6fd8', '#e0a800', '#3f8a5c', '#9b5cd8'];
+const RIVER = { top: 2.6, bot: 10.2, flow: 2.2 };
+function newRiver(kind) {
+  const set = kind === 'abc' ? ABC.split('') : NUMS, start = S[kind] % set.length;
+  G = {
+    mode: 'river', kind, run: Array.from({ length: RUN }, (_, i) => set[(start + i) % set.length]), got: 0, set,
+    tug: { x: 4, y: 6.4, vx: 0, vy: 0, face: 1 }, things: [], sparkles: [], fx: [], smoke: [], bonk: 0, scroll: 0, spawn: .6, sinceNext: 0, done: false,
+  };
+  $('#docket').hidden = true;
+}
+function spawnThing() {
+  const y = RIVER.top + .6 + Math.random() * (RIVER.bot - RIVER.top - 1.2), x = VW + 1.5, need = G.run[G.got];
+  const r = Math.random();
+  // the one he needs comes round often; wrong ones are always ones from the set
+  // the one after next floats in too, so it's already on its way when he gets one
+  if (G.sinceNext > 2.4 || r < .45) { const ahead = G.run[G.got + 1] && Math.random() < .4; G.things.push({ kind: 'token', ch: ahead ? G.run[G.got + 1] : need, x, y }); if (!ahead) G.sinceNext = 0; return; }
+  if (r < .6) { let ch; do ch = G.set[Math.floor(Math.random() * G.set.length)]; while (ch === need); G.things.push({ kind: 'token', ch, x, y }); return; }
+  if (r < .8) { G.things.push({ kind: 'boat', img: Math.random() < .5 ? SAIL : FISHER, x: x + 1, y, v: .5 + Math.random() * .6 }); return; }
+  G.things.push({ kind: 'sparkle', x, y, t: Math.random() * 9 });
+}
+function stepRiver(dt) {
+  const b = G.tug;
+  G.scroll += RIVER.flow * dt; G.sinceNext += dt;
+  if (!G.done && (G.spawn -= dt) <= 0) { spawnThing(); G.spawn = .9 + Math.random() * .6; }
+  let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; }
+  b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
+  const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
+  const drag = Math.max(0, 1 - 2.4 * dt); b.vx *= drag; b.vy *= drag;
+  b.x = Math.max(1.5, Math.min(12, b.x + b.vx * dt));
+  const ny = b.y + b.vy * dt;
+  if (ny < RIVER.top + .3 || ny > RIVER.bot - .1) { b.vy *= -.4; G.bonk -= 0; bonk(); } else b.y = ny;
+  G.bonk -= dt;
+  if (Math.random() < dt * (3 + sp)) G.smoke.push({ x: b.x - .1, y: b.y - 1.1, t: 0 });
+  G.smoke = G.smoke.filter(s => (s.t += dt, s.y -= dt * .6, s.x -= dt * (.2 + RIVER.flow * .3), s.t < 1.4));
+  G.things = G.things.filter(o => {
+    o.x -= (RIVER.flow + (o.v || 0)) * dt; if (o.t !== undefined) o.t += dt;
+    if (o.x < -2) return false;
+    const d = Math.hypot(o.x - b.x, o.y - b.y);
+    if (o.kind === 'boat' && d < 1.1 && d > 0) { const dx = b.x - o.x, dy = b.y - o.y; b.vx += dx / d * 2; b.vy += dy / d * 2; b.x += dx / d * (1.1 - d); b.y = Math.max(RIVER.top + .3, Math.min(RIVER.bot - .1, b.y + dy / d * (1.1 - d))); bonk(); }
+    if (o.kind === 'sparkle' && d < .8) { S.sparkles++; persist(); hud(); sfx.sparkle(); burst(o.x, o.y, ['#ffe680', '#ffffff', '#bfe8ff']); return false; }
+    if (o.kind === 'token' && d < .9 && !G.done && o.ch === G.run[G.got]) {
+      G.got++; sfx.cheer(); burst(o.x, o.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
+      if (G.got === RUN) riverDone();
+      return false;
+    }
+    return true;
+  });
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
+}
+function riverDone() {
+  G.done = true; S[G.kind] = (S[G.kind] + RUN) % G.set.length; S.trips++; persist(); hud();
+  sfx.start();
+  for (let i = 0; i < 5; i++) setTimeout(() => G && burst(4 + i * 3, 5 + (i % 2), ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']), i * 220);
+  setTimeout(() => { if (G && G.mode === 'river') showPick(G.kind); }, 2200);
+}
+function drawRiver(t) {
+  const W = VW * T, H = VH * T, top = RIVER.top * T - 6, bot = (RIVER.bot + .5) * T, off = (G.scroll * T) % (W + 40);
+  px(0, 0, W, H, COL.W);
+  for (let y = 3; y < 10; y++) for (let x = -1; x < VW + 1; x++) if ((x * 3 + y * 5) % 4 === 0) { const sx = (x * T + 3 - (G.scroll * T) % T + T) % (W + T) - T; px(sx, y * T + 8, 6, 1, COL.l); }
+  // the banks scroll past: grass with a sand edge, and trees going by
+  px(0, 0, W, top, '#8fd17a'); px(0, top - 4, W, 4, '#ecd6a0'); px(0, top, W, 1, COL.V);
+  px(0, bot, W, H - bot, '#8fd17a'); px(0, bot, W, 3, '#ecd6a0'); px(0, bot - 1, W, 1, COL.V);
+  for (let i = 0; i < 7; i++) { const x = ((i * 61 - G.scroll * T * .9) % (W + 60) + W + 60) % (W + 60) - 30; px(x + 4, top - 18, 3, 8, '#7a4a2a'); px(x, top - 28, 12, 10, '#3f8a5c'); px(x + 2, top - 31, 8, 3, '#3f8a5c'); }
+  for (let i = 0; i < 6; i++) { const x = ((i * 73 + 30 - G.scroll * T * .9) % (W + 60) + W + 60) % (W + 60) - 30; px(x, bot + 6, 1, 4, '#79bd66'); px(x + 3, bot + 5, 1, 5, '#79bd66'); }
+  // what floats by: letters on round floats, boats, sparkles
+  G.things.forEach(o => {
+    const X = o.x * T, Y = o.y * T;
+    if (o.kind === 'sparkle') return twinkle(X, Y, t + o.t * 300);
+    if (o.kind === 'boat') { const img = sprite(o.img, { flip: true }); return put(img, X - img.width / 2, Y - img.height + 3 + (Math.floor(t / 400) % 2)); }
+    const bob = Math.floor(t / 350 + o.x) % 2, col = TOKEN_COL[G.set.indexOf(o.ch) % TOKEN_COL.length];
+    px(X - 9, Y - 9 + bob, 18, 18, LINE); px(X - 8, Y - 10 + bob, 16, 20, LINE); px(X - 10, Y - 8 + bob, 20, 16, LINE);
+    px(X - 8, Y - 8 + bob, 16, 16, col); px(X - 7, Y - 9 + bob, 14, 18, col); px(X - 9, Y - 7 + bob, 18, 14, col);
+    big1(o.ch, X + (o.ch.length > 1 ? 0 : 1), Y + 5 + bob);
+  });
+  // the tugboat
+  const b = G.tug, bob = Math.floor(t / 350) % 2, tug = sprite(TUG), bx = b.x * T - tug.width / 2, by = b.y * T - tug.height + 4 + bob;
+  G.smoke.forEach(s => { const r = 2 + s.t * 3; px(s.x * T - r / 2, s.y * T - r / 2, r, r, s.t < .7 ? '#e8e8ee' : '#c9c9d4'); });
+  put(tug, bx, by);
+  const o = Math.floor(t / 120) % 2; px(bx - 4 - o, by + tug.height - 2, 4, 1, COL.l);
+  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+  // along the top: the five to get, the ones got filled in, the next one blinking
+  const w = 22, x0 = W / 2 - (RUN * w) / 2;
+  px(x0 - 5, 0, RUN * w + 8, 25, '#6fae5a');
+  G.run.forEach((ch, i) => {
+    const X = x0 + i * w, got = i < G.got, next = i === G.got && !G.done, col = TOKEN_COL[G.set.indexOf(ch) % TOKEN_COL.length];
+    if (next && Math.floor(t / 300) % 2) px(X - 2, 1, 22, 22, '#ffffff');
+    px(X, 3, 18, 18, LINE); px(X + 1, 4, 16, 16, got || next ? col : '#cfe3c4');
+    if (got || next) big1(ch, X + 9 + (ch.length > 1 ? 0 : 1), 17); else text(ch, X + 9, 16, '#9fb596', 8);
+  });
+}
+// a big letter, white with a dark outline, centered on x
+function big1(ch, x, y) {
+  cx.textAlign = 'center'; cx.font = `${ch.length > 1 ? 9 : 12}px ${PIX}`;
+  cx.fillStyle = LINE; for (const [a, c] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(ch, Math.round(x + a), Math.round(y + c));
+  cx.fillStyle = '#ffffff'; cx.fillText(ch, Math.round(x), Math.round(y));
+}
+
 // ---------- Drawing ----------
 function drawHarbor(t) {
   const W = VW * T, H = VH * T;
@@ -389,7 +499,7 @@ function drawPress(t) {
 }
 
 // ---------- Screens ----------
-function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#nameBtn').hidden = false; }
+function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#nameBtn').hidden = false; $('#pickBtn').hidden = true; }
 function pressStart() {
   if (screen !== 'press' || pressT) return;
   if (!S.name && !S.asked) return askName(true);
@@ -397,9 +507,21 @@ function pressStart() {
   setTimeout(play, 900);
 }
 function play() {
-  screen = 'play'; $('#nameBtn').hidden = true; $('#ctrl').hidden = false; resize();
-  newHarbor();
+  screen = 'play'; $('#nameBtn').hidden = true; $('#pickBtn').hidden = false; $('#ctrl').hidden = false; resize();
+  newHarbor(); showPick();
 }
+// Harbor or river: big buttons a grown-up can read out, and the arrow keys
+// and Space work on them too.
+function showPick(focus) {
+  $('#card').innerHTML = `<h2>Where to?</h2><div class="picks"><button class="btn" data-pick="harbor">⚓ Harbor</button><button class="btn" data-pick="abc">🔤 River A B C</button><button class="btn" data-pick="num">🔢 River 1 2 3</button></div>`;
+  $('#cover').hidden = false;
+  $('#card').querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
+    $('#cover').hidden = true; const k = btn.dataset.pick;
+    if (k === 'harbor') newHarbor(); else newRiver(k);
+  });
+  ($('#card').querySelector(`[data-pick="${focus || 'harbor'}"]`) || $('#card').querySelector('[data-pick]')).focus();
+}
+$('#pickBtn').onclick = () => { if (screen === 'play') showPick(G?.kind); };
 // Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
 function askName(thenStart) {
   $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
@@ -414,6 +536,15 @@ $('#nameBtn').onclick = () => askName(false);
 // ---------- Input ----------
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  const picks = [...document.querySelectorAll('#card [data-pick]')];
+  if (!$('#cover').hidden && picks.length) {
+    // on the harbor-or-river card, the arrows move between the buttons
+    const i = picks.indexOf(document.activeElement);
+    if (k === 'arrowdown' || k === 'arrowright') { e.preventDefault(); picks[(i + 1) % picks.length].focus(); }
+    if (k === 'arrowup' || k === 'arrowleft') { e.preventDefault(); picks[(i - 1 + picks.length) % picks.length].focus(); }
+    if ((k === ' ' || k === 'enter') && i < 0) { e.preventDefault(); picks[0].click(); }
+    return;
+  }
   if (!$('#cover').hidden) return;
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   if (screen === 'press') { if (k === ' ' || k === 'enter' || k.startsWith('arrow')) pressStart(); return; }
@@ -453,6 +584,7 @@ let last = 0;
 function loop(t) {
   const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
   if (screen === 'press') drawPress(t);
+  else if (G && G.mode === 'river') { if ($('#cover').hidden) stepRiver(dt); drawRiver(t); }
   else if (G) { if ($('#cover').hidden) step(dt, t); drawHarbor(t); }
   out.imageSmoothingEnabled = false;
   out.drawImage(lo, 0, 0, cv.width, cv.height);
