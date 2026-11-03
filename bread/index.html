@@ -207,7 +207,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv"></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the arrow pad or hold the mouse · Bark: <b>Space</b> · Paw: <b>P</b><span id="digHelp" hidden> · Dig: <b>X</b></span> · Help: <b>H</b></p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span> · Help: <b>H</b></p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -1556,10 +1556,14 @@ addEventListener('keydown', e => {
     if (k === 'enter' || k === ' ') { e.preventDefault(); mapGo(); }
     return;
   }
-  if ((k === ' ' || k === 'b') && !e.repeat) bark();
-  if ((k === 'p' || k === 'enter') && !e.repeat && screen === 'level') { e.preventDefault(); paw(); }
+  // Decided 2 Nov: the moves sit together by the space bar, so a hand on the
+  // arrows and a hand by Space can play without looking. Space was Bark and P
+  // was Paw, which was a stretch. The old letters still work.
+  if (e.repeat) return;
+  if (k === 'shift' || k === 'b' || (k === ' ' && screen !== 'level')) bark();
+  if ((k === ' ' || k === 'p' || k === 'enter') && screen === 'level') { e.preventDefault(); paw(); }
   if (k === 'h' && screen === 'level') help();
-  if (k === 'x' && !e.repeat && screen === 'level') dig();
+  if ((k === 'z' || k === 'x') && screen === 'level') dig();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
