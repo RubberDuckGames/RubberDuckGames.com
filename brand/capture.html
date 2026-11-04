@@ -2,13 +2,13 @@
 <!-- Renders the picture on each home page game card. Serve the repo root (python3 -m http.server), then for each game:
      Chrome --headless=new --hide-scrollbars --window-size=576,352 --virtual-time-budget=5000 --screenshot=bread/card.png "http://localhost:8000/brand/capture.html?g=bread"
      (Math Force and Treasure Trail at 800,500, saved to math-force/card.png and treasure-trail/card.png;
-     Tugboat Deliveries and Rodeo at 640,384, saved to tugboat/card.png and rodeo/card.png).
+     Tugboat Deliveries, Rodeo and Conquest at 640,384, saved to tugboat/card.png, rodeo/card.png and conquest/card.png).
      Decided 28 Oct: each scene is set up by hand below; Math Force takes the floor gem out first, so the card shows nothing a player is meant to find. -->
 <style>html,body{margin:0;overflow:hidden;background:#000}iframe{border:0;position:absolute;inset:0;width:100%;height:100%}canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:2}</style>
 <iframe id="f"></iframe><canvas id="c" hidden></canvas>
 <script>
 const g = new URLSearchParams(location.search).get('g'), f = document.getElementById('f'), c = document.getElementById('c');
-f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/', tug: '/tugboat/', rodeo: '/rodeo/' }[g];
+f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/', tug: '/tugboat/', rodeo: '/rodeo/', cq: '/conquest/' }[g];
 f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
@@ -31,6 +31,21 @@ f.onload = () => {
   } else if (g === 'rodeo') {
     w.eval(`TITLE.still = true; S.sound = false;`);
     setTimeout(() => { const lo = w.eval('lo'); c.width = lo.width; c.height = lo.height; c.hidden = false; const x = c.getContext('2d'); (function copy() { x.drawImage(lo, 0, 0); requestAnimationFrame(copy); })(); }, 900);
+  } else if (g === 'cq') {
+    // the two armies meeting in the middle of the map, your tank picked and firing
+    setTimeout(() => {
+      w.eval(`PREFS.sound = false; newGame(); $('#cover').hidden = true; banner = null;
+        G.units = [];
+        const put = (k, s, x, y) => { const u = mkUnit(k, s, x, y); G.units.push(u); return u; };
+        const me = put('tank', 'you', 5, 8); put('soldier', 'you', 3, 9); put('tankDestroyer', 'you', 7, 9); put('aaTank', 'you', 8, 8); put('artillery', 'you', 4, 8);
+        put('tank', 'cpu', 5, 6); put('soldier', 'cpu', 6, 5); put('tank', 'cpu', 4, 5); put('soldier', 'cpu', 8, 6); put('defenseGun', 'cpu', 7, 5);
+        cityAt(4, 8).owner = 'you'; cityAt(7, 5).owner = 'cpu';
+        sel = { unit: me };
+        fx.push({ kind: 'shot', x0: 5, y0: 8, x1: 5, y1: 6, t0: performance.now() - .4e9, dur: 1e9 });
+        render();`);
+      const cv = w.eval('cv'); c.width = 384; c.height = 230; c.hidden = false;
+      const x = c.getContext('2d'); (function copy() { x.drawImage(cv, 72, 206, 384, 230, 0, 0, 384, 230); requestAnimationFrame(copy); })();
+    }, 1200);
   } else if (g === 'tt') {
     w.eval(`if (typeof startVoyage === 'function') { save.current = 0; player().setup = true; showMap(); }`);
     const st = d.createElement('style'); st.textContent = '.pill,#hello{visibility:hidden!important}'; d.head.appendChild(st);

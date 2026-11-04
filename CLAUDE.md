@@ -168,7 +168,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bought unit goes on the city or a free square next to it, and moves next
   turn. The computer buys one unit per city a turn: with two, it swamped a test
   game with 41 units. Strings are in `STR`. A game in progress is saved under
-  `conquest` at the start of each of your turns. Not on the home page yet.
+  `conquest` at the start of each of your turns. Its home page card (4 Nov) is the last one, after Rodeo, so his friends can play it.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
