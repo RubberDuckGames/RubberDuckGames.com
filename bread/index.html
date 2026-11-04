@@ -302,7 +302,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, pond: {}, farm: {}, barn: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -313,6 +313,8 @@ function useFile(n, m) {
   delete data.sound;
   Object.keys(S).forEach(k => delete S[k]);
   Object.assign(S, structuredClone(DEF), data, { sound: soundOn() });
+  // Crumb used to wear Bread's pieces; those come off now that Crumb has a closet of Crumb's own
+  Object.keys(S.crumbWear).forEach(k => { if (!CRUMB_ITEMS[S.crumbWear[k]]) delete S.crumbWear[k]; });
   $('#whoBtn').hidden = false;
   $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span> ${SaveFiles.esc(m.name)}`;
   $('#whoBtn').setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
@@ -632,49 +634,37 @@ function drawCar(x, y, face, t, riders = true) {
   }
   put(img, X, Y + bob);
 }
-// Decided 2 Nov: Crumb can dress up too, from the same closet. The same pieces,
-// placed for Crumb's smaller shape. Crumb is black and tan, so the costumes
-// recolor those, and the shades get a gray band so they show on black fur.
-const CRUMB_WEAR = {
-  cape: [2, 6, ['..rrrr', 'rrrrrr', 'rrrrR.']],
-  duck: [14, 4, ['.bbbb', 'bbbbb']],
-  bowtie: [9, 7, ['u.u', 'uuu', 'u.u']],
-  shades: [10, 3, ['gggggg', '..DhDD', '..DDD.']],
-  pigSnout: [15, 4, ['PPP', 'QPQ']],
-  pigTail: [0, 3, ['.PP.', 'P..P', '..PP', '.P..']],
-  duckHat: [9, -5, WEAR_PIX.duckHat[2]],
-  party: [10, -5, WEAR_PIX.party[2]],
-  cowSpots: [3, 6, ['..nn..nn', '.nnn..n.']],
-  cowbell: [9, 7, WEAR_PIX.cowbell[2]],
-  horns: [10, -2, ['t..t', '.tt.']],
-  beak: [14, 4, ['yy', '.y']],
-  comb: [10, -2, ['r.r', 'rrr']],
-  feathers: [0, 3, ['r.u', '.ru']],
-  vest: [3, 6, ['tttttttt', '.tt..tt.']],
-  cowboyHat: [9, -3, ['..ttt.', '.tttt.', 'tttttt']],
-  bandana: [9, 7, WEAR_PIX.bandana[2]],
+// Decided 2 Nov: Crumb can dress up too. Decided 3 Nov, after play-tests:
+// Crumb has a closet of Crumb's own, with puppy-sized things instead of
+// Bread's pieces (the sunglasses and the rest looked wrong on Crumb's small
+// black face). Crumb's costumes are little animals hidden around the worlds,
+// one or two per place, and Crumb's shop sells small things for treats.
+// Each piece: its slot, the pixels laid over Crumb ([x, y, rows]), and for
+// costumes the colors Crumb's black and tan become.
+const CRUMB_ITEMS = {
+  duckling: { slot: 'body', name: 'Duckling costume', world: 'pond', map: { D: COL.y, s: COL.Y, p: COL.y }, pix: [15, 4, ['bbb', 'bbb']] },
+  piglet: { slot: 'body', name: 'Piglet costume', world: 'farm', map: { D: COL.P, s: COL.Q, p: COL.Q }, pix: [15, 4, ['PPP', 'QPQ']] },
+  kitten: { slot: 'body', name: 'Barn kitten costume', world: 'barn', map: { D: COL.o, s: COL.w, p: COL.p }, pix: [4, 6, ['.d..d..d', '..d..d..']] },
+  mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
+  chick: { slot: 'body', name: 'Chick costume', world: 'coop', map: { D: COL.e, s: COL.y, p: COL.e }, pix: [15, 4, ['YY', '.Y']] },
+  foal: { slot: 'body', name: 'Foal costume', world: 'horse ring', map: { D: COL.t, s: COL.s, p: COL.t }, pix: [8, 1, ['n.', 'nn', 'nn', 'n.']] },
+  bow: { slot: 'hat', name: 'Little bow', cost: 15, pix: [11, -1, ['P.P', 'PPP']] },
+  crown: { slot: 'hat', name: 'Tiny crown', cost: 45, pix: [10, -3, ['y.y.y', 'yyyyy']] },
+  bell: { slot: 'neck', name: 'Collar bell', cost: 20, pix: [9, 7, ['ggg', '.y.']] },
+  scarf: { slot: 'neck', name: 'Little scarf', cost: 25, pix: [8, 6, ['uuu', 'uuuu', '.u.']] },
+  sneakers: { slot: 'feet', name: 'Red sneakers', cost: 35, feet: COL.r },
 };
 function crumbRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
   const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
-  if (wear.feet === 'duckFeet') for (const y of [pad + 10, pad + 11]) g[y] = g[y].map(ch => ch === 's' ? 'b' : ch);
-  if (wear.back === 'cape') over(CRUMB_WEAR.cape);
-  if (wear.body === 'duck') over(CRUMB_WEAR.duck);
-  if (wear.body === 'cow') over(CRUMB_WEAR.cowSpots);
-  if (wear.body === 'chicken') over(CRUMB_WEAR.beak);
-  if (wear.body === 'cowboy') over(CRUMB_WEAR.vest);
-  if (wear.neck) over(CRUMB_WEAR[wear.neck]);
-  if (wear.face) over(CRUMB_WEAR[wear.face]);
-  if (wear.back === 'pigTail' || wear.back === 'feathers') over(CRUMB_WEAR[wear.back]);
-  if (wear.hat) over(CRUMB_WEAR[wear.hat]);
+  ['body', 'neck', 'hat'].forEach(slot => { const it = CRUMB_ITEMS[wear[slot]]; if (it && it.pix) over(it.pix); });
+  if (CRUMB_ITEMS[wear.feet]) g[pad + 11] = g[pad + 11].map(ch => ch === 's' ? 'f' : ch);   // shoes on the bottom row of the legs
   return g.map(r => r.join(''));
 }
 function crumbMap(wear) {
-  if (wear.body === 'duck') return { D: COL.y, s: COL.Y, p: COL.y };
-  if (wear.body === 'pig') return { D: COL.P, s: COL.Q, p: COL.Q };
-  if (wear.body === 'cow') return { D: COL.h, s: COL.g, p: COL.P };
-  if (wear.body === 'chicken') return { D: COL.h, s: COL.g, p: COL.r };
-  return {};
+  const map = { ...(CRUMB_ITEMS[wear.body]?.map || {}) };
+  if (CRUMB_ITEMS[wear.feet]) map.f = CRUMB_ITEMS[wear.feet].feet;
+  return map;
 }
 // (x, y) is the ground under the middle of Crumb
 function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
@@ -737,10 +727,10 @@ function drawHome(t) {
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
 const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2] };
 const picCache = {};
-function pic(rows, dark) {
-  const key = rows.join('/') + dark;
+function pic(rows, dark, colors = {}) {
+  const key = rows.join('/') + dark + JSON.stringify(colors);
   if (picCache[key]) return picCache[key];
-  const map = {}; if (dark) rows.join('').split('').forEach(ch => { if (ch !== '.') map[ch] = '#8a7258'; });
+  const map = { ...colors }; if (dark) rows.join('').split('').forEach(ch => { if (ch !== '.') map[ch] = '#8a7258'; });
   const img = sprite(rows, { map }), c = document.createElement('canvas'), n = Math.max(10, img.width, img.height) + 2;
   c.width = c.height = n; c.getContext('2d').drawImage(img, (n - img.width) >> 1, (n - img.height) >> 1);
   return picCache[key] = c.toDataURL();
@@ -758,19 +748,23 @@ function openCloset() {
   showRow('closet');
   drawMirror();
   const list = $('#closetList'); list.innerHTML = '';
+  const crumb = closetWho === 'crumb', LIST = crumb ? CRUMB_ITEMS : ITEMS, mine = crumb ? S.crumbHave : S.have;
+  // Crumb's pieces are shown on a little Crumb, since they're mostly colors
+  const picOf = (k, dark) => !k ? pic(HANGER, false) : crumb ? pic(crumbRows(0, { [LIST[k].slot]: k }), dark, crumbMap({ [LIST[k].slot]: k })) : pic(ITEM_PIC[k], dark);
   SLOTS.forEach(([slot, label]) => {
-    const all = Object.keys(ITEMS).filter(k => ITEMS[k].slot === slot);
+    const all = Object.keys(LIST).filter(k => LIST[k].slot === slot);
+    if (!all.length) return;
     const row = document.createElement('div'); row.className = 'rack';
     row.innerHTML = `<span class="lbl">${label}</span>`;
     [null, ...all].forEach(k => {
-      const have = !k || S.have.includes(k), on = (wearing()[slot] || null) === k;
+      const have = !k || mine.includes(k), on = (wearing()[slot] || null) === k;
       const b = document.createElement('button'); b.className = 'tile' + (on ? ' on' : '') + (have ? '' : ' locked');
       b.setAttribute('aria-pressed', on);
-      b.setAttribute('aria-label', !k ? `No ${label.toLowerCase()}` : have ? ITEMS[k].name : 'Not found yet');
+      b.setAttribute('aria-label', !k ? `No ${label.toLowerCase()}` : have ? LIST[k].name : 'Not found yet');
       b.title = b.getAttribute('aria-label');
-      b.innerHTML = `<img alt="" src="${pic(k ? ITEM_PIC[k] : HANGER, !have)}">`;
+      b.innerHTML = `<img alt="" src="${picOf(k, !have)}">`;
       b.onclick = () => {
-        if (!have) return toast(ITEMS[k].cost ? `In the treat shop: 🦴 ${ITEMS[k].cost}` : slot === 'body' ? `Win it at the ${ITEMS[k].world}.` : `Hidden at the ${ITEMS[k].world}.`);
+        if (!have) return toast(LIST[k].cost ? `In the treat shop: 🦴 ${LIST[k].cost}` : crumb || slot !== 'body' ? `Hidden at the ${LIST[k].world}.` : `Win it at the ${LIST[k].world}.`);
         wearing()[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
       };
       row.append(b);
@@ -781,19 +775,22 @@ function openCloset() {
 function openShop() {
   showRow('shop');
   const list = $('#shopList'); list.innerHTML = '';
-  Object.entries(ITEMS).filter(([, it]) => it.cost).forEach(([k, it]) => {
-    const row = document.createElement('div'); row.className = 'slot';
-    const b = document.createElement('button'); b.className = 'btn';
-    if (S.have.includes(k)) { b.disabled = true; b.innerHTML = `${it.name}<small>In the closet</small>`; }
-    else {
-      b.innerHTML = `${it.name}<small>🦴 ${it.cost} treats</small>`;
-      b.onclick = () => {
-        if (S.bank < it.cost) return toast(`You need 🦴 ${it.cost - S.bank} more.`);
-        S.bank -= it.cost; S.have.push(k); S.wear[it.slot] = k; persist(); bank(); sfx.sparkle();
-        toast('Bread is wearing it!'); openShop();
-      };
-    }
-    row.append(b); list.append(row);
+  [['For Bread', ITEMS, S.have, S.wear, 'Bread'], ['For Crumb', CRUMB_ITEMS, S.crumbHave, S.crumbWear, 'Crumb']].forEach(([head, LIST, mine, wear, who]) => {
+    const h = document.createElement('h3'); h.textContent = head; list.append(h);
+    Object.entries(LIST).filter(([, it]) => it.cost).forEach(([k, it]) => {
+      const row = document.createElement('div'); row.className = 'slot';
+      const b = document.createElement('button'); b.className = 'btn';
+      if (mine.includes(k)) { b.disabled = true; b.innerHTML = `${it.name}<small>In the closet</small>`; }
+      else {
+        b.innerHTML = `${it.name}<small>🦴 ${it.cost} treats</small>`;
+        b.onclick = () => {
+          if (S.bank < it.cost) return toast(`You need 🦴 ${it.cost - S.bank} more.`);
+          S.bank -= it.cost; mine.push(k); wear[it.slot] = k; persist(); bank(); sfx.sparkle();
+          toast(`${who} is wearing it!`); openShop();
+        };
+      }
+      row.append(b); list.append(row);
+    });
   });
 }
 $('#closetBtn').onclick = openCloset;
@@ -947,6 +944,7 @@ const POND = (() => {
     // rubber duck out in the pond, so you have to swim for it
     spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
     goldSpots: bushes,                       // the dead ends of the mazes by the pond
+    crumbSpots: { duckling: [1.5, 20.5] },   // in the bush at the bottom of the left maze
   };
 })();
 // The farm (decided 28 Oct with the kid designer: the pig costume, and the
@@ -1125,6 +1123,8 @@ const FARM_OPEN = (() => {
     run: [[20.5, 20.5], [20.5, 33.5], [12, 34], [12, 31]], crumbAt: down(COOP.roost), piglet: FARM.crumbAt,
     spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])), ...Object.fromEntries(Object.entries(RING.spots).map(([k, v]) => [k, both(v)])) },
     coopGold: COOP.goldSpots.map(down), ringGold: RING.goldSpots.map(both),
+    // Crumb's costumes: in the pig pen, the tack room, the feed pen, the coop and the ring's meadow
+    crumbSpots: { piglet: [23.5, 18.5], kitten: at([29.5, 8.5]), mouse: at([16.5, 3.5]), chick: down([8.5, 9.5]), foal: both([20.5, 1.5]) },
     ring: { box: [RING.ring[0] + BX, RING.ring[1] + CY, RING.ring[2] + BX, RING.ring[3] + CY], gate: both(RING.gate), barrels: RING.barrels.map(both), pony: both(RING.pony) },
     coop: { rect: [COOP.rect[0], COOP.rect[1] + CY, COOP.rect[2], COOP.rect[3] + CY], nests: COOP.nests.map(([x, y, c]) => [x, y + CY, c]), down: down(COOP.down),
       eggs: COOP.eggs.map(([x, y, c, hide]) => [x, y + CY, c, hide]), run: [COOP.run[0], COOP.run[1] + CY, COOP.run[2], COOP.run[3] + CY], door: [11.5, 11.4 + CY] },
@@ -1171,7 +1171,8 @@ function startWorld(key) {
   if (M.barnGold) { const [x, y] = M.barnGold[Math.floor(Math.random() * M.barnGold.length)]; G.treats.push({ x, y, v: 10, sec: 'barn' }); }
   if (M.ringGold) { const [x, y] = M.ringGold[Math.floor(Math.random() * M.ringGold.length)]; G.treats.push({ x, y, v: 10, sec: 'ring' }); }
   if (M.coopGold) { const [x, y] = M.coopGold[Math.floor(Math.random() * M.coopGold.length)]; G.treats.push({ x, y, v: 10, sec: 'coop' }); }
-  G.sparkles = Object.entries(M.spots).map(([k, [x, y]]) => ({ k, x, y, sec: secOf(k) })).filter(sp => !S[sp.sec][sp.k]);
+  G.sparkles = Object.entries(M.spots).map(([k, [x, y]]) => ({ k, x, y, sec: secOf(k) })).filter(sp => !S[sp.sec][sp.k])
+    .concat(Object.entries(M.crumbSpots || {}).filter(([k]) => !S.crumbHave.includes(k)).map(([k, [x, y]]) => ({ k, x, y, crumb: true })));
   W.setup();
   hudLevel(); showDig();
   if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); }
@@ -1609,6 +1610,11 @@ function stepLevel(dt, t) {
   // hidden sparkles
   G.sparkles = G.sparkles.filter(sp => {
     if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
+    if (sp.crumb) {                          // one of Crumb's costumes
+      S.crumbHave.push(sp.k); persist(); burst(sp.x, sp.y);
+      const w = { body: sp.k }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), `For Crumb: the ${CRUMB_ITEMS[sp.k].name.toLowerCase()}!`);
+      return false;
+    }
     S[sp.sec][sp.k] = true;
     if (TOYS[sp.k]) { S.toys.push(sp.k); hold(TOYS[sp.k].pic, `A ${TOYS[sp.k].name}!`); }
     else { S.have.push(sp.k); hold(ITEM_PIC[sp.k], `${ITEMS[sp.k].name}!`); }
