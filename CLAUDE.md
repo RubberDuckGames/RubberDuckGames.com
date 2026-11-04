@@ -33,7 +33,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bark freezes squirrels and fleas and her paw swipe catches them. Each world is
   meant to teach a move (the pond: swimming) that opens spots in earlier worlds.
   Worlds are data (`WORLDS` in the script: map, goals, setup, steps); progress
-  per world is `S.pond`, `S.farm`, `S.barn`, and learned moves are `S.moves`. The farm
+  per world (or section) is `S.pond`, `S.farm`, `S.barn`, and learned moves are `S.moves`. The farm
   (opens after the pond): Crumb digs under the fence into a corn maze, the big
   pig in the muddy pen teaches Bread to dig, Bread digs under, finds Crumb, and
   leads Crumb back; crows instead of squirrels; the pig costume. Soft dirt at
@@ -75,15 +75,22 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Crumb in the farm's corn and takes a bark then a paw, three times; crows
   stand up like birds; fences running up and down are drawn end on; and the
   closet dresses Crumb too (`S.crumbWear`, the same pieces placed for Crumb).
-  Decided 3 Nov: the barn is the third world (after the farm), from the
-  testers' asks to go inside the barn and to have a dairy cow level. Crumb runs
-  across the cow pasture into the red barn and through the hay into the back
-  room. The roof hides the inside until Bread walks in the doors. The dairy cow
-  in her stall teaches Bread to push (`S.moves.push`): walking into a loose
-  hay bale slides it one tile, straight only. Each bale has room to move, so
-  the hay can't get stuck. Mice are the baddies. The prize is the cow costume;
-  the cowbell, the little horns, a milk bottle toy and the gold paw are the
-  other pieces. A cowboy rodeo level on the farm is next (Trello #39).
+  Decided 3 Nov: the farm is one open map (`FARM_OPEN`, 72 tiles wide; a
+  world's size is `LW`/`LH`, set when it starts). The barn was a stop of its
+  own for an afternoon; the testers expected it on the farm, so it moved there,
+  east of the farmyard through a gap in the fence by the car. A world can have
+  sections (`W.sections`), each with its own five pieces and costume; the end
+  card adds up each section and the whole world. The barn's jobs: push the hay
+  out of the doors and herd the three cows into their stalls (cows walk away
+  from Bread and trot from a bark), and push the ladder out of the tack room
+  (a hay puzzle) and under the hayloft so the barn cats climb down and chase
+  off the mice. Both jobs done wins the cow costume. The dairy cow by the doors
+  teaches Bread to push (`S.moves.push`): walking into a bale or the ladder
+  slides it one tile, straight only. Hay can end up stuck, so the ? help bar
+  has Put the hay back. The roof hides the inside until Bread walks in.
+  Next on the farm, from the testers: a chicken coop (Crumb in the roost, eggs
+  to sort back into the nests), a horse ring (herd the pony back, then a barrel
+  race), and Crumb's own closet and shop (Trello #39).
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
