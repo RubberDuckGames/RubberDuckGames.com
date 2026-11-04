@@ -302,7 +302,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -710,7 +710,7 @@ function drawHome(t) {
   px(15, 51, 76, 5, LINE); px(16, 52, 74, 3, '#7a4a2a');
   const shelf = [];
   Object.keys(TOYS).forEach(k => { if (S.toys.includes(k)) shelf.push(sprite(TOYS[k].pic)); });
-  Object.keys(PARTS).forEach(w => { if (S[w].trophy) shelf.push(sprite(TROPHY)); });
+  Object.keys(PARTS).forEach(w => { if (S[w]?.trophy) shelf.push(sprite(TROPHY)); });
   if (!shelf.length) text('Toys go here', 53, 46, '#b8854e');
   shelf.forEach((img, i) => put(img, 22 + i * 22, 52 - img.height + 1));
   // Bread's bed and rug
@@ -883,8 +883,8 @@ function drawMap(t) {
 // All five found shows the trophy instead.
 const PIP = ['.y.y.', 'y...y', '..y..', '.yyy.', '.yyy.'];
 function pips(w, x, y) {
-  if (S[w].trophy) return put(sprite(TROPHY), x - 5, y - 4);
-  PARTS[w].forEach(([k], i) => put(sprite(PIP, { map: { y: S[w][k] ? COL.y : '#4f7a46' } }), x - 21 + i * 8, y));
+  if (S[w]?.trophy) return put(sprite(TROPHY), x - 5, y - 4);
+  PARTS[w].forEach(([k], i) => put(sprite(PIP, { map: { y: S[w]?.[k] ? COL.y : '#4f7a46' } }), x - 21 + i * 8, y));
 }
 const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
 // ---------- The pond ----------
