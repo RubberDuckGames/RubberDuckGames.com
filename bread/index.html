@@ -334,6 +334,9 @@ const ITEMS = {
   cow: { slot: 'body', name: 'Cow costume', world: 'barn' },
   cowbell: { slot: 'neck', name: 'Cowbell', world: 'barn' },
   horns: { slot: 'hat', name: 'Little horns', world: 'barn' },
+  chicken: { slot: 'body', name: 'Chicken costume', world: 'coop' },
+  comb: { slot: 'hat', name: 'Rooster comb', world: 'coop' },
+  feathers: { slot: 'back', name: 'Tail feathers', world: 'coop' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
@@ -345,6 +348,7 @@ const PARTS = {
   pond: [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']],
   farm: [['beat', 'Pig costume'], ['pigSnout', 'Pig snout'], ['pigTail', 'Curly tail'], ['chicken', 'Rubber chicken toy'], ['gold', 'Gold paw print']],
   barn: [['beat', 'Cow costume'], ['cowbell', 'Cowbell'], ['horns', 'Little horns'], ['milk', 'Milk bottle toy'], ['gold', 'Gold paw print']],
+  coop: [['beat', 'Chicken costume'], ['comb', 'Rooster comb'], ['feathers', 'Tail feathers'], ['goldEgg', 'Golden egg toy'], ['gold', 'Gold paw print']],
 };
 
 // ---------- Sounds ----------
@@ -486,6 +490,9 @@ const WEAR_PIX = {
   cowSpots: [5, 8, ['.nn..nn.', 'nnn..nn.', '.n.....n']],   // black spots on the cow costume
   cowbell: [12, 9, ['.g.', 'yyy', 'yyy', '.Y.']],
   horns: [14, 1, ['t..t', '.tt.']],
+  beak: [17, 5, ['yyy', '.yy']],                     // the beak on the chicken costume
+  comb: [14, 0, ['r.r.r', 'rrrrr']],
+  feathers: [0, 3, ['r..u', '.ruu', '..ry']],
 };
 function breadRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
@@ -493,9 +500,10 @@ function breadRows(frame, wear) {
   if (wear.back === 'cape') over(WEAR_PIX.cape);
   if (wear.body === 'duck') over(WEAR_PIX.duck);
   if (wear.body === 'cow') over(WEAR_PIX.cowSpots);
+  if (wear.body === 'chicken') over(WEAR_PIX.beak);
   if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
-  if (wear.back === 'pigTail') over(WEAR_PIX.pigTail);
+  if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
   if (wear.hat) over(WEAR_PIX[wear.hat]);
   return g.map(r => r.join(''));
 }
@@ -506,6 +514,7 @@ function wearMap(wear) {
   if (wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
   if (wear.body === 'pig') Object.assign(map, { o: COL.P, d: COL.Q, p: COL.Q });
   if (wear.body === 'cow') Object.assign(map, { o: COL.h, d: COL.g, p: COL.P });
+  if (wear.body === 'chicken') Object.assign(map, { o: COL.h, d: COL.g, p: COL.r });
   if (wear.feet === 'duckFeet') map.f = COL.b;
   return map;
 }
@@ -555,11 +564,14 @@ const MOUSE = [
   ['......pp..', '...gggggg.', '..ggggggng', 'p.gggggggp', '.pggggggg.', '...p...p..'],
   ['......pp..', '...gggggg.', '..ggggggng', '.pgggggggp', 'p.ggggggg.', '..p...p...'],
 ];
+const EGG = ['.ee.', 'eeee', 'eeee', '.ee.'];
+const EGG_COL = { white: '#fffaf0', brown: '#c98a5a', blue: '#9fd3e8' };
+const GOLD_EGG = ['..yy..', '.yyey.', 'yyyyyy', 'yyyyyy', '.yyyy.'];
 const MILK = ['..rr..', '..hh..', '.hhhh.', 'hhhhhh', 'huuuuh', 'huuuuh', 'hhhhhh', '.hhhh.'];
 const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
 const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -595,6 +607,9 @@ const CRUMB_WEAR = {
   cowSpots: [3, 6, ['..nn..nn', '.nnn..n.']],
   cowbell: [9, 7, WEAR_PIX.cowbell[2]],
   horns: [10, -2, ['t..t', '.tt.']],
+  beak: [14, 4, ['yy', '.y']],
+  comb: [10, -2, ['r.r', 'rrr']],
+  feathers: [0, 3, ['r.u', '.ru']],
 };
 function crumbRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
@@ -603,9 +618,10 @@ function crumbRows(frame, wear) {
   if (wear.back === 'cape') over(CRUMB_WEAR.cape);
   if (wear.body === 'duck') over(CRUMB_WEAR.duck);
   if (wear.body === 'cow') over(CRUMB_WEAR.cowSpots);
+  if (wear.body === 'chicken') over(CRUMB_WEAR.beak);
   if (wear.neck) over(CRUMB_WEAR[wear.neck]);
   if (wear.face) over(CRUMB_WEAR[wear.face]);
-  if (wear.back === 'pigTail') over(CRUMB_WEAR.pigTail);
+  if (wear.back === 'pigTail' || wear.back === 'feathers') over(CRUMB_WEAR[wear.back]);
   if (wear.hat) over(CRUMB_WEAR[wear.hat]);
   return g.map(r => r.join(''));
 }
@@ -613,6 +629,7 @@ function crumbMap(wear) {
   if (wear.body === 'duck') return { D: COL.y, s: COL.Y, p: COL.y };
   if (wear.body === 'pig') return { D: COL.P, s: COL.Q, p: COL.Q };
   if (wear.body === 'cow') return { D: COL.h, s: COL.g, p: COL.P };
+  if (wear.body === 'chicken') return { D: COL.h, s: COL.g, p: COL.r };
   return {};
 }
 // (x, y) is the ground under the middle of Crumb
@@ -674,7 +691,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2] };
 const picCache = {};
 function pic(rows, dark) {
   const key = rows.join('/') + dark;
@@ -812,7 +829,7 @@ function drawMap(t) {
     px(X - 22, Y + 23, 20, 1, LINE); px(X - 22, Y + 27, 20, 1, LINE);
     put(sprite(PIG, { flip: Math.floor(t / 2000) % 2 === 1 }), X - 20, Y + 19);
     if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
-    else { pips('farm', X + 17, 150); pips('barn', X + 17, 158); }   // a row for each part of the farm
+    else ['farm', 'barn', 'coop'].forEach((k, i) => pips(k, X + 17, 146 + i * 8));   // a row for each part of the farm
   }
   // trees, for a nicer drive
   [[96, 32], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
@@ -842,7 +859,7 @@ let LW = 36, LH = 22;                         // a world's size, in tiles; set w
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhBKRPLAa', SOLID_LAND = BLOCK + 'Gw';
+const BLOCK = '#THFCXhBKRPLAaNQ', SOLID_LAND = BLOCK + 'Gw';
 let G = null, W = null;
 const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
@@ -983,21 +1000,67 @@ const BARN = (() => {
     goldSpots: [[15.5, 5.5], [29.5, 9.5], [33.5, 14.5]],
   };
 })();
+// The chicken coop (decided 3 Nov from the testers): Crumb runs off and hides
+// up on the roost in the coop, and the hens' eggs are scattered all over. Bread
+// carries the eggs back one at a time, each to the nest of its color (a
+// sorting puzzle), and when every nest is full Crumb hops down. Some eggs need
+// Bread's moves: one under a hay bale (push), one buried (dig), one on a
+// little island in the duck pond (swim), one under a bush. N is a nest, Q the
+// roost, w the pond.
+const COOP = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === LH - 1 || x === LW - 1 ? '#' : '.'); }
+  // the chicken run, fenced, with its gate on the path
+  for (let x = 3; x <= 22; x++) { m[3][x] = x === 20 || x === 21 ? 'p' : 'F'; m[16][x] = 'F'; }
+  for (let y = 3; y <= 16; y++) { m[y][3] = 'F'; m[y][22] = 'F'; }
+  // the coop: nests down its left wall, the roost along the back
+  for (let y = 5; y <= 10; y++) for (let x = 6; x <= 16; x++) m[y][x] = y === 5 || y === 10 || x === 6 || x === 16 ? 'K' : 'n';
+  m[10][11] = m[10][12] = 'n';
+  m[6][7] = m[7][7] = m[8][7] = 'N';
+  for (let x = 11; x <= 15; x++) m[6][x] = 'Q';
+  // the path from the farmyard down into the run and to the coop door
+  for (let y = 0; y <= 12; y++) for (const x of [20, 21]) m[y][x] = 'p';
+  for (let x = 12; x <= 21; x++) m[12][x] = 'p';
+  m[11][11] = m[11][12] = 'p';
+  // the duck pond, with an island in it
+  for (let y = 7; y <= 14; y++) for (let x = 25; x <= 33; x++) if (((x + .5 - 29.5) / 4.6) ** 2 + ((y + .5 - 11) / 3.6) ** 2 < 1) m[y][x] = 'w';
+  m[11][29] = '.';
+  m[8][18] = 'P';                                                                  // a bale with an egg under it
+  m[18][27] = 'x';                                                                 // soft dirt with an egg in it
+  for (const [x, y] of [[30, 4], [33, 19], [2, 19], [8, 19]]) m[y][x] = 'b';
+  for (const [x, y] of [[26, 2], [14, 19], [24, 18], [33, 2]]) m[y][x] = 'T';
+  return {
+    m, rect: [6, 5, 16, 10], nests: [[7, 6, 'white'], [7, 7, 'brown'], [7, 8, 'blue']], roost: [13.5, 6.4], down: [13.5, 8.5],
+    eggs: [[5.5, 13.5, 'white'], [19.5, 14.5, 'brown'], [18.5, 8.5, 'blue', 'bale'], [27.5, 18.5, 'white', 'dig'], [29.5, 11.5, 'blue'], [30.5, 4.5, 'brown']],
+    run: [4, 4, 21, 15],
+    spots: { comb: [14.5, 8.5], feathers: [4.5, 4.5], goldEgg: [8.5, 19.5] },
+    goldSpots: [[33.5, 19.5], [2.5, 19.5]],
+  };
+})();
+const CY = 22;   // where the coop's half starts, below the farmyard
 // The open farm: the farm (corn, farmyard, pig pen) on the left, the barn on
 // the right. The little barn block in the farmyard goes, since the real barn
 // is next door, and a path runs along the bottom from the car to the barn.
 const BX = 36;   // where the barn's half starts
 const FARM_OPEN = (() => {
-  const m = FARM.m.map((r, y) => [...r, ...BARN.m[y]]);
+  // the woods fill the corner below the barn for now
+  const woods = Array.from({ length: LH }, (_, y) => Array.from({ length: LW }, (_, x) => x === LW - 1 || y === LH - 1 ? '#' : 'T'));
+  const m = [...FARM.m.map((r, y) => [...r, ...BARN.m[y]]), ...COOP.m.map((r, y) => [...r, ...woods[y]])];
+  m[21][20] = m[21][21] = 'p';                                                    // the way down to the coop, by the car
   for (let y = 14; y <= 16; y++) for (let x = 2; x <= 7; x++) m[y][x] = '.';
   for (let y = 1; y < LH - 1; y++) if (m[y][BX] === '#') m[y][BX] = '.';         // one fence between the halves, not two
   m[20][33] = '.';
   for (let x = 19; x <= 35; x++) m[20][x] = 'p';
   m[19][35] = 'p';
-  const at = ([x, y]) => [x + BX, y];
+  const at = ([x, y]) => [x + BX, y], down = ([x, y]) => [x, y + CY];
   return {
     ...FARM, m,
-    spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])) },
+    // Crumb runs down past the car to the coop and up onto the roost
+    run: [[20.5, 20.5], [20.5, 33.5], [12, 34], [12, 31]], crumbAt: down(COOP.roost), piglet: FARM.crumbAt,
+    spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])) },
+    coopGold: COOP.goldSpots.map(down),
+    coop: { rect: [COOP.rect[0], COOP.rect[1] + CY, COOP.rect[2], COOP.rect[3] + CY], nests: COOP.nests.map(([x, y, c]) => [x, y + CY, c]), down: down(COOP.down),
+      eggs: COOP.eggs.map(([x, y, c, hide]) => [x, y + CY, c, hide]), run: [COOP.run[0], COOP.run[1] + CY, COOP.run[2], COOP.run[3] + CY], door: [11.5, 11.4 + CY] },
     barnGold: BARN.goldSpots.map(at),
     barn: { rect: [BARN.rect[0] + BX, BARN.rect[1], BARN.rect[2] + BX, BARN.rect[3]], hay: BARN.hay.map(([x, y, c]) => [x + BX, y, c]), dairy: at(BARN.dairy),
       stalls: BARN.stalls.map(([a, b, c, d]) => [a + BX, b, c + BX, d]), cows: BARN.cows.map(at), cats: BARN.cats.map(at), loftY: 2, door: [17.5 + BX, 14] },
@@ -1005,6 +1068,9 @@ const FARM_OPEN = (() => {
 })();
 const FB = FARM_OPEN.barn;
 const inBarn = (x, y) => { const [x0, y0, x1, y1] = FB.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
+const FC = FARM_OPEN.coop;
+const inCoop = (x, y) => { const [x0, y0, x1, y1] = FC.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
+const indoors = (x, y) => inBarn(x, y) || inCoop(x, y);
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
 const solidAt = (x, y, set) => set.includes(tileAt(x, y));
 function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
@@ -1036,6 +1102,7 @@ function startWorld(key) {
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
   if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
   if (M.barnGold) { const [x, y] = M.barnGold[Math.floor(Math.random() * M.barnGold.length)]; G.treats.push({ x, y, v: 10, sec: 'barn' }); }
+  if (M.coopGold) { const [x, y] = M.coopGold[Math.floor(Math.random() * M.coopGold.length)]; G.treats.push({ x, y, v: 10, sec: 'coop' }); }
   G.sparkles = Object.entries(M.spots).map(([k, [x, y]]) => ({ k, x, y, sec: secOf(k) })).filter(sp => !S[sp.sec][sp.k]);
   W.setup();
   hudLevel(); showDig();
@@ -1075,22 +1142,21 @@ const WORLDS = {
   },
   farm: {
     key: 'farm', name: 'farm', Name: 'Farm', map: FARM_OPEN, stop: 2, costume: 'pig', pic: PIG, baddies: 'Crows and mice caught', soil: 2, buriedGold: true, open: '.pn',
-    sections: [{ key: 'farm', name: 'Corn and pig pen', costume: 'pig' }, { key: 'barn', name: 'Barn', costume: 'cow' }],
-    goals: {
-      pig: 'Find the big pig', dig: 'Dig under the fence',
-      find: 'Find Crumb in the corn', goose: 'Chase off the goose', back: 'Bring Crumb to the car',
-    },
+    sections: [{ key: 'farm', name: 'Corn and pig pen', costume: 'pig' }, { key: 'barn', name: 'Barn', costume: 'cow' }, { key: 'coop', name: 'Chicken coop', costume: 'chicken' }],
+    goals: { find: 'Find Crumb at the chicken coop', eggs: 'Put the eggs back in the nests', down: 'Find Crumb', back: 'Bring Crumb to the car' },
     setup() {
       for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.', (x, y) => x < BX && y < 12 && Math.hypot(x - 9, y - 11) > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crow: true }); }
       for (let i = 0; i < 6; i++) { const [x, y] = randOpen(4, '.p', (x, y) => i < 3 ? y > 12 && x < 22 : x < BX && y < 12); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
       G.pig = { x: FARM.pig[0], y: FARM.pig[1], a: 0, t: 0, oink: 0 };
       G.piglets = [0, 1].map(i => ({ x: FARM.pig[0] - 1 - i, y: FARM.pig[1] + .4, t: i }));
-      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 12 && x < 21); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0 }); }
-      // the goose stands in the corn next to Crumb
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 12 && y < 21 && x < 21); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0, box: [1, 13, BX - 2, 20] }); }
+      // Decided 3 Nov: Crumb hides at the coop now, so the corn has a lost
+      // piglet instead, and the goose stands guard next to it
+      if (!S.farm.piglet) G.piglet = { x: FARM.crumbAt[0], y: FARM.crumbAt[1], t: 0 };
       const [cx0, cy0] = FARM.crumbAt, spot = [[0, 1], [1, 0], [-1, 0], [0, -1], [0, 2], [2, 0], [-2, 0], [0, -2]].map(([a, b]) => [cx0 + a, cy0 + b]).find(([x, y]) => !SOLID_LAND.includes(tileAt(x, y))) || [cx0, cy0];
       G.goose = { x: spot[0], y: spot[1], home: spot, hp: 3, stun: 0, hitT: 0, honk: 0, t: 0, face: -1 };
-      setupBarn();
-      stage(S.moves.dig ? 'dig' : 'pig', 'Crumb dug under the fence!');
+      setupBarn(); setupCoop();
+      stage('find', 'Crumb ran off to the chicken coop!');
     },
     step(b, dt) {
       const pg = G.pig, [x0, y0, x1, y1] = FARM.pen;
@@ -1099,13 +1165,17 @@ const WORLDS = {
       G.piglets.forEach((l, i) => { l.t += dt; const tx = pg.x - 1 - i * .8, ty = pg.y + .4; l.x += (tx - l.x) * Math.min(1, dt * 2); l.y += (ty - l.y) * Math.min(1, dt * 2); });
       const near = Math.hypot(pg.x - b.x, pg.y - b.y) < 1.8;
       if (near && pg.oink <= 0) { pg.oink = 3; sfx.oink(); G.pops.push({ x: pg.x, y: pg.y - .8, txt: 'Oink!', t: 0, c: LINE }); }
-      if (near && !S.moves.dig) {
-        S.moves.dig = true; persist(); showDig();
-        hold(MOUND, 'The pig taught Bread to dig!');
-        stage('dig');
+      if (near && !S.moves.dig) { S.moves.dig = true; persist(); showDig(); hold(MOUND, 'The pig taught Bread to dig!'); }
+      if (!G.cornSeen && G.piglet && b.x < BX && b.y < 15 && b.y > 12.5) { G.cornSeen = true; toast('A piglet is lost in the corn!'); }
+      const pl = G.piglet;
+      if (pl && G.holeDug && !G.goose && Math.hypot(pl.x - b.x, pl.y - b.y) < 1.4) {
+        G.piglet = null; G.piglets.push({ x: pg.x - 2.6, y: pg.y + .4, t: 2 }); burst(pl.x, pl.y); sfx.oink();
+        if (!S.farm.beat) { S.farm.beat = true; S.farm.piglet = true; if (!S.have.includes('pig')) S.have.push('pig'); persist(); hold(PIGLET, 'The piglet ran home! You won the pig costume!'); }
+        else { S.farm.piglet = true; persist(); toast('The piglet ran home!'); }
       }
       stepGoose(b, dt);
       stepBarn(b, dt);
+      stepCoop(b, dt);
       G.hens.forEach(h => {
         h.t += dt; h.cluck -= dt;
         const d = Math.hypot(h.x - b.x, h.y - b.y);
@@ -1113,15 +1183,15 @@ const WORLDS = {
         const v = d < 2 ? 2.2 : Math.sin(h.t) > .2 ? .6 : 0, ox = h.x, oy = h.y;
         move(h, Math.cos(h.a) * v * dt, Math.sin(h.a) * v * dt, .25);
         if (v && ox === h.x && oy === h.y) h.a += 2;
-        if (h.y < 13) h.y = 13;
-        if (h.x > BX - 2) { h.x = BX - 2; h.a = Math.PI; }
+        const [hx0, hy0, hx1, hy1] = h.box;                                       // hens stay in their yard
+        if (h.x < hx0 || h.x > hx1 || h.y < hy0 || h.y > hy1) { h.x = Math.max(hx0, Math.min(hx1, h.x)); h.y = Math.max(hy0, Math.min(hy1, h.y)); h.a += Math.PI; }
       });
     },
-    reached: () => G.holeDug && !G.goose,
+    reached: () => G.eggsDone,
     target() {
-      if (G.stage === 'goose') return G.goose;
-      if (G.stage === 'pig') return G.pig;
-      if (G.stage === 'dig') return { x: FARM.hole[0], y: FARM.hole[1] };
+      if (G.stage !== 'eggs') return;
+      if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); return { x: n[0] + .5, y: n[1] + .5 }; }
+      return G.eggs.filter(e => !e.got && !G.carry && eggOut(e)).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
     },
   },
 };
@@ -1218,6 +1288,38 @@ function resetHay() {
   if (hits(b.x, b.y, .3, BLOCK)) { b.x = FB.door[0]; b.y = FB.door[1]; }
   sfx.push(); toast('The hay is back where it started.'); help(false);
 }
+// ---------- The chicken coop, on the open farm ----------
+const eggOut = e => !e.hide || (e.hide === 'bale' && G.m[Math.floor(e.y)][Math.floor(e.x)] !== 'P');
+function setupCoop() {
+  G.eggs = FC.eggs.map(([x, y, col, hide]) => ({ x, y, col, hide, got: false }));
+  G.nests = {}; G.carry = null; G.eggsDone = false;
+  const [x0, y0, x1, y1] = FC.run;
+  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.p', (x, y) => x > x0 && x < x1 && y > FC.rect[3] && y < y1); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0, box: [x0 + .3, FC.rect[3] + 1.3, x1 + .7, y1 + .7] }); }
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(4, '.', (x, y) => y > CY + 1 && x > 23 && x < BX); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+}
+function stepCoop(b, dt) {
+  if (!G.eggs) return;
+  if (!G.coopSeen && b.y > CY + 1.5 && !G.eggsDone) { G.coopSeen = true; stage('eggs', 'Crumb is up on the roost, and the eggs are everywhere!'); }
+  if (G.stage === 'eggs' && !G.carry && !G.hiddenTip && G.eggs.every(e => e.got || !eggOut(e))) { G.hiddenTip = true; toast('The last eggs are hidden. Try pushing hay, or digging!'); }
+  // pick up an egg (one at a time), carry it to the nest of its color
+  if (!G.carry) {
+    const e = G.eggs.find(e => !e.got && eggOut(e) && Math.hypot(e.x - b.x, e.y - b.y) < .7);
+    if (e) { G.carry = e; e.got = true; sfx.treat(2); G.pops.push({ x: b.x, y: b.y - .8, txt: 'An egg!', t: 0, c: LINE }); }
+  } else {
+    const n = FC.nests.find(([x, y]) => Math.hypot(x + .5 - b.x, y + .5 - b.y) < 1.4);
+    if (n && n[2] === G.carry.col) {
+      const k = n[0] + ',' + n[1]; G.nests[k] = (G.nests[k] || 0) + 1; G.carry = null; sfx.cluck(); burst(n[0] + .5, n[1] + .5);
+      const left = G.eggs.filter(e => !e.got).length + (G.carry ? 1 : 0);
+      if (!left) eggsDone(); else G.pops.push({ x: n[0] + .5, y: n[1] - .2, txt: 'Cluck!', t: 0, c: LINE });
+    } else if (n && G.wrongAt !== n) { G.wrongAt = n; sfx.cluck(); G.pops.push({ x: n[0] + .5, y: n[1] - .2, txt: 'Not here!', t: 0, c: COL.r }); }
+    if (!n) G.wrongAt = null;
+  }
+}
+function eggsDone() {
+  G.eggsDone = true; const c = G.crumb; [c.x, c.y] = FC.down; c.mode = 'wait'; sfx.yip();
+  if (!S.coop.beat) { S.coop.beat = true; if (!S.have.includes('chicken')) S.have.push('chicken'); persist(); hold(CHICKEN, 'The eggs are back! You won the chicken costume!', () => stage('down', 'Crumb hopped down!')); }
+  else stage('down', 'The eggs are back! Crumb hopped down!');
+}
 // Decided 3 Nov: pushing, learned from the dairy cow. Walking into a hay bale
 // for a moment slides it one tile, if the tile past it is empty floor. Only
 // straight pushes, the way old adventure games do it, so a bale goes where
@@ -1233,7 +1335,7 @@ function tryPush(b, dx, dy, dt) {
   G.pushT = 0;
   const nx = tx + ax, ny = ty + ay, c = G.crumb;
   if (!'.pn'.includes(G.m[ny]?.[nx]) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
-  G.m[ny][nx] = what; G.m[ty][tx] = inBarn(tx, ty) ? 'n' : '.'; sfx.push();
+  G.m[ny][nx] = what; G.m[ty][tx] = indoors(tx, ty) ? 'n' : '.'; sfx.push();
   if (what === 'A' && G.m[ny - 1]?.[nx] === 'L') ladderUp(nx, ny);
   for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 1.5; G.fx.push({ x: tx + .5, y: ty + .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: ['#e8c35a', '#c9a03a', '#fff1d6'][i % 3] }); }
 }
@@ -1244,7 +1346,7 @@ function stepGoose(b, dt) {
   const g = G.goose; if (!g) return;
   g.t += dt; g.honk -= dt; g.hitT -= dt;
   const d = Math.hypot(g.x - b.x, g.y - b.y);
-  if (G.holeDug && G.stage === 'find' && d < 6) stage('goose', 'A big goose is guarding Crumb!');
+  if (G.holeDug && !G.gooseSeen && d < 6) { G.gooseSeen = true; toast('A big goose is guarding the piglet!'); }
   if (d < 5 && g.honk <= 0) { g.honk = 2.2; sfx.honk(); G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'HONK!', t: 0, c: LINE }); }
   if (g.stun > 0) { g.stun -= dt; return; }
   const [tx, ty] = d < 4.5 && G.holeDug ? [b.x, b.y] : g.home, dx = tx - g.x, dy = ty - g.y, l = Math.hypot(dx, dy);
@@ -1257,7 +1359,7 @@ function hitGoose() {
   g.hp--; g.hitT = .6; g.stun = 0; sfx.honk(); burst(g.x, g.y - .5);
   const d = Math.hypot(g.x - b.x, g.y - b.y) || 1; move(g, (g.x - b.x) / d * 1.2, (g.y - b.y) / d * 1.2, .35);
   if (g.hp > 0) { G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'Honk!', t: 0, c: COL.r }); return true; }
-  G.goose = null; sfx.catch(); stage('find', 'The goose ran off!');
+  G.goose = null; sfx.catch(); toast('The goose ran off!');
   return true;
 }
 function drawGoose(t) {
@@ -1272,7 +1374,7 @@ function drawGoose(t) {
 // otherwise the goal. The goal is always in the ? help bar.
 function stage(st, msg) { G.stage = st; G.lost = 0; setGoal(W.goals[st]); if (msg) { $('#goal').hidden = true; toast(`${msg} ${W.goals[st]}.`); } }
 function stageTarget() {
-  if (G.stage === 'find') return G.crumb;
+  if (G.stage === 'find' || G.stage === 'down') return G.crumb;
   if (G.stage === 'back') return { x: W.map.car[0], y: W.map.car[1] };
   return W.target();
 }
@@ -1295,8 +1397,10 @@ function dig() {
   if (!spot) return toast('No soft dirt here.');
   const [x, y] = spot; G.digT = .5; sfx.dig();
   for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: x + .5, y: y + .5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: ['#8a4f2a', '#b8773a', '#5a3a22'][i % 3] }); }
-  if (G.m[y][x] === 'X') { G.m[y][x] = 'u'; G.holeDug = true; stage('find', 'Bread dug under!'); return; }
+  if (G.m[y][x] === 'X') { G.m[y][x] = 'u'; G.holeDug = true; toast('Bread dug under!'); return; }
   G.m[y][x] = 'o';
+  const egg = (G.eggs || []).find(e => e.hide === 'dig' && Math.floor(e.x) === x && Math.floor(e.y) === y);
+  if (egg) { egg.hide = null; toast('An egg!'); return; }
   const at = M => M && M[0] === x && M[1] === y;
   if (at(W.map.chickenMound) && !S.farm.chicken) { S.farm.chicken = true; S.toys.push('chicken'); persist(); hold(CHICKEN, 'A rubber chicken!'); return; }
   if (at(G.goldMound)) { G.treats.push({ x: x + .5, y: y + .5, v: 10 }); toast('Something shiny!'); return; }
@@ -1326,7 +1430,7 @@ function askHome() {
   $('#homeGo').onclick = () => {
     $('#cover').hidden = true; G.ask = false;
     G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
-    if (S[W.key].beat) setTimeout(finishWorld, 500);
+    if (S[W.key].beat || W.sections) setTimeout(finishWorld, 500);
     else setTimeout(() => hold(W.pic, `You won the ${ITEMS[W.costume].name.toLowerCase()}!`, finishWorld), 300);
   };
 }
@@ -1452,7 +1556,7 @@ function stepLevel(dt, t) {
     if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
   });
   // the car at the bottom
-  if (b.y > LH - 2.4 && Math.abs(b.x - 18) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car. Go home any time.'); }
+  if (Math.abs(b.y - W.map.car[1]) < 1 && Math.abs(b.x - W.map.car[0]) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car. Go home any time.'); }
   G.carHint -= dt;
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
   G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
@@ -1601,7 +1705,7 @@ function drawLevel(t) {
         if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
         if (G.m[y + 1]?.[x] === 'w') px(X, Y + T - 1, T, 1, LINE);   // the floating dock's far edge
       }
-    } else if (inBarn(x, y)) {               // inside the barn: plank floor, walls, stall rails, hay
+    } else if (indoors(x, y)) {              // inside the barn or the coop: plank floor, walls, stall rails, hay
       px(X, Y, T, T, '#c9925a'); for (let i = 3; i < T; i += 5) px(X, Y + i, T, 1, '#a8743f');
       if ((x * 3 + y) % 4 === 0) px(X + 6, Y, 1, 3, '#a8743f');
       const isK = (i, j) => G.m[j]?.[i] === 'K';
@@ -1617,6 +1721,11 @@ function drawLevel(t) {
         if ((rail(x, y - 1) || rail(x, y + 1)) && !rail(x - 1, y) && !rail(x + 1, y)) sideFence(X, Y, '#b07a46');
         else { px(X, Y + 5, T, 1, LINE); px(X, Y + 6, T, 3, '#b07a46'); px(X, Y + 9, T, 1, LINE); px(X, Y + 11, T, 1, LINE); px(X, Y + 12, T, 2, '#8d5c30'); px(X, Y + 14, T, 1, LINE); for (const sx of [X + 1, X + 12]) { px(sx, Y + 3, 4, 13, LINE); px(sx + 1, Y + 4, 2, 11, '#b07a46'); } }
       }
+      if (c === 'N') { const col = EGG_COL[FC.nests.find(n => n[0] === x && n[1] === y)?.[2]] || '#fffaf0', n = (G.nests || {})[x + ',' + y] || 0;   // a nest box, its egg color painted on the front
+        px(X + 1, Y + 3, T - 2, T - 4, LINE); px(X + 2, Y + 4, T - 4, T - 6, '#8a4f2a'); px(X + 2, Y + 4, T - 4, 4, '#e8c35a');
+        for (let i = 0; i < 2; i++) { const ex = X + 3 + i * 6, ey = Y + 8; if (i < n) { px(ex, ey - 1, 4, 5, LINE); px(ex + 1, ey, 2, 3, col); } else { px(ex, ey, 4, 4, LINE); px(ex + 1, ey + 1, 2, 2, '#5e3319'); } }
+        px(X + T - 4, Y + 4, 3, 3, LINE); px(X + T - 3, Y + 5, 1, 1, col); }
+      if (c === 'Q') { px(X, Y + 6, T, 3, LINE); px(X, Y + 7, T, 1, '#b07a46'); if (x % 2) { px(X + 6, Y + 9, 2, 7, LINE); } }   // the roost: a pole up high
       if (c === 'L') { px(X, Y, T, T, '#b98a4e'); px(X, Y + T - 4, T, 4, '#7a4a2a'); px(X, Y + T - 5, T, 1, LINE); for (let i = 2; i < T; i += 5) px(X + i + (x % 2), Y + 3 + (x + i) % 5, 3, 1, '#e8c35a'); }   // the hayloft, up high
       if (c === 'A' || c === 'a') { const top = c === 'a' ? Y - 10 : Y + 1; px(X + 3, top, 2, Y + T - 1 - top, LINE); px(X + 11, top, 2, Y + T - 1 - top, LINE); for (let ry = top + 2; ry < Y + T - 1; ry += 4) px(X + 3, ry, 10, 2, '#b07a46'); px(X + 4, top, 1, Y + T - 1 - top, '#d9a066'); px(X + 12, top, 1, Y + T - 1 - top, '#d9a066'); }   // the ladder
       if (c === 'h' || c === 'P') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }
@@ -1670,8 +1779,10 @@ function drawLevel(t) {
       }
     }
   }
-  drawCar(18 * T, (LH - .2) * T, 1, 0, false);   // parked, waiting
+  drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
+  (G.eggs || []).forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: EGG_COL[e.col] } }), e.x * T - 3, e.y * T - 3 - (Math.floor(t / 400 + e.x) % 2)); });
+  if (G.piglet) put(sprite(PIGLET, { flip: Math.floor(t / 900) % 2 === 1 }), G.piglet.x * T - 4, G.piglet.y * T - 3 + (Math.floor(t / 300) % 2));
   if (G.key) { put(sprite(GATE_KEY), G.key.x * T - 4, G.key.y * T - 3 - (Math.floor(t / 200) % 2) * 2); twinkle(G.key.x * T + 6, G.key.y * T - 5, t); }
   // Crumb (hidden while dashing off and once safe in the car)
   { const c = G.crumb, cy = c.y * T + 5, wig = c.itch ? (Math.floor(t / 70) % 2 ? 1 : -1) : 0;
@@ -1706,6 +1817,7 @@ function drawLevel(t) {
     if (G.muddy && !b.swim) [[-7, -9], [-2, -6], [4, -10], [-5, -4], [2, -4]].forEach(([dx, dy], i) => { if (i < 2 + G.muddy) px(b.x * T + dx * b.face, by + dy, 2, 2, '#6b4a2a'); });   // muddy spots
     if (b.swim) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
   }
+  if (G.carry && !G.hold) put(sprite(EGG, { map: { e: EGG_COL[G.carry.col] } }), b.x * T + b.face * 11 - 3, b.y * T - 4);   // the egg in her mouth
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
   if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
   // tree tops, bushes and reeds go over everything, so things can hide behind them
@@ -1718,17 +1830,18 @@ function drawLevel(t) {
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
   }
   G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
-  // the barn roof hides the inside until Bread goes in the door (drawn after
-  // the sparkles: the first barn showed the pieces inside on top of the roof)
-  if (G.world === 'farm' && !(b.x > FB.rect[0] && b.x < FB.rect[2] + 1 && b.y > 1 && b.y < 12.9)) {
-    const [x0, y0, x1, y1] = FB.rect, X = x0 * T, Y = y0 * T - 8, w = (x1 - x0 + 1) * T, h = (y1 - y0) * T - 2;
-    px(X - 2, Y - 1, w + 4, h + 2, LINE); px(X - 1, Y, w + 2, h, '#8e2a20');
-    for (let j = 4; j < h; j += 6) for (let i = (j / 6 % 2) * 6; i < w; i += 12) px(X - 1 + i, Y + j, 10, 2, '#a8302f');
-    px(X - 1, Y + h / 2 - 1, w + 2, 3, '#c0392b'); px(X - 1, Y + h / 2 - 2, w + 2, 1, LINE);
+  // the roofs hide the insides until Bread goes in the door (drawn after the
+  // sparkles: the first barn showed the pieces inside on top of the roof)
+  if (G.world === 'farm') [[FB.rect, BX + 17, ['#8e2a20', '#a8302f', '#c0392b']], [FC.rect, 11, ['#5e3319', '#7a4a2a', '#b07a46']]].forEach(([[x0, y0, x1, y1], door, [dark, mid, light]]) => {
+    if (b.x > x0 && b.x < x1 + 1 && b.y > y0 && b.y < y1 + .9) return;
+    const X = x0 * T, Y = y0 * T - 8, w = (x1 - x0 + 1) * T, h = (y1 - y0) * T - 2;
+    px(X - 2, Y - 1, w + 4, h + 2, LINE); px(X - 1, Y, w + 2, h, dark);
+    for (let j = 4; j < h; j += 6) for (let i = (j / 6 % 2) * 6; i < w; i += 12) px(X - 1 + i, Y + j, 10, 2, mid);
+    px(X - 1, Y + h / 2 - 1, w + 2, 3, light); px(X - 1, Y + h / 2 - 2, w + 2, 1, LINE);
     const fy = Y + h, fw = (y1 + 1) * T - fy;   // the front wall, with the doors
-    px(X - 2, fy, w + 4, fw, LINE); px(X - 1, fy + 1, w + 2, fw - 2, '#c0392b'); for (let i = 3; i < w; i += 6) px(X + i, fy + 1, 1, fw - 2, '#8e2a20');
-    const dx = (BX + 17) * T; px(dx - 2, fy, 2 * T + 4, fw, LINE); px(dx, fy + 1, 2 * T, fw - 1, '#3b2a1a'); px(dx - 1, fy, 2 * T + 2, 2, '#fff1d6');
-  }
+    px(X - 2, fy, w + 4, fw, LINE); px(X - 1, fy + 1, w + 2, fw - 2, light); for (let i = 3; i < w; i += 6) px(X + i, fy + 1, 1, fw - 2, dark);
+    const dx = door * T; px(dx - 2, fy, 2 * T + 4, fw, LINE); px(dx, fy + 1, 2 * T, fw - 1, '#3b2a1a'); px(dx - 1, fy, 2 * T + 2, 2, '#fff1d6');
+  });
   if (G.hold) {                              // Bread and the find she holds up go over the trees too
     if (!b.swim) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
     const im = G.hold.img, hx = b.x * T - im.width / 2, hy = Math.max(cam.y * T + 2, b.y * T - 26 - im.height);
@@ -1761,8 +1874,8 @@ function drawLevel(t) {
 // complete. Each of a world's five pieces is 20%.
 function finishWorld() {
   setGoal(''); help(false);
-  const w = S[W.key], first = !w.beat, costume = ITEMS[W.costume].name.toLowerCase();
-  w.beat = true; if (!S.have.includes(W.costume)) S.have.push(W.costume);
+  const w = S[W.key], first = !w.beat && !W.sections, costume = ITEMS[W.costume].name.toLowerCase();
+  if (!W.sections) { w.beat = true; if (!S.have.includes(W.costume)) S.have.push(W.costume); }   // sectioned worlds win theirs along the way
   // each section counts on its own, and the whole world is all of them together
   const SS = secs(), every = SS.flatMap(sc => PARTS[sc.key].map(([k, n]) => ({ sc, k, n, got: !!S[sc.key][k] })));
   let newTrophy = false;

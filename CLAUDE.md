@@ -88,9 +88,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   teaches Bread to push (`S.moves.push`): walking into a bale or the ladder
   slides it one tile, straight only. Hay can end up stuck, so the ? help bar
   has Put the hay back. The roof hides the inside until Bread walks in.
-  Next on the farm, from the testers: a chicken coop (Crumb in the roost, eggs
-  to sort back into the nests), a horse ring (herd the pony back, then a barrel
-  race), and Crumb's own closet and shop (Trello #39).
+  The chicken coop sits below the farmyard, down past the car. Crumb runs off
+  there and hides up on the roost; the eggs are scattered, and Bread carries
+  them one at a time to the nest of their color (one is under a bale, one
+  buried, one on an island in the duck pond, one under a bush). Every nest full
+  wins the chicken costume and Crumb hops down. Since Crumb is at the coop, the
+  corn has a lost piglet instead, guarded by the goose; finding it wins the pig
+  costume. Next on the farm, from the testers: a horse ring (herd the pony
+  back, then a barrel race) where the woods are now, and Crumb's own closet and
+  shop (Trello #39).
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
