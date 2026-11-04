@@ -100,8 +100,13 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   rides round the three barrels (each one counts once she's gone most of the
   way round it) and out the gate, on a clock like Rodeo's. The first ride wins
   the cowboy costume; the best time is `S.ring.best` and shows on the end card.
-  Paw hops off. Next on the farm, from the testers: Crumb's own closet and shop
-  (Trello #39).
+  Paw hops off.
+  Decided 3 Nov: Crumb has a closet of Crumb's own (`CRUMB_ITEMS`,
+  `S.crumbHave`), not Bread's pieces, which looked wrong on Crumb (the
+  sunglasses most of all). Crumb's costumes are little animals hidden as extra
+  sparkles that don't count toward % (`crumbSpots`): a duckling at the pond; a
+  piglet, a barn kitten, a mouse, a chick and a foal around the farm. The treat
+  shop has a For Crumb part with small things to buy.
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
