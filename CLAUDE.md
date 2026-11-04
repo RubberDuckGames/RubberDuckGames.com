@@ -94,9 +94,14 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   buried, one on an island in the duck pond, one under a bush). Every nest full
   wins the chicken costume and Crumb hops down. Since Crumb is at the coop, the
   corn has a lost piglet instead, guarded by the goose; finding it wins the pig
-  costume. Next on the farm, from the testers: a horse ring (herd the pony
-  back, then a barrel race) where the woods are now, and Crumb's own closet and
-  shop (Trello #39).
+  costume. The horse ring is below the barn (the barn's path runs down to its
+  gate, and there's a gap through from the coop). The pony is loose and runs
+  from Bread like the cows; once it's herded in, Bread walks up and hops on,
+  rides round the three barrels (each one counts once she's gone most of the
+  way round it) and out the gate, on a clock like Rodeo's. The first ride wins
+  the cowboy costume; the best time is `S.ring.best` and shows on the end card.
+  Paw hops off. Next on the farm, from the testers: Crumb's own closet and shop
+  (Trello #39).
   Progress is in localStorage under `bread-corgi:file<n>`.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
