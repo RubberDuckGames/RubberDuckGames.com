@@ -337,6 +337,9 @@ const ITEMS = {
   chicken: { slot: 'body', name: 'Chicken costume', world: 'coop' },
   comb: { slot: 'hat', name: 'Rooster comb', world: 'coop' },
   feathers: { slot: 'back', name: 'Tail feathers', world: 'coop' },
+  cowboy: { slot: 'body', name: 'Cowboy costume', world: 'horse ring' },
+  cowboyHat: { slot: 'hat', name: 'Cowboy hat', world: 'horse ring' },
+  bandana: { slot: 'neck', name: 'Bandana', world: 'horse ring' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
@@ -348,6 +351,7 @@ const PARTS = {
   pond: [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']],
   farm: [['beat', 'Pig costume'], ['pigSnout', 'Pig snout'], ['pigTail', 'Curly tail'], ['chicken', 'Rubber chicken toy'], ['gold', 'Gold paw print']],
   barn: [['beat', 'Cow costume'], ['cowbell', 'Cowbell'], ['horns', 'Little horns'], ['milk', 'Milk bottle toy'], ['gold', 'Gold paw print']],
+  ring: [['beat', 'Cowboy costume'], ['cowboyHat', 'Cowboy hat'], ['bandana', 'Bandana'], ['horseshoe', 'Horseshoe toy'], ['gold', 'Gold paw print']],
   coop: [['beat', 'Chicken costume'], ['comb', 'Rooster comb'], ['feathers', 'Tail feathers'], ['goldEgg', 'Golden egg toy'], ['gold', 'Gold paw print']],
 };
 
@@ -385,6 +389,7 @@ const sfx = {
   honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
   moo: () => tone(190, .5, 'square', 0, .04, 120),
   meow: () => { tone(880, .14, 'square', 0, .03, 620); tone(760, .16, 'square', .16, .03, 540); },
+  neigh: () => [880, 990, 830, 740, 620].forEach((f, i) => tone(f, .07, 'square', i * .06, .03)),
   push: () => { tone(120, .12, 'square', 0, .05, 80); tone(90, .1, 'square', .1, .04, 70); },
   ouch: () => { tone(400, .08, 'square', 0, .04, 200); tone(260, .12, 'square', .09, .04, 120); },
   tick: () => tone(1500, .03, 'square', 0, .025),
@@ -493,6 +498,9 @@ const WEAR_PIX = {
   beak: [17, 5, ['yyy', '.yy']],                     // the beak on the chicken costume
   comb: [14, 0, ['r.r.r', 'rrrrr']],
   feathers: [0, 3, ['r..u', '.ruu', '..ry']],
+  vest: [5, 8, ['tttttttt', 'tttttttt', '.tttttt.']],      // the cowboy costume: a leather vest
+  cowboyHat: [12, -2, ['...tttt..', '..tttttt.', 'ttttttttt']],
+  bandana: [12, 9, ['rrr', 'rhr', '.r.']],
 };
 function breadRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
@@ -501,6 +509,7 @@ function breadRows(frame, wear) {
   if (wear.body === 'duck') over(WEAR_PIX.duck);
   if (wear.body === 'cow') over(WEAR_PIX.cowSpots);
   if (wear.body === 'chicken') over(WEAR_PIX.beak);
+  if (wear.body === 'cowboy') over(WEAR_PIX.vest);
   if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
   if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
@@ -566,12 +575,43 @@ const MOUSE = [
 ];
 const EGG = ['.ee.', 'eeee', 'eeee', '.ee.'];
 const EGG_COL = { white: '#fffaf0', brown: '#c98a5a', blue: '#9fd3e8' };
+const HORSESHOE = ['.gggg.', 'gg..gg', 'g....g', 'g....g', 'gg..gg'];
+// the pony for the horse ring: the Rodeo horse, copied from rodeo/index.html
+const HORSE_BODY = [
+    '...........................t.t',
+    '..........................mbbb',
+    '.........................mmbkbb',
+    '........................mmbbbbbbb',
+    '.......................mmbbbbbbbbp',
+    '......................mmbbbb..bbbp',
+    '.....................mmbbbb',
+    '...mmm...bbbbbbbbbbbmmbbbbb',
+    '.mmmmbbbbbbbbbbbbbbbbbbbbbb',
+    'mmm.bbbbbbbbbbbbbbbbbbbbbbb',
+    'mm..bbbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbb',
+    '.....bbbbbddddddddbbbbb',
+  ];
+const HORSE_LEGS = [
+    ['..bb....................bbb', '.bb.......................bb', 'bb.........................bb', 'b...........................bb', 'h............................hh'],
+    ['.....bb..............bb', '......bb............bb', '.......bb...........bb', '.......bb..........bb', '.......hh..........hh'],
+    ['.....bbb........bbb', '.......bbb....bbb', '.........bbbbb', '........hh..hh'],
+    ['....bb.................bb', '...bb....................bb', '..bb.......................b', '..bb........................b', '..hh.........................h'],
+  ];
+const HORSE_PAL = { b: '#8a4f2a', d: '#5e3319', m: '#2a1a12', t: '#8a4f2a', k: '#1d1410', p: '#c98a6a', h: '#1d1410', r: '#d8343f', s: '#6b3a1a', f: '#f2c8a0', y: '#e8b33f', j: '#3a6fd8', H: '#c9853f', n: '#6b3a1a', e: '#b8362f' };
+const PONY = [0, 1, 2, 3].map(f => {
+  const g = Array.from({ length: 24 }, () => Array(36).fill('.')), put = (rows, x, y, as) => rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') g[y + j][x + i] = as && ch !== 'h' ? as : ch; }));
+  put(HORSE_LEGS[(f + 1) % 4], 3, 14, 'd'); put(HORSE_LEGS[f], 1, 14); put(HORSE_BODY, 1, 0);
+  return g.map(r => r.join('')).filter((r, i) => i < 20);
+});
+const BARREL = ['.rrrr.', 'rhhhhr', 'rrrrrr', 'RRRRRR', 'rrrrrr', '.RRRR.'];
 const GOLD_EGG = ['..yy..', '.yyey.', 'yyyyyy', 'yyyyyy', '.yyyy.'];
 const MILK = ['..rr..', '..hh..', '.hhhh.', 'hhhhhh', 'huuuuh', 'huuuuh', 'hhhhhh', '.hhhh.'];
 const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
 const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -610,6 +650,9 @@ const CRUMB_WEAR = {
   beak: [14, 4, ['yy', '.y']],
   comb: [10, -2, ['r.r', 'rrr']],
   feathers: [0, 3, ['r.u', '.ru']],
+  vest: [3, 6, ['tttttttt', '.tt..tt.']],
+  cowboyHat: [9, -3, ['..ttt.', '.tttt.', 'tttttt']],
+  bandana: [9, 7, WEAR_PIX.bandana[2]],
 };
 function crumbRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
@@ -619,6 +662,7 @@ function crumbRows(frame, wear) {
   if (wear.body === 'duck') over(CRUMB_WEAR.duck);
   if (wear.body === 'cow') over(CRUMB_WEAR.cowSpots);
   if (wear.body === 'chicken') over(CRUMB_WEAR.beak);
+  if (wear.body === 'cowboy') over(CRUMB_WEAR.vest);
   if (wear.neck) over(CRUMB_WEAR[wear.neck]);
   if (wear.face) over(CRUMB_WEAR[wear.face]);
   if (wear.back === 'pigTail' || wear.back === 'feathers') over(CRUMB_WEAR[wear.back]);
@@ -691,7 +735,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2] };
 const picCache = {};
 function pic(rows, dark) {
   const key = rows.join('/') + dark;
@@ -829,7 +873,7 @@ function drawMap(t) {
     px(X - 22, Y + 23, 20, 1, LINE); px(X - 22, Y + 27, 20, 1, LINE);
     put(sprite(PIG, { flip: Math.floor(t / 2000) % 2 === 1 }), X - 20, Y + 19);
     if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
-    else ['farm', 'barn', 'coop'].forEach((k, i) => pips(k, X + 17, 146 + i * 8));   // a row for each part of the farm
+    else ['farm', 'barn', 'coop', 'ring'].forEach((k, i) => pips(k, X + 17, 143 + i * 7));   // a row for each part of the farm
   }
   // trees, for a nicer drive
   [[96, 32], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
@@ -859,7 +903,7 @@ let LW = 36, LH = 22;                         // a world's size, in tiles; set w
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhBKRPLAaNQ', SOLID_LAND = BLOCK + 'Gw';
+const BLOCK = '#THFCXhBKRPLAaNQO', SOLID_LAND = BLOCK + 'Gw';
 let G = null, W = null;
 const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
@@ -1038,27 +1082,50 @@ const COOP = (() => {
   };
 })();
 const CY = 22;   // where the coop's half starts, below the farmyard
+// The horse ring (decided 3 Nov from the testers: herd the loose pony back,
+// then a barrel race like Rodeo). It's below the barn: the barn's path runs
+// straight down to the ring's gate, and there's a gap through to the coop.
+// The pony runs from Bread like the cows; once it's in the ring, Bread hops
+// on and rides a cloverleaf round the three barrels and back out the gate,
+// on the clock. Knocking a barrel just bumps. O is a barrel, s the ring's sand.
+const RING = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 4; y <= 17; y++) for (let x = 6; x <= 29; x++) m[y][x] = y === 4 || y === 17 || x === 6 || x === 29 ? 'F' : 's';
+  m[4][17] = m[4][18] = 's';                                                       // the gate
+  for (let y = 0; y <= 3; y++) m[y][17] = m[y][18] = 'p';
+  for (const [x, y] of [[12, 13], [23, 13], [17, 7]]) m[y][x] = 'O';
+  for (const [x, y] of [[2, 3], [33, 6], [3, 19], [31, 20], [2, 10]]) m[y][x] = 'T';
+  for (const [x, y] of [[33, 19], [1, 20], [33, 2]]) m[y][x] = 'b';
+  m[18][19] = 'x';
+  return {
+    m, ring: [7, 5, 28, 16], gate: [17.5, 4.5], barrels: [[12.5, 13.5], [23.5, 13.5], [17.5, 7.5]], pony: [32.5, 12.5],
+    spots: { cowboyHat: [33.5, 2.5], bandana: [3.5, 14.5], horseshoe: [1.5, 20.5] },
+    goldSpots: [[33.5, 19.5], [19.5, 18.5]],
+  };
+})();
 // The open farm: the farm (corn, farmyard, pig pen) on the left, the barn on
 // the right. The little barn block in the farmyard goes, since the real barn
 // is next door, and a path runs along the bottom from the car to the barn.
 const BX = 36;   // where the barn's half starts
 const FARM_OPEN = (() => {
-  // the woods fill the corner below the barn for now
-  const woods = Array.from({ length: LH }, (_, y) => Array.from({ length: LW }, (_, x) => x === LW - 1 || y === LH - 1 ? '#' : 'T'));
-  const m = [...FARM.m.map((r, y) => [...r, ...BARN.m[y]]), ...COOP.m.map((r, y) => [...r, ...woods[y]])];
+  const m = [...FARM.m.map((r, y) => [...r, ...BARN.m[y]]), ...COOP.m.map((r, y) => [...r, ...RING.m[y]])];
   m[21][20] = m[21][21] = 'p';                                                    // the way down to the coop, by the car
+  m[21][BX + 17] = m[21][BX + 18] = 'p';                                          // the barn's path down to the ring
+  m[CY + 18][35] = m[CY + 19][35] = '.';                                          // a gap from the coop to the ring
   for (let y = 14; y <= 16; y++) for (let x = 2; x <= 7; x++) m[y][x] = '.';
   for (let y = 1; y < LH - 1; y++) if (m[y][BX] === '#') m[y][BX] = '.';         // one fence between the halves, not two
   m[20][33] = '.';
   for (let x = 19; x <= 35; x++) m[20][x] = 'p';
   m[19][35] = 'p';
-  const at = ([x, y]) => [x + BX, y], down = ([x, y]) => [x, y + CY];
+  const at = ([x, y]) => [x + BX, y], down = ([x, y]) => [x, y + CY], both = ([x, y]) => [x + BX, y + CY];
   return {
     ...FARM, m,
     // Crumb runs down past the car to the coop and up onto the roost
     run: [[20.5, 20.5], [20.5, 33.5], [12, 34], [12, 31]], crumbAt: down(COOP.roost), piglet: FARM.crumbAt,
-    spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])) },
-    coopGold: COOP.goldSpots.map(down),
+    spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])), ...Object.fromEntries(Object.entries(RING.spots).map(([k, v]) => [k, both(v)])) },
+    coopGold: COOP.goldSpots.map(down), ringGold: RING.goldSpots.map(both),
+    ring: { box: [RING.ring[0] + BX, RING.ring[1] + CY, RING.ring[2] + BX, RING.ring[3] + CY], gate: both(RING.gate), barrels: RING.barrels.map(both), pony: both(RING.pony) },
     coop: { rect: [COOP.rect[0], COOP.rect[1] + CY, COOP.rect[2], COOP.rect[3] + CY], nests: COOP.nests.map(([x, y, c]) => [x, y + CY, c]), down: down(COOP.down),
       eggs: COOP.eggs.map(([x, y, c, hide]) => [x, y + CY, c, hide]), run: [COOP.run[0], COOP.run[1] + CY, COOP.run[2], COOP.run[3] + CY], door: [11.5, 11.4 + CY] },
     barnGold: BARN.goldSpots.map(at),
@@ -1068,7 +1135,7 @@ const FARM_OPEN = (() => {
 })();
 const FB = FARM_OPEN.barn;
 const inBarn = (x, y) => { const [x0, y0, x1, y1] = FB.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
-const FC = FARM_OPEN.coop;
+const FC = FARM_OPEN.coop, FR = FARM_OPEN.ring;
 const inCoop = (x, y) => { const [x0, y0, x1, y1] = FC.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
 const indoors = (x, y) => inBarn(x, y) || inCoop(x, y);
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
@@ -1102,6 +1169,7 @@ function startWorld(key) {
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
   if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
   if (M.barnGold) { const [x, y] = M.barnGold[Math.floor(Math.random() * M.barnGold.length)]; G.treats.push({ x, y, v: 10, sec: 'barn' }); }
+  if (M.ringGold) { const [x, y] = M.ringGold[Math.floor(Math.random() * M.ringGold.length)]; G.treats.push({ x, y, v: 10, sec: 'ring' }); }
   if (M.coopGold) { const [x, y] = M.coopGold[Math.floor(Math.random() * M.coopGold.length)]; G.treats.push({ x, y, v: 10, sec: 'coop' }); }
   G.sparkles = Object.entries(M.spots).map(([k, [x, y]]) => ({ k, x, y, sec: secOf(k) })).filter(sp => !S[sp.sec][sp.k]);
   W.setup();
@@ -1142,7 +1210,7 @@ const WORLDS = {
   },
   farm: {
     key: 'farm', name: 'farm', Name: 'Farm', map: FARM_OPEN, stop: 2, costume: 'pig', pic: PIG, baddies: 'Crows and mice caught', soil: 2, buriedGold: true, open: '.pn',
-    sections: [{ key: 'farm', name: 'Corn and pig pen', costume: 'pig' }, { key: 'barn', name: 'Barn', costume: 'cow' }, { key: 'coop', name: 'Chicken coop', costume: 'chicken' }],
+    sections: [{ key: 'farm', name: 'Corn and pig pen', costume: 'pig' }, { key: 'barn', name: 'Barn', costume: 'cow' }, { key: 'coop', name: 'Chicken coop', costume: 'chicken' }, { key: 'ring', name: 'Horse ring', costume: 'cowboy' }],
     goals: { find: 'Find Crumb at the chicken coop', eggs: 'Put the eggs back in the nests', down: 'Find Crumb', back: 'Bring Crumb to the car' },
     setup() {
       for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.', (x, y) => x < BX && y < 12 && Math.hypot(x - 9, y - 11) > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crow: true }); }
@@ -1155,7 +1223,7 @@ const WORLDS = {
       if (!S.farm.piglet) G.piglet = { x: FARM.crumbAt[0], y: FARM.crumbAt[1], t: 0 };
       const [cx0, cy0] = FARM.crumbAt, spot = [[0, 1], [1, 0], [-1, 0], [0, -1], [0, 2], [2, 0], [-2, 0], [0, -2]].map(([a, b]) => [cx0 + a, cy0 + b]).find(([x, y]) => !SOLID_LAND.includes(tileAt(x, y))) || [cx0, cy0];
       G.goose = { x: spot[0], y: spot[1], home: spot, hp: 3, stun: 0, hitT: 0, honk: 0, t: 0, face: -1 };
-      setupBarn(); setupCoop();
+      setupBarn(); setupCoop(); setupRing();
       stage('find', 'Crumb ran off to the chicken coop!');
     },
     step(b, dt) {
@@ -1176,6 +1244,7 @@ const WORLDS = {
       stepGoose(b, dt);
       stepBarn(b, dt);
       stepCoop(b, dt);
+      stepRing(b, dt);
       G.hens.forEach(h => {
         h.t += dt; h.cluck -= dt;
         const d = Math.hypot(h.x - b.x, h.y - b.y);
@@ -1299,7 +1368,7 @@ function setupCoop() {
 }
 function stepCoop(b, dt) {
   if (!G.eggs) return;
-  if (!G.coopSeen && b.y > CY + 1.5 && !G.eggsDone) { G.coopSeen = true; stage('eggs', 'Crumb is up on the roost, and the eggs are everywhere!'); }
+  if (!G.coopSeen && b.y > CY + 1.5 && b.x < BX && !G.eggsDone) { G.coopSeen = true; stage('eggs', 'Crumb is up on the roost, and the eggs are everywhere!'); }
   if (G.stage === 'eggs' && !G.carry && !G.hiddenTip && G.eggs.every(e => e.got || !eggOut(e))) { G.hiddenTip = true; toast('The last eggs are hidden. Try pushing hay, or digging!'); }
   // pick up an egg (one at a time), carry it to the nest of its color
   if (!G.carry) {
@@ -1319,6 +1388,56 @@ function eggsDone() {
   G.eggsDone = true; const c = G.crumb; [c.x, c.y] = FC.down; c.mode = 'wait'; sfx.yip();
   if (!S.coop.beat) { S.coop.beat = true; if (!S.have.includes('chicken')) S.have.push('chicken'); persist(); hold(CHICKEN, 'The eggs are back! You won the chicken costume!', () => stage('down', 'Crumb hopped down!')); }
   else stage('down', 'The eggs are back! Crumb hopped down!');
+}
+// ---------- The horse ring, on the open farm ----------
+const inRing = (x, y) => { const [x0, y0, x1, y1] = FR.box; return x > x0 && x < x1 + 1 && y > y0 && y < y1 + 1; };
+function setupRing() {
+  G.pony = { x: FR.pony[0], y: FR.pony[1], t: 0, face: -1, scared: 0, a: 0, home: false, neigh: 0 };
+  G.riding = false; G.race = null;
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(4, '.', (x, y) => x > BX + 1 && y > CY + 1 && !inRing(x, y)); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+}
+function stepRing(b, dt) {
+  const po = G.pony; if (!po) return;
+  po.t += dt; po.neigh -= dt; po.scared -= dt;
+  if (!G.ringSeen && b.x > BX && b.y > CY && !po.home) { G.ringSeen = true; toast('The pony got loose! Herd it into the ring.'); }
+  if (G.riding) {                                                                  // Bread rides; the pony goes where she goes
+    [po.x, po.y] = [b.x, b.y]; po.face = b.face;
+    const r = G.race;
+    if (r) {
+      r.t += dt;
+      FR.barrels.forEach((br, i) => {
+        if (r.done[i]) return;
+        const d = Math.hypot(b.x - br[0], b.y - br[1]), a = Math.atan2(b.y - br[1], b.x - br[0]);
+        if (d < 3.2) { if (r.last[i] !== null) { let da = a - r.last[i]; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; r.turn[i] += da; } r.last[i] = a; }
+        else { r.last[i] = null; r.turn[i] = 0; }
+        if (Math.abs(r.turn[i]) > 5) { r.done[i] = true; sfx.catch(); burst(br[0], br[1]); if (r.done.every(Boolean)) toast('Now ride out the gate!'); }
+      });
+      if (r.done.every(Boolean) && b.y < FR.gate[1] + .2 && Math.abs(b.x - FR.gate[0] - .5) < 1.6) finishRace();
+    }
+    return;
+  }
+  const d = Math.hypot(po.x - b.x, po.y - b.y);
+  if (d < 2.5 && po.neigh <= 0) { po.neigh = 4; sfx.neigh(); G.pops.push({ x: po.x, y: po.y - 1.3, txt: 'Neigh!', t: 0, c: LINE }); }
+  if (po.home) {
+    if (d < 1.6) { G.riding = true; G.race = { t: 0, done: [false, false, false], turn: [0, 0, 0], last: [null, null, null] }; sfx.gate(); toast('Hop on! Go round each barrel, then out the gate.'); }
+    return;
+  }
+  let ax, ay, v;
+  if (d < 3 || po.scared > 0) { ax = (po.x - b.x) / (d || 1); ay = (po.y - b.y) / (d || 1); v = po.scared > 0 ? 3.4 : 2; }
+  else { po.a += (Math.random() - .5) * 2 * dt; ax = Math.cos(po.a); ay = Math.sin(po.a); v = Math.sin(po.t * .6) > .5 ? .6 : 0; }
+  const ox = po.x, oy = po.y;
+  move(po, ax * v * dt, ay * v * dt, .45);
+  po.x = Math.max(BX + 1.5, po.x); po.y = Math.max(CY + .8, po.y);                // the pony stays on its own side of the farm
+  if (v && ox === po.x && oy === po.y) po.a += 2;
+  if (Math.abs(po.x - ox) > .001) po.face = po.x > ox ? 1 : -1;
+  if (inRing(po.x, po.y) && po.y > FR.gate[1] + 1.5) { po.home = true; sfx.neigh(); burst(po.x, po.y); toast('The pony is back in the ring! Walk up to it to ride.'); }
+}
+function finishRace() {
+  const r = G.race, time = Math.round(r.t * 10) / 10, best = S.ring.best;
+  G.riding = false; G.race = null; const po = G.pony; po.x = FR.gate[0] + 2; po.y = FR.gate[1] + 2; G.bread.y = FR.gate[1] - .6;
+  if (!best || time < best) S.ring.best = time;
+  if (!S.ring.beat) { S.ring.beat = true; if (!S.have.includes('cowboy')) S.have.push('cowboy'); persist(); hold(sprite(PONY[0], { map: HORSE_PAL }), `${time} seconds! You won the cowboy costume!`); }
+  else { persist(); toast(best && time >= best ? `${time} seconds! Best: ${best}.` : `${time} seconds! A new best!`); sfx.win(); }
 }
 // Decided 3 Nov: pushing, learned from the dairy cow. Walking into a hay bale
 // for a moment slides it one tile, if the tile past it is empty floor. Only
@@ -1445,7 +1564,7 @@ function tiredWorld() {
 // over her head, and a short rising tune plays, the way adventure games show
 // off a big find. Treats don't get it, so it stays special.
 function hold(rows, msg, then) {
-  G.hold = { img: sprite(rows), until: performance.now() + 1800, then }; goal = null;
+  G.hold = { img: Array.isArray(rows) ? sprite(rows) : rows, until: performance.now() + 1800, then }; goal = null;
   sfx.found(); toast(msg);
 }
 function stepLevel(dt, t) {
@@ -1467,7 +1586,8 @@ function stepLevel(dt, t) {
   const inMud = tileAt(b.x, b.y) === 'm';
   if (inMud && !b.mud) { sfx.splat(); G.muddy = 5; }
   b.mud = inMud; if (inMud) G.muddy = Math.max(G.muddy, 3);
-  if (b.moving) { const sp = b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; tryPush(b, dx, dy, dt); } else G.pushT = 0;
+  if (b.moving) { const sp = G.riding ? 6.4 : b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; tryPush(b, dx, dy, dt); } else G.pushT = 0;
+  if (G.riding && !G.race?.done.every(Boolean)) { const [x0, y0, x1, y1] = FR.box; b.x = Math.max(x0 + .7, Math.min(x1 + .3, b.x)); b.y = Math.max(y0 + .7, Math.min(y1 + .3, b.y)); }   // ride inside the ring till the barrels are done
   // the trail Crumb follows home
   if (G.crumb.mode === 'follow') { const l = G.trail.at(-1); if (!l || Math.hypot(l.x - b.x, l.y - b.y) > .2) G.trail.push({ x: b.x, y: b.y }); }
   // into the pond and out again, with a good shake
@@ -1618,6 +1738,7 @@ function pawTarget() {
 // front of Bread, the way she last walked, so a frozen squirrel is easy to get.
 function paw() {
   if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
+  if (G.riding) { G.riding = false; G.race = null; G.pony.home = true; G.pony.x = G.bread.x + 1.8; G.pawT = performance.now() + 900; toast('Bread hopped off.'); return; }
   const b = G.bread, tg = pawTarget(); G.pawT = performance.now() + 250; sfx.paw();
   if (tg) { const d = Math.hypot(tg.x - b.x, tg.y - b.y) || 1; b.dx = (tg.x - b.x) / d; b.dy = (tg.y - b.y) / d; if (Math.abs(b.dx) > .2) b.face = b.dx > 0 ? 1 : -1; }
   const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
@@ -1736,6 +1857,10 @@ function drawLevel(t) {
       px(X, Y, T, T, '#7a5a3a');
       if ((x + y) % 2) { px(X + 3, Y + 4, 4, 2, '#5f4428'); px(X + 10, Y + 10, 3, 2, '#5f4428'); }
       px(X + 9 + (Math.floor(t / 600 + x) % 2), Y + 5, 2, 1, '#a07c56');
+    } else if (c === 's' || c === 'O') {     // the horse ring's sand, and its barrels
+      px(X, Y, T, T, '#e3c48e'); if ((x * 5 + y * 3) % 4 === 0) px(X + 5, Y + 9, 2, 1, '#cfae74');
+      if (c === 'O') { const i = FR.barrels.findIndex(([bx, by]) => Math.floor(bx) === x && Math.floor(by) === y), done = G.race && G.race.done[i];
+        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), X + 1, Y - 1, 2); }   // drawn double size, so it reads next to the pony
     } else if (c === 'p') {
       px(X, Y, T, T, '#ecd6a0');
       if ((x * 5 + y * 7) % 4 === 0) px(X + 4, Y + 10, 2, 1, '#d4bb82');
@@ -1808,7 +1933,12 @@ function drawLevel(t) {
     const X = Math.round(tg.x * T), Y = Math.round(tg.y * T) - 2, o = 7 + (Math.floor(t / 250) % 2);
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { px(X + a * o - (a > 0 ? 2 : 0), Y + c * o, 3, 1, COL.h); px(X + a * o, Y + c * o - (c > 0 ? 2 : 0), 1, 3, COL.h); });
   }
-  if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) {
+  if (G.pony && !G.riding) { const po = G.pony, img = sprite(PONY[po.home && Math.hypot(po.x - b.x, po.y - b.y) > 3 ? 0 : Math.floor(t / 120) % 4], { map: HORSE_PAL, flip: po.face < 0 }); put(img, po.x * T - img.width / 2, po.y * T - img.height + 4); }
+  if (G.riding) {                            // Bread up on the pony
+    const f = b.moving ? Math.floor(t / 90) % 4 : 0, img = sprite(PONY[f], { map: HORSE_PAL, flip: b.face < 0 }), head = sprite(CAR_HEAD, { map: wearMap(S.wear), flip: b.face < 0 });
+    const X = b.x * T - img.width / 2, Y = b.y * T - img.height + 4;
+    put(img, X, Y); put(head, b.face > 0 ? X + 12 : X + img.width - 12 - head.width, Y - 2);
+  } else if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) {
     // swimming, only her head and back show above the water; shaking, she wiggles
     const by = b.y * T + 7, wig = G.shake ? (Math.floor(t / 50) % 2 ? 1 : -1) : 0;
     if (b.swim) { cx.save(); cx.beginPath(); cx.rect(b.x * T - 16, by - 40, 32, 33); cx.clip(); }
@@ -1850,6 +1980,11 @@ function drawLevel(t) {
   G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
   G.pops.forEach(p => text(p.txt, p.x * T, p.y * T - 10 - p.t * 12, p.c));
   cx.restore();
+  if (G.race) {                              // the clock for the barrel race, and a mark for each barrel
+    const tx = VW * T / 2; px(tx - 40, VH * T - 14, 80, 12, LINE);
+    text(`${G.race.t.toFixed(1)}s`, tx - 12, VH * T - 4, COL.h);
+    G.race.done.forEach((d, i) => put(sprite(BARREL, { map: d ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), tx + 10 + i * 9, VH * T - 13));
+  }
   // the health bar sits bottom-left, clear of the buttons and pills on top;
   // a used-up bone goes dim
   const hy = VH * T - 11;
@@ -1884,7 +2019,8 @@ function finishWorld() {
   const pctOf = list => Math.round(list.filter(p => p.got).length / list.length * 100);
   const pct = pctOf(every);
   const rows = [[W.baddies, G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
-    ...(SS.length > 1 ? SS.map(sc => [sc.name, pctOf(every.filter(p => p.sc === sc)), '%']) : [])];
+    ...(SS.length > 1 ? SS.map(sc => [sc.name, pctOf(every.filter(p => p.sc === sc)), '%']) : []),
+    ...(S.ring && S.ring.best && W.key === 'farm' ? [['Best barrel race', Math.round(S.ring.best), ' s']] : [])];
   // the pieces as pictures: found in color, still hidden as dark shapes
   const piecePic = p => p.k === 'beat' ? ITEM_PIC[p.sc.costume] : p.k === 'gold' ? GOLD_PAW : TOYS[p.k] ? TOYS[p.k].pic : ITEM_PIC[p.k];
   const parts = every.map(p => `<span class="tile${p.got ? ' on' : ' locked'}" role="img" aria-label="${p.got ? p.n : 'Not found yet'}" title="${p.got ? p.n : 'Not found yet'}"><img alt="" src="${pic(piecePic(p), !p.got)}"></span>`).join('');
