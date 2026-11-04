@@ -153,6 +153,22 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   game's point. Phone first: upright is a Game Boy with the stick and GO below
   the screen; sideways the arena is as tall as the screen, with the stick and
   GO on the dirt at each side. Best times are in localStorage under `rodeo-test`.
+- `conquest/index.html` is Conquest (working title), a turn-based war game
+  designed by the oldest kid tester (Trello #47 has his units and rules). Decided
+  4 Nov: the units are his own drawings exactly (`conquest/units/*.png`, cut
+  from screenshots of his drawing app; the white gaps inside them are see-through
+  except the medic crosses). The green parts of each drawing are the team's
+  colour, and the world is worn WW2 rather than bright: the game recolours and
+  grimes the drawings in the browser (`grime()`), drawn at half size for chunky
+  pixels. Units face up, down, left or right only; turned at in-between angles
+  his drawings came out jagged. Money comes from cities (capital 3, others 1 a
+  turn); you win by taking every city or by being the last army standing.
+  The first version is land only: his four ground units and two of the defense
+  guns (the AA guns wait for aircraft). Guns stay where they're bought. A
+  bought unit goes on the city or a free square next to it, and moves next
+  turn. The computer buys one unit per city a turn: with two, it swamped a test
+  game with 41 units. Strings are in `STR`. A game in progress is saved under
+  `conquest` at the start of each of your turns. Not on the home page yet.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
