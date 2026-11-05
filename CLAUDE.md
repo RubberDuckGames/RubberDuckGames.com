@@ -169,6 +169,24 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   turn. The computer buys one unit per city a turn: with two, it swamped a test
   game with 41 units. Strings are in `STR`. A game in progress is saved under
   `conquest` at the start of each of your turns. Its home page card (4 Nov) is the last one, after Rodeo, so his friends can play it.
+  Decided 4 Nov, after his first long game stalled at turn 80 behind enemy
+  guns: aircraft. Air and ground are two layers (a square holds one of each;
+  tapping again steps from the air unit to the ground unit to the city).
+  Planes and helicopters fly over anything, and in the air only units that
+  fire at air (`hits` has `A`) can hit them. Planes carry 10 fuel (`FUEL`),
+  one per square; a turn in the air without moving burns 2 (`CIRCLE`), so only
+  helicopters hover; ending a move on your own city lands it and it fills up
+  next turn; a landed plane can be hit by anyone and is lost if the city
+  falls; a plane at 0 fuel in the air crashes. Aircraft are bought onto the
+  city's air spot. The ground attack bomber's fire burns 2 more turns, 1
+  health a turn (`BURN`, a guess to check with him). The artillery gun was too
+  strong, so after it fires it reloads through your next turn. Aircraft are
+  drawn bigger than a square, with a shadow, because his planes are thin
+  drawings and were hard to see squeezed into one.
+  Decided 4 Nov: defense guns, AA guns and missile AA can be built on any empty
+  land square touching one of your units (corners count), as long as no enemy
+  can fire on it: tap the square to open the build panel. Artillery guns are
+  built only in cities. The computer still builds guns only in its cities.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
