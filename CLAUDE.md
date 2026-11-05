@@ -183,6 +183,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   strong, so after it fires it reloads through your next turn. Aircraft are
   drawn bigger than a square, with a shadow, because his planes are thin
   drawings and were hard to see squeezed into one.
+  Decided 4 Nov: defense guns, AA guns and missile AA can be built on any empty
+  land square touching one of your units (corners count), as long as no enemy
+  can fire on it: tap the square to open the build panel. Artillery guns are
+  built only in cities. The computer still builds guns only in its cities.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes

@@ -95,6 +95,7 @@ const STR = {
   how3: 'Each city gives you money every turn. Tap a city you own to buy more units there.',
   how4: 'When your units are done, press End turn.',
   how5: 'Planes and helicopters fly over anything. In the air, only units that fire at air can hit them.',
+  how7: 'To build a defense gun or AA gun anywhere, tap an empty square next to one of your units. Artillery guns are only built in cities.',
   how6: 'Planes carry 10 fuel. Land them in one of your cities to fill up, or they crash. A landed plane can be hit by anyone.',
   start: 'Start',
   keepPlaying: 'Keep playing',
@@ -149,6 +150,10 @@ const STR = {
   burnedOut: 'A {unit} burned up.',
   caught: 'A {unit} was caught on the ground when its city fell.',
   noRoom: 'No room',
+  buildSpot: 'Open ground',
+  buildHere: 'Build a gun here, next to your unit:',
+  tooClose: 'An enemy can fire on this square, so no gun can go here.',
+  artyCity: 'Artillery guns can only be built in cities.',
   shopGround: 'Ground', shopGuns: 'Guns', shopAir: 'Aircraft',
 };
 const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, x) => v[x]);
@@ -178,6 +183,10 @@ const SHOP_GROUPS = [
   ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber']],
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
+// Decided 4 Nov: defense guns and AA guns can be built on any empty square
+// next to one of your units, as long as no enemy can fire on it. Artillery
+// guns only in cities. (Missile AA goes with the AA gun until he says.)
+const FIELD_GUNS = ['defenseGun', 'aaGun', 'missileAA'];
 const AIR = SHOP_GROUPS[2][1];
 const FUEL = 10, CIRCLE = 2;   // a plane's full tank, and what a turn in the air without moving burns
 const BURN = 1, BURN_TURNS = 2; // his fire burns 2 more turns after the hit; 1 health a turn is a guess to check with him
@@ -402,6 +411,7 @@ function tapTile(x, y) {
   const cur = sel ? stack.indexOf(sel.unit || sel.city) : -1;
   const next = cur === -1 ? stack[0] : stack[(cur + 1) % stack.length];
   sel = !next ? null : next.hp !== undefined ? { unit: next } : { city: next };
+  if (!sel && canBuildNear(x, y)) sel = { build: { x, y } };
   if (sel?.unit?.side === 'you') sfx('click');
   render();
 }
@@ -426,7 +436,21 @@ function spot(c, layer = 'ground') {
   return null;
 }
 const layerOfType = k => UNITS[k].air ? 'air' : 'ground';
+// An empty land square touching one of your units (corners count).
+function canBuildNear(x, y, side = 'you') {
+  if (moveCost(tileAt(x, y)) === Infinity || unitAt(x, y, 'ground') || cityAt(x, y)) return false;
+  return G.units.some(u => u.side === side && Math.max(Math.abs(u.x - x), Math.abs(u.y - y)) === 1);
+}
+const underFire = (x, y, side = 'you') => G.units.some(e => e.side !== side && UNITS[e.type].hits.includes('G') && Math.abs(e.x - x) + Math.abs(e.y - y) <= UNITS[e.type].rng);
 function buy(type) {
+  if (sel?.build) {
+    const b = sel.build, R = UNITS[type];
+    if (!FIELD_GUNS.includes(type) || !canBuildNear(b.x, b.y) || underFire(b.x, b.y) || G.money.you < R.cost) return;
+    G.money.you = Math.round((G.money.you - R.cost) * 10) / 10;
+    const u = mkUnit(type, 'you', b.x, b.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
+    log(t('bought', { unit: R.name.toLowerCase() })); sfx('buy');
+    sel = { unit: u }; render(); return;
+  }
   const c = sel?.city, R = UNITS[type], p = c && spot(c, layerOfType(type));
   if (!c || c.owner !== 'you' || !p || G.money.you < R.cost) return;
   G.money.you = Math.round((G.money.you - R.cost) * 10) / 10;
@@ -648,7 +672,7 @@ function frame(now) {
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
     for (const o of targetsFrom(s, s.x, s.y)) brackets(o.x, o.y, '#e0553f', 1, 12, 4);
   }
-  if (sel) { const p = sel.unit || sel.city; brackets(p.x, p.y, '#e8c35a'); }
+  if (sel) { const p = sel.unit || sel.city || sel.build; brackets(p.x, p.y, '#e8c35a'); }
   // units slide to where they are; ground first, then anything flying above
   const order = [...G.units].sort((a, b) => isAir(a) - isAir(b));
   for (const u of order) {
@@ -728,6 +752,18 @@ function panel() {
       ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${tip ? `<p>${tip}</p>` : ''}${u.side === 'you' && cityAt(u.x, u.y)?.owner === 'you' ? `<p>${t('cityAgain')}</p>` : ''}`;
     return;
   }
+  if (sel.build) {
+    const b = sel.build;
+    let body;
+    if (underFire(b.x, b.y)) body = `<p>${t('tooClose')}</p>`;
+    else body = `<p>${t('buildHere')}</p><div class="shop">` + FIELD_GUNS.map(k => {
+      const R = UNITS[k], poor = G.money.you < R.cost;
+      return `<button class="buy" data-buy="${k}" ${poor || G.side !== 'you' ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+    }).join('') + `</div><p>${t('artyCity')}</p>`;
+    el.innerHTML = `<h2>${t('buildSpot')}</h2>${body}`;
+    el.querySelectorAll('[data-buy]').forEach(btn => btn.onclick = () => buy(btn.dataset.buy));
+    return;
+  }
   const c = sel.city;
   const name = c.hq ? t(c.owner === 'you' ? 'hqYours' : 'hqEnemy') : t(c.owner === 'you' ? 'cityYours' : c.owner === 'cpu' ? 'cityEnemy' : 'cityFree');
   let body = `<p>${t('cityGives', { m: c.hq ? HQ_MONEY : CITY_MONEY })}</p>`;
@@ -778,7 +814,7 @@ function cardShow(html) { $('#card').innerHTML = html; $('#cover').hidden = fals
 function cardHide() { $('#cover').hidden = true; cv.focus(); }
 function titleCard() {
   const saved = read().game;
-  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li><li>${t('how4')}</li><li>${t('how5')}</li><li>${t('how6')}</li></ul>
+  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li><li>${t('how4')}</li><li>${t('how5')}</li><li>${t('how6')}</li><li>${t('how7')}</li></ul>
     <div class="row">${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
   $('#go').onclick = () => { cardHide(); if (saved) resume(saved); else newGame(); };
   const f = $('#fresh');
