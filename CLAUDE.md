@@ -187,6 +187,16 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   land square touching one of your units (corners count), as long as no enemy
   can fire on it: tap the square to open the build panel. Artillery guns are
   built only in cities. The computer still builds guns only in its cities.
+  Decided 5 Nov, after he kept running out of money and getting pushed back
+  until he lost: a level choice (`LEVELS`) on the start, new-game and end
+  cards. Easy (the default) gives the computer half its city money, a 50%
+  chance to buy in each city, and no aircraft until turn 10, and you start
+  with 6. Normal is 75%, turn 6, start 4. Hard is the old computer. Saves from
+  before then play as Normal. AA guns, missile AA and AA tanks fire on their
+  own (`aaReact`) at an enemy aircraft that moves into range, or before it
+  fires from in range, once each enemy turn. The AA tank's range is 3 (was 2)
+  so it isn't outranged by aircraft. Guns (anything `fixed`) are dug in and
+  take half damage.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes

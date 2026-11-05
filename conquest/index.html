@@ -46,6 +46,12 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 .card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.3rem;line-height:1.5;color:var(--accent)}
 .card p{margin:.4rem 0}
 .card ul{margin:.4rem 0;padding-left:1.2rem}
+.lvl{border:2px solid var(--line);margin:.8rem 0 0;padding:.5rem .8rem}
+.lvl legend{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--accent);padding:0 .3rem}
+.lvl label{display:block;padding:.3rem 0;cursor:pointer}
+.lvl input{accent-color:var(--accent)}
+.lvl b{font-family:"Press Start 2P",monospace;font-size:.6rem}
+.lvl span{display:block;color:var(--soft);font-size:.9rem;padding-left:1.6rem}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
 </style>
 </head>
@@ -79,6 +85,11 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 // hover as long as they like. The artillery gun was too strong, so after it
 // fires it reloads through your next turn. Ships, transports, trade and
 // alliances come with his own map (Trello #47).
+// Decided 5 Nov, after he kept running out of money and getting pushed back:
+// a choice of Easy, Normal or Hard (Hard is the old computer). AA units fire
+// on their own at enemy aircraft that come into range, once each enemy turn,
+// before the aircraft can strike. The AA tank's range went from 2 to 3.
+// Guns are dug in: anything fixed in place takes half damage.
 
 // ---------- words ----------
 const STR = {
@@ -95,6 +106,7 @@ const STR = {
   how3: 'Each city gives you money every turn. Tap a city you own to buy more units there.',
   how4: 'When your units are done, press End turn.',
   how5: 'Planes and helicopters fly over anything. In the air, only units that fire at air can hit them.',
+  how8: 'AA guns, missile AA and AA tanks fire on their own at enemy aircraft that fly into range. Guns are dug in and take half damage.',
   how7: 'To build a defense gun or AA gun anywhere, tap an empty square next to one of your units. Artillery guns are only built in cities.',
   how6: 'Planes carry 10 fuel. Land them in one of your cities to fill up, or they crash. A landed plane can be hit by anyone.',
   start: 'Start',
@@ -155,6 +167,14 @@ const STR = {
   tooClose: 'An enemy can fire on this square, so no gun can go here.',
   artyCity: 'Artillery guns can only be built in cities.',
   shopGround: 'Ground', shopGuns: 'Guns', shopAir: 'Aircraft',
+  levelPick: 'How tough is the enemy?',
+  easy: 'Easy', normal: 'Normal', hard: 'Hard',
+  easyWhy: 'The enemy earns half the money and buys less. You start with more.',
+  normalWhy: 'The enemy earns a bit less than you.',
+  hardWhy: 'The enemy earns full money and buys every turn.',
+  autoFire: 'Fires on its own at enemy aircraft that come in range.',
+  dugIn: 'Dug in: takes half damage.',
+  aaFired: '{a} fired on the {b} as it flew in.',
 };
 const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, x) => v[x]);
 
@@ -165,7 +185,7 @@ const UNITS = {
   soldier:       { name: 'Soldier',               img: 'soldier',          hp: 1,   dmg: 1,                rng: 2, spd: 2, cost: 1,   hits: 'G' },
   tank:          { name: 'Tank',                  img: 'tank',             hp: 2,   dmg: 1,                rng: 3, spd: 2, cost: 2,   hits: 'G' },
   tankDestroyer: { name: 'Tank destroyer',        img: 'tank-destroyer',   hp: 2,   dmg: 2,                rng: 4, spd: 1, cost: 2,   hits: 'G' },
-  aaTank:        { name: 'AA tank',               img: 'aa-tank',          hp: 2,   dmg: 1.5, dmgA: 1.5,   rng: 2, spd: 2, cost: 2.5, hits: 'GA' },
+  aaTank:        { name: 'AA tank',               img: 'aa-tank',          hp: 2,   dmg: 1.5, dmgA: 1.5,   rng: 3, spd: 2, cost: 2.5, hits: 'GA' },
   defenseGun:    { name: 'Defense gun',           img: 'defense-gun',      hp: 1.5, dmg: 2,                rng: 2, spd: 0, cost: 3,   hits: 'G', fixed: true },
   artillery:     { name: 'Artillery gun',         img: 'artillery',        hp: 3,   dmg: 2,                rng: 5, spd: 0, cost: 5,   hits: 'G', fixed: true, reload: true },
   aaGun:         { name: 'AA gun',                img: 'aa-gun',           hp: 3,   dmgA: 2,               rng: 3, spd: 0, cost: 3,   hits: 'A', fixed: true },
@@ -210,11 +230,20 @@ const MW = 12, MH = 14, TS = 48;
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 1;
 const HQ_MONEY = 3, CITY_MONEY = 1;
+// How tough the computer is: its share of city money, the chance it buys in
+// each city each turn, your starting money, and the turn its aircraft start.
+const LEVELS = {
+  easy:   { pay: .5,  buy: .5,  start: 6, air: 10 },
+  normal: { pay: .75, buy: .75, start: 4, air: 6 },
+  hard:   { pay: 1,   buy: 1,   start: 3, air: 4 },
+};
+const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
+const lvl = () => LEVELS[G.level] || LEVELS.normal;   // saves from before 5 Nov have no level
 
 // ---------- state ----------
 const KEY = 'conquest';
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-const PREFS = Object.assign({ sound: true }, read().prefs);
+const PREFS = Object.assign({ sound: true, level: 'easy' }, read().prefs);
 let G = null;          // the game in play
 let sel = null;        // { unit } or { city }
 let busy = false;      // true while the enemy moves or a shot plays
@@ -229,7 +258,7 @@ function newGame() {
     const ch = MAP[y][x];
     if (ch === 'c' || ch === 'E' || ch === 'P') cities.push({ x, y, hq: ch !== 'c', owner: ch === 'E' ? 'cpu' : ch === 'P' ? 'you' : null });
   }
-  G = { v: 1, turn: 1, side: 'you', money: { you: 3, cpu: 3 }, cities, units: [], stats: { taken: 0, killed: 0, lost: 0 } };
+  G = { v: 1, level: PREFS.level, turn: 1, side: 'you', money: { you: LEVELS[PREFS.level].start, cpu: 3 }, cities, units: [], stats: { taken: 0, killed: 0, lost: 0 } };
   const put = (type, side, x, y) => G.units.push(mkUnit(type, side, x, y));
   put('soldier', 'you', 5, 12); put('tank', 'you', 6, 12); put('soldier', 'you', 7, 12);
   put('soldier', 'cpu', 6, 1); put('tank', 'cpu', 5, 1); put('soldier', 'cpu', 4, 1);
@@ -259,7 +288,7 @@ const other = s => s === 'you' ? 'cpu' : 'you';
 const fmt = n => String(Math.round(n * 10) / 10);
 const inMap = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH;
 const canHit = (R, o) => isAir(o) ? R.hits.includes('A') : R.hits.includes('G');
-const dmgTo = (R, o) => isAir(o) ? R.dmgA : R.dmg;
+const dmgTo = (R, o) => (isAir(o) ? R.dmgA : R.dmg) * (UNITS[o.type].fixed ? .5 : 1);
 
 // Squares a unit can reach this turn. On the ground: forest costs 2, water and
 // mountains can't be crossed, it can pass its own side's units but not stop
@@ -299,9 +328,10 @@ function income(side) {
 }
 function startTurn(side) {
   G.side = side;
-  const got = income(side);
+  const got = side === 'cpu' ? Math.round(income(side) * lvl().pay * 10) / 10 : income(side);
   G.money[side] += got;
   const notes = [];
+  for (const u of G.units.filter(u => u.side !== side)) u.aaShot = false;
   for (const u of G.units.filter(u => u.side === side)) {
     u.moved = false; u.acted = false; u.fresh = false;
     if (UNITS[u.type].air === 'plane') {
@@ -358,9 +388,13 @@ function moveUnit(u, x, y) {
     for (const p of G.units.filter(p => p.x === x && p.y === y && p.landed && p.side !== u.side)) msgs.push(remove(p, 'caught'));
     if (msgs.length) log(msgs.join(' '));
   }
+  const aa = aaReact(u);
+  if (aa) log(aa);
   checkEnd();
 }
 function fire(a, b) {
+  const aa = aaReact(a);
+  if (!G.units.includes(a) || G.over) { if (aa) log(aa); return; }
   const R = UNITS[a.type], d = dmgTo(R, b), wasAir = isAir(b);
   a.ang = face(b.x - a.x, b.y - a.y);
   a.acted = true; a.moved = true;
@@ -369,11 +403,35 @@ function fire(a, b) {
   fx.push({ kind: 'shot', x0: a.x, y0: a.y, x1: b.x, y1: b.y, t0: performance.now(), dur: 260 });
   fx.push({ kind: 'num', x: b.x, y: b.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
   sfx('shot');
-  let msg = t('hit', { a: R.name, b: UNITS[b.type].name.toLowerCase() });
+  let msg = (aa ? aa + ' ' : '') + t('hit', { a: R.name, b: UNITS[b.type].name.toLowerCase() });
   if (b.hp <= 0) msg += ' ' + remove(b, 'knocked');
   else if (R.fire && !wasAir) { b.burn = BURN_TURNS; msg += ' ' + t('onFire'); }
   log(msg);
   checkEnd();
+}
+// AA units fire on their own at an enemy aircraft that comes into range,
+// once each enemy turn. Called when an aircraft moves, and before it fires.
+// Returns what happened, for the caller to show.
+function aaReact(plane) {
+  const msgs = [];
+  if (!isAir(plane)) return '';
+  for (const g of G.units.filter(g => g.side !== plane.side && AA_AUTO.includes(g.type) && !g.aaShot)) {
+    if (!G.units.includes(plane) || G.over) break;
+    const R = UNITS[g.type];
+    if (dist(g, plane) > R.rng) continue;
+    g.aaShot = true;
+    const d = dmgTo(R, plane);
+    g.ang = face(plane.x - g.x, plane.y - g.y);
+    plane.hp = Math.round((plane.hp - d) * 10) / 10;
+    fx.push({ kind: 'shot', x0: g.x, y0: g.y, x1: plane.x, y1: plane.y, t0: performance.now(), dur: 260 });
+    fx.push({ kind: 'num', x: plane.x, y: plane.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
+    sfx('shot');
+    let msg = t('aaFired', { a: R.name, b: UNITS[plane.type].name.toLowerCase() });
+    if (plane.hp <= 0) msg += ' ' + remove(plane, 'knocked');
+    msgs.push(msg);
+  }
+  checkEnd();
+  return msgs.join(' ');
 }
 function alive(side) { return G.units.some(u => u.side === side) || G.cities.some(c => c.owner === side); }
 function checkEnd() {
@@ -387,9 +445,9 @@ function end(won, why) {
   setTimeout(() => {
     cardShow(`<h2>${t(won ? 'won' : 'lost')}</h2><p>${t(won ? why : 'lostWhy')}</p>
       <ul><li>${t('statTurns', { n: G.turn })}</li><li>${t('statTaken', { n: G.stats.taken })}</li>
-      <li>${t('statKilled', { n: G.stats.killed })}</li><li>${t('statLost', { n: G.stats.lost })}</li></ul>
+      <li>${t('statKilled', { n: G.stats.killed })}</li><li>${t('statLost', { n: G.stats.lost })}</li></ul>${levelPick()}
       <div class="row"><a class="btn quiet" href="../">${t('back')}</a><button class="btn" id="again">${t('playAgain')}</button></div>`);
-    $('#again').onclick = () => { cardHide(); newGame(); };
+    $('#again').onclick = () => { takeLevel(); cardHide(); newGame(); };
     sfx(won ? 'win' : 'lose');
   }, 900);
 }
@@ -473,14 +531,14 @@ async function cpuTurn() {
   const yourAir = G.units.some(u => u.side === 'you' && UNITS[u.type].air);
   for (const c of G.cities.filter(c => c.owner === 'cpu')) {   // one a turn per city: two swamped the map with 41 units in a test game
     const can = SHOP.filter(k => UNITS[k].cost <= G.money.cpu && spot(c, layerOfType(k)));
-    if (!can.length) continue;
+    if (!can.length || Math.random() >= lvl().buy) continue;
     const near = G.units.some(u => u.side === 'you' && dist(u, c) <= 4);
     let pick = can.includes('tank') && Math.random() < .55 ? 'tank' : 'soldier';
     if (near && can.includes('defenseGun') && Math.random() < .4) pick = 'defenseGun';
     if (can.includes('artillery') && G.money.cpu >= 7 && Math.random() < .3) pick = 'artillery';
     if (can.includes('tankDestroyer') && Math.random() < .2) pick = 'tankDestroyer';
     if (yourAir && Math.random() < .35) pick = can.includes('missileAA') && G.money.cpu >= 6 ? 'missileAA' : near && can.includes('aaGun') ? 'aaGun' : 'aaTank';
-    if (G.turn > 4 && Math.random() < .3) { const air = AIR.filter(k => can.includes(k)); if (air.length) pick = air[Math.random() * air.length | 0]; }
+    if (G.turn > lvl().air && Math.random() < .3) { const air = AIR.filter(k => can.includes(k)); if (air.length) pick = air[Math.random() * air.length | 0]; }
     if (!can.includes(pick)) pick = can[0];
     const p = spot(c, layerOfType(pick));
     G.money.cpu = Math.round((G.money.cpu - UNITS[pick].cost) * 10) / 10;
@@ -741,6 +799,8 @@ function panel() {
     const notes = [];
     if (u.burn > 0) notes.push(t('burning', { n: u.burn }));
     if (u.reloading) notes.push(t('reloading'));
+    if (AA_AUTO.includes(u.type)) notes.push(t('autoFire'));
+    if (R.fixed) notes.push(t('dugIn'));
     if (R.air === 'plane' && u.landed) notes.push(t('landed'));
     else if (R.air === 'plane' && u.fuel <= 4) notes.push(t('lowFuel'));
     if (u.side === 'you' && G.side === 'you') {
@@ -812,15 +872,24 @@ function hud() { const b = $('#soundBtn'); b.textContent = PREFS.sound ? t('soun
 // ---------- cards ----------
 function cardShow(html) { $('#card').innerHTML = html; $('#cover').hidden = false; const f = $('#card').querySelector('.row button:last-child, .row .btn:last-child'); f && f.focus(); }
 function cardHide() { $('#cover').hidden = true; cv.focus(); }
+// The level choice, shown whenever a new game is about to start.
+function levelPick() {
+  return `<fieldset class="lvl"><legend>${t('levelPick')}</legend>${Object.keys(LEVELS).map(k =>
+    `<label><input type="radio" name="lvl" value="${k}"${PREFS.level === k ? ' checked' : ''}> <b>${t(k)}</b> <span>${t(k + 'Why')}</span></label>`).join('')}</fieldset>`;
+}
+function takeLevel() {
+  const r = $('#card').querySelector('input[name=lvl]:checked');
+  if (r) { PREFS.level = r.value; const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } }
+}
 function titleCard() {
   const saved = read().game;
-  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li><li>${t('how4')}</li><li>${t('how5')}</li><li>${t('how6')}</li><li>${t('how7')}</li></ul>
+  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li><li>${t('how4')}</li><li>${t('how5')}</li><li>${t('how6')}</li><li>${t('how7')}</li><li>${t('how8')}</li></ul>${saved ? '' : levelPick()}
     <div class="row">${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
-  $('#go').onclick = () => { cardHide(); if (saved) resume(saved); else newGame(); };
+  $('#go').onclick = () => { takeLevel(); cardHide(); if (saved) resume(saved); else newGame(); };
   const f = $('#fresh');
   if (f) f.onclick = () => {
-    cardShow(`<p>${t('newSure')}</p><div class="row"><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startNew')}</button></div>`);
-    $('#no').onclick = titleCard; $('#yes').onclick = () => { cardHide(); newGame(); };
+    cardShow(`<p>${t('newSure')}</p>${levelPick()}<div class="row"><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startNew')}</button></div>`);
+    $('#no').onclick = titleCard; $('#yes').onclick = () => { takeLevel(); cardHide(); newGame(); };
   };
 }
 function resume(s) {
