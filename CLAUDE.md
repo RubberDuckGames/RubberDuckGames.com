@@ -110,12 +110,19 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Progress is in localStorage under `bread-corgi:file<n>`.
   Decided 5 Nov (the testers wanted the pond harder): the lower park has a
   round duck pond where the mama duck waits, and her four ducklings run from
-  Bread like the cows; herding all four home pays a few treats (the first time
-  is a held-up moment, `S.pond.ducklings`). By the west shore a little island
-  is ringed by fast water (`c`) Bread can't swim through; once she can push,
-  the rowboat (`U`) on the path goes down, across and into the fast water,
-  where it makes a bridge (`u`). Crumb's frog costume (a crumb spot) and a
-  treat are on the island. Neither counts toward %.
+  Bread like the cows; one that reaches the water stays and swims to her (at
+  first it had to reach her and got chased out again). All four home pays a
+  few treats (the first time is a held-up moment, `S.pond.ducklings`); it
+  doesn't count toward %. A rowboat bridge to an island in the big pond was
+  tried the same day and taken out: one push, no puzzle.
+  Also decided 5 Nov, the testers' idea: four frogs on lily pads in the big
+  pond (pink, yellow, blue, orange), each with its own note (`FROGS`). Swim near
+  and they croak a tune; Bread repeats it by barking at each frog in order.
+  Three rounds, the same tune a note longer each time (3, 4, 5); a wrong frog
+  croaks low and the tune plays again. The whole song wins Crumb's frog costume
+  (not counted toward %). The big pond is bigger and runs off the east edge, and
+  the hedge maze by it is only on the west side ("we're visiting a pond, not a
+  hedge maze"); the two mazes below the fence stay, for the key squirrel.
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
   and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
