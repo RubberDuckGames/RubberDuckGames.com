@@ -41,8 +41,11 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 .btn.quiet{background:var(--panel);color:var(--ink);border:2px solid var(--line)}
 .btn:disabled{opacity:.5;cursor:default}
 .log{font-size:.95rem;color:var(--soft);margin:0}
-.cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,18,12,.7);z-index:9;padding:1rem;overflow:auto}
-.card{background:var(--panel);border:4px solid #1b1a15;padding:1.25rem;max-width:28rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
+/* Decided 5 Nov: a card taller than the screen was cut off at the top in
+   Safari, because centring it in a flex box pushes the top out of reach of
+   scrolling. The card starts at the top, and margin:auto centres it when it fits. */
+.cover{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,18,12,.7);z-index:9;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.card{margin:auto;background:var(--panel);border:4px solid #1b1a15;padding:1.25rem;max-width:28rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
 .card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.3rem;line-height:1.5;color:var(--accent)}
 .card p{margin:.4rem 0}
 .card ul{margin:.4rem 0;padding-left:1.2rem}
@@ -870,7 +873,7 @@ function sfx(kind) {
 function hud() { const b = $('#soundBtn'); b.textContent = PREFS.sound ? t('soundOn') : t('soundOff'); b.setAttribute('aria-label', t('soundLabel')); b.title = t('soundLabel'); }
 
 // ---------- cards ----------
-function cardShow(html) { $('#card').innerHTML = html; $('#cover').hidden = false; const f = $('#card').querySelector('.row button:last-child, .row .btn:last-child'); f && f.focus(); }
+function cardShow(html) { $('#card').innerHTML = html; $('#cover').hidden = false; const f = $('#card').querySelector('.row button:last-child, .row .btn:last-child'); f && f.focus({ preventScroll: true }); $('#cover').scrollTop = 0; }
 function cardHide() { $('#cover').hidden = true; cv.focus(); }
 // The level choice, shown whenever a new game is about to start.
 function levelPick() {
