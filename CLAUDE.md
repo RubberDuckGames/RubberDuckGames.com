@@ -197,6 +197,28 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   fires from in range, once each enemy turn. The AA tank's range is 3 (was 2)
   so it isn't outranged by aircraft. Guns (anything `fixed`) are dug in and
   take half damage.
+  Decided 5 Nov, his next round: bombers drop bombs only on a ground target 1
+  square away (`rngG`); their guns still reach aircraft from range. The map is
+  twice as wide (24 by 14, `CORNER` mirrored into four corners) and scrolls
+  sideways where it doesn't fit. Four teams, green, red, yellow and blue
+  (`TEAMS`, turn order), each played by a player on this device or by the
+  computer, picked on the New game card; with two or more players a Pass the
+  device card comes between turns. Each team flag has its own shape (square,
+  pennant, swallowtail, two bars) so colour isn't the only signal. Teams have
+  a score with each other (`G.rel`), starting at 0: firing on a team or taking
+  its city takes off half a point, at most once a turn; giving it 4 money (the
+  Teams card) adds half a point. At +1 they're allies: no firing on each other,
+  no taking each other's cities, and allies left alone at the end win
+  together. You can't become allies with a team while you're allied with a
+  team it dislikes. At -2 they're enemies for good, and it stays there.
+  Computer teams leave neutral teams alone while free cities remain, fight
+  teams they dislike, and once every city is owned go after anyone who isn't
+  an ally; they don't give money yet. AA fires on its own only at aircraft of
+  teams that dislike it. The level now sets the computer teams' money.
+  Saves are `v: 2`; the two-team saves from before can't be loaded.
+  Decided 5 Nov, from a play-test: on your turn each unit shows a filled
+  yellow square if it hasn't moved, an empty one if it has moved and can still
+  fire, and nothing (greyed out) when it's done.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes

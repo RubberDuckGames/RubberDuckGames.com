@@ -34,12 +34,12 @@ f.onload = () => {
   } else if (g === 'cq') {
     // the two armies meeting in the middle of the map, your tank picked and firing
     setTimeout(() => {
-      w.eval(`PREFS.sound = false; newGame(); $('#cover').hidden = true; banner = null;
+      w.eval(`PREFS.sound = false; PREFS.ctrl = { green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu' }; newGame(); $('#cover').hidden = true; banner = null;
         G.units = [];
         const put = (k, s, x, y) => { const u = mkUnit(k, s, x, y); G.units.push(u); return u; };
-        const me = put('tank', 'you', 5, 8); put('soldier', 'you', 3, 9); put('tankDestroyer', 'you', 7, 9); put('aaTank', 'you', 8, 8); put('artillery', 'you', 4, 8);
-        put('tank', 'cpu', 5, 6); put('soldier', 'cpu', 6, 5); put('tank', 'cpu', 4, 5); put('soldier', 'cpu', 8, 6); put('defenseGun', 'cpu', 7, 5);
-        cityAt(4, 8).owner = 'you'; cityAt(7, 5).owner = 'cpu';
+        const me = put('tank', 'green', 5, 8); put('soldier', 'green', 3, 9); put('tankDestroyer', 'green', 8, 9); put('aaTank', 'green', 8, 8); put('artillery', 'green', 7, 8);
+        put('tank', 'red', 5, 6); put('soldier', 'red', 6, 5); put('tank', 'red', 4, 5); put('soldier', 'red', 8, 6); put('defenseGun', 'red', 7, 5);
+        cityAt(7, 8).owner = 'green'; cityAt(7, 5).owner = 'red';
         sel = { unit: me };
         fx.push({ kind: 'shot', x0: 5, y0: 8, x1: 5, y1: 6, t0: performance.now() - .4e9, dur: 1e9 });
         render();`);
