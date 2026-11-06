@@ -598,9 +598,29 @@ const player = () => save.players[save.current];
 
 // ---------- Voice and sounds ----------
 let voice = null;
+// Decided 5 Nov, after the voice sounded robotic: score every English voice
+// on the device instead of taking the first name on a short list. Natural,
+// enhanced and premium voices win (Edge's "Natural" ones, Apple's Enhanced and
+// Premium downloads, Google's), then the clear standard ones; the novelty
+// voices (Zarvox, Bells, Bad News…) and the old robotic ones never get picked.
+// A grown-up can add a better one on the device: on an iPhone or iPad,
+// Settings › Accessibility › Spoken Content › Voices › English, and download
+// an Enhanced or Premium voice.
+const GOOD_VOICE = /natural|neural|premium|enhanced/i;
+const NICE_VOICE = /Samantha|Ava|Zoe|Allison|Susan|Nicky|Jenny|Aria|Michelle|Google US English|Karen|Moira|Serena/i;
+const SILLY_VOICE = /Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Junior|Ralph|Kathy|Princess|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley/i;
+function voiceScore(v) {
+  let s = 0;
+  if (/^en[-_]US/i.test(v.lang)) s += 6; else if (/^en/i.test(v.lang)) s += 3; else return -99;
+  if (GOOD_VOICE.test(v.name + ' ' + v.voiceURI)) s += 10;   // Safari on iPhone puts "enhanced" and "premium" in the voice's id
+  if (NICE_VOICE.test(v.name)) s += 5;
+  if (SILLY_VOICE.test(v.name)) s -= 30;
+  if (v.localService) s += 1;   // starts at once and works offline
+  return s;
+}
 function pickVoice() {
-  const vs = speechSynthesis.getVoices();
-  voice = vs.find(v => v.lang === 'en-US' && /Samantha|Google US|Aria|Jenny|Ava/.test(v.name)) || vs.find(v => v.lang.startsWith('en')) || null;
+  const vs = speechSynthesis.getVoices().filter(v => voiceScore(v) > 0).sort((a, b) => voiceScore(b) - voiceScore(a));
+  voice = vs[0] || null;
 }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 // Spelling words are said once, inside a short sentence, and a little slower.

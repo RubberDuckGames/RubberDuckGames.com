@@ -243,6 +243,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   They are rendered from `brand/capture.html`; how is written at its top.
 - `treasure-trail/index.html` is the whole game in one file ("Treasure Trail" is a working title): no build step,
   no libraries. It runs offline when you double-click it.
+  It is the only game that speaks (the browser's own voice). Decided 5 Nov:
+  `voiceScore` picks the best English voice on the device (natural, enhanced
+  and premium first, novelty voices never); letters are said by name
+  (`LETTER_NAMES`) and words a little slower. Recorded clips were the other
+  option and are parked: most lines are sentences built on the fly, so clips
+  would only cover the letters and words, in a second voice.
 
 ## Rules
 
