@@ -539,6 +539,7 @@ const SQUIRREL = [
   ['.............', '.ttt.........', 'ttttt........', 'tt..tt....s..', '.....tt..sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '.....s....s..', '.............'],
 ];
 const FLEA = ['........', '...mm...', '..mmmh..', '..mmmm..', '...mm...', '..m..m..', '........'];
+const DUCKLING = ['....yy.', '...yynb', 'y..yyy.', 'yyyyyy.', '.yyyy..'];
 const DUCK = ['..............', '........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...', '..............'];
 const CLAW = [...Array(8)].map((_, r) => [...Array(15)].map((_, x) => [0, 3, 6].some(o => x - r - o === 0 || x - r - o === 1) ? 'h' : '.').join(''));   // three claw lines
 // Crumb, Bread's puppy friend: a mini corgi with Rottweiler colors (decided 28
@@ -643,6 +644,7 @@ function drawCar(x, y, face, t, riders = true) {
 // costumes the colors Crumb's black and tan become.
 const CRUMB_ITEMS = {
   duckling: { slot: 'body', name: 'Duckling costume', world: 'pond', map: { D: COL.y, s: COL.Y, p: COL.y }, pix: [15, 4, ['bbb', 'bbb']] },
+  frog: { slot: 'body', name: 'Frog costume', world: 'pond', map: { D: COL.G, s: '#9be27a', p: '#9be27a' }, pix: [11, -1, ['GG.GG', 'Gn.Gn']] },
   piglet: { slot: 'body', name: 'Piglet costume', world: 'farm', map: { D: COL.P, s: COL.Q, p: COL.Q }, pix: [15, 4, ['PPP', 'QPQ']] },
   kitten: { slot: 'body', name: 'Barn kitten costume', world: 'barn', map: { D: COL.o, s: COL.w, p: COL.p }, pix: [4, 6, ['.d..d..d', '..d..d..']] },
   mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
@@ -900,7 +902,7 @@ let LW = 36, LH = 22;                         // a world's size, in tiles; set w
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhBKRPLAaNQO', SOLID_LAND = BLOCK + 'Gw';
+const BLOCK = '#THFCXhBKRPLAaNQOcU', SOLID_LAND = BLOCK + 'Gw';
 let G = null, W = null;
 const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
@@ -934,7 +936,15 @@ const POND = (() => {
   for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
     if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
   // soft dirt: nothing to do until Bread learns to dig at the farm
-  for (const [x, y] of [[12, 17], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
+  for (const [x, y] of [[14, 15], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
+  // Decided 5 Nov (the testers wanted the pond harder): a little island by the
+  // west shore, ringed by fast water (c) that Bread can't swim through. Once
+  // she can push, the rowboat (U) on the path goes down, then across, and into
+  // the fast water, where it makes a bridge (u). Crumb's frog costume is out there.
+  for (let y = 6; y <= 8; y++) for (let x = 11; x <= 14; x++) m[y][x] = y === 7 && (x === 12 || x === 13) ? '.' : 'c';
+  m[7][10] = '.'; m[6][9] = 'U';
+  // and a duck pond in the lower park, where the mama duck waits for her ducklings
+  for (let y = 15; y <= 20; y++) for (let x = 9; x <= 15; x++) if (((x + .5 - 12.5) / 3.6) ** 2 + ((y + .5 - 18.3) / 2.3) ** 2 < 1) m[y][x] = 'w';
   const reeds = [], bushes = [];
   for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b' && y < 14) bushes.push([x + .5, y + .5]); }
   reeds.sort((a, b) => a[0] - b[0]);
@@ -944,7 +954,7 @@ const POND = (() => {
     // rubber duck out in the pond, so you have to swim for it
     spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
     goldSpots: bushes,                       // the dead ends of the mazes by the pond
-    crumbSpots: { duckling: [1.5, 20.5] },   // in the bush at the bottom of the left maze
+    crumbSpots: { duckling: [1.5, 20.5], frog: [12.5, 7.5] },   // in the bush at the bottom of the left maze, and on the island
   };
 })();
 // The farm (decided 28 Oct with the kid designer: the pig costume, and the
@@ -1193,10 +1203,15 @@ const WORLDS = {
       { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x < 9 : x > 26)); G.sq.push({ x, y, a: 0, t: 0, stun: 0 }); }
       for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 14 && (i % 2 ? x > 26 : x < 9)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
       for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
-      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w'); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w', (x, y) => y < 14); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
+      // the mama duck in her pond, and her four ducklings loose in the park
+      G.mama = { x: 12.5, y: 18.4, quack: 0 }; G.ducksHome = 0;
+      G.ducklings = [0, 1, 2, 3].map(() => { const [x, y] = randOpen(5, '.', (x, y) => y > 14 && x > 8 && x < 27 && Math.hypot(x - 12.5, y - 18.3) > 6); return { x, y, a: Math.random() * 6, t: Math.random() * 5, peep: 0, scared: 0, dodge: 0, home: null, face: 1 }; });
+      G.treats.push({ x: 13.5, y: 7.5, v: 5 });                                   // a treat waiting on the island
       stage('key', 'Crumb ran off under the gate!');
     },
-    step(b) {
+    step(b, dt) {
+      stepDucklings(b, dt);
       if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'The gate key!'); stage('gate'); }
       if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
         G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
@@ -1266,6 +1281,46 @@ const WORLDS = {
     },
   },
 };
+// ---------- The ducklings, at the pond ----------
+// Decided 5 Nov: the mama duck's four ducklings are loose in the lower park.
+// They run from Bread like the cows (and scatter from a bark), so she herds
+// them back to the duck pond; one that gets close to its mama stays. A duckling
+// backed into a corner darts off sideways, so none get stuck. All four home
+// pays a few treats, and the first time it's a held-up moment.
+const DUCK_HOME = [[11.2, 17.6], [13.8, 17.6], [11.4, 19.1], [13.6, 19.1]];
+function stepDucklings(b, dt) {
+  if (!G.ducklings) return;
+  const m = G.mama, near = Math.hypot(m.x - b.x, m.y - b.y) < 3, out = G.ducksHome < 4;
+  m.quack -= dt;
+  if (near && out && m.quack <= 0) { m.quack = 3; sfx.quack(); G.pops.push({ x: m.x, y: m.y - .9, txt: 'Quack!', t: 0, c: LINE }); }
+  if (near && out && !G.mamaSeen) { G.mamaSeen = true; toast('Her ducklings ran off! Herd them back to her.'); }
+  const barked = G.woofT > performance.now();
+  G.ducklings.forEach(d => {
+    d.t += dt; d.peep -= dt; d.scared -= dt; d.dodge -= dt;
+    if (d.home) { d.x += (d.home[0] - d.x) * Math.min(1, dt * 3); d.y += (d.home[1] - d.y) * Math.min(1, dt * 3); return; }
+    const dist = Math.hypot(d.x - b.x, d.y - b.y);
+    if (barked && dist < 4.5) d.scared = 1;
+    let a = d.a, v = Math.sin(d.t * 1.3) > .3 ? .6 : 0;
+    if (d.dodge > 0) v = 2.6;
+    else if (dist < 2.4 || d.scared > 0) {
+      a = d.a = Math.atan2(d.y - b.y, d.x - b.x) + (Math.random() - .5) * .4; v = d.scared > 0 ? 3.2 : 2.4;
+      if (d.peep <= 0) { d.peep = 1.8; sfx.squeak(); G.pops.push({ x: d.x, y: d.y - .7, txt: 'Peep!', t: 0, c: LINE }); }
+    } else d.a += (Math.random() - .5) * 3 * dt;
+    const ox = d.x, oy = d.y;
+    move(d, Math.cos(a) * v * dt, Math.sin(a) * v * dt, .2, BLOCK + 'G');
+    if (Math.abs(d.x - ox) > .001) d.face = d.x > ox ? 1 : -1;
+    if (v > 1 && d.dodge <= 0 && Math.hypot(d.x - ox, d.y - oy) < v * dt * .3) { d.a = a + (Math.random() < .5 ? 1 : -1) * Math.PI / 2; d.dodge = .5; }
+    if (Math.hypot(d.x - m.x, d.y - m.y) < 1.6) {
+      d.home = DUCK_HOME[G.ducksHome++]; sfx.quack(); burst(d.x, d.y);
+      if (G.ducksHome < 4) toast(`${G.ducksHome} duckling${G.ducksHome > 1 ? 's' : ''} home!`); else ducksDone();
+    }
+  });
+}
+function ducksDone() {
+  [[-1, -1.3], [0, -1.5], [1, -1.3]].forEach(([dx, dy]) => G.treats.push({ x: G.mama.x + dx, y: G.mama.y + dy, v: 2 }));
+  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); hold(DUCKLING, 'The ducklings are home!'); }
+  else { sfx.win(); toast('The ducklings are home!'); }
+}
 // ---------- The barn, on the open farm ----------
 const CAT = [
   ['........o.o', '........ooo', 'o.......ono', '.o.oooooooo', '..ooooooo..', '..o.o..o.o.'],
@@ -1450,13 +1505,16 @@ function tryPush(b, dx, dy, dt) {
   const ax = Math.abs(dx) > .7 ? Math.sign(dx) : 0, ay = !ax && Math.abs(dy) > .7 ? Math.sign(dy) : 0;
   const tx = Math.floor(b.x + ax * .6), ty = Math.floor(b.y + ay * .6);
   const what = G.m[ty]?.[tx];
-  if ((!ax && !ay) || (what !== 'P' && what !== 'A')) { G.pushT = 0; return; }
+  if ((!ax && !ay) || !'PAU'.includes(what || '.')) { G.pushT = 0; return; }
   if (!S.moves.push) { if (!G.pushTip) { G.pushTip = true; toast('Too heavy. Ask the cow?'); } return; }
   G.pushT = (G.pushT || 0) + dt; if (G.pushT < .3) return;
   G.pushT = 0;
   const nx = tx + ax, ny = ty + ay, c = G.crumb;
-  if (!'.pn'.includes(G.m[ny]?.[nx]) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
-  G.m[ny][nx] = what; G.m[ty][tx] = indoors(tx, ty) ? 'n' : '.'; sfx.push();
+  const into = G.m[ny]?.[nx], bridge = what === 'U' && into === 'c';               // the rowboat into the fast water
+  if ((!'.pn'.includes(into) && !bridge) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
+  const under = W.map.m[ty]?.[tx];                                                 // a path stays a path
+  G.m[ny][nx] = bridge ? 'u' : what; G.m[ty][tx] = indoors(tx, ty) ? 'n' : under === 'p' || under === 'U' ? 'p' : '.'; sfx.push();
+  if (bridge) { sfx.splash(); burst(nx + .5, ny + .5, COL.l); toast('A bridge to the island!'); }
   if (what === 'A' && G.m[ny - 1]?.[nx] === 'L') ladderUp(nx, ny);
   for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 1.5; G.fx.push({ x: tx + .5, y: ty + .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: ['#e8c35a', '#c9a03a', '#fff1d6'][i % 3] }); }
 }
@@ -1809,21 +1867,27 @@ function sideFence(X, Y, wood) {
   px(X + 6, Y, 1, T, LINE); px(X + 7, Y, 2, T, wood); px(X + 9, Y, 1, T, LINE);
   for (const py of [1, 9]) { px(X + 5, Y + py, 6, 6, LINE); px(X + 6, Y + py + 1, 4, 4, wood); px(X + 6, Y + py + 4, 4, 1, '#d8cbb0'); }
 }
+function drawBoat(X, Y) {
+  px(X, Y + 3, T, 11, LINE); px(X + 1, Y + 4, T - 2, 9, '#b07a46'); px(X + 1, Y + 4, T - 2, 2, '#d9a066');
+  px(X + 3, Y + 7, T - 6, 2, '#8d5c30'); px(X + 1, Y + 11, T - 2, 1, '#8d5c30');
+}
 function drawLevel(t) {
   const b = G.bread, cam = G.cam;
   cam.x = Math.max(0, Math.min(LW - VW, b.x - VW / 2)); cam.y = Math.max(0, Math.min(LH - VH, b.y - VH / 2));
   cx.save(); cx.translate(-Math.round(cam.x * T), -Math.round(cam.y * T));
   const x0 = Math.floor(cam.x), y0 = Math.floor(cam.y), x1 = Math.min(LW, x0 + VW + 2), y1 = Math.min(LH, y0 + VH + 2);
-  const wet = (x, y) => 'wd'.includes(G.m[y]?.[x] ?? '.');
+  const wet = (x, y) => 'wdcu'.includes(G.m[y]?.[x] ?? '.');
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const c = G.m[y][x], X = x * T, Y = y * T;
-    if (c === 'w' || c === 'd') {
-      px(X, Y, T, T, COL.W);
+    if ('wdcu'.includes(c)) {
+      px(X, Y, T, T, c === 'w' || c === 'd' ? COL.W : COL.V);
       if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, COL.l); px(X + 2 + o, Y + 8, 1, 1, COL.l); }
       if (!wet(x, y - 1)) px(X, Y, T, 1, COL.V);
       if (!wet(x, y + 1)) px(X, Y + T - 1, T, 1, COL.V);
       if (!wet(x - 1, y)) px(X, Y, 1, T, COL.V);
       if (!wet(x + 1, y)) px(X + T - 1, Y, 1, T, COL.V);
+      if (c === 'c' || c === 'u') for (let i = 0; i < 3; i++) px(X + (Math.floor(t / 70) + x * 5 + i * 6) % (T - 4), Y + 3 + i * 5, 4, 1, COL.h);   // fast water
+      if (c === 'u') drawBoat(X, Y);
       if (c === 'd') {
         px(X, Y, T, T, '#b07a46');
         for (let i = 3; i < T; i += 4) px(X, Y + i, T, 1, '#8d5c30');
@@ -1882,6 +1946,7 @@ function drawLevel(t) {
       }
       if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
       if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
+      if (c === 'U') drawBoat(X, Y);                                         // the rowboat, pulled up on the path
       if (c === 'o') { px(X + 3, Y + 7, 10, 6, LINE); px(X + 4, Y + 8, 8, 4, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); }   // a dug hole
       if (c === 'h') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }   // a hay bale
       if (c === 'B') {                        // the red barn
@@ -1940,6 +2005,10 @@ function drawLevel(t) {
   if (G.cow) { put(sprite(COW), G.cow.x * T - 10, G.cow.y * T - 9); px(G.cow.x * T + 6, G.cow.y * T - 1, 3, 3, LINE); px(G.cow.x * T + 7, G.cow.y * T, 1, 1, COL.y); }   // the dairy cow, with her bell
   G.hens.forEach(h => put(sprite(CHICKEN, { flip: Math.cos(h.a) < 0 }), h.x * T - 5, h.y * T - 6 - (Math.floor(t / 200 + h.t) % 2)));
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
+  if (G.mama) {                              // the mama duck and her ducklings
+    put(sprite(DUCK), G.mama.x * T - 7, G.mama.y * T - 6 + (Math.floor(t / 400) % 2));
+    G.ducklings.forEach(d => put(sprite(DUCKLING, { flip: d.face < 0 }), d.x * T - 4, d.y * T - 4 - (Math.floor(t / 300 + d.t) % 2)));
+  }
   G.fl.forEach(f => drawFlea(f, t));
   G.sq.forEach(s => drawSquirrel(s, t));
   if (G.goose) drawGoose(t);
@@ -2022,7 +2091,8 @@ function drawLevel(t) {
 // bar is open and for a few seconds after it closes. It shows the nest for the
 // egg Bread carries, the loose eggs (drawn over the bushes while they flash,
 // so the one under a bush shows), and in the barn the ladder for the stuck
-// cats and the empty stalls. It flashed by itself after 15 s at first, but
+// cats and the empty stalls; at the pond, the duck pond while ducklings are
+// out and the rowboat once Bread can push. It flashed by itself after 15 s at first, but
 // then it flashed all through herding the cows; arrows, rings and picture
 // bubbles were tried the same day and dropped as too much.
 const HINT_MS = 5000;
@@ -2034,7 +2104,10 @@ function drawArrow(X, Y, a) {                // the tip is 9 px ahead of X, Y
 }
 function flashTile(x, y, col) { cx.globalAlpha = .7; px(x * T, y * T, T, T, col); cx.globalAlpha = 1; }
 function drawHints(b, t) {
-  if (G.world !== 'farm' || !(G.hintOn || G.hintTill > performance.now()) || Math.floor(t / 350) % 2) return;
+  if (!(G.hintOn || G.hintTill > performance.now()) || Math.floor(t / 350) % 2) return;
+  if (G.ducklings && G.ducksHome < 4) for (let y = 15; y <= 20; y++) for (let x = 9; x <= 15; x++) if (W.map.m[y][x] === 'w') flashTile(x, y, COL.h);   // the mama's pond
+  if (G.world === 'pond' && S.moves.push) G.m.forEach((row, y) => row.forEach((c, x) => { if (c === 'U') flashTile(x, y, COL.y); }));
+  if (G.world !== 'farm') return;
   if (G.eggs && G.stage === 'eggs') {
     if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); flashTile(n[0], n[1], COL.y); }
     else G.eggs.forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: COL.y } }), e.x * T - 3, e.y * T - 3); });

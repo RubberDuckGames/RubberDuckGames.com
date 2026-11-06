@@ -108,6 +108,14 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   piglet, a barn kitten, a mouse, a chick and a foal around the farm. The treat
   shop has a For Crumb part with small things to buy.
   Progress is in localStorage under `bread-corgi:file<n>`.
+  Decided 5 Nov (the testers wanted the pond harder): the lower park has a
+  round duck pond where the mama duck waits, and her four ducklings run from
+  Bread like the cows; herding all four home pays a few treats (the first time
+  is a held-up moment, `S.pond.ducklings`). By the west shore a little island
+  is ringed by fast water (`c`) Bread can't swim through; once she can push,
+  the rowboat (`U`) on the path goes down, across and into the fast water,
+  where it makes a bridge (`u`). Crumb's frog costume (a crumb spot) and a
+  treat are on the island. Neither counts toward %.
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
   and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
