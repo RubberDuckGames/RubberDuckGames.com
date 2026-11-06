@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conquest · Rubber Duck Games</title>
-<meta name="description" content="A turn-based war game: move your army, take the cities and win the map.">
+<meta name="description" content="A turn-based war game for up to four teams: move your army, make allies, take the cities and win the map.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 /* Decided 4 Nov: a WW2 world, worn and faded rather than bright and happy. */
-:root{--ink:#e8dfc8;--soft:#b9ad92;--bg:#2b2a22;--panel:#3b382c;--line:#5d5843;--accent:#c9a44a;--you:#68743e;--cpu:#963e30;font-family:Lexend,Verdana,sans-serif}
+:root{--ink:#e8dfc8;--soft:#b9ad92;--bg:#2b2a22;--panel:#3b382c;--line:#5d5843;--accent:#c9a44a;font-family:Lexend,Verdana,sans-serif}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;touch-action:manipulation}
@@ -20,8 +20,10 @@ button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(
 .bar .grow{flex:1}
 .pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .75rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.65rem;line-height:1.6;box-shadow:.2rem .2rem 0 #1b1a15}
 .game{display:flex;gap:1rem;justify-content:center;align-items:flex-start;padding:0 .75rem 1rem;flex-wrap:wrap}
-.mapbox{position:relative;width:min(100%, calc((100vh - 5rem) * 12 / 14));width:min(100%, calc((100dvh - 5rem) * 12 / 14))}
-canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background:#4a4834;border:3px solid #1b1a15;touch-action:none}
+/* Decided 5 Nov: the map is twice as wide (24 squares). Where it doesn't fit,
+   the squares keep a tappable size and the map scrolls sideways. */
+.mapbox{position:relative;flex:1 1 40rem;min-width:0;max-width:calc((100vh - 5rem) * 24 / 14);max-width:calc((100dvh - 5rem) * 24 / 14);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:3px solid #1b1a15}
+canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixelated;background:#4a4834;touch-action:manipulation}
 .side{flex:1 1 18rem;max-width:26rem;display:flex;flex-direction:column;gap:.75rem}
 .info{background:var(--panel);border:2px solid var(--line);padding:.9rem 1rem;min-height:8rem}
 .info h2{margin:0 0 .4rem;font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.6}
@@ -40,6 +42,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 .btn{background:var(--accent);color:#211f18;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 #1b1a15}
 .btn.quiet{background:var(--panel);color:var(--ink);border:2px solid var(--line)}
 .btn:disabled{opacity:.5;cursor:default}
+.btn.small{padding:.5rem .7rem;font-size:.6rem}
 .log{font-size:.95rem;color:var(--soft);margin:0}
 /* Decided 5 Nov: a card taller than the screen was cut off at the top in
    Safari, because centring it in a flex box pushes the top out of reach of
@@ -47,6 +50,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 .cover{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,18,12,.7);z-index:9;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .card{margin:auto;background:var(--panel);border:4px solid #1b1a15;padding:1.25rem;max-width:28rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
 .card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.3rem;line-height:1.5;color:var(--accent)}
+.card h3{margin:0;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
 .card p{margin:.4rem 0}
 .card ul{margin:.4rem 0;padding-left:1.2rem}
 .lvl{border:2px solid var(--line);margin:.8rem 0 0;padding:.5rem .8rem}
@@ -55,6 +59,14 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 .lvl input{accent-color:var(--accent)}
 .lvl b{font-family:"Press Start 2P",monospace;font-size:.6rem}
 .lvl span{display:block;color:var(--soft);font-size:.9rem;padding-left:1.6rem}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1rem;padding:.35rem 0}
+.who b{flex:0 0 6.5rem}
+.who label{display:inline-flex;gap:.35rem;align-items:center;padding:0}
+.chip{display:inline-block;width:.8rem;height:.8rem;border:2px solid #1b1a15;vertical-align:-.1rem;margin-right:.35rem}
+.tm{border-top:2px solid var(--line);padding:.6rem 0;display:flex;flex-wrap:wrap;gap:.3rem .8rem;align-items:center}
+.tm .grow{flex:1 1 10rem}
+.tm p{margin:.1rem 0;color:var(--soft);font-size:.95rem}
+.warn{color:#e3a07a}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
 </style>
 </head>
@@ -62,12 +74,14 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 <div class="bar">
   <a class="pill" href="../" id="backLink"></a>
   <span class="grow"></span>
+  <span class="pill" id="hTeam"></span>
   <span class="pill" id="hTurn"></span>
   <span class="pill" id="hMoney"></span>
+  <button class="pill" id="teamsBtn"></button>
   <button class="pill" id="soundBtn"></button>
 </div>
 <main class="game">
-  <div class="mapbox"><canvas id="cv" width="576" height="672" tabindex="0"></canvas></div>
+  <div class="mapbox" id="mapbox"><canvas id="cv" width="1152" height="672" tabindex="0"></canvas></div>
   <div class="side">
     <section class="info" id="info" aria-live="polite"></section>
     <p class="log" id="log" aria-live="polite"></p>
@@ -77,22 +91,31 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background
 <div class="cover" id="cover"><div class="card" id="card" role="dialog" aria-modal="true"></div></div>
 <script>
 // Conquest (Trello #47). Designed by the oldest kid tester: his units, his
-// stats, his own drawings. Decided 4 Nov: turn based; money from taking cities
-// (trade routes with allies come later); you win by taking every city or by
-// being the last army on the map. The first version was land only.
+// stats, his own drawings. Decided 4 Nov: turn based; money from taking cities;
+// you win by taking every city or by being the last army on the map apart
+// from your allies.
 // Decided 4 Nov, after his first long game ended in a stalemate at turn 80
 // (guns too strong to break from the ground): aircraft. Planes and helicopters
 // fly over anything, and only units that fire at air can hit them in the air.
 // Planes carry about 10 squares of fuel (five out, five back) and land in your
 // own cities to fill up; a landed plane can be hit by anyone. Helicopters can
 // hover as long as they like. The artillery gun was too strong, so after it
-// fires it reloads through your next turn. Ships, transports, trade and
-// alliances come with his own map (Trello #47).
+// fires it reloads through your next turn.
 // Decided 5 Nov, after he kept running out of money and getting pushed back:
-// a choice of Easy, Normal or Hard (Hard is the old computer). AA units fire
-// on their own at enemy aircraft that come into range, once each enemy turn,
-// before the aircraft can strike. The AA tank's range went from 2 to 3.
-// Guns are dug in: anything fixed in place takes half damage.
+// a choice of Easy, Normal or Hard for the computer teams (Hard is the first
+// computer). AA units fire on their own at hostile aircraft that come into
+// range, once each enemy turn, before the aircraft can strike. The AA tank's
+// range went from 2 to 3. Guns are dug in: anything fixed takes half damage.
+// Decided 5 Nov, his next round of rules: bombers drop bombs only on a ground
+// target 1 square away (their guns still reach aircraft from range); the map
+// is twice as wide with four teams (green, red, yellow, blue), each played by
+// a player on this device or by the computer; and teams have a score with
+// each other. Everyone starts neutral (0). Firing on a team or taking one of
+// its cities lowers the score by half a point, at most once a turn; giving a
+// team 4 money raises it half a point. At +1 the two are allies (they can't
+// fire on each other or take each other's cities), as long as neither is
+// allied with a team the other doesn't like. At -2 they are enemies for good.
+// His hand-drawn map of five island nations may become the map later.
 
 // ---------- words ----------
 const STR = {
@@ -100,63 +123,83 @@ const STR = {
   turn: 'Turn {n}',
   money: 'Money {m}',
   soundOn: '🔔', soundOff: '🔕', soundLabel: 'Sounds on or off',
+  teams: 'Teams',
   endTurn: 'End turn',
-  enemyTurn: 'Enemy turn…',
+  teamTurn: '{team} turn…',
   title: 'Conquest',
-  intro: 'Take every city on the map to win.',
+  intro: 'Take every city, or be the last army on the map with only your allies left.',
   how1: 'Tap one of your units to see where it can go. Tap a square to move there.',
-  how2: 'Then tap an enemy with a red box to fire at it.',
+  how2: 'Then tap another team’s unit with a red box to fire at it.',
   how3: 'Each city gives you money every turn. Tap a city you own to buy more units there.',
   how4: 'When your units are done, press End turn.',
-  how5: 'Planes and helicopters fly over anything. In the air, only units that fire at air can hit them.',
-  how8: 'AA guns, missile AA and AA tanks fire on their own at enemy aircraft that fly into range. Guns are dug in and take half damage.',
-  how7: 'To build a defense gun or AA gun anywhere, tap an empty square next to one of your units. Artillery guns are only built in cities.',
+  how5: 'Planes and helicopters fly over anything. In the air, only units that fire at air can hit them. Bombers drop bombs only from 1 square away.',
   how6: 'Planes carry 10 fuel. Land them in one of your cities to fill up, or they crash. A landed plane can be hit by anyone.',
+  how7: 'To build a defense gun or AA gun anywhere, tap an empty square next to one of your units. Artillery guns are only built in cities.',
+  how8: 'AA guns, missile AA and AA tanks fire on their own at aircraft from teams that don’t like you. Guns are dug in and take half damage.',
+  how9: 'There are four teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy for good.',
+  how11: 'On your turn, a filled yellow square on a unit means it hasn’t moved yet. An empty square means it has moved and can still fire. A greyed-out unit is done.',
+  how10: 'If the map doesn’t fit, drag it sideways to see the rest.',
   start: 'Start',
+  startGame: 'Start game',
   keepPlaying: 'Keep playing',
   newGame: 'New game',
   newSure: 'Start a new game? The game you are in now will be gone.',
   cancel: 'Cancel',
-  startNew: 'Start new game',
+  done: 'Done',
+  setupTitle: 'New game',
+  whoPlays: 'Who plays each team?',
+  player: 'Player', computer: 'Computer',
+  needPlayer: 'Pick Player for at least one team.',
+  team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue',
+  passTitle: '{team} turn',
+  passBody: 'Pass the device to the {team} player.',
+  startTurn: 'Start turn',
   won: 'You won!',
+  teamsWon: '{teams} won!',
   wonAll: 'Every city on the map is yours.',
+  wonAllies: 'You and your allies hold the map.',
   wonLast: 'Your army is the last one standing.',
-  lost: 'The enemy won this time.',
+  lost: 'The computer won this time.',
   lostWhy: 'They took the map. Try a new plan!',
+  and: '{a} and {b}',
   playAgain: 'Play again',
   statTurns: 'Turns: {n}',
-  statTaken: 'Cities you took: {n}',
-  statKilled: 'Enemy units knocked out: {n}',
-  statLost: 'Units you lost: {n}',
+  statTeam: '{team}: took {c} cities, knocked out {k} units, lost {l}.',
   pickHint: 'Tap one of your units or cities.',
-  yours: 'Yours', enemy: 'Enemy',
+  yours: 'Yours',
+  ally: 'Ally', neutral: 'Neutral', unfriendly: 'Unfriendly', foe: 'Enemy for good', out: 'Out of the game',
+  score: 'Score with you: {n}',
   hp: 'Health', dmg: 'Damage', rng: 'Range', spd: 'Speed', cost: 'Cost', hits: 'Fires at',
   ground: 'Ground', air: 'Air', groundAir: 'Ground and air',
   staysPut: 'Stays where it is put',
   spaces: '{n} spaces',
+  rngSplit: '{g} to ground, {a} to air',
   hpOf: '{n} of {max}',
   canMove: 'Tap a lit square to move.',
-  canFire: 'Tap an enemy with a red box to fire.',
-  done: 'This unit is done for this turn.',
+  canFire: 'Tap a unit with a red box to fire.',
+  unitDone: 'This unit is done for this turn.',
   newUnit: 'Just arrived. It can move next turn.',
-  cityYours: 'Your city', cityEnemy: 'Enemy city', cityFree: 'Free city',
-  hqYours: 'Your capital', hqEnemy: 'Enemy capital',
+  cityYours: 'Your city', cityOf: '{team} city', cityFree: 'Free city',
+  hqYours: 'Your capital', hqOf: '{team} capital',
   cityGives: 'Gives {m} money each turn.',
   cityTake: 'Move a unit onto it to take it.',
+  cityNeutral: 'Taking it will make {team} like you less.',
+  cityAlly: 'This is an ally’s city. Allies can’t take each other’s cities.',
   buyHere: 'Buy a unit here:',
   cityBusy: 'There is no room around this city. Move a unit away to buy here.',
   cityAgain: 'Tap it again to buy in this city.',
   need: 'Need {m}',
   bought: 'A new {unit} is ready. It can move next turn.',
-  took: 'You took a city!',
-  lostCity: 'The enemy took one of your cities.',
+  took: '{a} took a free city.',
+  tookFrom: '{a} took a city from {b}.',
   hit: '{a} hit the {b}.',
   knocked: 'The {b} is knocked out!',
   yourTurn: 'Your turn. You got {m} money from your cities.',
+  teamYourTurn: '{team}, your turn. You got {m} money from your cities.',
   dmgSplit: '{a} to air, {g} to ground',
   fuel: 'Fuel', fuelOf: '{n} of {max}',
   hovers: 'Can hover in one place',
-  landed: 'Landed in your city. It fills up with fuel next turn. Anyone can hit it here.',
+  landed: 'Landed in its city. It fills up with fuel next turn. Anyone can hit it here.',
   lowFuel: 'Low on fuel! Land in one of your cities soon or it will crash.',
   reloading: 'Reloading. It can fire again next turn.',
   burning: 'On fire! It loses 1 health a turn for {n} more turns.',
@@ -164,26 +207,38 @@ const STR = {
   crashed: 'A {unit} ran out of fuel and crashed.',
   burnedOut: 'A {unit} burned up.',
   caught: 'A {unit} was caught on the ground when its city fell.',
+  teamOut: '{team} is out of the game.',
   noRoom: 'No room',
   buildSpot: 'Open ground',
   buildHere: 'Build a gun here, next to your unit:',
-  tooClose: 'An enemy can fire on this square, so no gun can go here.',
+  tooClose: 'Another team can fire on this square, so no gun can go here.',
   artyCity: 'Artillery guns can only be built in cities.',
   shopGround: 'Ground', shopGuns: 'Guns', shopAir: 'Aircraft',
-  levelPick: 'How tough is the enemy?',
+  levelPick: 'How tough are the computer teams?',
   easy: 'Easy', normal: 'Normal', hard: 'Hard',
-  easyWhy: 'The enemy earns half the money and buys less. You start with more.',
-  normalWhy: 'The enemy earns a bit less than you.',
-  hardWhy: 'The enemy earns full money and buys every turn.',
-  autoFire: 'Fires on its own at enemy aircraft that come in range.',
+  easyWhy: 'They earn half the money and buy less. Players start with more.',
+  normalWhy: 'They earn a bit less than players.',
+  hardWhy: 'They earn full money and buy every turn.',
+  autoFire: 'Fires on its own at aircraft from teams that don’t like you.',
   dugIn: 'Dug in: takes half damage.',
+  bombNear: 'Drops bombs only on ground units 1 square away.',
   aaFired: '{a} fired on the {b} as it flew in.',
+  teamsTitle: 'Teams',
+  give: 'Give {m} money',
+  gave: 'You gave {team} {m} money. Score with them: {n}.',
+  nowAllies: 'You and {team} are allies now!',
+  cantGivePoor: 'You need {m} money to give.',
+  cantGiveFoe: '{team} will never be your friend again.',
+  cantGiveTurn: 'You can give money on your own turn.',
+  blockedAlly: '{team} won’t be your ally while you are allies with {other}.',
 };
 const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, x) => v[x]);
 
 // ---------- his units ----------
 // hp, damage (dmg to ground, dmgA to air), range, speed, cost, what it fires at
 // (G ground, A air). Copied from his sheets. air: 'plane' or 'heli'.
+// rngG, where it's there, is the range to ground targets: decided 5 Nov, the
+// bombers were sniping from 3-4 squares, and bombs are meant to be dropped.
 const UNITS = {
   soldier:       { name: 'Soldier',               img: 'soldier',          hp: 1,   dmg: 1,                rng: 2, spd: 2, cost: 1,   hits: 'G' },
   tank:          { name: 'Tank',                  img: 'tank',             hp: 2,   dmg: 1,                rng: 3, spd: 2, cost: 2,   hits: 'G' },
@@ -197,8 +252,8 @@ const UNITS = {
   attackChopper: { name: 'Attack chopper',        img: 'attack-chopper',   hp: 2.5, dmg: 1,   dmgA: 2,     rng: 3, spd: 4, cost: 3,   hits: 'GA', air: 'heli' },
   attackJet:     { name: 'Ground attack jet',     img: 'attack-jet',       hp: 3.5, dmg: 3,                rng: 3, spd: 4, cost: 3,   hits: 'G',  air: 'plane' },
   interceptor:   { name: 'Interceptor',           img: 'interceptor',      hp: 3,   dmg: 2,   dmgA: 2,     rng: 3, spd: 4, cost: 3,   hits: 'GA', air: 'plane' },
-  bomber:        { name: 'Bomber',                img: 'bomber',           hp: 4,   dmg: 4.5, dmgA: 2,     rng: 3, spd: 3, cost: 4,   hits: 'GA', air: 'plane' },
-  groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, spd: 3, cost: 4,   hits: 'GA', air: 'plane', fire: true },
+  bomber:        { name: 'Bomber',                img: 'bomber',           hp: 4,   dmg: 4.5, dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane' },
+  groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane', fire: true },
 };
 const SHOP_GROUPS = [
   ['shopGround', ['soldier', 'tank', 'tankDestroyer', 'aaTank']],
@@ -207,68 +262,88 @@ const SHOP_GROUPS = [
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
 // Decided 4 Nov: defense guns and AA guns can be built on any empty square
-// next to one of your units, as long as no enemy can fire on it. Artillery
-// guns only in cities. (Missile AA goes with the AA gun until he says.)
+// next to one of your units, as long as no other team can fire on it.
+// Artillery guns only in cities. (Missile AA goes with the AA gun until he says.)
 const FIELD_GUNS = ['defenseGun', 'aaGun', 'missileAA'];
 const AIR = SHOP_GROUPS[2][1];
+const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
 const FUEL = 10, CIRCLE = 2;   // a plane's full tank, and what a turn in the air without moving burns
 const BURN = 1, BURN_TURNS = 2; // his fire burns 2 more turns after the hit; 1 health a turn is a guess to check with him
-// Decided 4 Nov: the green parts of his drawings are the team's colour.
-const TEAM = { you: [104, 116, 62], cpu: [150, 62, 48] };
+
+// ---------- the teams ----------
+// Decided 4 Nov: the green parts of his drawings are the team's colour. Each
+// team's flag has its own shape too, so colour isn't the only way to tell.
+const TEAMS = ['green', 'red', 'yellow', 'blue'];   // turn order
+const TEAM = {
+  green:  { tint: [104, 116, 62], flag: '#7d8a4a', bar: '#a9b46a' },
+  red:    { tint: [150, 62, 48],  flag: '#a8483a', bar: '#d0705e' },
+  yellow: { tint: [170, 138, 48], flag: '#c9a23e', bar: '#e3c568' },
+  blue:   { tint: [62, 90, 128],  flag: '#5a7aa8', bar: '#86a6d4' },
+};
+const tn = s => t('team_' + s);
+const ALLY = 1, FOE = -2, AID = 4, STEP = .5;
 
 // ---------- the map ----------
-// . open ground, f forest (2 to cross), w water, m mountain, c city,
-// E the enemy's capital, P yours. The bottom half is the top half turned round.
-const TOP = [
-  'mm...E....ff',
+// . open ground, f forest (2 to cross), w water, m mountain, c city, and the
+// capitals: R red, Y yellow, G green, B blue. One corner is drawn; the other
+// three are it mirrored, so every team starts the same.
+const CORNER = [
+  'mm...R....ff',
   'm..c....f...',
-  '...ff..w...c',
+  '...ff..w..c.',
   'c..f..ww....',
   '....f.w..ff.',
   '.ww....c....',
   '..ww...f.w..',
 ];
-const MAP = [...TOP, ...TOP.slice().reverse().map(r => [...r].reverse().join('').replace('E', 'P'))];
-const MW = 12, MH = 14, TS = 48;
+const flipX = r => [...r].reverse().join('');
+const TOPHALF = CORNER.map(r => r + flipX(r).replace('R', 'Y'));
+const MAP = [...TOPHALF, ...TOPHALF.slice().reverse().map(r => r.replace('R', 'G').replace('Y', 'B'))];
+const CAP = { R: 'red', Y: 'yellow', G: 'green', B: 'blue' };
+const MW = 24, MH = 14, TS = 48;
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 1;
 const HQ_MONEY = 3, CITY_MONEY = 1;
-// How tough the computer is: its share of city money, the chance it buys in
-// each city each turn, your starting money, and the turn its aircraft start.
+// How tough the computer teams are: their share of city money, the chance
+// they buy in each city each turn, a player's starting money, and the turn
+// their aircraft start.
 const LEVELS = {
   easy:   { pay: .5,  buy: .5,  start: 6, air: 10 },
   normal: { pay: .75, buy: .75, start: 4, air: 6 },
   hard:   { pay: 1,   buy: 1,   start: 3, air: 4 },
 };
-const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
-const lvl = () => LEVELS[G.level] || LEVELS.normal;   // saves from before 5 Nov have no level
+const lvl = () => LEVELS[G.level] || LEVELS.normal;
 
 // ---------- state ----------
-const KEY = 'conquest';
+const KEY = 'conquest', SAVE_V = 2;   // v1 saves were the two-team map and can't be loaded
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-const PREFS = Object.assign({ sound: true, level: 'easy' }, read().prefs);
+const PREFS = Object.assign({ sound: true, level: 'easy', ctrl: { green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu' } }, read().prefs);
+const savePrefs = () => { const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } };
 let G = null;          // the game in play
-let sel = null;        // { unit } or { city }
-let busy = false;      // true while the enemy moves or a shot plays
+let sel = null;        // { unit } or { city } or { build }
+let busy = false;      // true while a computer team moves
 let fx = [];           // shots, booms and floating numbers
 let banner = null;     // { text, until }
-let cursor = { x: 6, y: 12 };
+let cursor = { x: 5, y: 12 };
 let uid = 1;
 
 function newGame() {
   const cities = [];
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
     const ch = MAP[y][x];
-    if (ch === 'c' || ch === 'E' || ch === 'P') cities.push({ x, y, hq: ch !== 'c', owner: ch === 'E' ? 'cpu' : ch === 'P' ? 'you' : null });
+    if (ch === 'c' || CAP[ch]) cities.push({ x, y, hq: !!CAP[ch], owner: CAP[ch] || null });
   }
-  G = { v: 1, level: PREFS.level, turn: 1, side: 'you', money: { you: LEVELS[PREFS.level].start, cpu: 3 }, cities, units: [], stats: { taken: 0, killed: 0, lost: 0 } };
-  const put = (type, side, x, y) => G.units.push(mkUnit(type, side, x, y));
-  put('soldier', 'you', 5, 12); put('tank', 'you', 6, 12); put('soldier', 'you', 7, 12);
-  put('soldier', 'cpu', 6, 1); put('tank', 'cpu', 5, 1); put('soldier', 'cpu', 4, 1);
-  startTurn('you');
+  const ctrl = { ...PREFS.ctrl }, money = {}, stats = {};
+  for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
+  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats };
+  for (const c of cities.filter(c => c.hq)) {
+    const y = c.y === 0 ? 1 : c.y - 1;
+    G.units.push(mkUnit('soldier', c.owner, c.x - 1, y), mkUnit('tank', c.owner, c.x, y), mkUnit('soldier', c.owner, c.x + 1, y));
+  }
+  begin(TEAMS[0]);
 }
 function mkUnit(type, side, x, y) {
-  const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: side === 'you' ? 0 : Math.PI };
+  const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: y < MH / 2 ? Math.PI : 0 };
   if (UNITS[type].air === 'plane') { u.fuel = FUEL; u.landed = !!(cityAt(x, y)?.owner === side); }
   return u;
 }
@@ -276,6 +351,53 @@ function save() {
   const s = read(); s.prefs = PREFS;
   s.game = G && !G.over ? { ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) } : null;
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { }
+}
+
+// ---------- how the teams get along ----------
+const pk = (a, b) => a < b ? a + '|' + b : b + '|' + a;
+const rel = (a, b) => a === b ? 9 : (G.rel[pk(a, b)] || 0);
+const allied = (a, b) => a === b || rel(a, b) >= ALLY;
+const isHuman = s => G.ctrl[s] === 'human';
+const humans = () => TEAMS.filter(isHuman);
+const r1 = n => Math.round(n * 10) / 10;
+// Firing on a team or taking its city: half a point down, once a turn.
+function sour(a, b) {
+  if (a === b || allied(a, b) || G.soured[b]) return;
+  G.soured[b] = 1;
+  const p = pk(a, b);
+  G.rel[p] = Math.max(FOE, r1((G.rel[p] || 0) - STEP));   // it stops at -2: enemies for good
+  if (G.rel[p] <= FOE) G.locked[p] = 1;
+}
+// Who stops a and b from becoming allies: a team one of them is allied with
+// that the other doesn't like.
+const allyBlock = (a, b) => TEAMS.find(x => x !== a && x !== b && !G.out[x] && ((allied(a, x) && rel(b, x) < 0) || (allied(b, x) && rel(a, x) < 0)));
+function aidProblem(from, to) {
+  if (G.locked[pk(from, to)]) return t('cantGiveFoe', { team: tn(to) });
+  if (G.side !== from || busy) return t('cantGiveTurn');
+  if (G.money[from] < AID) return t('cantGivePoor', { m: AID });
+  return '';
+}
+function giveAid(from, to) {
+  if (aidProblem(from, to)) return;
+  G.money[from] = r1(G.money[from] - AID); G.money[to] = r1(G.money[to] + AID);
+  const p = pk(from, to), was = rel(from, to);
+  let next = Math.min(ALLY, r1(was + STEP));
+  const block = next >= ALLY && was < ALLY && allyBlock(from, to);
+  if (block) next = r1(ALLY - STEP);
+  G.rel[p] = next;
+  const msgs = [t('gave', { team: tn(to), m: AID, n: signed(next) })];
+  if (block) msgs.push(t('blockedAlly', { team: tn(to), other: tn(block) }));
+  else if (next >= ALLY && was < ALLY) { msgs.push(t('nowAllies', { team: tn(to) })); sfx('take'); }
+  else sfx('buy');
+  log(msgs.join(' '));
+  checkEnd(); render();
+}
+const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
+function relWord(a, b) {
+  if (G.out[b]) return t('out');
+  if (allied(a, b)) return t('ally');
+  if (G.locked[pk(a, b)]) return t('foe');
+  return rel(a, b) < 0 ? t('unfriendly') : t('neutral');
 }
 
 // ---------- rules ----------
@@ -287,16 +409,18 @@ const unitAt = (x, y, layer) => G.units.find(u => u.x === x && u.y === y && (!la
 const unitsAt = (x, y) => G.units.filter(u => u.x === x && u.y === y).sort((a, b) => isAir(b) - isAir(a));
 const cityAt = (x, y) => G.cities.find(c => c.x === x && c.y === y);
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-const other = s => s === 'you' ? 'cpu' : 'you';
 const fmt = n => String(Math.round(n * 10) / 10);
 const inMap = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH;
 const canHit = (R, o) => isAir(o) ? R.hits.includes('A') : R.hits.includes('G');
+const rangeTo = (R, o) => isAir(o) ? R.rng : (R.rngG ?? R.rng);
+const groundRange = R => R.rngG ?? R.rng;
 const dmgTo = (R, o) => (isAir(o) ? R.dmgA : R.dmg) * (UNITS[o.type].fixed ? .5 : 1);
 
 // Squares a unit can reach this turn. On the ground: forest costs 2, water and
-// mountains can't be crossed, it can pass its own side's units but not stop
-// on them, and it can't pass the enemy. In the air: every square costs 1,
-// anything can be flown over, and a plane can't go further than its fuel.
+// mountains can't be crossed, it can pass its own and its allies' units but not
+// stop on them, it can't pass anyone else's, and it can't stop on an ally's
+// city. In the air: every square costs 1, anything can be flown over, and a
+// plane can't go further than its fuel.
 function reach(u) {
   const out = new Map(), R = UNITS[u.type];
   if (R.fixed || u.moved) return out;
@@ -312,11 +436,12 @@ function reach(u) {
       const nc = c + (air ? 1 : moveCost(tileAt(nx, ny)));
       if (nc > budget) continue;
       const o = unitAt(nx, ny, lay);
-      if (!air && o && o.side !== u.side) continue;
+      if (!air && o && !allied(o.side, u.side)) continue;
       const k = nx + ',' + ny;
       if (best.has(k) && best.get(k) <= nc) continue;
       best.set(k, nc); q.push([nx, ny, nc]);
-      if (!o) out.set(k, { x: nx, y: ny });
+      const cc = cityAt(nx, ny);
+      if (!o && !(!air && cc?.owner && cc.owner !== u.side && allied(cc.owner, u.side))) out.set(k, { x: nx, y: ny });
     }
   }
   return out;
@@ -324,15 +449,16 @@ function reach(u) {
 function targetsFrom(u, x, y) {
   if (u.acted || u.reloading) return [];
   const R = UNITS[u.type];
-  return G.units.filter(o => o.side !== u.side && canHit(R, o) && Math.abs(o.x - x) + Math.abs(o.y - y) <= R.rng);
+  return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && Math.abs(o.x - x) + Math.abs(o.y - y) <= rangeTo(R, o));
 }
 function income(side) {
   return G.cities.filter(c => c.owner === side).reduce((s, c) => s + (c.hq ? HQ_MONEY : CITY_MONEY), 0);
 }
 function startTurn(side) {
-  G.side = side;
-  const got = side === 'cpu' ? Math.round(income(side) * lvl().pay * 10) / 10 : income(side);
-  G.money[side] += got;
+  G.side = side; G.soured = {};
+  if (isHuman(side)) G.view = side;
+  const got = isHuman(side) ? income(side) : r1(income(side) * lvl().pay);
+  G.money[side] = r1(G.money[side] + got);
   const notes = [];
   for (const u of G.units.filter(u => u.side !== side)) u.aaShot = false;
   for (const u of G.units.filter(u => u.side === side)) {
@@ -346,7 +472,7 @@ function startTurn(side) {
     u.reloading = u.reload > 0;
     if (u.reloading) { u.reload--; u.acted = u.moved = true; }
     if (u.burn > 0) {
-      u.burn--; u.hp = Math.round((u.hp - BURN) * 10) / 10;
+      u.burn--; u.hp = r1(u.hp - BURN);
       fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(BURN), t0: performance.now(), dur: 900 });
     }
   }
@@ -354,10 +480,11 @@ function startTurn(side) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
     else if (u.hp <= 0) notes.push(remove(u, 'burnedOut'));
   }
-  if (side === 'you') {
+  if (isHuman(side)) {
     sel = null;
-    showBanner(t('yourTurn', { m: fmt(got) }));
-    log([t('yourTurn', { m: fmt(got) }), ...notes].join(' '));
+    const line = humans().length > 1 ? t('teamYourTurn', { team: tn(side), m: fmt(got) }) : t('yourTurn', { m: fmt(got) });
+    showBanner(line);
+    log([line, ...notes].join(' '));
     save();
   }
   checkEnd();
@@ -368,7 +495,7 @@ function remove(u, why) {
   G.units = G.units.filter(o => o !== u);
   fx.push({ kind: 'boom', x: u.x, y: u.y, t0: performance.now() + 220, dur: 600 });
   setTimeout(() => sfx('boom'), 220);
-  if (u.side === 'cpu') G.stats.killed++; else G.stats.lost++;
+  G.stats[u.side].lost++;
   if (sel?.unit === u) sel = null;
   return why === 'knocked' ? t('knocked', { b: UNITS[u.type].name.toLowerCase() }) : t(why, { unit: UNITS[u.type].name.toLowerCase() });
 }
@@ -385,95 +512,126 @@ function moveUnit(u, x, y) {
   // only ground units take cities
   if (!R.air && c && c.owner !== u.side) {
     const was = c.owner; c.owner = u.side;
-    const msgs = [];
-    if (u.side === 'you') { G.stats.taken++; msgs.push(t('took')); sfx('take'); }
-    else if (was === 'you') { msgs.push(t('lostCity')); sfx('lose'); }
+    if (was) sour(u.side, was);
+    G.stats[u.side].taken++;
+    const msgs = [was ? t('tookFrom', { a: tn(u.side), b: tn(was) }) : t('took', { a: tn(u.side) })];
+    sfx(was && isHuman(was) && !isHuman(u.side) ? 'lose' : 'take');
     for (const p of G.units.filter(p => p.x === x && p.y === y && p.landed && p.side !== u.side)) msgs.push(remove(p, 'caught'));
-    if (msgs.length) log(msgs.join(' '));
+    log(msgs.join(' '));
   }
   const aa = aaReact(u);
   if (aa) log(aa);
   checkEnd();
 }
 function fire(a, b) {
+  sour(a.side, b.side);
   const aa = aaReact(a);
   if (!G.units.includes(a) || G.over) { if (aa) log(aa); return; }
   const R = UNITS[a.type], d = dmgTo(R, b), wasAir = isAir(b);
   a.ang = face(b.x - a.x, b.y - a.y);
   a.acted = true; a.moved = true;
   if (R.reload) a.reload = 1;
-  b.hp = Math.round((b.hp - d) * 10) / 10;
+  b.hp = r1(b.hp - d);
   fx.push({ kind: 'shot', x0: a.x, y0: a.y, x1: b.x, y1: b.y, t0: performance.now(), dur: 260 });
   fx.push({ kind: 'num', x: b.x, y: b.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
   sfx('shot');
   let msg = (aa ? aa + ' ' : '') + t('hit', { a: R.name, b: UNITS[b.type].name.toLowerCase() });
-  if (b.hp <= 0) msg += ' ' + remove(b, 'knocked');
+  if (b.hp <= 0) { msg += ' ' + remove(b, 'knocked'); G.stats[a.side].killed++; }
   else if (R.fire && !wasAir) { b.burn = BURN_TURNS; msg += ' ' + t('onFire'); }
   log(msg);
   checkEnd();
 }
-// AA units fire on their own at an enemy aircraft that comes into range,
-// once each enemy turn. Called when an aircraft moves, and before it fires.
-// Returns what happened, for the caller to show.
+// AA units fire on their own at an aircraft from a team that doesn't like
+// them (score below 0) when it comes into range, once each enemy turn. Called
+// when an aircraft moves, and before it fires (fire() lowers the score first,
+// so a neutral plane's first strike sets the AA off). Returns what happened.
 function aaReact(plane) {
   const msgs = [];
   if (!isAir(plane)) return '';
-  for (const g of G.units.filter(g => g.side !== plane.side && AA_AUTO.includes(g.type) && !g.aaShot)) {
+  for (const g of G.units.filter(g => g.side !== plane.side && AA_AUTO.includes(g.type) && !g.aaShot && rel(g.side, plane.side) < 0)) {
     if (!G.units.includes(plane) || G.over) break;
     const R = UNITS[g.type];
     if (dist(g, plane) > R.rng) continue;
     g.aaShot = true;
     const d = dmgTo(R, plane);
     g.ang = face(plane.x - g.x, plane.y - g.y);
-    plane.hp = Math.round((plane.hp - d) * 10) / 10;
+    plane.hp = r1(plane.hp - d);
     fx.push({ kind: 'shot', x0: g.x, y0: g.y, x1: plane.x, y1: plane.y, t0: performance.now(), dur: 260 });
     fx.push({ kind: 'num', x: plane.x, y: plane.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
     sfx('shot');
     let msg = t('aaFired', { a: R.name, b: UNITS[plane.type].name.toLowerCase() });
-    if (plane.hp <= 0) msg += ' ' + remove(plane, 'knocked');
+    if (plane.hp <= 0) { msg += ' ' + remove(plane, 'knocked'); G.stats[g.side].killed++; }
     msgs.push(msg);
   }
   checkEnd();
   return msgs.join(' ');
 }
-function alive(side) { return G.units.some(u => u.side === side) || G.cities.some(c => c.owner === side); }
+const alive = s => G.units.some(u => u.side === s) || G.cities.some(c => c.owner === s);
 function checkEnd() {
   if (G.over) return;
-  const all = s => G.cities.every(c => c.owner === s);
-  if (all('you') || !alive('cpu')) end(true, all('you') ? 'wonAll' : 'wonLast');
-  else if (all('cpu') || !alive('you')) end(false);
+  for (const s of TEAMS) if (!G.out[s] && !alive(s)) { G.out[s] = 1; log(t('teamOut', { team: tn(s) })); }
+  const live = TEAMS.filter(s => !G.out[s]), hum = humans();
+  if (hum.length && !hum.some(s => !G.out[s])) return end([]);
+  const friends = list => list.every(a => list.every(b => allied(a, b)));
+  if (friends(live)) return end(live, live.length > 1 ? 'wonAllies' : 'wonLast');
+  const owners = [...new Set(G.cities.map(c => c.owner))];
+  if (!owners.includes(null) && friends(owners)) end(owners, owners.length > 1 ? 'wonAllies' : 'wonAll');
 }
-function end(won, why) {
+const listNames = list => list.map(tn).reduce((a, b, i, all) => i === all.length - 1 ? t('and', { a, b }) : a + ', ' + b);
+function end(winners, why) {
   G.over = true; save();
+  const hum = humans(), winHum = winners.filter(isHuman);
+  const head = !winHum.length ? t('lost') : hum.length === 1 ? t('won') : t('teamsWon', { teams: listNames(winHum) });
+  const sub = !winHum.length ? t('lostWhy') : t(why);
+  const lines = (hum.length ? hum : TEAMS).map(s => `<li>${t('statTeam', { team: tn(s), c: G.stats[s].taken, k: G.stats[s].killed, l: G.stats[s].lost })}</li>`).join('');
   setTimeout(() => {
-    cardShow(`<h2>${t(won ? 'won' : 'lost')}</h2><p>${t(won ? why : 'lostWhy')}</p>
-      <ul><li>${t('statTurns', { n: G.turn })}</li><li>${t('statTaken', { n: G.stats.taken })}</li>
-      <li>${t('statKilled', { n: G.stats.killed })}</li><li>${t('statLost', { n: G.stats.lost })}</li></ul>${levelPick()}
+    cardShow(`<h2>${head}</h2><p>${sub}</p><ul><li>${t('statTurns', { n: G.turn })}</li>${lines}</ul>
       <div class="row"><a class="btn quiet" href="../">${t('back')}</a><button class="btn" id="again">${t('playAgain')}</button></div>`);
-    $('#again').onclick = () => { takeLevel(); cardHide(); newGame(); };
-    sfx(won ? 'win' : 'lose');
+    $('#again').onclick = () => setupCard();
+    sfx(winHum.length ? 'win' : 'lose');
   }, 900);
 }
 
+// ---------- whose turn ----------
+function begin(side) {
+  if (G.over) return;
+  if (!isHuman(side)) { cpuTurn(side); return; }
+  const go = () => { startTurn(side); seeHome(side); };
+  // with more than one player on the device, hand it over first
+  if (humans().filter(s => !G.out[s]).length > 1) {
+    G.side = side; render();
+    cardShow(`<h2>${t('passTitle', { team: tn(side) })}</h2><p>${t('passBody', { team: tn(side) })}</p><div class="row"><button class="btn" id="go">${t('startTurn')}</button></div>`);
+    $('#go').onclick = () => { cardHide(); go(); };
+  } else go();
+}
+function nextTurn() {
+  if (G.over) return;
+  let i = TEAMS.indexOf(G.side);
+  for (let k = 0; k < TEAMS.length; k++) { i = (i + 1) % TEAMS.length; if (i === 0) G.turn++; if (!G.out[TEAMS[i]]) break; }
+  begin(TEAMS[i]);
+}
+const myTurn = () => G && !G.over && !busy && isHuman(G.side) && G.side === G.view;
+
 // ---------- the player ----------
 function tapTile(x, y) {
-  if (busy || !G || G.over || G.side !== 'you') return;
+  if (!myTurn()) return;
+  const me = G.side;
   cursor = { x, y };
   const here = unitsAt(x, y), c = cityAt(x, y);
-  if (sel?.unit && sel.unit.side === 'you') {
+  if (sel?.unit && sel.unit.side === me) {
     const s = sel.unit, ts = targetsFrom(s, s.x, s.y);
     const tg = here.find(o => ts.includes(o));
     if (tg) { fire(s, tg); afterAct(s); return; }
     if (reach(s).get(x + ',' + y)) { moveUnit(s, x, y); afterAct(s); return; }
   }
   // Tapping the same square again steps through what's there: the air unit,
-  // then the ground unit, then your city (to buy).
+  // then the ground unit, then the city (to buy).
   const stack = [...here, ...(c ? [c] : [])];
   const cur = sel ? stack.indexOf(sel.unit || sel.city) : -1;
   const next = cur === -1 ? stack[0] : stack[(cur + 1) % stack.length];
   sel = !next ? null : next.hp !== undefined ? { unit: next } : { city: next };
   if (!sel && canBuildNear(x, y)) sel = { build: { x, y } };
-  if (sel?.unit?.side === 'you') sfx('click');
+  if (sel?.unit?.side === me) sfx('click');
   render();
 }
 function afterAct(u) {
@@ -498,96 +656,110 @@ function spot(c, layer = 'ground') {
 }
 const layerOfType = k => UNITS[k].air ? 'air' : 'ground';
 // An empty land square touching one of your units (corners count).
-function canBuildNear(x, y, side = 'you') {
+function canBuildNear(x, y, side = G.side) {
   if (moveCost(tileAt(x, y)) === Infinity || unitAt(x, y, 'ground') || cityAt(x, y)) return false;
   return G.units.some(u => u.side === side && Math.max(Math.abs(u.x - x), Math.abs(u.y - y)) === 1);
 }
-const underFire = (x, y, side = 'you') => G.units.some(e => e.side !== side && UNITS[e.type].hits.includes('G') && Math.abs(e.x - x) + Math.abs(e.y - y) <= UNITS[e.type].rng);
+const underFire = (x, y, side = G.side) => G.units.some(e => !allied(e.side, side) && UNITS[e.type].hits.includes('G') && Math.abs(e.x - x) + Math.abs(e.y - y) <= groundRange(UNITS[e.type]));
 function buy(type) {
+  if (!myTurn()) return;
+  const me = G.side, R = UNITS[type];
+  let p = null;
   if (sel?.build) {
-    const b = sel.build, R = UNITS[type];
-    if (!FIELD_GUNS.includes(type) || !canBuildNear(b.x, b.y) || underFire(b.x, b.y) || G.money.you < R.cost) return;
-    G.money.you = Math.round((G.money.you - R.cost) * 10) / 10;
-    const u = mkUnit(type, 'you', b.x, b.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
-    log(t('bought', { unit: R.name.toLowerCase() })); sfx('buy');
-    sel = { unit: u }; render(); return;
+    const b = sel.build;
+    if (!FIELD_GUNS.includes(type) || !canBuildNear(b.x, b.y) || underFire(b.x, b.y)) return;
+    p = b;
+  } else {
+    const c = sel?.city;
+    if (!c || c.owner !== me) return;
+    p = spot(c, layerOfType(type));
   }
-  const c = sel?.city, R = UNITS[type], p = c && spot(c, layerOfType(type));
-  if (!c || c.owner !== 'you' || !p || G.money.you < R.cost) return;
-  G.money.you = Math.round((G.money.you - R.cost) * 10) / 10;
-  const u = mkUnit(type, 'you', p.x, p.y); u.moved = u.acted = u.fresh = true;
-  G.units.push(u);
+  if (!p || G.money[me] < R.cost) return;
+  G.money[me] = r1(G.money[me] - R.cost);
+  const u = mkUnit(type, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
   log(t('bought', { unit: R.name.toLowerCase() })); sfx('buy');
+  if (sel.build) sel = { unit: u };
   render();
 }
 
 // ---------- the computer ----------
+// Decided 5 Nov: a computer team leaves neutral teams alone while there are
+// free cities to take; it fights teams that don't like it (score below 0), and
+// once every city has an owner it goes after anyone who isn't its ally.
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function cpuTurn() {
+function fairGame(me, other) {
+  if (other === me || allied(me, other)) return false;
+  return rel(me, other) < 0 || !G.cities.some(c => !c.owner);
+}
+async function cpuTurn(me) {
   busy = true; sel = null;
-  startTurn('cpu');
-  showBanner(t('enemyTurn'));
+  startTurn(me);
+  if (G.over) { busy = false; return; }
+  showBanner(t('teamTurn', { team: tn(me) }));
+  seeHome(me);
   render();
-  await sleep(700);
+  await sleep(500);
   // buy: soldiers to spread out early, tanks and guns once there's money,
-  // AA once you have aircraft, and some aircraft of its own after a few turns
-  const yourAir = G.units.some(u => u.side === 'you' && UNITS[u.type].air);
-  for (const c of G.cities.filter(c => c.owner === 'cpu')) {   // one a turn per city: two swamped the map with 41 units in a test game
-    const can = SHOP.filter(k => UNITS[k].cost <= G.money.cpu && spot(c, layerOfType(k)));
+  // AA once others have aircraft, and some aircraft of its own after a few turns
+  const otherAir = G.units.some(u => !allied(u.side, me) && UNITS[u.type].air);
+  for (const c of G.cities.filter(c => c.owner === me)) {   // one a turn per city: two swamped the map with 41 units in a test game
+    const can = SHOP.filter(k => UNITS[k].cost <= G.money[me] && spot(c, layerOfType(k)));
     if (!can.length || Math.random() >= lvl().buy) continue;
-    const near = G.units.some(u => u.side === 'you' && dist(u, c) <= 4);
+    const near = G.units.some(u => fairGame(me, u.side) && dist(u, c) <= 4);
     let pick = can.includes('tank') && Math.random() < .55 ? 'tank' : 'soldier';
     if (near && can.includes('defenseGun') && Math.random() < .4) pick = 'defenseGun';
-    if (can.includes('artillery') && G.money.cpu >= 7 && Math.random() < .3) pick = 'artillery';
+    if (can.includes('artillery') && G.money[me] >= 7 && Math.random() < .3) pick = 'artillery';
     if (can.includes('tankDestroyer') && Math.random() < .2) pick = 'tankDestroyer';
-    if (yourAir && Math.random() < .35) pick = can.includes('missileAA') && G.money.cpu >= 6 ? 'missileAA' : near && can.includes('aaGun') ? 'aaGun' : 'aaTank';
+    if (otherAir && Math.random() < .3) pick = can.includes('missileAA') && G.money[me] >= 6 ? 'missileAA' : near && can.includes('aaGun') ? 'aaGun' : 'aaTank';
     if (G.turn > lvl().air && Math.random() < .3) { const air = AIR.filter(k => can.includes(k)); if (air.length) pick = air[Math.random() * air.length | 0]; }
     if (!can.includes(pick)) pick = can[0];
     const p = spot(c, layerOfType(pick));
-    G.money.cpu = Math.round((G.money.cpu - UNITS[pick].cost) * 10) / 10;
-    const u = mkUnit(pick, 'cpu', p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
+    G.money[me] = r1(G.money[me] - UNITS[pick].cost);
+    const u = mkUnit(pick, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
   }
   render();
-  for (const u of G.units.filter(u => u.side === 'cpu' && !u.fresh)) {
+  for (const u of G.units.filter(u => u.side === me && !u.fresh)) {
     if (G.over || !G.units.includes(u)) continue;
     const plan = cpuPlan(u);
-    if (plan.move) { moveUnit(u, plan.move.x, plan.move.y); sfx('step'); render(); await sleep(380); }
+    if (plan.move) { seeTile(plan.move.x, plan.move.y); moveUnit(u, plan.move.x, plan.move.y); sfx('step'); render(); await sleep(260); }
     if (G.over) break;
+    if (!G.units.includes(u)) continue;
     const tg = bestTarget(u);
-    if (tg) { fire(u, tg); render(); await sleep(650); }
+    if (tg) { fire(u, tg); render(); await sleep(480); }
   }
   busy = false;
   if (G.over) return;
-  G.turn++;
-  startTurn('you');
+  nextTurn();
 }
 function bestTarget(u) {
-  const ts = targetsFrom(u, u.x, u.y);
+  const ts = targetsFrom(u, u.x, u.y).filter(o => fairGame(u.side, o.side));
   if (!ts.length) return null;
   const R = UNITS[u.type], kill = o => o.hp <= dmgTo(R, o);
   return ts.sort((a, b) => (kill(b) - kill(a)) || (a.hp - b.hp))[0];
 }
 function cpuPlan(u) {
-  const opts = [{ x: u.x, y: u.y, stay: true }, ...reach(u).values()];
-  const goals = G.cities.filter(c => c.owner !== 'cpu');
-  const mine = G.cities.filter(c => c.owner === 'cpu');
-  const foes = G.units.filter(o => o.side === 'you');
+  const me = u.side, opts = [{ x: u.x, y: u.y, stay: true }, ...reach(u).values()];
+  const goals = G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)));
+  const mine = G.cities.filter(c => c.owner === me);
+  const prey = G.units.filter(o => fairGame(me, o.side));
+  const threats = G.units.filter(o => !allied(o.side, me));
   const R = UNITS[u.type], plane = R.air === 'plane';
   let best = null, bestScore = -Infinity;
   for (const o of opts) {
     let s = 0;
-    const ts = foes.filter(f => canHit(R, f) && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= R.rng);
+    const ts = prey.filter(f => canHit(R, f) && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= rangeTo(R, f));
     if (ts.length) s += 4 + Math.max(...ts.map(f => f.hp <= dmgTo(R, f) ? 5 : dmgTo(R, f)));
     const c = cityAt(o.x, o.y);
-    if (!R.air) {
-      if (c && c.owner !== 'cpu') s += c.hq ? 12 : c.owner === 'you' ? 9 : 7;
-      if (c && c.owner === 'cpu' && !R.fixed) s -= 2;   // step off its own cities so it can buy there; it banked 70+ money in a test game sitting on them
+    if (!R.air && c && c.owner !== me) {
+      if (!c.owner || fairGame(me, c.owner)) s += c.hq ? 12 : c.owner ? 9 : 7;
+      else s -= 20;   // a neutral team's city: leave it
     }
-    const hunt = R.air ? foes.filter(f => canHit(R, f)) : foes;
+    if (!R.air && c && c.owner === me && !R.fixed) s -= 2;   // step off its own cities so it can buy there; it banked 70+ money in a test game sitting on them
+    const hunt = R.air ? prey.filter(f => canHit(R, f)) : prey;
     const nearGoal = Math.min(99, ...(R.air ? [] : goals.map(g => dist(g, o))), ...hunt.map(f => dist(f, o) + 2));
     s -= nearGoal * .6;
     // planes: never strand itself, and head home to land when the tank is low
-    const landing = plane && c && c.owner === 'cpu';
+    const landing = plane && c && c.owner === me;
     if (plane) {
       const left = u.fuel - dist(u, o) - (o.stay && !u.landed ? CIRCLE : 0);
       const home = Math.min(99, ...mine.map(m => dist(m, o)));
@@ -596,7 +768,7 @@ function cpuPlan(u) {
       else if (left < home + 3) s -= 6;
     }
     const inAir = R.air === 'heli' || (plane && !landing);
-    const danger = foes.filter(f => UNITS[f.type].hits.includes(inAir ? 'A' : 'G') && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= UNITS[f.type].rng).length;
+    const danger = threats.filter(f => UNITS[f.type].hits.includes(inAir ? 'A' : 'G') && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= (inAir ? UNITS[f.type].rng : groundRange(UNITS[f.type]))).length;
     s -= danger * (u.hp <= 1 ? 1.2 : .5);
     s += Math.random() * .3;
     if (s > bestScore) { bestScore = s; best = o; }
@@ -653,7 +825,7 @@ function sprite(type, side) {
   const w = Math.max(1, Math.round(im.width * sc)), h = Math.max(1, Math.round(im.height * sc));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(im, 0, 0, w, h);
-  const d = x.getImageData(0, 0, w, h); grime(d.data, w, h, type.length * 97 + (side === 'you' ? 1 : 2), TEAM[side]); x.putImageData(d, 0, 0);
+  const d = x.getImageData(0, 0, w, h); grime(d.data, w, h, type.length * 97 + TEAMS.indexOf(side) + 1, TEAM[side].tint); x.putImageData(d, 0, 0);
   return SPR[k] = c;
 }
 
@@ -661,7 +833,7 @@ function sprite(type, side) {
 const SHADOW = {};
 function shadow(type) {
   if (SHADOW[type]) return SHADOW[type];
-  const sp = sprite(type, 'you'); if (!sp) return null;
+  const sp = sprite(type, 'green'); if (!sp) return null;
   const c = document.createElement('canvas'); c.width = sp.width; c.height = sp.height;
   const x = c.getContext('2d'); x.drawImage(sp, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
   return SHADOW[type] = c;
@@ -681,8 +853,8 @@ function paintGround() {
     if (ch === 'f') for (let i = 0; i < 5; i++) { const cx = X + 3 + r() * 16, cy = Y + 3 + r() * 16; x.fillStyle = '#3d4628'; x.beginPath(); x.arc(cx, cy, 4 + r() * 2, 0, 7); x.fill(); x.fillStyle = '#4c5532'; x.fillRect(cx - 2, cy - 3, 2, 2); }
     if (ch === 'w') for (let i = 0; i < 3; i++) fill('#4d5d66', X + 2 + r() * 14, Y + 4 + i * 7, 6, 1);
     if (ch === 'm') { x.fillStyle = '#857e70'; x.beginPath(); x.moveTo(X + 2, Y + 21); x.lineTo(X + 10, Y + 4); x.lineTo(X + 19, Y + 21); x.fill(); x.fillStyle = '#b3ab98'; x.beginPath(); x.moveTo(X + 7, Y + 10); x.lineTo(X + 10, Y + 4); x.lineTo(X + 13, Y + 10); x.fill(); }
-    if (ch === 'c' || ch === 'E' || ch === 'P') {
-      const big = ch !== 'c';
+    if (ch === 'c' || CAP[ch]) {
+      const big = !!CAP[ch];
       fill('#57533c', X + 1, Y + 1, half - 2, half - 2);
       const blocks = big ? [[3, 8, 6, 12], [10, 4, 6, 16], [17, 10, 5, 10]] : [[4, 10, 6, 10], [12, 7, 7, 13]];
       for (const [bx, by, bw, bh] of blocks) { fill('#2c2a22', X + bx + 1, Y + by + 1, bw, bh); fill('#8a826c', X + bx, Y + by, bw, bh); for (let wy = by + 2; wy < by + bh - 1; wy += 3) for (let wx = bx + 1; wx < bx + bw - 1; wx += 2) fill(r() < .3 ? '#c9b46a' : '#3a372c', X + wx, Y + wy, 1, 1); }
@@ -697,14 +869,25 @@ function paintGround() {
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const $ = s => document.querySelector(s);
+const box = $('#mapbox');
+// Each team's flag shape: green square, red pennant, yellow swallowtail, blue
+// two bars.
+function flagShape(side, x, y, w, h) {
+  ctx.fillStyle = TEAM[side].flag;
+  if (side === 'green') ctx.fillRect(x, y, w, h);
+  else if (side === 'blue') { const b = Math.max(1, Math.round(h * .4)); ctx.fillRect(x, y, w, b); ctx.fillRect(x, y + h - b, w, b); }
+  else {
+    ctx.beginPath(); ctx.moveTo(x, y);
+    if (side === 'red') ctx.lineTo(x + w, y + h / 2);
+    else { ctx.lineTo(x + w, y); ctx.lineTo(x + w * .55, y + h / 2); ctx.lineTo(x + w, y + h); }
+    ctx.lineTo(x, y + h); ctx.fill();
+  }
+}
 function drawFlag(c) {
   if (!c.owner) return;
-  const X = c.x * TS, Y = c.y * TS, col = c.owner === 'you' ? '#7d8a4a' : '#a8483a';
+  const X = c.x * TS, Y = c.y * TS;
   ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 36, Y + 4, 3, 22);
-  ctx.fillStyle = col;
-  // a square flag for you, a pointed pennant for the enemy, so it isn't colour alone
-  if (c.owner === 'you') ctx.fillRect(X + 39, Y + 4, 9, 8);
-  else { ctx.beginPath(); ctx.moveTo(X + 39, Y + 4); ctx.lineTo(X + 48, Y + 8); ctx.lineTo(X + 39, Y + 12); ctx.fill(); }
+  flagShape(c.owner, X + 39, Y + 4, 9, 8);
 }
 function brackets(x, y, col, inset = 2, len = 10, w = 3) {
   const X = x * TS + inset, Y = y * TS + inset, S = TS - inset * 2;
@@ -714,13 +897,25 @@ function brackets(x, y, col, inset = 2, len = 10, w = 3) {
     ctx.fillRect(X + ax - (sx < 0 ? w : 0), Y + ay - (sy < 0 ? len : 0), w, len);
   }
 }
+// Scrolls the map so a square is in view, when the map is wider than the screen.
+function seeTile(x, y) {
+  if (box.scrollWidth <= box.clientWidth + 2) return;
+  const w = cv.clientWidth / MW, px = x * w + w / 2;
+  if (px < box.scrollLeft + w * 1.5 || px > box.scrollLeft + box.clientWidth - w * 1.5) box.scrollTo({ left: px - box.clientWidth / 2, behavior: 'smooth' });
+}
+function seeHome(side) {
+  const hq = G.cities.find(c => c.owner === side && c.hq) || G.cities.find(c => c.owner === side) || G.units.find(u => u.side === side);
+  if (hq) seeTile(hq.x, hq.y);
+}
 function render() {
   if (!G) return;
+  const v = G.view;
+  $('#hTeam').innerHTML = `<span class="chip" style="background:${TEAM[v].flag}"></span>${tn(v)}`;
   $('#hTurn').textContent = t('turn', { n: G.turn });
-  $('#hMoney').textContent = t('money', { m: fmt(G.money.you) });
+  $('#hMoney').textContent = t('money', { m: fmt(G.money[v]) });
   const endBtn = $('#endBtn');
-  endBtn.textContent = G.side === 'you' ? t('endTurn') : t('enemyTurn');
-  endBtn.disabled = busy || G.side !== 'you' || !!G.over;
+  endBtn.textContent = isHuman(G.side) && G.side === G.view ? t('endTurn') : t('teamTurn', { team: tn(G.side) });
+  endBtn.disabled = !myTurn();
   panel();
 }
 function frame(now) {
@@ -728,8 +923,8 @@ function frame(now) {
   if (!G || !ground) return;
   ctx.drawImage(ground, 0, 0, cv.width, cv.height);
   for (const c of G.cities) drawFlag(c);
-  const s = sel?.unit;
-  if (s && s.side === 'you' && G.side === 'you' && !busy) {
+  const s = sel?.unit, mine = myTurn();
+  if (s && s.side === G.side && mine) {
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
     for (const o of targetsFrom(s, s.x, s.y)) brackets(o.x, o.y, '#e0553f', 1, 12, 4);
   }
@@ -739,24 +934,36 @@ function frame(now) {
   for (const u of order) {
     u.px += (u.x - u.px) * .25; u.py += (u.y - u.py) * .25;
     const sp = sprite(u.type, u.side); if (!sp) continue;
-    const R = UNITS[u.type], flying = isAir(u), bw = TS - 14, X = u.px * TS, Y = u.py * TS;
+    const R = UNITS[u.type], flying = isAir(u), bw = TS - 16, X = u.px * TS, Y = u.py * TS;
     const cx = X + TS / 2, cy = Y + TS / 2 - (flying ? 4 : 0);
-    const dim = (u.side === 'you' && G.side === 'you' && u.moved && u.acted) ? .6 : 1;
+    const dim = (mine && u.side === G.side && u.moved && u.acted) ? .6 : 1;
     if (flying) { const sh = shadow(u.type); if (sh) { ctx.save(); ctx.translate(cx + 6, cy + 10); ctx.rotate(u.ang); ctx.globalAlpha = .3; ctx.drawImage(sh, -sh.width, -sh.height, sh.width * 2, sh.height * 2); ctx.restore(); } }
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(u.ang); ctx.globalAlpha = dim;
     ctx.drawImage(sp, -sp.width, -sp.height, sp.width * 2, sp.height * 2);
     ctx.restore();
-    // health bar: under a ground unit, over an air unit, so both show on a shared square
+    // health bar: under a ground unit, over an air unit, so both show on a
+    // shared square; the team's little flag sits at its left end
     const by = R.air ? Y + 2 : Y + TS - 7;
-    ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 7, by, bw, 5);
-    ctx.fillStyle = u.side === 'you' ? '#a9b46a' : '#d0705e'; ctx.fillRect(X + 8, by + 1, Math.max(1, (bw - 2) * u.hp / R.hp), 3);
+    ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 2, by, 8, 6); ctx.fillRect(X + 10, by, bw, 5);
+    flagShape(u.side, X + 3, by + 1, 6, 4);
+    ctx.fillStyle = TEAM[u.side].bar; ctx.fillRect(X + 11, by + 1, Math.max(1, (bw - 2) * u.hp / R.hp), 3);
     if (R.air === 'plane') {   // fuel bar under the health bar, orange when low
-      ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 7, by + 5, bw, 4);
-      ctx.fillStyle = u.fuel <= 4 ? '#e0a040' : '#9fb8c8'; ctx.fillRect(X + 8, by + 6, Math.max(0, (bw - 2) * u.fuel / FUEL), 2);
+      ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 10, by + 5, bw, 4);
+      ctx.fillStyle = u.fuel <= 4 ? '#e0a040' : '#9fb8c8'; ctx.fillRect(X + 11, by + 6, Math.max(0, (bw - 2) * u.fuel / FUEL), 2);
+    }
+    // Decided 5 Nov, from a play-test: on your turn each unit shows what it has
+    // left. A filled square: it hasn't moved yet. An empty one: it has moved
+    // and can still fire. None (and greyed out): it's done.
+    if (mine && u.side === G.side && dim === 1) {
+      const qx = X + TS - 14, qy = R.air ? Y + TS - 15 : Y + 2;
+      ctx.fillStyle = '#1b1a15'; ctx.fillRect(qx - 2, qy - 2, 15, 15);
+      ctx.fillStyle = '#f2d06a';
+      if (!u.moved) ctx.fillRect(qx, qy, 11, 11);
+      else { ctx.fillRect(qx, qy, 11, 3); ctx.fillRect(qx, qy + 8, 11, 3); ctx.fillRect(qx, qy, 3, 11); ctx.fillRect(qx + 8, qy, 3, 11); }
     }
     if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; ctx.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; ctx.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
   }
-  if (document.activeElement === cv && G.side === 'you') brackets(cursor.x, cursor.y, '#e8dfc8', 5, 7, 2);
+  if (document.activeElement === cv && mine) brackets(cursor.x, cursor.y, '#e8dfc8', 5, 7, 2);
   // shots, booms, numbers
   fx = fx.filter(f => now < f.t0 + f.dur);
   for (const f of fx) {
@@ -776,9 +983,11 @@ function frame(now) {
     }
   }
   if (banner && now < banner.until) {
-    ctx.fillStyle = 'rgba(20,18,12,.75)'; ctx.fillRect(0, cv.height / 2 - 30, cv.width, 60);
+    // across the part of the map that's on screen, not the middle of the whole map
+    const sc = cv.width / (cv.clientWidth || cv.width), left = box.scrollLeft * sc, w = Math.min(cv.width, box.clientWidth * sc || cv.width);
+    ctx.fillStyle = 'rgba(20,18,12,.75)'; ctx.fillRect(left, cv.height / 2 - 30, w, 60);
     ctx.font = '16px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#e8c35a';
-    ctx.fillText(banner.text.split('.')[0], cv.width / 2, cv.height / 2 + 6);
+    ctx.fillText(banner.text.split('.')[0], left + w / 2, cv.height / 2 + 6);
   }
 }
 function showBanner(text) { banner = { text, until: performance.now() + 1400 }; }
@@ -788,14 +997,16 @@ function statsHTML(type, hp, u) {
   const R = UNITS[type];
   const hits = R.hits === 'GA' ? t('groundAir') : R.hits === 'A' ? t('air') : t('ground');
   const dmg = R.hits === 'A' ? fmt(R.dmgA) : R.hits === 'G' || R.dmgA === R.dmg ? fmt(R.dmg) : t('dmgSplit', { a: fmt(R.dmgA), g: fmt(R.dmg) });
+  const range = R.rngG !== undefined ? t('rngSplit', { g: R.rngG, a: R.rng }) : t('spaces', { n: R.rng });
   const extra = R.air === 'plane' ? `<dt>${t('fuel')}</dt><dd>${t('fuelOf', { n: fmt(Math.max(0, u ? u.fuel : FUEL)), max: FUEL })}</dd>` : R.air === 'heli' ? `<dt>${t('fuel')}</dt><dd>${t('hovers')}</dd>` : '';
   return `<dl class="stats"><dt>${t('hp')}</dt><dd>${hp === undefined ? fmt(R.hp) : t('hpOf', { n: fmt(Math.max(0, hp)), max: fmt(R.hp) })}</dd><dt>${t('dmg')}</dt><dd>${dmg}</dd>${extra}
-    <dt>${t('rng')}</dt><dd>${t('spaces', { n: R.rng })}</dd><dt>${t('spd')}</dt><dd>${R.fixed ? t('staysPut') : t('spaces', { n: R.spd })}</dd>
+    <dt>${t('rng')}</dt><dd>${range}</dd><dt>${t('spd')}</dt><dd>${R.fixed ? t('staysPut') : t('spaces', { n: R.spd })}</dd>
     <dt>${t('cost')}</dt><dd>${fmt(R.cost)}</dd><dt>${t('hits')}</dt><dd>${hits}</dd></dl>`;
 }
+const whose = s => s === G.view ? t('yours') : `${tn(s)} · ${relWord(G.view, s)}`;
 function panel() {
-  const el = $('#info');
-  if (!sel) { el.innerHTML = `<h2>${t('title')}</h2><p>${t('pickHint')}</p>`; return; }
+  const el = $('#info'), v = G.view, mine = myTurn();
+  if (!sel) { el.innerHTML = `<h2>${tn(v)}</h2><p>${t('pickHint')}</p>`; return; }
   if (sel.unit) {
     const u = sel.unit, R = UNITS[u.type];
     let tip = '';
@@ -803,16 +1014,17 @@ function panel() {
     if (u.burn > 0) notes.push(t('burning', { n: u.burn }));
     if (u.reloading) notes.push(t('reloading'));
     if (AA_AUTO.includes(u.type)) notes.push(t('autoFire'));
+    if (R.rngG !== undefined) notes.push(t('bombNear'));
     if (R.fixed) notes.push(t('dugIn'));
     if (R.air === 'plane' && u.landed) notes.push(t('landed'));
     else if (R.air === 'plane' && u.fuel <= 4) notes.push(t('lowFuel'));
-    if (u.side === 'you' && G.side === 'you') {
+    if (u.side === G.side && mine) {
       if (u.fresh) tip = t('newUnit');
-      else if (u.moved && u.acted) tip = t('done');
-      else { const m = reach(u).size, f = targetsFrom(u, u.x, u.y).length; tip = [m ? t('canMove') : '', f ? t('canFire') : ''].filter(Boolean).join(' ') || t('done'); }
+      else if (u.moved && u.acted) tip = t('unitDone');
+      else { const m = reach(u).size, f = targetsFrom(u, u.x, u.y).length; tip = [m ? t('canMove') : '', f ? t('canFire') : ''].filter(Boolean).join(' ') || t('unitDone'); }
     }
-    el.innerHTML = `<h2>${R.name} · ${t(u.side === 'you' ? 'yours' : 'enemy')}</h2>
-      ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${tip ? `<p>${tip}</p>` : ''}${u.side === 'you' && cityAt(u.x, u.y)?.owner === 'you' ? `<p>${t('cityAgain')}</p>` : ''}`;
+    el.innerHTML = `<h2>${R.name} · ${whose(u.side)}</h2>
+      ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
     return;
   }
   if (sel.build) {
@@ -820,22 +1032,23 @@ function panel() {
     let body;
     if (underFire(b.x, b.y)) body = `<p>${t('tooClose')}</p>`;
     else body = `<p>${t('buildHere')}</p><div class="shop">` + FIELD_GUNS.map(k => {
-      const R = UNITS[k], poor = G.money.you < R.cost;
-      return `<button class="buy" data-buy="${k}" ${poor || G.side !== 'you' ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+      const R = UNITS[k], poor = G.money[v] < R.cost;
+      return `<button class="buy" data-buy="${k}" ${poor || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
     }).join('') + `</div><p>${t('artyCity')}</p>`;
     el.innerHTML = `<h2>${t('buildSpot')}</h2>${body}`;
     el.querySelectorAll('[data-buy]').forEach(btn => btn.onclick = () => buy(btn.dataset.buy));
     return;
   }
   const c = sel.city;
-  const name = c.hq ? t(c.owner === 'you' ? 'hqYours' : 'hqEnemy') : t(c.owner === 'you' ? 'cityYours' : c.owner === 'cpu' ? 'cityEnemy' : 'cityFree');
+  const name = c.hq ? (c.owner === v ? t('hqYours') : t('hqOf', { team: tn(c.owner) })) : c.owner === v ? t('cityYours') : c.owner ? t('cityOf', { team: tn(c.owner) }) : t('cityFree');
   let body = `<p>${t('cityGives', { m: c.hq ? HQ_MONEY : CITY_MONEY })}</p>`;
-  if (c.owner !== 'you') body += `<p>${t('cityTake')}</p>`;
+  if (c.owner && c.owner !== v && allied(c.owner, v)) body += `<p>${t('cityAlly')}</p>`;
+  else if (c.owner !== v) body += `<p>${t('cityTake')}</p>${c.owner && rel(v, c.owner) >= 0 ? `<p class="warn">${t('cityNeutral', { team: tn(c.owner) })}</p>` : ''}`;
   else if (!spot(c, 'ground') && !spot(c, 'air')) body += `<p>${t('cityBusy')}</p>`;
   else {
     body += `<p>${t('buyHere')}</p>` + SHOP_GROUPS.map(([g, list]) => `<p class="grp">${t(g)}</p><div class="shop">` + list.map(k => {
-      const R = UNITS[k], poor = G.money.you < R.cost, full = !spot(c, layerOfType(k));
-      return `<button class="buy" data-buy="${k}" ${poor || full || G.side !== 'you' ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+      const R = UNITS[k], poor = G.money[v] < R.cost, full = !spot(c, layerOfType(k));
+      return `<button class="buy" data-buy="${k}" ${poor || full || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
     }).join('') + '</div>').join('');
   }
   el.innerHTML = `<h2>${name}</h2>${body}`;
@@ -874,48 +1087,87 @@ function hud() { const b = $('#soundBtn'); b.textContent = PREFS.sound ? t('soun
 
 // ---------- cards ----------
 function cardShow(html) { $('#card').innerHTML = html; $('#cover').hidden = false; const f = $('#card').querySelector('.row button:last-child, .row .btn:last-child'); f && f.focus({ preventScroll: true }); $('#cover').scrollTop = 0; }
-function cardHide() { $('#cover').hidden = true; cv.focus(); }
-// The level choice, shown whenever a new game is about to start.
+function cardHide() { $('#cover').hidden = true; cv.focus({ preventScroll: true }); }
 function levelPick() {
   return `<fieldset class="lvl"><legend>${t('levelPick')}</legend>${Object.keys(LEVELS).map(k =>
     `<label><input type="radio" name="lvl" value="${k}"${PREFS.level === k ? ' checked' : ''}> <b>${t(k)}</b> <span>${t(k + 'Why')}</span></label>`).join('')}</fieldset>`;
 }
-function takeLevel() {
-  const r = $('#card').querySelector('input[name=lvl]:checked');
-  if (r) { PREFS.level = r.value; const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } }
+const chip = s => `<span class="chip" style="background:${TEAM[s].flag}"></span>`;
+// Decided 5 Nov: pick Player or Computer for each team; friends share the device.
+function setupCard(sure = false) {
+  const who = TEAMS.map(s => `<div class="who"><b>${chip(s)}${tn(s)}</b>${['human', 'cpu'].map(c =>
+    `<label><input type="radio" name="ctrl-${s}" value="${c}"${PREFS.ctrl[s] === c ? ' checked' : ''}> ${t(c === 'human' ? 'player' : 'computer')}</label>`).join('')}</div>`).join('');
+  cardShow(`<h2>${t('setupTitle')}</h2>${sure ? `<p>${t('newSure')}</p>` : ''}<fieldset class="lvl"><legend>${t('whoPlays')}</legend>${who}</fieldset>${levelPick()}
+    <p class="warn" id="setupMsg" hidden>${t('needPlayer')}</p>
+    <div class="row"><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
+  $('#no').onclick = () => titleCard();
+  $('#yes').onclick = () => {
+    const card = $('#card'), ctrl = {};
+    for (const s of TEAMS) ctrl[s] = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value || 'cpu';
+    if (!TEAMS.some(s => ctrl[s] === 'human')) { $('#setupMsg').hidden = false; return; }
+    PREFS.ctrl = ctrl;
+    const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value;
+    savePrefs(); cardHide(); newGame();
+  };
+}
+function teamsCard() {
+  if (!G) return;
+  const v = G.view;
+  const rows = TEAMS.filter(s => s !== v).map(s => {
+    const why = G.out[s] ? '' : aidProblem(v, s);
+    return `<div class="tm"><div class="grow"><h3>${chip(s)}${tn(s)}</h3><p>${t(isHuman(s) ? 'player' : 'computer')} · ${relWord(v, s)}</p>
+      <p>${t('score', { n: signed(rel(v, s)) })}</p>${why ? `<p>${why}</p>` : ''}</div>
+      ${G.out[s] ? '' : `<button class="btn small" data-aid="${s}" ${why ? 'disabled' : ''}>${t('give', { m: AID })}</button>`}</div>`;
+  }).join('');
+  cardShow(`<h2>${t('teamsTitle')}</h2><p>${t('how9')}</p>${rows}<div class="row"><button class="btn" id="close">${t('done')}</button></div>`);
+  $('#close').onclick = cardHide;
+  $('#card').querySelectorAll('[data-aid]').forEach(b => b.onclick = () => { giveAid(v, b.dataset.aid); teamsCard(); });
 }
 function titleCard() {
-  const saved = read().game;
-  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li><li>${t('how4')}</li><li>${t('how5')}</li><li>${t('how6')}</li><li>${t('how7')}</li><li>${t('how8')}</li></ul>${saved ? '' : levelPick()}
+  let saved = read().game;
+  if (saved && saved.v !== SAVE_V) saved = null;   // the two-team game from before 5 Nov
+  const how = ['how1', 'how2', 'how3', 'how4', 'how5', 'how6', 'how7', 'how8', 'how9', 'how11', 'how10'].map(k => `<li>${t(k)}</li>`).join('');
+  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul>${how}</ul>
     <div class="row">${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
-  $('#go').onclick = () => { takeLevel(); cardHide(); if (saved) resume(saved); else newGame(); };
+  $('#go').onclick = () => { if (saved) { cardHide(); resume(saved); } else setupCard(); };
   const f = $('#fresh');
-  if (f) f.onclick = () => {
-    cardShow(`<p>${t('newSure')}</p>${levelPick()}<div class="row"><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startNew')}</button></div>`);
-    $('#no').onclick = titleCard; $('#yes').onclick = () => { takeLevel(); cardHide(); newGame(); };
-  };
+  if (f) f.onclick = () => setupCard(true);
 }
 function resume(s) {
   G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
-  sel = null; log(t('pickHint')); render();
+  sel = null; log(t('pickHint')); render(); seeHome(G.side);
 }
 
 // ---------- input ----------
-cv.addEventListener('pointerdown', e => {
+// A tap picks a square; dragging with a mouse scrolls the map. On touch
+// screens the browser scrolls it, and a drag never counts as a tap.
+let drag = null;
+cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') drag = { x: e.clientX, left: box.scrollLeft, moved: false }; });
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  if (Math.abs(dx) > 6) drag.moved = true;
+  if (drag.moved) box.scrollLeft = drag.left - dx;
+});
+window.addEventListener('pointerup', () => { if (drag) setTimeout(() => { drag = null; }, 0); });
+cv.addEventListener('click', e => {
+  if (drag?.moved) return;
   const b = cv.getBoundingClientRect();
   const x = Math.floor((e.clientX - b.left) / b.width * MW), y = Math.floor((e.clientY - b.top) / b.height * MH);
-  tapTile(x, y);
+  if (inMap(x, y)) tapTile(x, y);
 });
 cv.addEventListener('keydown', e => {
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-  if (d) { cursor.x = Math.max(0, Math.min(MW - 1, cursor.x + d[0])); cursor.y = Math.max(0, Math.min(MH - 1, cursor.y + d[1])); e.preventDefault(); }
+  if (d) { cursor.x = Math.max(0, Math.min(MW - 1, cursor.x + d[0])); cursor.y = Math.max(0, Math.min(MH - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' ') { tapTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Escape') { sel = null; render(); }
 });
-$('#endBtn').onclick = () => { if (!busy && G && G.side === 'you' && !G.over) { sel = null; cpuTurn(); } };
-$('#soundBtn').onclick = () => { PREFS.sound = !PREFS.sound; const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } hud(); };
+$('#endBtn').onclick = () => { if (myTurn()) { sel = null; nextTurn(); } };
+$('#teamsBtn').onclick = teamsCard;
+$('#soundBtn').onclick = () => { PREFS.sound = !PREFS.sound; savePrefs(); hud(); };
 $('#backLink').textContent = t('back');
+$('#teamsBtn').textContent = t('teams');
 hud();
 loadArt().then(() => { paintGround(); requestAnimationFrame(frame); titleCard(); });
 </script>
