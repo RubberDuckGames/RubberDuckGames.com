@@ -108,6 +108,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   piglet, a barn kitten, a mouse, a chick and a foal around the farm. The treat
   shop has a For Crumb part with small things to buy.
   Progress is in localStorage under `bread-corgi:file<n>`.
+  Decided 5 Nov, after a play-test with a tester who skips words: the ? button
+  (or H) makes the next thing light up and flash, while the help bar is open
+  and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
+  15 seconds at first, but then flashed all through herding the cows. It
+  shows the nest for the egg Bread carries, the loose eggs (drawn over bushes
+  while they flash), the ladder for the stuck cats, and the empty cow stalls. Arrows, rings and picture bubbles were tried the same
+  day and dropped as too much. Each stall now has its own straw bed and feed
+  box, since the testers took the three stalls for one pen. The help bar no
+  longer opens by itself.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits

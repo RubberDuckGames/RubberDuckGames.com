@@ -1175,7 +1175,8 @@ function startWorld(key) {
     .concat(Object.entries(M.crumbSpots || {}).filter(([k]) => !S.crumbHave.includes(k)).map(([k, [x, y]]) => ({ k, x, y, crumb: true })));
   W.setup();
   hudLevel(); showDig();
-  if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); }
+  // Decided 5 Nov: the help bar no longer opens by itself; the testers who
+  // skip words had to close it before they could play. It's behind ? and H.
 }
 const WORLDS = {
   pond: {
