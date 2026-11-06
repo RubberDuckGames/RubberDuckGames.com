@@ -129,7 +129,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   one comes back a few seconds later until he gets it (the gaps are in `GAP`).
   `S.abc` and `S.num` count finished runs.
   Progress is in localStorage under `tugboat`.
-- `rodeo/index.html` is Rodeo (Trello #46), the last card on the home page. It
+- `rodeo/index.html` is Rodeo (Trello #46). It
   opens on a title screen with a cowgirl racing across and PRESS START, then
   the choice of event. Decided 31 Oct, after the racers played it and loved it: pole
   bending is the second event, picked on the opening screen (the stables will
@@ -168,7 +168,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bought unit goes on the city or a free square next to it, and moves next
   turn. The computer buys one unit per city a turn: with two, it swamped a test
   game with 41 units. Strings are in `STR`. A game in progress is saved under
-  `conquest` at the start of each of your turns. Its home page card (4 Nov) is the last one, after Rodeo, so his friends can play it.
+  `conquest` at the start of each of your turns. It has a home page card (4 Nov) so his friends can play it.
   Decided 4 Nov, after his first long game stalled at turn 80 behind enemy
   guns: aircraft. Air and ground are two layers (a square holds one of each;
   tapping again steps from the air unit to the ground unit to the city).
@@ -237,6 +237,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   time, each player's save (`<game>:<player id>`) became a file named after
   them; the old keys are left in place. Treasure Trail keeps its own players.
   Sound is one setting per game for the whole computer (`<game>-sound`).
+- Decided 5 Nov: the home page lists the games in order by name.
 - Each game folder has a `card.png`, the picture on its home page card (the
   cards are arcade cabinets; the whole card is the link in, Play on the right).
   They are rendered from `brand/capture.html`; how is written at its top.
