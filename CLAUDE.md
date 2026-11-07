@@ -193,6 +193,13 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   turn. The computer buys one unit per city a turn: with two, it swamped a test
   game with 41 units. Strings are in `STR`. A game in progress is saved under
   `conquest` at the start of each of your turns. It has a home page card (4 Nov) so his friends can play it.
+  Decided 6 Nov: the rules aren't a list on the start card any more. How to
+  play is a button (start card, setup card, and the ? in the top bar during a
+  game) that opens a picture book, `GUIDE`: ten pages, each a little moving
+  scene drawn with the game's own map and units (`paintTiles`, `drawUnit`)
+  and one short line. The money line and the last page ("Your level") are
+  worked out from `LEVELS`, so they follow the level picked (the game's own
+  level mid-game) and stay right if the levels change.
   Decided 4 Nov, after his first long game stalled at turn 80 behind enemy
   guns: aircraft. Air and ground are two layers (a square holds one of each;
   tapping again steps from the air unit to the ground unit to the city).
