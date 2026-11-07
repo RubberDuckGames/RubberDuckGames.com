@@ -67,6 +67,12 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 .tm .grow{flex:1 1 10rem}
 .tm p{margin:.1rem 0;color:var(--soft);font-size:.95rem}
 .warn{color:#e3a07a}
+.gstep{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--soft)}
+.gpic{display:block;width:100%;min-width:0;height:auto;image-rendering:pixelated;border:3px solid #1b1a15;margin:.4rem 0}
+.gtext{min-height:4.5em}
+.gdots{display:flex;gap:.35rem;justify-content:center;margin-top:.4rem}
+.gdots i{width:.5rem;height:.5rem;background:var(--line)}
+.gdots i.on{background:var(--accent)}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
 </style>
 </head>
@@ -78,6 +84,7 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
   <span class="pill" id="hTurn"></span>
   <span class="pill" id="hMoney"></span>
   <button class="pill" id="teamsBtn"></button>
+  <button class="pill" id="helpBtn">?</button>
   <button class="pill" id="soundBtn"></button>
 </div>
 <main class="game">
@@ -127,18 +134,23 @@ const STR = {
   endTurn: 'End turn',
   teamTurn: '{team} turn…',
   title: 'Conquest',
+  howBtn: 'How to play',
+  gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
+  g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
+  g_drag: 'If the map doesn’t fit, drag it sideways.',
+  g_fire_t: 'Fire', g_fire: 'Then tap a unit in a red box to fire at it.',
+  g_marks_t: 'What each unit has left', g_marks: 'Filled square: it can still move. Empty square: it moved, and can still fire. Greyed out: it’s done. When you’re done, press End turn.',
+  g_city_t: 'Cities and money', g_city: 'Every city you own pays you each turn: 1 money, or 3 for your home city. Tap your city to buy units there. On this level you start with {m} money.',
+  g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities to fill up, or it crashes.',
+  g_bomb_t: 'Bombers', g_bomb: 'Bombers can only bomb ground units from 1 square away.',
+  g_build_t: 'Build guns', g_build: 'Tap an empty square next to one of your units to build a defense gun or AA gun there.',
+  g_aa_t: 'AA guns', g_aa: 'AA guns fire on their own at aircraft from teams that don’t like you, as soon as they fly in range.',
+  g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy for good.',
+  g_level_t: 'Your level: {name}', g_level: 'You start with {m} money. The computer teams get {pay} of their city money, buy units in {buy} each turn, and start buying aircraft after turn {air}.',
+  frac_half: 'half', frac_most: 'three quarters', frac_all: 'all',
+  buy_half: 'half their cities', buy_most: 'three out of four of their cities', buy_all: 'every city',
   intro: 'Take every city, or be the last army on the map with only your allies left.',
-  how1: 'Tap one of your units to see where it can go. Tap a square to move there.',
-  how2: 'Then tap another team’s unit with a red box to fire at it.',
-  how3: 'Each city gives you money every turn. Tap a city you own to buy more units there.',
-  how4: 'When your units are done, press End turn.',
-  how5: 'Planes and helicopters fly over anything. In the air, only units that fire at air can hit them. Bombers drop bombs only from 1 square away.',
-  how6: 'Planes carry 10 fuel. Land them in one of your cities to fill up, or they crash. A landed plane can be hit by anyone.',
-  how7: 'To build a defense gun or AA gun anywhere, tap an empty square next to one of your units. Artillery guns are only built in cities.',
-  how8: 'AA guns, missile AA and AA tanks fire on their own at aircraft from teams that don’t like you. Guns are dug in and take half damage.',
   how9: 'There are four teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy for good.',
-  how11: 'On your turn, a filled yellow square on a unit means it hasn’t moved yet. An empty square means it has moved and can still fire. A greyed-out unit is done.',
-  how10: 'If the map doesn’t fit, drag it sideways to see the rest.',
   start: 'Start',
   startGame: 'Start game',
   keepPlaying: 'Keep playing',
@@ -841,14 +853,15 @@ function shadow(type) {
 
 // ---------- the ground ----------
 let ground = null;
-function paintGround() {
-  const W = MW * TS / 2, H = MH * TS / 2;   // half size, then doubled: chunky pixels
+// paints a map (rows of letters) at half size; the how-to paints little ones
+function paintTiles(map, seed) {
+  const mw = map[0].length, mh = map.length, W = mw * TS / 2, H = mh * TS / 2;   // half size, then doubled: chunky pixels
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d'), r = rng(47);
+  const x = c.getContext('2d'), r = rng(seed);
   const half = TS / 2;
   const fill = (col, px, py, w, h) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
-  for (let ty = 0; ty < MH; ty++) for (let tx = 0; tx < MW; tx++) {
-    const ch = MAP[ty][tx], X = tx * half, Y = ty * half;
+  for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) {
+    const ch = map[ty][tx], X = tx * half, Y = ty * half;
     fill(ch === 'w' ? '#3a4852' : ch === 'm' ? '#6a645a' : '#6e6c46', X, Y, half, half);
     if (ch === 'f') for (let i = 0; i < 5; i++) { const cx = X + 3 + r() * 16, cy = Y + 3 + r() * 16; x.fillStyle = '#3d4628'; x.beginPath(); x.arc(cx, cy, 4 + r() * 2, 0, 7); x.fill(); x.fillStyle = '#4c5532'; x.fillRect(cx - 2, cy - 3, 2, 2); }
     if (ch === 'w') for (let i = 0; i < 3; i++) fill('#4d5d66', X + 2 + r() * 14, Y + 4 + i * 7, 6, 1);
@@ -862,8 +875,9 @@ function paintGround() {
     if (ch !== 'w') for (let i = 0; i < 6; i++) fill(r() < .5 ? 'rgba(40,36,24,.35)' : 'rgba(200,190,150,.12)', X + r() * half, Y + r() * half, 1 + (r() * 2 | 0), 1);
   }
   const d = x.getImageData(0, 0, W, H); grime(d.data, W, H, 9); x.putImageData(d, 0, 0);
-  ground = c;
+  return c;
 }
+function paintGround() { ground = paintTiles(MAP, 47); }
 
 // ---------- drawing ----------
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
@@ -872,29 +886,29 @@ const $ = s => document.querySelector(s);
 const box = $('#mapbox');
 // Each team's flag shape: green square, red pennant, yellow swallowtail, blue
 // two bars.
-function flagShape(side, x, y, w, h) {
-  ctx.fillStyle = TEAM[side].flag;
-  if (side === 'green') ctx.fillRect(x, y, w, h);
-  else if (side === 'blue') { const b = Math.max(1, Math.round(h * .4)); ctx.fillRect(x, y, w, b); ctx.fillRect(x, y + h - b, w, b); }
+function flagShape(side, x, y, w, h, c = ctx) {
+  c.fillStyle = TEAM[side].flag;
+  if (side === 'green') c.fillRect(x, y, w, h);
+  else if (side === 'blue') { const b = Math.max(1, Math.round(h * .4)); c.fillRect(x, y, w, b); c.fillRect(x, y + h - b, w, b); }
   else {
-    ctx.beginPath(); ctx.moveTo(x, y);
-    if (side === 'red') ctx.lineTo(x + w, y + h / 2);
-    else { ctx.lineTo(x + w, y); ctx.lineTo(x + w * .55, y + h / 2); ctx.lineTo(x + w, y + h); }
-    ctx.lineTo(x, y + h); ctx.fill();
+    c.beginPath(); c.moveTo(x, y);
+    if (side === 'red') c.lineTo(x + w, y + h / 2);
+    else { c.lineTo(x + w, y); c.lineTo(x + w * .55, y + h / 2); c.lineTo(x + w, y + h); }
+    c.lineTo(x, y + h); c.fill();
   }
 }
-function drawFlag(c) {
-  if (!c.owner) return;
-  const X = c.x * TS, Y = c.y * TS;
-  ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 36, Y + 4, 3, 22);
-  flagShape(c.owner, X + 39, Y + 4, 9, 8);
+function drawFlag(o, c = ctx) {
+  if (!o.owner) return;
+  const X = o.x * TS, Y = o.y * TS;
+  c.fillStyle = '#1b1a15'; c.fillRect(X + 36, Y + 4, 3, 22);
+  flagShape(o.owner, X + 39, Y + 4, 9, 8, c);
 }
-function brackets(x, y, col, inset = 2, len = 10, w = 3) {
+function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
   const X = x * TS + inset, Y = y * TS + inset, S = TS - inset * 2;
-  ctx.fillStyle = col;
+  c.fillStyle = col;
   for (const [ax, ay, sx, sy] of [[0, 0, 1, 1], [S, 0, -1, 1], [0, S, 1, -1], [S, S, -1, -1]]) {
-    ctx.fillRect(X + ax - (sx < 0 ? len : 0), Y + ay - (sy < 0 ? w : 0), len, w);
-    ctx.fillRect(X + ax - (sx < 0 ? w : 0), Y + ay - (sy < 0 ? len : 0), w, len);
+    c.fillRect(X + ax - (sx < 0 ? len : 0), Y + ay - (sy < 0 ? w : 0), len, w);
+    c.fillRect(X + ax - (sx < 0 ? w : 0), Y + ay - (sy < 0 ? len : 0), w, len);
   }
 }
 // Scrolls the map so a square is in view, when the map is wider than the screen.
@@ -918,6 +932,38 @@ function render() {
   endBtn.disabled = !myTurn();
   panel();
 }
+// one unit where it stands (u.px, u.py), on any canvas; marks: show what it has left
+function drawUnit(c, u, now, marks) {
+  const sp = sprite(u.type, u.side); if (!sp) return;
+  const R = UNITS[u.type], flying = isAir(u), bw = TS - 16, X = u.px * TS, Y = u.py * TS;
+  const cx = X + TS / 2, cy = Y + TS / 2 - (flying ? 4 : 0);
+  const dim = (marks && u.moved && u.acted) ? .6 : 1;
+  if (flying) { const sh = shadow(u.type); if (sh) { c.save(); c.translate(cx + 6, cy + 10); c.rotate(u.ang); c.globalAlpha = .3; c.drawImage(sh, -sh.width, -sh.height, sh.width * 2, sh.height * 2); c.restore(); } }
+  c.save(); c.translate(cx, cy); c.rotate(u.ang); c.globalAlpha = dim;
+  c.drawImage(sp, -sp.width, -sp.height, sp.width * 2, sp.height * 2);
+  c.restore();
+  // health bar: under a ground unit, over an air unit, so both show on a
+  // shared square; the team's little flag sits at its left end
+  const by = R.air ? Y + 2 : Y + TS - 7;
+  c.fillStyle = '#1b1a15'; c.fillRect(X + 2, by, 8, 6); c.fillRect(X + 10, by, bw, 5);
+  flagShape(u.side, X + 3, by + 1, 6, 4, c);
+  c.fillStyle = TEAM[u.side].bar; c.fillRect(X + 11, by + 1, Math.max(1, (bw - 2) * u.hp / R.hp), 3);
+  if (R.air === 'plane') {   // fuel bar under the health bar, orange when low
+    c.fillStyle = '#1b1a15'; c.fillRect(X + 10, by + 5, bw, 4);
+    c.fillStyle = u.fuel <= 4 ? '#e0a040' : '#9fb8c8'; c.fillRect(X + 11, by + 6, Math.max(0, (bw - 2) * u.fuel / FUEL), 2);
+  }
+  // Decided 5 Nov, from a play-test: on your turn each unit shows what it has
+  // left. A filled square: it hasn't moved yet. An empty one: it has moved
+  // and can still fire. None (and greyed out): it's done.
+  if (marks && dim === 1) {
+    const qx = X + TS - 14, qy = R.air ? Y + TS - 15 : Y + 2;
+    c.fillStyle = '#1b1a15'; c.fillRect(qx - 2, qy - 2, 15, 15);
+    c.fillStyle = '#f2d06a';
+    if (!u.moved) c.fillRect(qx, qy, 11, 11);
+    else { c.fillRect(qx, qy, 11, 3); c.fillRect(qx, qy + 8, 11, 3); c.fillRect(qx, qy, 3, 11); c.fillRect(qx + 8, qy, 3, 11); }
+  }
+  if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; c.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; c.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
+}
 function frame(now) {
   requestAnimationFrame(frame);
   if (!G || !ground) return;
@@ -933,35 +979,7 @@ function frame(now) {
   const order = [...G.units].sort((a, b) => isAir(a) - isAir(b));
   for (const u of order) {
     u.px += (u.x - u.px) * .25; u.py += (u.y - u.py) * .25;
-    const sp = sprite(u.type, u.side); if (!sp) continue;
-    const R = UNITS[u.type], flying = isAir(u), bw = TS - 16, X = u.px * TS, Y = u.py * TS;
-    const cx = X + TS / 2, cy = Y + TS / 2 - (flying ? 4 : 0);
-    const dim = (mine && u.side === G.side && u.moved && u.acted) ? .6 : 1;
-    if (flying) { const sh = shadow(u.type); if (sh) { ctx.save(); ctx.translate(cx + 6, cy + 10); ctx.rotate(u.ang); ctx.globalAlpha = .3; ctx.drawImage(sh, -sh.width, -sh.height, sh.width * 2, sh.height * 2); ctx.restore(); } }
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(u.ang); ctx.globalAlpha = dim;
-    ctx.drawImage(sp, -sp.width, -sp.height, sp.width * 2, sp.height * 2);
-    ctx.restore();
-    // health bar: under a ground unit, over an air unit, so both show on a
-    // shared square; the team's little flag sits at its left end
-    const by = R.air ? Y + 2 : Y + TS - 7;
-    ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 2, by, 8, 6); ctx.fillRect(X + 10, by, bw, 5);
-    flagShape(u.side, X + 3, by + 1, 6, 4);
-    ctx.fillStyle = TEAM[u.side].bar; ctx.fillRect(X + 11, by + 1, Math.max(1, (bw - 2) * u.hp / R.hp), 3);
-    if (R.air === 'plane') {   // fuel bar under the health bar, orange when low
-      ctx.fillStyle = '#1b1a15'; ctx.fillRect(X + 10, by + 5, bw, 4);
-      ctx.fillStyle = u.fuel <= 4 ? '#e0a040' : '#9fb8c8'; ctx.fillRect(X + 11, by + 6, Math.max(0, (bw - 2) * u.fuel / FUEL), 2);
-    }
-    // Decided 5 Nov, from a play-test: on your turn each unit shows what it has
-    // left. A filled square: it hasn't moved yet. An empty one: it has moved
-    // and can still fire. None (and greyed out): it's done.
-    if (mine && u.side === G.side && dim === 1) {
-      const qx = X + TS - 14, qy = R.air ? Y + TS - 15 : Y + 2;
-      ctx.fillStyle = '#1b1a15'; ctx.fillRect(qx - 2, qy - 2, 15, 15);
-      ctx.fillStyle = '#f2d06a';
-      if (!u.moved) ctx.fillRect(qx, qy, 11, 11);
-      else { ctx.fillRect(qx, qy, 11, 3); ctx.fillRect(qx, qy + 8, 11, 3); ctx.fillRect(qx, qy, 3, 11); ctx.fillRect(qx + 8, qy, 3, 11); }
-    }
-    if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; ctx.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; ctx.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
+    drawUnit(ctx, u, now, mine && u.side === G.side);
   }
   if (document.activeElement === cv && mine) brackets(cursor.x, cursor.y, '#e8dfc8', 5, 7, 2);
   // shots, booms, numbers
@@ -1099,8 +1117,11 @@ function setupCard(sure = false) {
     `<label><input type="radio" name="ctrl-${s}" value="${c}"${PREFS.ctrl[s] === c ? ' checked' : ''}> ${t(c === 'human' ? 'player' : 'computer')}</label>`).join('')}</div>`).join('');
   cardShow(`<h2>${t('setupTitle')}</h2>${sure ? `<p>${t('newSure')}</p>` : ''}<fieldset class="lvl"><legend>${t('whoPlays')}</legend>${who}</fieldset>${levelPick()}
     <p class="warn" id="setupMsg" hidden>${t('needPlayer')}</p>
-    <div class="row"><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
+    <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
   $('#no').onclick = () => titleCard();
+  const keep = () => { const card = $('#card'); for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
+  $('#card').querySelectorAll('input').forEach(i => i.onchange = keep);
+  $('#how').onclick = () => { keep(); guideCard(0, () => setupCard(sure)); };
   $('#yes').onclick = () => {
     const card = $('#card'), ctrl = {};
     for (const s of TEAMS) ctrl[s] = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value || 'cpu';
@@ -1123,15 +1144,186 @@ function teamsCard() {
   $('#close').onclick = cardHide;
   $('#card').querySelectorAll('[data-aid]').forEach(b => b.onclick = () => { giveAid(v, b.dataset.aid); teamsCard(); });
 }
+// ---------- How to play ----------
+// Decided 6 Nov: the rules were an 11-line list on the start card that nobody
+// read. Now How to play is a button you choose (on the start card, the setup
+// card, and the ? in the top bar, so it's there in the middle of a game too).
+// It's a little picture book: each page is a moving picture made from the
+// game's own map and unit art, with one short line under it. The money line
+// and the last page follow the level picked (the level in play, mid-game).
+const GW = 5, GH = 3;                        // each picture is 5 by 3 squares
+const ease = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+const span = (k, a, b) => ease((k - a) / (b - a));   // 0 before a, 1 after b
+const gUnit = (type, side, x, y, more = {}) => ({ type, side, px: x, py: y, hp: UNITS[type].hp, fuel: FUEL, moved: false, acted: false, ang: side === 'green' ? Math.PI / 2 : -Math.PI / 2, ...more });
+function gTap(c, x, y, k) {                  // a finger tap: a ring that grows and fades
+  if (k <= 0 || k >= 1) return;
+  c.strokeStyle = `rgba(242,232,200,${1 - k})`; c.lineWidth = 4;
+  c.beginPath(); c.arc(x * TS + TS / 2, y * TS + TS / 2, 8 + k * 16, 0, 7); c.stroke();
+}
+function gNum(c, text, x, y, k) {
+  if (k <= 0 || k >= 1) return;
+  c.font = '12px "Press Start 2P", monospace'; c.textAlign = 'center';
+  c.fillStyle = '#1b1a15'; c.fillText(text, x * TS + TS / 2 + 2, y * TS + 12 - k * 16 + 2);
+  c.fillStyle = '#f2d98a'; c.fillText(text, x * TS + TS / 2, y * TS + 12 - k * 16);
+}
+function gShot(c, x0, y0, x1, y1, k) {
+  if (k <= 0 || k >= 1) return;
+  const a = Math.min(1, k * 2), b = Math.max(0, k * 2 - 1), X0 = x0 * TS + TS / 2, Y0 = y0 * TS + TS / 2, X1 = x1 * TS + TS / 2, Y1 = y1 * TS + TS / 2;
+  c.strokeStyle = '#f2d98a'; c.lineWidth = 3; c.beginPath();
+  c.moveTo(X0 + (X1 - X0) * b, Y0 + (Y1 - Y0) * b); c.lineTo(X0 + (X1 - X0) * a, Y0 + (Y1 - Y0) * a); c.stroke();
+}
+function gBoom(c, x, y, k) {
+  if (k <= 0 || k >= 1) return;
+  const cx = x * TS + TS / 2, cy = y * TS + TS / 2, r = 6 + k * 22;
+  for (let i = 0; i < 10; i++) { const an = i * .63, d = r * (.4 + (i % 3) * .3); c.fillStyle = i % 2 ? '#e0a040' : '#5a5040'; c.fillRect(cx + Math.cos(an) * d - 3, cy + Math.sin(an) * d - 3, 6, 6); }
+}
+function gSquares(c, list) { for (const [x, y] of list) { c.fillStyle = 'rgba(232,223,200,.22)'; c.fillRect(x * TS + 3, y * TS + 3, TS - 6, TS - 6); c.fillStyle = 'rgba(232,223,200,.7)'; c.fillRect(x * TS + TS / 2 - 2, y * TS + TS / 2 - 2, 4, 4); } }
+function gLabel(c, text, x, y, col = '#e8dfc8') {   // a little label on a dark box, x and y in pixels
+  c.font = '10px "Press Start 2P", monospace'; c.textAlign = 'left';
+  const w = c.measureText(text).width + 12;
+  c.fillStyle = '#1b1a15'; c.fillRect(x, y, w, 20); c.fillStyle = col; c.fillText(text, x + 6, y + 14);
+  return w;
+}
+const near2 = (x, y, skip = []) => { const out = []; for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) { const d = Math.abs(i - x) + Math.abs(j - y); if (d && d <= 2 && !skip.some(([a, b]) => a === i && b === j)) out.push([i, j]); } return out; };
+const GUIDE = [
+  { key: 'move', map: ['pppfp', 'ppppp', 'pfppp'], loop: 4.2, draw(c, k, now) {
+    const go = span(k, 2, 2.8), u = gUnit('tank', 'green', 1 + go * 2, 1, { moved: k > 2 });
+    if (k > .6 && k < 2) { gSquares(c, near2(1, 1)); brackets(1, 1, '#e8c35a', 2, 10, 3, c); }
+    if (k > 1.6 && k < 2.3) brackets(3, 1, '#e8c35a', 2, 10, 3, c);
+    drawUnit(c, u, now, true);
+    gTap(c, 1, 1, (k - .6) / .5); gTap(c, 3, 1, (k - 1.6) / .5);
+  } },
+  { key: 'fire', map: ['ppppp', 'ppppp', 'ppfpp'], loop: 4.2, draw(c, k, now) {
+    const me = gUnit('tank', 'green', 1, 1, { moved: true, acted: k > 2.2 }), foe = gUnit('tank', 'red', 3, 1, { hp: k > 2 ? 1 : 2 });
+    if (k > .4 && k < 2.2) { brackets(1, 1, '#e8c35a', 2, 10, 3, c); brackets(3, 1, '#e0553f', 1, 12, 4, c); }
+    drawUnit(c, foe, now, false); drawUnit(c, me, now, true);
+    gTap(c, 3, 1, (k - 1.2) / .5); gShot(c, 1, 1, 3, 1, (k - 1.6) / .35); gNum(c, '-1', 3, 1, (k - 2) / .9);
+  } },
+  { key: 'marks', map: ['ppppp', 'ppppp', 'ppppp'], loop: 5, draw(c, k, now) {
+    const fresh = k > 3.5;
+    drawUnit(c, gUnit('tank', 'green', .6, 1, { moved: false }), now, true);
+    drawUnit(c, gUnit('soldier', 'green', 2, 1, { moved: !fresh }), now, true);
+    drawUnit(c, gUnit('artillery', 'green', 3.4, 1, { moved: !fresh, acted: !fresh }), now, true);
+    c.font = '10px "Press Start 2P", monospace';
+    const w = c.measureText(t('endTurn')).width + 12, bx = GW * TS - w - 6, by = GH * TS - 26;
+    if (k > 2.4) gLabel(c, t('endTurn'), bx, by, k > 3.1 && k < 3.5 ? '#e8c35a' : '#e8dfc8');   // the End turn button, pressed
+    gTap(c, (bx + w / 2 - TS / 2) / TS, (by + 10 - TS / 2) / TS, (k - 3) / .5);
+  } },
+  { key: 'city', map: ['ppppp', 'pcppp', 'ppppp'], loop: 5, draw(c, k, now, L) {
+    drawFlag({ x: 1, y: 1, owner: 'green' }, c);
+    const paid = (k > 1 ? 1 : 0) + (k > 2.2 ? 1 : 0), bought = k > 3.6, money = L.start + paid * CITY_MONEY - (bought ? UNITS.tank.cost : 0);
+    gLabel(c, t('money', { m: fmt(money) }), 6, 6);
+    gNum(c, '+1', 1, 1, (k - .5) / .9); gNum(c, '+1', 1, 1, (k - 1.7) / .9);
+    gTap(c, 1, 1, (k - 2.7) / .5);
+    if (k > 2.9 && k < 3.8) {                 // the shop, with a tank in it
+      const X = 2 * TS + 4, Y = TS / 2;
+      c.fillStyle = '#1b1a15'; c.fillRect(X, Y, TS * 2.4, TS * 1.4); c.fillStyle = '#3a3828'; c.fillRect(X + 3, Y + 3, TS * 2.4 - 6, TS * 1.4 - 6);
+      drawUnit(c, gUnit('tank', 'green', 2.15, .75), now, false); gLabel(c, '2', X + TS * 1.4, Y + TS * .5, '#e8c35a');
+      gTap(c, 2.3, .9, (k - 3.3) / .4);
+    }
+    if (bought) drawUnit(c, gUnit('tank', 'green', 1, 1), now, false);
+  } },
+  { key: 'air', map: ['ppmwp', 'cpmww', 'ppwwp'], loop: 6.4, draw(c, k, now) {
+    drawFlag({ x: 0, y: 1, owner: 'green' }, c);
+    const out = span(k, .4, 2.6), back = span(k, 3, 5.2), x = 4 * out - 4 * back;
+    const fuel = k > 5.8 ? FUEL : Math.round(FUEL - 4 * out - 4 * back);
+    drawUnit(c, gUnit('interceptor', 'green', x, 1, { fuel, ang: k < 2.8 ? Math.PI / 2 : -Math.PI / 2 }), now, false);
+    gLabel(c, `${fuel} / ${FUEL}`, 6, 6, fuel <= 4 ? '#e0a040' : '#9fb8c8');
+  } },
+  { key: 'bomb', map: ['ppppp', 'ppppp', 'pppfp'], loop: 5, draw(c, k, now) {
+    // 2 squares away: no bomb (a red X); 1 square away: the bomb drops
+    const step = span(k, 1.4, 2.1), foe = gUnit('tank', 'red', 3, 1, { hp: k > 2.8 ? UNITS.tank.hp - 1 : UNITS.tank.hp });
+    drawUnit(c, foe, now, false);
+    drawUnit(c, gUnit('bomber', 'green', 1 + step, 1), now, false);
+    if (k > .4 && k < 1.4) { c.strokeStyle = '#e0553f'; c.lineWidth = 4; const X = 2.5 * TS, Y = 1.5 * TS; c.beginPath(); c.moveTo(X - 9, Y - 9); c.lineTo(X + 9, Y + 9); c.moveTo(X + 9, Y - 9); c.lineTo(X - 9, Y + 9); c.stroke(); }
+    if (k > 2.1 && k < 2.6) brackets(3, 1, '#e0553f', 1, 12, 4, c);
+    gBoom(c, 3, 1, (k - 2.5) / .6);
+  } },
+  { key: 'build', map: ['ppppp', 'ppppp', 'ppfpp'], loop: 4.6, draw(c, k, now) {
+    drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: true }), now, true);
+    if (k > .4 && k < 2.6) gSquares(c, [[2, 1], [1, 0], [0, 1], [1, 2]]);
+    gTap(c, 2, 1, (k - 1) / .5);
+    if (k > 1.4 && k < 2.6) { const X = 2.6 * TS, Y = 2; c.fillStyle = '#1b1a15'; c.fillRect(X, Y, TS * 2.3, TS * 1.1); ['defenseGun', 'aaGun'].forEach((g, i) => drawUnit(c, gUnit(g, 'green', 2.65 + i * 1.1, .02, { ang: 0 }), now, false)); gTap(c, 2.65, 0, (k - 2) / .5); }
+    if (k > 2.6) drawUnit(c, gUnit('defenseGun', 'green', 2, 1, { ang: Math.PI / 2 }), now, false);
+  } },
+  { key: 'aa', map: ['ppppp', 'ppppp', 'ppppp'], loop: 4.6, draw(c, k, now) {
+    c.fillStyle = 'rgba(224,85,63,.18)';    // the squares it reaches (3)
+    for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) if (Math.abs(i) + Math.abs(j - 1) <= UNITS.aaGun.rng) c.fillRect(i * TS + 2, j * TS + 2, TS - 4, TS - 4);
+    const x = 4.6 - span(k, .3, 2) * 1.8, hit = k > 2.1;
+    drawUnit(c, gUnit('aaGun', 'green', 0, 1, { ang: Math.PI / 2 }), now, false);
+    if (k < 3.2) drawUnit(c, gUnit('attackJet', 'red', x, 1, { hp: hit ? 1.5 : 3.5, ang: -Math.PI / 2 }), now, false);
+    gShot(c, 0, 1, 2.8, 1, (k - 2) / .3); gNum(c, '-2', 2.8, 1, (k - 2.2) / .9);
+  } },
+  { key: 'teams', map: ['ppppp', 'ppppp', 'ppppp'], loop: 6.4, draw(c, k, now) {
+    // a score line from -2 to +1, with the green team's mark on it
+    const X0 = 24, X1 = GW * TS - 24, Y = GH * TS - 34, at = v => X0 + (v + 2) / 3 * (X1 - X0);
+    c.fillStyle = '#1b1a15'; c.fillRect(X0 - 4, Y - 6, X1 - X0 + 8, 12);
+    c.fillStyle = '#c0502e'; c.fillRect(X0, Y - 2, at(-1.5) - X0, 4); c.fillStyle = '#8a826c'; c.fillRect(at(-1.5), Y - 2, at(.5) - at(-1.5), 4); c.fillStyle = '#7fb069'; c.fillRect(at(.5), Y - 2, X1 - at(.5), 4);
+    c.font = '10px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#e8dfc8';
+    [[-2, '−2'], [0, '0'], [1, '+1']].forEach(([v, s]) => c.fillText(s, at(v), Y + 22));
+    const v = k < 1.4 ? 0 : k < 2.6 ? -.5 : k < 3.8 ? 0 : k < 5 ? .5 : 1;
+    flagShape('red', at(v) - 8, Y - 26, 16, 14, c); c.fillStyle = '#1b1a15'; c.fillRect(at(v) - 10, Y - 28, 3, 22);
+    drawUnit(c, gUnit('tank', 'green', .3, .2, { hp: 2 }), now, false); drawUnit(c, gUnit('tank', 'red', 3.7, .2, { hp: k > 1.2 && k < 2.6 ? 1 : 2 }), now, false);
+    gShot(c, .3, .2, 3.7, .2, (k - .9) / .35);
+    if (k > 2.6 && k < 5) { gNum(c, '+0.5', 2, .5, ((k - 2.6) % 1.2) / 1); gLabel(c, '4', 2 * TS + 8, TS * .2, '#e8c35a'); }
+    if (k > 5) gLabel(c, '+1', 2 * TS + 4, TS * .2, '#7fb069');
+  } },
+  { key: 'level', map: ['ppppp', 'pcpcp', 'ppppp'], loop: 3.6, draw(c, k, now, L) {
+    drawFlag({ x: 1, y: 1, owner: 'green' }, c); drawFlag({ x: 3, y: 1, owner: 'red' }, c);
+    gNum(c, '+1', 1, 1, (k - .4) / 1); gNum(c, '+' + fmt(CITY_MONEY * L.pay), 3, 1, (k - .4) / 1);
+    gLabel(c, t('money', { m: fmt(L.start) }), 6, 6);
+  } },
+];
+let guideAt = 0, guideBack = null, guideT0 = 0, guideTiles = {}, guideLoop = false;
+function guideLevel() { const k = G ? G.level : ($('#card').querySelector('input[name=lvl]:checked')?.value || PREFS.level); return [k, LEVELS[k] || LEVELS.normal]; }
+function guideText(pg, L, name) {
+  const frac = v => t(v >= 1 ? 'frac_all' : v >= .75 ? 'frac_most' : 'frac_half');
+  const buy = v => t(v >= 1 ? 'buy_all' : v >= .75 ? 'buy_most' : 'buy_half');
+  if (pg.key === 'level') return t('g_level', { m: fmt(L.start), pay: frac(L.pay), buy: buy(L.buy), air: L.air });
+  if (pg.key === 'city') return t('g_city', { m: fmt(L.start) });
+  if (pg.key === 'move' && box.scrollWidth > box.clientWidth + 2) return t('g_move') + ' ' + t('g_drag');
+  return t('g_' + pg.key);
+}
+function guideCard(i = 0, back = guideBack) {
+  const [lk, L] = guideLevel();
+  guideAt = Math.max(0, Math.min(GUIDE.length - 1, i)); guideBack = back; guideT0 = performance.now();
+  const pg = GUIDE[guideAt], last = guideAt === GUIDE.length - 1;
+  const title = pg.key === 'level' ? t('g_level_t', { name: t(lk) }) : t('g_' + pg.key + '_t');
+  cardShow(`<h2>${t('howBtn')}</h2><p class="gstep">${t('gPage', { n: guideAt + 1, of: GUIDE.length })} · ${title}</p>
+    <canvas class="gpic" id="gpic" width="${GW * TS}" height="${GH * TS}" aria-hidden="true"></canvas>
+    <p class="gtext">${guideText(pg, L, lk)}</p>
+    <div class="gdots" aria-hidden="true">${GUIDE.map((_, j) => `<i class="${j === guideAt ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="row"><button class="btn quiet" id="gClose">${t('gClose')}</button>${guideAt ? `<button class="btn quiet" id="gBack">${t('gBack')}</button>` : ''}<button class="btn" id="gNext">${last ? t('done') : t('gNext')}</button></div>`);
+  $('#gClose').onclick = () => guideBack();
+  const bk = $('#gBack'); if (bk) bk.onclick = () => guideCard(guideAt - 1);
+  $('#gNext').onclick = () => last ? guideBack() : guideCard(guideAt + 1);
+  if (!guideLoop) { guideLoop = true; requestAnimationFrame(guideFrame); }   // one loop, however many pages are turned
+}
+function guideFrame(now) {
+  if (!guideDraw(now)) { guideLoop = false; return; }
+  requestAnimationFrame(guideFrame);
+}
+function guideDraw(now) {
+  const c = $('#gpic')?.getContext('2d'); if (!c || $('#cover').hidden) return false;
+  const pg = GUIDE[guideAt], [, L] = guideLevel();
+  const g = guideTiles[pg.key] || (guideTiles[pg.key] = paintTiles(pg.map, 11 + guideAt));
+  c.imageSmoothingEnabled = false; c.drawImage(g, 0, 0, GW * TS, GH * TS);
+  pg.draw(c, ((now - guideT0) / 1000) % pg.loop, now, L);
+  return true;
+}
+$('#card').addEventListener('keydown', e => {
+  if (!$('#gpic')) return;
+  if (e.key === 'ArrowRight') guideCard(guideAt + 1); else if (e.key === 'ArrowLeft') guideCard(guideAt - 1); else if (e.key === 'Escape') guideBack();
+});
 function titleCard() {
   let saved = read().game;
   if (saved && saved.v !== SAVE_V) saved = null;   // the two-team game from before 5 Nov
-  const how = ['how1', 'how2', 'how3', 'how4', 'how5', 'how6', 'how7', 'how8', 'how9', 'how11', 'how10'].map(k => `<li>${t(k)}</li>`).join('');
-  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p><ul>${how}</ul>
-    <div class="row">${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
+  cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p>
+    <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button>${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
   $('#go').onclick = () => { if (saved) { cardHide(); resume(saved); } else setupCard(); };
   const f = $('#fresh');
   if (f) f.onclick = () => setupCard(true);
+  $('#how').onclick = () => guideCard(0, titleCard);
 }
 function resume(s) {
   G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
@@ -1165,6 +1357,8 @@ cv.addEventListener('keydown', e => {
 });
 $('#endBtn').onclick = () => { if (myTurn()) { sel = null; nextTurn(); } };
 $('#teamsBtn').onclick = teamsCard;
+$('#helpBtn').onclick = () => { if ($('#cover').hidden) guideCard(guideBack && G ? guideAt : 0, cardHide); };
+$('#helpBtn').setAttribute('aria-label', t('howBtn')); $('#helpBtn').title = t('howBtn');
 $('#soundBtn').onclick = () => { PREFS.sound = !PREFS.sound; savePrefs(); hud(); };
 $('#backLink').textContent = t('back');
 $('#teamsBtn').textContent = t('teams');
