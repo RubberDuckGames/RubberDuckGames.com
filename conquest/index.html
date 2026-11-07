@@ -147,6 +147,7 @@ const STR = {
   g_carry_t: 'Transports', g_carry: 'A transport chopper or transport jet carries your ground units and guns. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
   g_aa_t: 'AA guns', g_aa: 'AA guns fire on their own at aircraft from teams that don’t like you, as soon as they fly in range.',
   g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy for good.',
+  g_ally_t: 'Make an ally', g_ally: 'Tap Teams, then give a team 4 money, twice. At +1 you’re allies: you can’t fire on each other or take each other’s cities, and you win together. A team won’t become your ally if it and one of your allies don’t get along.',
   g_level_t: 'Your level: {name}', g_level: 'You start with {m} money. The computer teams get {pay} of their city money, buy units in {buy} each turn, and start buying aircraft after turn {air}.',
   frac_half: 'half', frac_most: 'three quarters', frac_all: 'all',
   buy_half: 'half their cities', buy_most: 'three out of four of their cities', buy_all: 'every city',
@@ -1339,6 +1340,28 @@ const GUIDE = [
     gShot(c, .3, .2, 3.7, .2, (k - .9) / .35);
     if (k > 2.6 && k < 5) { gNum(c, '+0.5', 2, .5, ((k - 2.6) % 1.2) / 1); gLabel(c, '4', 2 * TS + 8, TS * .2, '#e8c35a'); }
     if (k > 5) gLabel(c, '+1', 2 * TS + 4, TS * .2, '#7fb069');
+  } },
+  { key: 'ally', map: ['ppppp', 'ppppp', 'ppppp'], loop: 7.4, draw(c, k, now) {
+    // tap Teams, give a team 4 money twice, and at +1 you're allies
+    const gifts = (k > 1.9 ? 1 : 0) + (k > 3.3 ? 1 : 0), score = gifts * STEP * 1, ally = gifts === 2;
+    c.font = '10px "Press Start 2P", monospace';
+    gLabel(c, t('money', { m: 8 - gifts * AID }), 6, 6);
+    const tw = c.measureText(t('teams')).width + 12; gLabel(c, t('teams'), GW * TS - tw - 6, 6, k > .5 && k < .9 ? '#e8c35a' : '#e8dfc8');
+    gTap(c, (GW * TS - tw / 2 - 6 - TS / 2) / TS, (16 - TS / 2) / TS, (k - .4) / .5);
+    if (k > .9 && k < 4.6) {                 // the Teams card, with the red team on it
+      const X = 14, Y = 32, W = GW * TS - 28, H = GH * TS - 42;
+      c.fillStyle = '#1b1a15'; c.fillRect(X, Y, W, H); c.fillStyle = '#3a3828'; c.fillRect(X + 3, Y + 3, W - 6, H - 6);
+      flagShape('red', X + 10, Y + 10, 12, 10, c);
+      c.textAlign = 'left'; c.fillStyle = '#e8dfc8'; c.fillText(`${tn('red')} · ${ally ? t('ally') : t('neutral')}`, X + 28, Y + 20);
+      c.fillStyle = ally ? '#7fb069' : '#e8dfc8'; c.fillText(t('score', { n: signed(score) }), X + 10, Y + 42);
+      const pressed = (k > 1.6 && k < 1.95) || (k > 3 && k < 3.35);
+      gLabel(c, t('give', { m: AID }), X + 10, Y + 54, pressed ? '#e8c35a' : '#e8dfc8');
+      gTap(c, (X + 70 - TS / 2) / TS, (Y + 64 - TS / 2) / TS, (k - 1.5) / .5); gTap(c, (X + 70 - TS / 2) / TS, (Y + 64 - TS / 2) / TS, (k - 2.9) / .5);
+    }
+    if (k > 4.6) {                           // allies side by side, no red box between them
+      drawUnit(c, gUnit('tank', 'green', 1.2, 1.2), now, false); drawUnit(c, gUnit('tank', 'red', 2.8, 1.2, { ang: -Math.PI / 2 }), now, false);
+      gLabel(c, t('ally'), 2 * TS + 4, TS * 2.35, '#7fb069');
+    }
   } },
   { key: 'level', map: ['ppppp', 'pcpcp', 'ppppp'], loop: 3.6, draw(c, k, now, L) {
     drawFlag({ x: 1, y: 1, owner: 'green' }, c); drawFlag({ x: 3, y: 1, owner: 'red' }, c);

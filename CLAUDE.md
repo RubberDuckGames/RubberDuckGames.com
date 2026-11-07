@@ -195,7 +195,8 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   `conquest` at the start of each of your turns. It has a home page card (4 Nov) so his friends can play it.
   Decided 6 Nov: the rules aren't a list on the start card any more. How to
   play is a button (start card, setup card, and the ? in the top bar during a
-  game) that opens a picture book, `GUIDE`: ten pages, each a little moving
+  game) that opens a picture book, `GUIDE`: twelve pages (Transports and Make
+  an ally were added the same day), each a little moving
   scene drawn with the game's own map and units (`paintTiles`, `drawUnit`)
   and one short line. The money line and the last page ("Your level") are
   worked out from `LEVELS`, so they follow the level picked (the game's own
