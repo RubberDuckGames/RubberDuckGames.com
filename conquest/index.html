@@ -144,6 +144,7 @@ const STR = {
   g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities to fill up, or it crashes.',
   g_bomb_t: 'Bombers', g_bomb: 'Bombers can only bomb ground units from 1 square away.',
   g_build_t: 'Build guns', g_build: 'Tap an empty square next to one of your units to build a defense gun or AA gun there.',
+  g_carry_t: 'Transports', g_carry: 'A transport chopper or transport jet carries your ground units and guns. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
   g_aa_t: 'AA guns', g_aa: 'AA guns fire on their own at aircraft from teams that don’t like you, as soon as they fly in range.',
   g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy for good.',
   g_level_t: 'Your level: {name}', g_level: 'You start with {m} money. The computer teams get {pay} of their city money, buy units in {buy} each turn, and start buying aircraft after turn {air}.',
@@ -206,6 +207,17 @@ const STR = {
   tookFrom: '{a} took a city from {b}.',
   hit: '{a} hit the {b}.',
   knocked: 'The {b} is knocked out!',
+  knockedFull: 'The {b} is knocked out, with {n} inside!',
+  crashedFull: 'A {unit} ran out of fuel and crashed, with {n} inside.',
+  caughtFull: 'A landed {unit} was caught in the city, with {n} inside.',
+  burnedOutFull: 'A {unit} burned out, with {n} inside.',
+  gotIn: '{a} got in the {b}.',
+  gotOut: '{a} got out. It can move next turn.',
+  room: 'Room inside: {n} of {of} used.',
+  loadHow: 'Move one of your ground units or guns under it, or fly it onto one, to load.',
+  dropOff: 'Drop off',
+  dropWhere: 'Tap a green square to drop it there.',
+  dropCity: 'The transport jet loads and drops off only while landed in your city.',
   yourTurn: 'Your turn. You got {m} money from your cities.',
   teamYourTurn: '{team}, your turn. You got {m} money from your cities.',
   dmgSplit: '{a} to air, {g} to ground',
@@ -266,11 +278,13 @@ const UNITS = {
   interceptor:   { name: 'Interceptor',           img: 'interceptor',      hp: 3,   dmg: 2,   dmgA: 2,     rng: 3, spd: 4, cost: 3,   hits: 'GA', air: 'plane' },
   bomber:        { name: 'Bomber',                img: 'bomber',           hp: 4,   dmg: 4.5, dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane' },
   groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane', fire: true },
+  transportChopper: { name: 'Transport chopper', img: 'transport-chopper', hp: 4, dmg: 1,              rng: 3, spd: 4, cost: 3, hits: 'G',  air: 'heli',  holds: 4 },
+  transportJet:  { name: 'Transport jet',         img: 'transport-jet',    hp: 4,   dmgA: 2,               rng: 3, spd: 3, cost: 4, hits: 'A',  air: 'plane', holds: 5, heals: 4 },
 };
 const SHOP_GROUPS = [
   ['shopGround', ['soldier', 'tank', 'tankDestroyer', 'aaTank']],
   ['shopGuns', ['defenseGun', 'artillery', 'aaGun', 'missileAA']],
-  ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber']],
+  ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber', 'transportChopper', 'transportJet']],
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
 // Decided 4 Nov: defense guns and AA guns can be built on any empty square
@@ -279,6 +293,18 @@ const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
 const FIELD_GUNS = ['defenseGun', 'aaGun', 'missileAA'];
 const AIR = SHOP_GROUPS[2][1];
 const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
+// Decided 6 Nov: the transports (his card: a transport chopper holds 4, the
+// transport jet holds 5 and heals 4). ROOM is his "basic unit": how much room
+// each unit takes. They carry ground units and guns. Guesses to check with
+// him: a unit gets in by moving under your transport, or the transport flies
+// onto it (the jet only while landed in a city); drop off onto a free square
+// next to it, and the unit waits until next turn; the jet heals the units
+// riding in it 4 a turn; units inside are lost if it goes down. The computer
+// teams don't buy transports yet.
+const ROOM = { soldier: 1, tank: 2, tankDestroyer: 2, aaTank: 2, defenseGun: 3, artillery: 3, aaGun: 3, missileAA: 3 };
+const used = t => t.cargo.reduce((n, o) => n + ROOM[o.type], 0);
+const canLoad = (t, o) => !!t && !!UNITS[t.type].holds && t.side === o.side && o !== t && ROOM[o.type] !== undefined
+  && (UNITS[t.type].air === 'heli' || t.landed) && used(t) + ROOM[o.type] <= UNITS[t.type].holds;
 const FUEL = 10, CIRCLE = 2;   // a plane's full tank, and what a turn in the air without moving burns
 const BURN = 1, BURN_TURNS = 2; // his fire burns 2 more turns after the hit; 1 health a turn is a guess to check with him
 
@@ -357,6 +383,7 @@ function newGame() {
 function mkUnit(type, side, x, y) {
   const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: y < MH / 2 ? Math.PI : 0 };
   if (UNITS[type].air === 'plane') { u.fuel = FUEL; u.landed = !!(cityAt(x, y)?.owner === side); }
+  if (UNITS[type].holds) u.cargo = [];
   return u;
 }
 function save() {
@@ -488,6 +515,7 @@ function startTurn(side) {
       fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(BURN), t0: performance.now(), dur: 900 });
     }
   }
+  for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
   for (const u of G.units.filter(u => u.side === side)) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
     else if (u.hp <= 0) notes.push(remove(u, 'burnedOut'));
@@ -507,9 +535,10 @@ function remove(u, why) {
   G.units = G.units.filter(o => o !== u);
   fx.push({ kind: 'boom', x: u.x, y: u.y, t0: performance.now() + 220, dur: 600 });
   setTimeout(() => sfx('boom'), 220);
-  G.stats[u.side].lost++;
-  if (sel?.unit === u) sel = null;
-  return why === 'knocked' ? t('knocked', { b: UNITS[u.type].name.toLowerCase() }) : t(why, { unit: UNITS[u.type].name.toLowerCase() });
+  G.stats[u.side].lost += 1 + (u.cargo?.length || 0);
+  if (sel?.unit === u || sel?.drop?.tr === u) sel = null;
+  if (u.cargo?.length) why += 'Full';    // the units inside go down with it
+  return why.startsWith('knocked') ? t(why, { b: UNITS[u.type].name.toLowerCase(), n: u.cargo?.length }) : t(why, { unit: UNITS[u.type].name.toLowerCase(), n: u.cargo?.length });
 }
 // Units face up, down, left or right only. Decided 4 Nov: turned at in-between
 // angles, his drawings came out jagged.
@@ -533,7 +562,27 @@ function moveUnit(u, x, y) {
   }
   const aa = aaReact(u);
   if (aa) log(aa);
+  if (G.units.includes(u)) board(u);
   checkEnd();
+}
+// After a move: a unit that ends under your transport gets in, and a
+// transport that ends over one of your units picks it up.
+function board(u) {
+  const tr = UNITS[u.type].holds ? u : unitAt(u.x, u.y, 'air'), o = tr === u ? unitAt(u.x, u.y, 'ground') : u;
+  if (!o || !canLoad(tr, o)) return;
+  G.units = G.units.filter(x => x !== o); tr.cargo.push(o); o.moved = o.acted = true;
+  log(t('gotIn', { a: UNITS[o.type].name, b: UNITS[tr.type].name.toLowerCase() })); sfx('click');
+}
+// where the units inside can get out: a free land square next to it, or under it
+function dropSpots(tr) {
+  if (UNITS[tr.type].air === 'plane' && !tr.landed) return [];
+  return [[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => ({ x: tr.x + dx, y: tr.y + dy }))
+    .filter(p => inMap(p.x, p.y) && moveCost(tileAt(p.x, p.y)) < Infinity && !unitAt(p.x, p.y, 'ground') && (!cityAt(p.x, p.y)?.owner || cityAt(p.x, p.y).owner === tr.side));
+}
+function dropOff(tr, i, p) {
+  const o = tr.cargo.splice(i, 1)[0];
+  o.x = o.px = p.x; o.y = o.py = p.y; o.moved = o.acted = true; G.units.push(o);
+  log(t('gotOut', { a: UNITS[o.type].name })); sfx('click');
 }
 function fire(a, b) {
   sour(a.side, b.side);
@@ -630,6 +679,11 @@ function tapTile(x, y) {
   const me = G.side;
   cursor = { x, y };
   const here = unitsAt(x, y), c = cityAt(x, y);
+  if (sel?.drop) {
+    const d = sel.drop, p = dropSpots(d.tr).find(p => p.x === x && p.y === y);
+    sel = { unit: d.tr };
+    if (p) { dropOff(d.tr, d.i, p); render(); return; }
+  }
   if (sel?.unit && sel.unit.side === me) {
     const s = sel.unit, ts = targetsFrom(s, s.x, s.y);
     const tg = here.find(o => ts.includes(o));
@@ -715,7 +769,7 @@ async function cpuTurn(me) {
   // AA once others have aircraft, and some aircraft of its own after a few turns
   const otherAir = G.units.some(u => !allied(u.side, me) && UNITS[u.type].air);
   for (const c of G.cities.filter(c => c.owner === me)) {   // one a turn per city: two swamped the map with 41 units in a test game
-    const can = SHOP.filter(k => UNITS[k].cost <= G.money[me] && spot(c, layerOfType(k)));
+    const can = SHOP.filter(k => !UNITS[k].holds && UNITS[k].cost <= G.money[me] && spot(c, layerOfType(k)));
     if (!can.length || Math.random() >= lvl().buy) continue;
     const near = G.units.some(u => fairGame(me, u.side) && dist(u, c) <= 4);
     let pick = can.includes('tank') && Math.random() < .55 ? 'tank' : 'soldier';
@@ -962,6 +1016,7 @@ function drawUnit(c, u, now, marks) {
     if (!u.moved) c.fillRect(qx, qy, 11, 11);
     else { c.fillRect(qx, qy, 11, 3); c.fillRect(qx, qy + 8, 11, 3); c.fillRect(qx, qy, 3, 11); c.fillRect(qx + 8, qy, 3, 11); }
   }
+  if (u.cargo?.length) { c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + TS - 17, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(u.cargo.length, X + 9, Y + TS - 6); }   // how many are inside
   if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; c.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; c.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
 }
 function frame(now) {
@@ -970,11 +1025,12 @@ function frame(now) {
   ctx.drawImage(ground, 0, 0, cv.width, cv.height);
   for (const c of G.cities) drawFlag(c);
   const s = sel?.unit, mine = myTurn();
-  if (s && s.side === G.side && mine) {
+  if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
     for (const o of targetsFrom(s, s.x, s.y)) brackets(o.x, o.y, '#e0553f', 1, 12, 4);
   }
   if (sel) { const p = sel.unit || sel.city || sel.build; brackets(p.x, p.y, '#e8c35a'); }
+  if (sel?.drop && mine) for (const p of dropSpots(sel.drop.tr)) { ctx.fillStyle = 'rgba(127,176,105,.35)'; ctx.fillRect(p.x * TS + 3, p.y * TS + 3, TS - 6, TS - 6); }   // where they can get out
   // units slide to where they are; ground first, then anything flying above
   const order = [...G.units].sort((a, b) => isAir(a) - isAir(b));
   for (const u of order) {
@@ -1025,7 +1081,7 @@ const whose = s => s === G.view ? t('yours') : `${tn(s)} · ${relWord(G.view, s)
 function panel() {
   const el = $('#info'), v = G.view, mine = myTurn();
   if (!sel) { el.innerHTML = `<h2>${tn(v)}</h2><p>${t('pickHint')}</p>`; return; }
-  if (sel.unit) {
+  if (sel.unit || sel.drop) {
     const u = sel.unit, R = UNITS[u.type];
     let tip = '';
     const notes = [];
@@ -1041,8 +1097,16 @@ function panel() {
       else if (u.moved && u.acted) tip = t('unitDone');
       else { const m = reach(u).size, f = targetsFrom(u, u.x, u.y).length; tip = [m ? t('canMove') : '', f ? t('canFire') : ''].filter(Boolean).join(' ') || t('unitDone'); }
     }
+    let inside = '';
+    if (R.holds) {
+      const canDrop = u.side === G.side && mine && dropSpots(u).length;
+      inside = `<p>${t('room', { n: fmt(used(u)), of: R.holds })}</p>` + (u.cargo.length ? `<div class="shop">` + u.cargo.map((o, i) =>
+        `<button class="buy" data-drop="${i}" ${canDrop ? '' : 'disabled'}><img src="units/${UNITS[o.type].img}.png" alt=""><span>${UNITS[o.type].name}</span><b>${t('dropOff')}</b></button>`).join('') + '</div>' : `<p>${t('loadHow')}</p>`)
+        + (R.air === 'plane' && !u.landed && u.cargo.length ? `<p>${t('dropCity')}</p>` : '') + (sel.drop ? `<p>${t('dropWhere')}</p>` : '');
+    }
     el.innerHTML = `<h2>${R.name} · ${whose(u.side)}</h2>
-      ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
+      ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${inside}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
+    el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { sel = { unit: u, drop: { tr: u, i: +b.dataset.drop } }; render(); });
     return;
   }
   if (sel.build) {
@@ -1245,6 +1309,14 @@ const GUIDE = [
     gTap(c, 2, 1, (k - 1) / .5);
     if (k > 1.4 && k < 2.6) { const X = 2.6 * TS, Y = 2; c.fillStyle = '#1b1a15'; c.fillRect(X, Y, TS * 2.3, TS * 1.1); ['defenseGun', 'aaGun'].forEach((g, i) => drawUnit(c, gUnit(g, 'green', 2.65 + i * 1.1, .02, { ang: 0 }), now, false)); gTap(c, 2.65, 0, (k - 2) / .5); }
     if (k > 2.6) drawUnit(c, gUnit('defenseGun', 'green', 2, 1, { ang: Math.PI / 2 }), now, false);
+  } },
+  { key: 'carry', map: ['ppwpp', 'ppwpp', 'ppwpp'], loop: 6, draw(c, k, now) {
+    const fly = span(k, 1.4, 2.8), x = .5 + fly * 2.5, held = k > 1.1 && k < 4.2;
+    if (k < 1.1) drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: false }), now, true);   // waiting for its ride
+    if (k > 4.2) drawUnit(c, gUnit('soldier', 'green', 4, 1, { moved: true, acted: true }), now, true);
+    drawUnit(c, gUnit('transportChopper', 'green', k < 1.1 ? .5 + span(k, .2, 1) * .5 : k < 2.8 ? 1 + fly * 2 : 3, 1, { cargo: held ? [{}] : [] }), now, false);
+    if (k > 3.2 && k < 4.2) { c.fillStyle = 'rgba(127,176,105,.35)'; c.fillRect(4 * TS + 3, TS + 3, TS - 6, TS - 6); }
+    gTap(c, 4, 1, (k - 3.7) / .5);
   } },
   { key: 'aa', map: ['ppppp', 'ppppp', 'ppppp'], loop: 4.6, draw(c, k, now) {
     c.fillStyle = 'rgba(224,85,63,.18)';    // the squares it reaches (3)
