@@ -65,6 +65,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 @media (pointer:coarse){.pad.stickpad{display:block}}
 .stickpad i{position:absolute;left:50%;top:50%;width:3.6rem;height:3.6rem;margin:-1.8rem;border-radius:50%;background:#3b2a1a;opacity:.85;pointer-events:none}
 #levelBtns{align-items:flex-end}
+/* Decided 7 Nov: on the map, the play controls drive the car: the pad points the way, Paw goes in */
+#levelBtns.mapmode #barkBtn,#levelBtns.mapmode #digBtn,#levelBtns.mapmode [data-home]{display:none!important}
 .acts{display:contents}
 @media (pointer:coarse) and (min-width:43.76rem) and (orientation:portrait){#levelBtns{left:1rem}}
 /* Decided 28 Oct: a phone turned sideways plays like a Switch. The game sits
@@ -89,7 +91,6 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 /* Arrows are drawn shapes, not ◀ ▶ characters: iPhones turn those two into
    blue emoji boxes but leave ▲ ▼ alone, so the pad came out mismatched. */
 .tri{width:1.1rem;height:1.1rem;fill:currentColor;display:block;margin:auto}
-#backBtn,#onBtn{font-family:Lexend,Verdana,sans-serif;font-size:1.5rem;line-height:1;min-width:3.75rem}   /* the map arrows, big enough for a finger */
 /* Decided 28 Oct: the closet is something to look through, not a list of
    words. A mirror shows Bread in the outfit; each spot is a wooden shelf of
    pictures; things not found yet are dark shapes with a ? (tap one for where
@@ -120,7 +121,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .bar h1{visibility:hidden}
 .wrap{max-width:none;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:0}
 canvas{box-shadow:none}
-#pressBtns,#homeBtns,#mapBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
+#pressBtns,#homeBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
 #closet,#shop{position:fixed;right:1rem;bottom:1rem;z-index:9;width:min(30rem,calc(100vw - 2rem));max-height:calc(100vh - 5rem);overflow:auto;margin:0}
 .tops{position:absolute;top:3.75rem;left:1rem;right:1rem;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.5rem;pointer-events:none}
 .tops .toast{position:static;transform:none}
@@ -135,9 +136,9 @@ canvas{box-shadow:none}
   .bar .pill:first-child{margin-right:auto}
   .bar h1{display:none}
   .wrap{display:block;min-height:0;padding:0 .875rem 1.25rem}
-  #pressBtns,#homeBtns,#mapBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
+  #pressBtns,#homeBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
   #closet,#shop{margin-top:.75rem}
-  #pressBtns,#homeBtns,#mapBtns,#levelBtns{margin-top:.75rem}
+  #pressBtns,#homeBtns,#levelBtns{margin-top:.75rem}
   /* messages sit in a text box at the bottom of the game screen, like an old
      handheld game. Below the screen, each one pushed the buttons down and
      back up again as it came and went. */
@@ -243,11 +244,6 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <div id="shopList"></div>
     <div class="row"><button class="btn go" data-done>Done</button></div>
   </div>
-  <div class="row" id="mapBtns" hidden>
-    <button class="btn" id="backBtn" aria-label="Drive back"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(-90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-    <button class="btn" id="onBtn" aria-label="Drive on"><svg class="tri" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></button>
-    <button class="btn go" id="inBtn">Go in</button>
-  </div>
   <div class="row" id="levelBtns" hidden>
     <div class="pad stickpad" id="pad" aria-label="Steering stick"><i id="knob"></i></div>
     <div class="acts">
@@ -255,7 +251,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
       <button class="btn go" id="pawBtn">🐾 Paw</button>
       <button class="btn go" id="digBtn" hidden>⛏️ Dig</button>
     </div>
-    <button class="btn" data-home>🏠 Go home</button>
+    <button class="btn" data-home>🚗 Map</button>
   </div>
 </div>
 
@@ -680,8 +676,9 @@ function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
 // ---------- Home ----------
 let screen = 'title';
 function showRow(id) {
-  ['pressBtns', 'homeBtns', 'mapBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
-  $('#helpBtn').hidden = id !== 'levelBtns';
+  ['pressBtns', 'homeBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
+  $('#levelBtns').classList.toggle('mapmode', id === 'levelBtns' && screen === 'map');
+  $('#helpBtn').hidden = id !== 'levelBtns' || screen === 'map';
   if (id !== 'levelBtns') { setGoal(''); help(false); $('#toast').hidden = true; }
 }
 // Decided 28 Oct: the goal shows for a few seconds when it changes, then goes
@@ -801,9 +798,9 @@ function openShop() {
 $('#closetBtn').onclick = openCloset;
 $('#shopBtn').onclick = openShop;
 document.querySelectorAll('[data-done]').forEach(b => b.onclick = () => showRow('homeBtns'));
-$('#rideBtn').onclick = () => { mapAt = 0; atStop('Arrows drive. Enter goes in.'); };
+$('#rideBtn').onclick = () => { mapAt = 0; atStop(); };
 document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
-  if (screen === 'level') { drive(W.stop, 0, () => goHome('Back home!')); return; }
+  if (screen === 'level') { mapAt = W.stop; atStop(); return; }   // decided 7 Nov: back onto the map, not straight home
   goHome();
 });
 
@@ -817,15 +814,26 @@ const bez = t => { const n = Math.min(ROAD.length - 1, Math.floor(t)), k = t - n
 let ride = null;
 function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, dur: 1.5 * Math.abs(to - from), then }; sfx.honk(); }
 // Decided 28 Oct: you drive the map with the arrow keys, like an old game map,
-// instead of clicking places. The car stops at each place; Enter goes in. On a
-// touch screen the ◀ ▶ buttons do the same.
+// instead of clicking places. The car stops at each place; Enter goes in.
+// Decided 7 Nov: no buttons or words on the map. The pad (arrow keys, the
+// stick, or the cross pad) points the way, and the car drives to the next
+// place the road heads off in that direction; Paw (or Space, or Enter) goes in.
 const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }];
 let mapAt = 0;
 function atStop(msg) {
-  screen = 'map'; showRow('mapBtns');
-  const st = STOPS[mapAt];
-  $('#inBtn').textContent = st.go; $('#backBtn').disabled = mapAt === 0; $('#onBtn').disabled = mapAt === STOPS.length - 1;
+  screen = 'map'; showRow('levelBtns');
   if (msg) toast(msg);
+}
+// the pad points at a place: drive to the one before or after that lies most that way
+function mapDir(dx, dy) {
+  if (screen !== 'map') return;
+  const l = Math.hypot(dx, dy); if (!l) return;
+  const here = bez(mapAt), best = [-1, 1].map(step => {
+    const to = mapAt + step; if (!STOPS[to]) return null;
+    const a = bez(to), vx = a[0] - here[0], vy = a[1] - here[1], vl = Math.hypot(vx, vy) || 1;   // toward where the place is
+    return { step, dot: (vx * dx + vy * dy) / (vl * l) };
+  }).filter(o => o && o.dot > .2).sort((a, b) => b.dot - a.dot)[0];
+  if (best) mapMove(best.step);
 }
 function mapMove(step) {
   if (screen !== 'map') return;
@@ -839,9 +847,6 @@ function mapGo() {
   const st = STOPS[mapAt];
   if (st.world) startWorld(st.world); else goHome();
 }
-$('#backBtn').onclick = () => mapMove(-1);
-$('#onBtn').onclick = () => mapMove(1);
-$('#inBtn').onclick = mapGo;
 function drawMap(t) {
   const W = VW * T, H = VH * T;
   px(0, 0, W, H, '#9bd88a');
@@ -942,16 +947,12 @@ const POND = (() => {
   for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
     if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
   // soft dirt: nothing to do until Bread learns to dig at the farm
-  for (const [x, y] of [[14, 15], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
-  // Decided 5 Nov (the testers wanted the pond harder): a duck pond in the lower
-  // park, where the mama duck waits for her ducklings. (A rowboat bridge to an
-  // island was tried the same day and taken out: one push, no puzzle.)
-  for (let y = 15; y <= 20; y++) for (let x = 9; x <= 15; x++) if (((x + .5 - 12.5) / 3.6) ** 2 + ((y + .5 - 18.3) / 2.3) ** 2 < 1) m[y][x] = 'w';
+  for (const [x, y] of [[12, 17], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
   const reeds = [], bushes = [];
   for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b' && y < 14) bushes.push([x + .5, y + .5]); }
   reeds.sort((a, b) => a[0] - b[0]);
   return {
-    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], run: [[18, 13]], crumbAt: [18, 5.3],
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], run: [[18, 13], [22, 12.5]], crumbAt: [22, 12.5],   // decided 7 Nov: Crumb waits by the mama duck
     // where the pieces hide: the end of the dock, deep in the reeds, and the
     // rubber duck out in the pond, so you have to swim for it
     spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
@@ -1195,7 +1196,7 @@ const WORLDS = {
     key: 'pond', name: 'pond', Name: 'Pond', map: POND, stop: 1, costume: 'duck', pic: DUCK, baddies: 'Squirrels caught', soil: 5,
     goals: {
       key: 'Catch the squirrel with the key', getKey: 'Pick up the key', gate: 'Take the key to the gate',
-      find: 'Find Crumb', back: 'Bring Crumb to the car',
+      ducks: 'Herd the ducklings into the pond', frogs: 'Bark the frogs’ song back', find: 'Swim out to Crumb', back: 'Bring Crumb to the car',
     },
     setup() {
       // one squirrel has the gate key and hides in a maze below the fence; the
@@ -1207,9 +1208,9 @@ const WORLDS = {
       for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
       for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w', (x, y) => y < 14); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
       // the mama duck in her pond, and her four ducklings loose in the park
-      G.mama = { x: 12.5, y: 18.4, quack: 0 }; G.ducksHome = 0;
+      G.mama = { x: 22, y: 11.2, quack: 0 }; G.ducksHome = 0;
       setupFrogs();
-      G.ducklings = [0, 1, 2, 3].map(() => { const [x, y] = randOpen(5, '.', (x, y) => y > 14 && x > 8 && x < 27 && Math.hypot(x - 12.5, y - 18.3) > 6); return { x, y, a: Math.random() * 6, t: Math.random() * 5, peep: 0, scared: 0, dodge: 0, home: null, face: 1 }; });
+      G.ducklings = [0, 1, 2, 3].map(() => { const [x, y] = randOpen(4, '.p', (x, y) => y < 14 && Math.hypot(x + .5 - 22, y + .5 - 11.2) > 5); return { x, y, a: Math.random() * 6, t: Math.random() * 5, peep: 0, scared: 0, dodge: 0, home: null, face: 1 }; });
       stage('key', 'Crumb ran off under the gate!');
     },
     step(b, dt) {
@@ -1218,14 +1219,16 @@ const WORLDS = {
       if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'The gate key!'); stage('gate'); }
       if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
         G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
-        stage('find', 'The gate is open!');
+        stage('ducks', 'The gate is open! Crumb is with the mama duck.');
       }
     },
-    reached: () => G.gateOpen,
+    reached: () => G.song?.state === 'won',
     target() {
       if (G.stage === 'key') return G.sq.find(s => s.key);
       if (G.stage === 'getKey') return G.key;
       if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
+      if (G.stage === 'ducks') return G.ducklings.filter(d => !d.home).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
+      if (G.stage === 'frogs') return G.song.state === 'listen' ? G.frogs[G.song.seq[G.song.i]] : { x: 14.3, y: 7.6 };
     },
   },
   farm: {
@@ -1292,13 +1295,13 @@ const WORLDS = {
 // that swam in at the far edge got chased out again). A duckling
 // backed into a corner darts off sideways, so none get stuck. All four home
 // pays a few treats, and the first time it's a held-up moment.
-const DUCK_HOME = [[11.2, 17.6], [13.8, 17.6], [11.4, 19.1], [13.6, 19.1]];
+const DUCK_HOME = [[20.8, 10.5], [23.2, 10.5], [20.9, 11.6], [23.1, 11.6]];
 function stepDucklings(b, dt) {
   if (!G.ducklings) return;
   const m = G.mama, near = Math.hypot(m.x - b.x, m.y - b.y) < 3, out = G.ducksHome < 4;
   m.quack -= dt;
   if (near && out && m.quack <= 0) { m.quack = 3; sfx.quack(); G.pops.push({ x: m.x, y: m.y - .9, txt: 'Quack!', t: 0, c: LINE }); }
-  if (near && out && !G.mamaSeen) { G.mamaSeen = true; toast('Her ducklings ran off! Herd them back to her.'); }
+  if (near && out && !G.mamaSeen && G.stage === 'ducks') { G.mamaSeen = true; toast('Her ducklings ran off! Herd them into the pond.'); }
   const barked = G.woofT > performance.now();
   G.ducklings.forEach(d => {
     d.t += dt; d.peep -= dt; d.scared -= dt; d.dodge -= dt;
@@ -1315,25 +1318,32 @@ function stepDucklings(b, dt) {
     move(d, Math.cos(a) * v * dt, Math.sin(a) * v * dt, .2, BLOCK + 'G');
     if (Math.abs(d.x - ox) > .001) d.face = d.x > ox ? 1 : -1;
     if (v > 1 && d.dodge <= 0 && Math.hypot(d.x - ox, d.y - oy) < v * dt * .3) { d.a = a + (Math.random() < .5 ? 1 : -1) * Math.PI / 2; d.dodge = .5; }
-    if (d.y > 14 && tileAt(d.x, d.y) === 'w') {                                 // in the duck pond: home, and it swims to its mama
+    if (d.y < 14 && tileAt(d.x, d.y) === 'w') {                                 // in the big pond: home, and it swims to its mama
       d.home = DUCK_HOME[G.ducksHome++]; sfx.quack(); burst(d.x, d.y);
       if (G.ducksHome < 4) toast(`${G.ducksHome} duckling${G.ducksHome > 1 ? 's' : ''} home!`); else ducksDone();
     }
   });
 }
+// Decided 7 Nov: the trip goes one job at a time. With the ducklings home,
+// Crumb swims out to a lily pad in the middle of the frogs.
 function ducksDone() {
-  [[-1, -1.3], [0, -1.5], [1, -1.3]].forEach(([dx, dy]) => G.treats.push({ x: G.mama.x + dx, y: G.mama.y + dy, v: 2 }));
-  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); hold(DUCKLING, 'The ducklings are home!'); }
-  else { sfx.win(); toast('The ducklings are home!'); }
+  [[-1, 1.3], [0, 1.5], [1, 1.3]].forEach(([dx, dy]) => G.treats.push({ x: G.mama.x + dx, y: G.mama.y + dy, v: 2 }));
+  const next = () => { const c = G.crumb; c.mode = 'swim'; c.to = [14.3, 7.6]; stage('frogs', 'Crumb swam out to the frogs!'); };
+  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); hold(DUCKLING, 'The ducklings are home!', next); }
+  else { sfx.win(); next(); }
 }
 // ---------- The frog song, at the pond ----------
 // Decided 5 Nov, the testers' idea: four frogs sit on lily pads in the big
 // pond, each its own color with its own note. Swim near and they croak a short
 // tune, one frog at a time; Bread repeats it by barking at the frogs in the
 // same order, and each frog croaks back. Three rounds, the same tune growing a
-// note each time (3, then 4, then 5). A wrong frog gets a low croak and the
-// tune plays again; there's no penalty. The whole song wins Crumb's frog
-// costume. Only swimming is needed, so it works on the first trip.
+// note each time. A wrong frog gets a low croak and the tune plays again;
+// there's no penalty. The whole song wins Crumb's frog costume. Only swimming
+// is needed, so it works on the first trip.
+// Decided 7 Nov, after a tester found it hard: the rounds are 2, 3 and 4
+// notes (they were 3, 4 and 5), the tune is slower, a bark reaches the
+// nearest frog from farther away, the frogs hop together when it's your turn,
+// a right frog sparkles, and if nobody barks for a while the tune plays again.
 const FROGS = [
   { x: 11.9, y: 7.6, note: 523, col: '#ff8fb1' },
   { x: 14.3, y: 6.0, note: 659, col: '#ffd23f' },
@@ -1341,36 +1351,45 @@ const FROGS = [
   { x: 14.3, y: 9.2, note: 1047, col: '#ff8a1f' },
 ];
 function setupFrogs() {
-  G.frogs = FROGS.map(f => ({ ...f, litT: 0, badT: 0 }));
-  G.song = { state: 'idle', seq: [0, 1, 2, 3, 4].map(() => Math.floor(Math.random() * 4)), len: 3, i: 0, t: 0, k: -1, wait: 0 };
+  G.frogs = FROGS.map(f => ({ ...f, litT: 0, badT: 0, hopT: 0 }));
+  G.bigFrog = { x: 13.5, y: 2.5, litT: 0 };   // on the reeds by the north shore: bark at it to hear the tune again
+  G.song = { state: 'idle', seq: [0, 1, 2, 3].map(() => Math.floor(Math.random() * 4)), len: 2, i: 0, t: 0, k: -1, wait: 0 };
 }
 function croak(f) { f.litT = .45; sfx.croak(f.note); }
 function stepFrogs(b, dt) {
   const s = G.song; if (!s) return;
-  s.t += dt; G.frogs.forEach(f => { f.litT -= dt; f.badT -= dt; });
+  s.t += dt; G.frogs.forEach(f => { f.litT -= dt; f.badT -= dt; f.hopT -= dt; }); G.bigFrog.litT -= dt;
   const near = G.frogs.some(f => Math.hypot(f.x - b.x, f.y - b.y) < 3);
-  if (s.state === 'idle' && near) {
+  if (s.state === 'idle' && near && G.stage === 'frogs') {
     if (!G.frogSeen) { G.frogSeen = true; toast('Ribbit! Bark at the frogs to sing their song back.'); }
     s.state = 'play'; s.t = 0; s.k = -1;
   }
   if (s.state === 'play') {                  // the frogs sing the tune, one note at a time
-    const k = Math.floor((s.t - .8) / .7);
-    if (s.t > .8 && k !== s.k && k < s.len) { s.k = k; croak(G.frogs[s.seq[k]]); }
-    if (s.t > .8 + s.len * .7) { s.state = 'listen'; s.i = 0; }
+    const k = Math.floor((s.t - 1.2) / 1);
+    if (s.t > 1.2 && k !== s.k && k < s.len) { s.k = k; croak(G.frogs[s.seq[k]]); }
+    if (s.t > 1.2 + s.len) { s.state = 'listen'; s.i = 0; s.t = 0; G.frogs.forEach(f => f.hopT = .35); }   // they all hop: your turn
   }
+  if (s.state === 'listen' && s.t > 7 && near) { s.state = 'play'; s.t = 0; s.k = -1; }   // nobody barked for a while: the tune again
   if (s.state === 'wait' && s.t > s.wait) { s.state = near ? 'play' : 'idle'; s.t = 0; s.k = -1; }
 }
 // a bark next to a frog makes it croak; while the frogs are listening, it
 // counts as the next note of the song
 function barkFrog(b) {
   const s = G.song; if (!s || s.state === 'won') return;
-  const f = G.frogs.reduce((a, o) => Math.hypot(o.x - b.x, o.y - b.y) < Math.hypot(a.x - b.x, a.y - b.y) ? o : a);
-  if (Math.hypot(f.x - b.x, f.y - b.y) > 1.6 || s.state === 'play') return;
+  const f = G.frogs.reduce((a, o) => Math.hypot(o.x - b.x, o.y - b.y) < Math.hypot(a.x - b.x, a.y - b.y) ? o : a), big = G.bigFrog;
+  const bd = Math.hypot(big.x - b.x, big.y - b.y);
+  if (bd < 2.4 && bd < Math.hypot(f.x - b.x, f.y - b.y)) {   // the big frog: the tune again, from the start
+    big.litT = .5; sfx.croak(392);
+    if (G.stage === 'frogs' && s.state !== 'play') { s.state = 'play'; s.t = 0; s.k = -1; s.i = 0; }
+    return;
+  }
+  if (Math.hypot(f.x - b.x, f.y - b.y) > 2.6 || s.state === 'play') return;
   croak(f);
   if (s.state !== 'listen') return;
   if (G.frogs.indexOf(f) === s.seq[s.i]) {
+    burst(f.x, f.y - .3); s.t = 0;
     if (++s.i < s.len) return;
-    if (s.len === 5) return frogsWon();
+    if (s.len === 4) return frogsWon();
     s.len++; s.state = 'wait'; s.t = 0; s.wait = 1.5; sfx.catch();
     G.pops.push({ x: 14.3, y: 5.6, txt: 'Ribbit!', t: 0, c: LINE });
   } else {
@@ -1382,8 +1401,9 @@ function barkFrog(b) {
 function frogsWon() {
   G.song.state = 'won'; burst(14.3, 7.5);
   [[-1, -2.2], [0, -2.4], [1, -2.2]].forEach(([dx, dy]) => G.treats.push({ x: 14.3 + dx, y: 7.5 + dy, v: 2 }));
-  if (!S.crumbHave.includes('frog')) { S.crumbHave.push('frog'); persist(); const w = { body: 'frog' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The frogs sang! For Crumb: the frog costume!'); }
-  else { sfx.win(); toast('The frogs sang the whole song!'); }
+  const next = () => stage('find', 'The frogs sang!');
+  if (!S.crumbHave.includes('frog')) { S.crumbHave.push('frog'); persist(); const w = { body: 'frog' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The frogs sang! For Crumb: the frog costume!', next); }
+  else { sfx.win(); next(); }
 }
 // ---------- The barn, on the open farm ----------
 const CAT = [
@@ -1664,7 +1684,7 @@ function hurt(o) {
 }
 function askHome() {
   G.asked = true; G.ask = true; stick.on = false; $('#toast').hidden = true;
-  $('#card').innerHTML = `<h2>Go home?</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">Go home</button></div>`;
+  $('#card').innerHTML = `<h2>Get in the car?</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">🚗 Get in</button></div>`;
   $('#cover').hidden = false; $('#homeGo').focus();
   $('#stayBtn').onclick = () => { $('#cover').hidden = true; G.ask = false; };
   $('#homeGo').onclick = () => {
@@ -1676,10 +1696,10 @@ function askHome() {
 }
 function tiredWorld() {
   setGoal(''); help(false);
-  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so they freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Ride home</button></div>`;
+  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so they freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Map</button></div>`;
   $('#cover').hidden = false;
   $('#again').onclick = () => { $('#cover').hidden = true; startWorld(W.key); };
-  $('#homeRide').onclick = () => { $('#cover').hidden = true; drive(W.stop, 0, () => goHome('Bread had a nap.')); };
+  $('#homeRide').onclick = () => { $('#cover').hidden = true; mapAt = W.stop; atStop(); };
 }
 // Decided 28 Oct: special finds get a moment. Bread stops, holds the find up
 // over her head, and a short rising tune plays, the way adventure games show
@@ -1830,6 +1850,9 @@ function stepCrumb(dt) {
     c.moving = true;
     const [tx, ty] = W.map.run[c.wp];
     if (go(tx, ty, 5.5) < .1 && ++c.wp >= W.map.run.length) { c.mode = 'wait'; [c.x, c.y] = W.map.crumbAt; }
+  } else if (c.mode === 'swim') {             // out to the lily pad among the frogs
+    c.moving = true; c.swim = tileAt(c.x, c.y) === 'w';
+    if (go(c.to[0], c.to[1], 2.4) < .1) { c.mode = 'wait'; c.swim = false; }
   } else if (c.mode === 'wait') {
     c.yip -= dt;
     if (c.yip <= 0 && Math.hypot(c.x - b.x, c.y - b.y) < 9) { c.yip = 2.5; sfx.yip(); G.pops.push({ x: c.x, y: c.y - .7, txt: 'Yip!', t: 0, c: LINE }); }
@@ -1864,6 +1887,7 @@ function pawTarget() {
 // so there was nothing to press but Bark. The paw reaches about two tiles in
 // front of Bread, the way she last walked, so a frozen squirrel is easy to get.
 function paw() {
+  if (screen === 'map') return mapGo();
   if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
   if (G.riding) { G.riding = false; G.race = null; G.pony.home = true; G.pony.x = G.bread.x + 1.8; G.pawT = performance.now() + 900; toast('Bread hopped off.'); return; }
   const b = G.bread, tg = pawTarget(); G.pawT = performance.now() + 250; sfx.paw();
@@ -2061,13 +2085,16 @@ function drawLevel(t) {
   G.hens.forEach(h => put(sprite(CHICKEN, { flip: Math.cos(h.a) < 0 }), h.x * T - 5, h.y * T - 6 - (Math.floor(t / 200 + h.t) % 2)));
   G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
   if (G.frogs) {                             // the lily pads and the four frogs
+    put(sprite(blob(24, 13, 'L', 'G', 'q')), 14.3 * T - 12, 7.6 * T - 3);   // Crumb's pad, in the middle
+    { const c = G.crumb; if (c.mode === 'wait' && Math.hypot(c.x - 14.3, c.y - 7.6) < .3) drawCrumb(c.x * T, c.y * T + 5, c.face, t, false); }
+    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG), g.x * T - 14, g.y * T - 13 - up, 2.2); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
     G.frogs.forEach(f => {
-      const X = f.x * T, Y = f.y * T, up = f.litT > 0 ? 3 : 0;
+      const X = f.x * T, Y = f.y * T, up = f.litT > 0 || f.hopT > 0 ? 3 : 0;
       put(sprite(blob(24, 13, 'L', 'G', 'q')), X - 12, Y - 3);
       put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col } }), X - 10, Y - 11 - up, 1.5);   // drawn bigger, so each color reads
       if (f.litT > 0) { px(X - 4, Y - 1 - up, 8, 5, LINE); px(X - 3, Y - up, 6, 3, COL.h); }   // the croak puffs its throat out
     });
-    const s = G.song, done = s.state === 'won' ? 3 : s.len - 3;
+    const s = G.song, done = s.state === 'won' ? 3 : s.len - 2;
     for (let i = 0; i < 3; i++) { px(14.3 * T - 10 + i * 8, 4.3 * T, 6, 6, LINE); px(14.3 * T - 9 + i * 8, 4.3 * T + 1, 4, 4, i < done ? COL.y : '#3b2a1a'); }   // the rounds sung so far
   }
   if (G.mama) {                              // the mama duck and her ducklings
@@ -2170,8 +2197,8 @@ function drawArrow(X, Y, a) {                // the tip is 9 px ahead of X, Y
 function flashTile(x, y, col) { cx.globalAlpha = .7; px(x * T, y * T, T, T, col); cx.globalAlpha = 1; }
 function drawHints(b, t) {
   if (!(G.hintOn || G.hintTill > performance.now()) || Math.floor(t / 350) % 2) return;
-  if (G.ducklings && G.ducksHome < 4) for (let y = 15; y <= 20; y++) for (let x = 9; x <= 15; x++) if (W.map.m[y][x] === 'w') flashTile(x, y, COL.h);   // the mama's pond
-  if (G.song && G.song.state !== 'won') {
+  if (G.ducklings && G.stage === 'ducks') { cx.globalAlpha = .6; G.ducklings.filter(d => !d.home).forEach(d => px(d.x * T - 8, d.y * T - 8, 16, 14, COL.h)); cx.globalAlpha = 1; }   // the ducklings still loose
+  if (G.song && G.song.state !== 'won' && G.stage === 'frogs') {
     const next = G.song.state === 'listen' ? [G.frogs[G.song.seq[G.song.i]]] : G.frogs;
     cx.globalAlpha = .6; next.forEach(f => px(f.x * T - 12, f.y * T - 12, 24, 17, COL.h)); cx.globalAlpha = 1;
   }
@@ -2212,7 +2239,7 @@ function finishWorld() {
   const after = newTrophy ? '🏆 You found everything there! A trophy for the shelf.' : '';
   $('#card').innerHTML = `<h2>Crumb is safe!</h2>${first ? `<p class="big">You won the ${costume}!</p>` : ''}`
     + rows.map(([l, , end = '']) => `<p class="trow"><span>${l}</span><b><span>0</span>${end}</b></p>`).join('')
-    + `<p class="big pct">${W.Name} complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div><div class="row"><button class="btn go" id="homeRide">🚗 Ride home</button></div>`;
+    + `<p class="big pct">${W.Name} complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div>`;
   $('#cover').hidden = false;
   const card = $('#card'), trows = [...card.querySelectorAll('.trow')], pcts = [...card.querySelectorAll('.pct')];
   const count = (el, to, step, fmt, done) => {
@@ -2228,25 +2255,27 @@ function finishWorld() {
     if (!card.isConnected) return;
     if (i < rows.length) { trows[i].classList.add('on'); const to = rows[i][1]; count(trows[i].querySelector('b span'), to, Math.max(1, Math.ceil(to / 12)), n => n, () => row(i + 1)); return; }
     pcts.forEach(p => p.classList.add('on'));
-    count(pcts[0].querySelector('b'), pct, 4, n => n + '%', () => { sfx.win(); if (newTrophy) sfx.sparkle(); });
+    count(pcts[0].querySelector('b'), pct, 4, n => n + '%', () => { sfx.win(); if (newTrophy) sfx.sparkle(); endLeave = leave; setTimeout(leave, 2600); });
   };
   setTimeout(() => row(0), 400);
-  $('#homeRide').onclick = () => {
-    $('#cover').hidden = true;
-    drive(W.stop, 0, () => goHome(first ? `Try on the ${costume}!` : 'Home!'));
-  };
+  // Decided 7 Nov: no button at the end. After the tally the card goes by
+  // itself (or with any key or tap), and you're on the map at this place.
+  let gone = false;
+  const leave = () => { if (gone) return; gone = true; endLeave = null; $('#cover').hidden = true; mapAt = W.stop; atStop(first ? `Try on the ${costume} at home!` : ''); };
 }
+let endLeave = null;
+$('#cover').addEventListener('pointerdown', () => endLeave && endLeave());
 
 // ---------- Input ----------
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+  if (endLeave && !$('#cover').hidden) { e.preventDefault(); endLeave(); return; }
   if (screen === 'press') { if (!e.metaKey && !e.ctrlKey && k !== 'tab') { e.preventDefault(); pressStart(); } return; }
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
   keys[k] = true;
   if (screen === 'map' && !e.repeat) {
-    // forward along the road is right or down, back is left or up
-    if (k === 'arrowright' || k === 'arrowdown' || k === 'd' || k === 's') mapMove(1);
-    if (k === 'arrowleft' || k === 'arrowup' || k === 'a' || k === 'w') mapMove(-1);
+    const dir = { arrowright: [1, 0], d: [1, 0], arrowleft: [-1, 0], a: [-1, 0], arrowup: [0, -1], w: [0, -1], arrowdown: [0, 1], s: [0, 1] }[k];
+    if (dir) mapDir(...dir);
     if (k === 'enter' || k === ' ') { e.preventDefault(); mapGo(); }
     return;
   }
@@ -2325,7 +2354,12 @@ function loop(t) {
   cx.clearRect(0, 0, cv.width, cv.height);
   if (screen === 'press') drawPress(t);
   else if (screen === 'title' || screen === 'home') drawHome(t);
-  else if (screen === 'map') drawMap(t);
+  else if (screen === 'map') {
+    drawMap(t);
+    const m = Math.hypot(stick.x, stick.y);
+    if (stick.on && m > .6 && !stick.used) { stick.used = true; mapDir(stick.x, stick.y); }
+    if (!stick.on || m < .3) stick.used = false;
+  }
   else if (screen === 'drive') {
     ride.t = Math.min(1, ride.t + dt / ride.dur);
     drawMap(t);
