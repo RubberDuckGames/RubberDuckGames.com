@@ -118,11 +118,26 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Also decided 5 Nov, the testers' idea: four frogs on lily pads in the big
   pond (pink, yellow, blue, orange), each with its own note (`FROGS`). Swim near
   and they croak a tune; Bread repeats it by barking at each frog in order.
-  Three rounds, the same tune a note longer each time (3, 4, 5); a wrong frog
+  Three rounds, the same tune a note longer each time (2, 3, 4 since 7 Nov,
+  when a tester found 3, 4, 5 too hard; the tune is slower too, a bark reaches
+  farther, and the tune plays again if nobody barks); a wrong frog
   croaks low and the tune plays again. The whole song wins Crumb's frog costume
   (not counted toward %). The big pond is bigger and runs off the east edge, and
   the hedge maze by it is only on the west side ("we're visiting a pond, not a
   hedge maze"); the two mazes below the fence stay, for the key squirrel.
+  Decided 7 Nov: the pond is one trip, a job at a time. The squirrel has the
+  gate key; past the gate, Crumb waits by the mama duck in the big pond and
+  her ducklings are loose in the park around it (herd them into the pond's
+  water; the little duck pond in the lower park is gone). Then Crumb swims out
+  to a lily pad in the middle of the frogs (Crumb's `swim` mode), the frogs
+  sing, and once their song is sung you swim out to Crumb and bring Crumb to
+  the car. A big frog on the north shore (`G.bigFrog`) plays the tune again
+  when Bread barks at it.
+  Decided 7 Nov: no words or buttons to get around. In a place, the bottom
+  button is 🚗 Map (back onto the map at that place). The end-of-trip tally
+  goes by itself (or with a key or a tap) onto the map. The map uses the play
+  controls: the pad (arrows, stick or cross pad) drives toward the place it
+  points at (`mapDir`), and Paw, Space or Enter goes in.
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
   and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
