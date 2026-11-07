@@ -200,6 +200,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   and one short line. The money line and the last page ("Your level") are
   worked out from `LEVELS`, so they follow the level picked (the game's own
   level mid-game) and stay right if the levels change.
+  Decided 6 Nov: the transport chopper (holds 4) and transport jet (holds 5,
+  heals 4), his stats. `ROOM` is his "basic unit" (soldier 1, tanks 2, guns
+  3); they carry ground units and guns (`u.cargo`, out of `G.units` while
+  inside). Guesses still to check with him: a unit gets in by moving under
+  your transport, or the transport flies onto it (the jet only while landed
+  in a city); Drop off puts it on a free square next to it and it waits a
+  turn; the jet heals the units inside 4 a turn; they're lost if it goes
+  down. The computer teams don't buy transports yet. There's a How to play
+  page for them.
   Decided 4 Nov, after his first long game stalled at turn 80 behind enemy
   guns: aircraft. Air and ground are two layers (a square holds one of each;
   tapping again steps from the air unit to the ground unit to the city).
