@@ -1301,6 +1301,15 @@ function paintTiles(map, seed) {
     if (ch !== 'w') for (let i = 0; i < 6; i++) fill(r() < .5 ? 'rgba(40,36,24,.35)' : 'rgba(200,190,150,.12)', X + r() * half, Y + r() * half, 1 + (r() * 2 | 0), 1);
   }
   const d = x.getImageData(0, 0, W, H); grime(d.data, W, H, 9); x.putImageData(d, 0, 0);
+  // Decided 11 Nov, after a friend took the sea for rock: the worn look drains
+  // the colour out of everything, and the water came out the same grey as the
+  // rock. The sea gets its blue back on top of the grime (the 'color' blend
+  // keeps the grain and only changes the colour), plus lighter wave marks.
+  x.globalCompositeOperation = 'color'; x.fillStyle = '#2f73b0'; x.globalAlpha = .6;   // full strength was a bright blue; .6 sits between that and the old grey
+  for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) if (map[ty][tx] === 'w') x.fillRect(tx * half, ty * half, half, half);
+  x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+  const rw = rng(seed + 1);
+  for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) if (map[ty][tx] === 'w') for (let i = 0; i < 2; i++) fill('rgba(150,195,225,.28)', tx * half + 2 + rw() * 14, ty * half + 5 + i * 9, 5, 1);
   return c;
 }
 function paintGround() { ground = paintTiles(MAP, 47); }
@@ -1467,7 +1476,7 @@ function frame(now) {
   cam.x += (camGo.x - cam.x) * .2; cam.y += (camGo.y - cam.y) * .2;
   if (Math.abs(camGo.x - cam.x) < .01) cam.x = camGo.x;
   if (Math.abs(camGo.y - cam.y) < .01) cam.y = camGo.y;
-  ctx.fillStyle = '#3a4852'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#2e4a62'; ctx.fillRect(0, 0, cv.width, cv.height);   // open sea past the map's edge
   ctx.save(); ctx.scale(ZOOM, ZOOM); ctx.translate(-Math.round(cam.x * TS * ZOOM) / ZOOM, -Math.round(cam.y * TS * ZOOM) / ZOOM);   // from here on, squares are whole-map squares
   ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
   const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
