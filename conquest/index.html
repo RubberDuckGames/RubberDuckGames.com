@@ -22,19 +22,15 @@ button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(
 .game{display:flex;gap:1rem;justify-content:center;align-items:flex-start;padding:0 .75rem 1rem;flex-wrap:wrap}
 /* Decided 5 Nov: the map is twice as wide (24 squares). Where it doesn't fit,
    the squares keep a tappable size and the map scrolls sideways. */
-/* Decided 10 Nov: his map, one sector at a time. The buttons above the map
-   pick the sector; the map's width follows the sector's shape (set in
-   showSector), so a whole sector fits the screen's height. */
-.mapcol{flex:1 1 40rem;min-width:0;display:flex;flex-direction:column;gap:.5rem}
-.sectors{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
-.sectors .slabel{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--soft);margin-right:.2rem}
-.sectors .pill[aria-pressed="true"]{background:var(--accent);color:#211f18;border-color:#1b1a15}
+/* Decided 10 Nov: the map is a camera on his big map. The canvas shows as
+   many squares as fit the screen (fitView); drag it to look around. */
+.mapbox{flex:1 1 40rem;min-width:0;position:relative;border:3px solid #1b1a15}
+#cv{min-width:0;touch-action:none;cursor:grab}
 .dist{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;padding:.3rem 0;border-top:1px solid var(--line)}
 .dist span{flex:1 1 100%;color:var(--ink)}
 .dbtn{background:#2f2d23;border:2px solid var(--line);padding:.3rem .55rem;font-size:.85rem}
 .dbtn[aria-pressed="true"]{background:var(--accent);color:#211f18;border-color:#1b1a15}
 .dbtn:disabled{opacity:.5;cursor:default}
-.mapbox{position:relative;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:3px solid #1b1a15}
 canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixelated;background:#4a4834;touch-action:manipulation}
 .side{flex:1 1 18rem;max-width:26rem;display:flex;flex-direction:column;gap:.75rem}
 .info{background:var(--panel);border:2px solid var(--line);padding:.9rem 1rem;min-height:8rem}
@@ -95,15 +91,13 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
   <span class="pill" id="hTeam"></span>
   <span class="pill" id="hTurn"></span>
   <span class="pill" id="hMoney"></span>
+  <button class="pill" id="inviteBtn" hidden></button>
   <button class="pill" id="teamsBtn"></button>
   <button class="pill" id="helpBtn">?</button>
   <button class="pill" id="soundBtn"></button>
 </div>
 <main class="game">
-  <div class="mapcol" id="mapcol">
-    <div class="sectors" id="sectors" role="group"></div>
-    <div class="mapbox" id="mapbox"><canvas id="cv" width="960" height="864" tabindex="0"></canvas></div>
-  </div>
+  <div class="mapbox" id="mapbox"><canvas id="cv" width="960" height="768" tabindex="0"></canvas></div>
   <div class="side">
     <section class="info" id="info" aria-live="polite"></section>
     <p class="log" id="log" aria-live="polite"></p>
@@ -138,8 +132,9 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 // fire on each other or take each other's cities), as long as neither is
 // allied with a team the other doesn't like. At -2 they are enemies for good.
 // Decided 10 Nov, his next round: his own hand-drawn map. Five nations
-// (orange joins, on the big land in the middle), 45 cities, and you see one
-// sector of the map at a time. Every city has four districts he can set:
+// (orange joins, on the big land in the middle) and 45 cities. The map is
+// bigger than the screen: drag it to look around, and it follows whoever
+// is moving. Every city has four districts he can set:
 // hospital, quarantine or industrial (`DISTRICTS`).
 
 // ---------- words ----------
@@ -155,7 +150,7 @@ const STR = {
   howBtn: 'How to play',
   gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
   g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
-  g_drag: 'If the map doesn’t fit, drag it sideways.',
+  g_drag: 'Drag the map to look around.',
   g_fire_t: 'Fire', g_fire: 'Then tap a unit in a red box to fire at it.',
   g_marks_t: 'What each unit has left', g_marks: 'Filled square: it can still move. Empty square: it moved, and can still fire. Greyed out: it’s done. When you’re done, press End turn.',
   g_city_t: 'Cities and money', g_city: 'Every city you own pays you each turn: 1 money, or 3 for your home city. Tap your city to buy units there. On this level you start with {m} money.',
@@ -181,9 +176,19 @@ const STR = {
   setupTitle: 'New game',
   whoPlays: 'Who plays each team?',
   player: 'Player', computer: 'Computer',
+  wherePlay: 'Where are the players?', hereDevice: 'Here, on this device', online: 'Online, each on their own device',
+  onlineWhy: 'Each Player team is a friend on their own phone or computer. You get a link to send them.',
+  startOnline: 'Start online game', makingGame: 'Making the game…', netFail: 'Couldn’t reach the game online. Check the internet and try again.',
+  tryAgain: 'Try again',
+  pickTeamTitle: 'Pick your team', pickTeamBody: 'Which team are you playing?', teamTaken: 'Someone took that team. Pick another.',
+  noSeats: 'Every team in this game already has a player.',
+  shareTitle: 'Invite your friends', shareBody: 'Send this link to the friends you’re playing with. Each one opens it and picks a team. Anyone with the link can play, so only send it to them.',
+  copyLink: 'Copy link', copied: 'Copied!', shareBtn: 'Share link', invite: 'Invite',
+  waitFor: 'Waiting for {team}…', waitBody: 'It’s {team}’s turn. The map updates when they finish.',
+  yourTurnOnline: 'Your turn! {team} just finished.',
+  gameGone: 'This game link doesn’t work. It may have a typo.',
   needPlayer: 'Pick Player for at least one team.',
   team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue', team_orange: 'Orange',
-  sectors: 'Sectors', sectorHint: 'You see one sector of the map at a time. Tap a sector to look there.',
   districts: 'Districts', district: 'District {n}', dEmpty: 'Empty',
   d_hospital: 'Hospital', d_quarantine: 'Quarantine', d_industrial: 'Industrial',
   dWhy_hospital: 'Hospital: heals your units on or next to the city by 1 a turn.',
@@ -265,6 +270,11 @@ const STR = {
   teamOut: '{team} is out of the game.',
   noRoom: 'No room',
   buildSpot: 'Open ground',
+  buildSea: 'Open water', buildShip: 'Build a ship here. It fits in the water from this square.', sizeOf: '{l} by {w}',
+  shipSize: 'Size', shipSizeOf: '{l} squares long, {w} wide',
+  deckHow: 'Fly your planes onto it to land. They fill up with fuel each turn and ride along.',
+  takeOffBtn: 'Take off', onDeck: '{a} landed on the carrier.', tookOff: '{a} took off.',
+  g_ships_t: 'Ships', g_ships: 'Tap open water next to your units or cities to build a ship. Ships are 2 to 4 squares long. Planes can land on a carrier.',
   buildHere: 'Build a gun here, next to your unit:',
   tooClose: 'Another team can fire on this square, so no gun can go here.',
   artyCity: 'Artillery guns can only be built in cities.',
@@ -311,6 +321,14 @@ const UNITS = {
   groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane', fire: true },
   transportChopper: { name: 'Transport chopper', img: 'transport-chopper', hp: 4, dmg: 1,              rng: 3, spd: 4, cost: 3, hits: 'G',  air: 'heli',  holds: 4 },
   transportJet:  { name: 'Transport jet',         img: 'transport-jet',    hp: 4,   dmgA: 2,               rng: 3, spd: 3, cost: 4, hits: 'A',  air: 'plane', holds: 5, heals: 4 },
+  // Decided 10 Nov: ships, his stats from 4 Nov and his sizes from 10 Nov
+  // (len squares long, wid wide). The 2-square one is taken to be the
+  // destroyer (to check with him). The carrier holds 6 of his basic units of
+  // planes. The trade ships wait until we know their sizes.
+  destroyer:     { name: 'Destroyer',             img: 'destroyer',        hp: 4,   dmg: 2,                rng: 4, spd: 2, cost: 4,  hits: 'G',  len: 2, wid: 1 },
+  cruiser:       { name: 'Cruiser',               img: 'cruiser',          hp: 5,   dmg: 2.5, dmgA: 2.5,   rng: 4, spd: 2, cost: 6,  hits: 'GA', len: 3, wid: 1 },
+  battleship:    { name: 'Battleship',            img: 'battleship',       hp: 10,  dmg: 4,   dmgA: 4,     rng: 5, spd: 2, cost: 12, hits: 'GA', len: 3, wid: 2 },
+  carrier:       { name: 'Carrier',               img: 'carrier',          hp: 8,   dmgA: 2,               rng: 3, spd: 2, cost: 20, hits: 'A',  len: 4, wid: 2, holds: 6, deck: true },
 };
 const SHOP_GROUPS = [
   ['shopGround', ['soldier', 'tank', 'tankDestroyer', 'aaTank']],
@@ -318,6 +336,27 @@ const SHOP_GROUPS = [
   ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber', 'transportChopper', 'transportJet']],
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
+// Ships are built like the field guns: on an empty water square touching one
+// of your units or cities, where no enemy can fire. Decided 10 Nov, his idea.
+const SHIPS = ['destroyer', 'cruiser', 'battleship', 'carrier'];
+// A ship covers len by wid squares. (x, y) is its bow (front corner); the
+// rest trails behind it, opposite the way it faces.
+const FACES = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+function cellsAt(type, x, y, ang) {
+  const R = UNITS[type]; if (!R.len) return [[x, y]];
+  const fx = Math.round(Math.sin(ang)), fy = Math.round(-Math.cos(ang)), sx = -fy, sy = fx, out = [];
+  for (let j = 0; j < R.len; j++) for (let i = 0; i < R.wid; i++) out.push([x - fx * j + sx * i, y - fy * j + sy * i]);
+  return out;
+}
+const cells = u => cellsAt(u.type, u.x, u.y, u.ang);
+const covers = (u, x, y) => UNITS[u.type].len ? cells(u).some(([a, b]) => a === x && b === y) : u.x === x && u.y === y;
+// squares from (x, y) to the nearest part of o
+const gap = (o, x, y) => Math.min(...cells(o).map(([a, b]) => Math.abs(a - x) + Math.abs(b - y)));
+// from the nearest part of u standing at (x, y) to the nearest part of o
+const reachGap = (u, x, y, o) => Math.min(...cellsAt(u.type, x, y, u.ang).map(([a, b]) => gap(o, a, b)));
+function shipFits(type, x, y, ang, self) {
+  return cellsAt(type, x, y, ang).every(([a, b]) => inMap(a, b) && tileAt(a, b) === 'w' && !G.units.some(o => o !== self && !UNITS[o.type].air && covers(o, a, b)));
+}
 // Decided 4 Nov: defense guns and AA guns can be built on any empty square
 // next to one of your units, as long as no other team can fire on it.
 // Artillery guns only in cities. (Missile AA goes with the AA gun until he says.)
@@ -333,9 +372,11 @@ const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
 // riding in it 4 a turn; units inside are lost if it goes down. The computer
 // teams don't buy transports yet.
 const ROOM = { soldier: 1, tank: 2, tankDestroyer: 2, aaTank: 2, defenseGun: 3, artillery: 3, aaGun: 3, missileAA: 3 };
-const used = t => t.cargo.reduce((n, o) => n + ROOM[o.type], 0);
-const canLoad = (t, o) => !!t && !!UNITS[t.type].holds && t.side === o.side && o !== t && ROOM[o.type] !== undefined
-  && (UNITS[t.type].air === 'heli' || t.landed) && used(t) + ROOM[o.type] <= UNITS[t.type].holds;
+const AIR_ROOM = { attackJet: 2, interceptor: 2, bomber: 4, groundBomber: 4, transportJet: 4 };   // planes only: helicopters hover
+const roomOf = (t, k) => UNITS[t.type].deck ? AIR_ROOM[k] : ROOM[k];
+const used = t => t.cargo.reduce((n, o) => n + roomOf(t, o.type), 0);
+const canLoad = (t, o) => !!t && !!UNITS[t.type].holds && t.side === o.side && o !== t && roomOf(t, o.type) !== undefined
+  && (UNITS[t.type].deck || UNITS[t.type].air === 'heli' || t.landed) && used(t) + roomOf(t, o.type) <= UNITS[t.type].holds;
 const FUEL = 10, CIRCLE = 2;   // a plane's full tank, and what a turn in the air without moving burns
 const BURN = 1, BURN_TURNS = 2; // his fire burns 2 more turns after the hit; 1 health a turn is a guess to check with him
 
@@ -398,20 +439,6 @@ const TOWNS = [
   [4, 27], [1, 29], [10, 28], [9, 35], [3, 37], [8, 24], [15, 31],                    // yellow
   [47, 29], [52, 28], [37, 33], [41, 35], [49, 36], [44, 22], [37, 26],               // green
 ];
-// Decided 10 Nov, his rule: you see one sector at a time. Each nation's
-// sector is its own island and the sea around it; red's takes in a corner of
-// the big land, and orange's shows all of the big land and a little sea.
-// Sectors overlap where they meet. They're for looking only: units move and
-// fire across them.
-const SECTORS = {
-  red:    { x: 0,  y: 0,  w: 20, h: 18 },
-  blue:   { x: 34, y: 0,  w: 20, h: 22 },
-  orange: { x: 12, y: 2,  w: 26, h: 30 },
-  yellow: { x: 0,  y: 20, w: 20, h: 18 },
-  green:  { x: 34, y: 22, w: 20, h: 16 },
-};
-const SECTOR_ORDER = ['red', 'blue', 'orange', 'yellow', 'green'];   // as they sit on the map
-const inSector = (S, x, y) => x >= S.x && y >= S.y && x < S.x + S.w && y < S.y + S.h;
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 1;
 // Which piece of land each square is on (-1 for water and rock). The computer's
@@ -474,19 +501,22 @@ let banner = null;     // { text, until }
 let cursor = { x: 5, y: 12 };
 let uid = 1;
 
-function newGame() {
+function newGame(online = false) {
   const cities = [
     ...TEAMS.map(s => ({ x: CAPITALS[s][0], y: CAPITALS[s][1], hq: true, owner: s, d: [null, null, null, null] })),
     ...TOWNS.map(([x, y]) => ({ x, y, hq: false, owner: null, d: [null, null, null, null] })),
   ];
   const ctrl = { ...PREFS.ctrl }, money = {}, stats = {};
   for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
-  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats, look: {} };
+  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats };
   // two soldiers and a tank on the nearest free land around each capital
   for (const c of cities.filter(c => c.hq)) {
     const spots = landNear(c.x, c.y, 3);
     ['soldier', 'tank', 'soldier'].forEach((k, i) => spots[i] && G.units.push(mkUnit(k, c.owner, spots[i].x, spots[i].y)));
   }
+  // online: the first team's turn starts on its player's device (or the
+  // computer teams play first on the device that starts the game)
+  if (online) { G.waiting = true; return; }
   begin(TEAMS[0]);
 }
 // Free land squares near a square, nearest first, not counting it or any city.
@@ -510,9 +540,149 @@ function mkUnit(type, side, x, y) {
   return u;
 }
 function save() {
+  if (ONLINE) { onlineSave(); return; }
   const s = read(); s.prefs = PREFS;
   s.game = G && !G.over ? { ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) } : null;
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { }
+}
+
+// ---------- online ----------
+// Decided 10 Nov: friends play one game from their own devices, a turn at a
+// time. Starting an online game saves it to the studio's database (the shared
+// `matches` table every game can use, tagged 'conquest') and gives a
+// link (?game=<id>); the id is the only key, with no accounts and no names.
+// Each friend opens the link and picks a free Player team (`G.seats`); the
+// device remembers its team. When you end your turn, the computer teams play
+// on your device, then the game is saved for the next player, marked
+// `G.waiting` until their device starts their turn (pay, healing, fuel). The
+// others' devices check for a new turn every few seconds. A save made from an
+// older copy is refused, so two devices can't overwrite each other.
+const SB_URL = 'https://hybjirpyeyomedhluvvl.supabase.co', SB_KEY = 'sb_publishable_3n3_7kk6BSLnDQ1_FLdOHA_xyXEJm8P';
+let ONLINE = null;   // { id, ver, me }
+async function rpc(fn, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(j?.message || 'net');
+  return j;
+}
+const packG = () => ({ ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) });
+const linkFor = id => location.origin + location.pathname + '?game=' + id;
+const seatKey = id => 'conquest-online:' + id;
+const mySeat = id => { try { return localStorage.getItem(seatKey(id)); } catch (e) { return null; } };
+async function onlineSave() {
+  if (!ONLINE) return;
+  for (let i = 0; i < 3; i++) {
+    try { ONLINE.ver = await rpc('match_save', { p_id: ONLINE.id, p_state: packG(), p_version: ONLINE.ver }); return; }
+    catch (e) {
+      if (e.message !== 'stale') { log(t('netFail')); return; }
+      // someone picked a team while we played: keep their seat, then save again
+      const [row] = await rpc('match_get', { p_id: ONLINE.id });
+      Object.assign(G.seats, row.state.seats || {}); ONLINE.ver = row.version;
+    }
+  }
+}
+async function startOnline() {
+  cardShow(`<h2>${t('online')}</h2><p>${t('makingGame')}</p>`);
+  newGame(true);
+  G.online = true; G.seats = {};
+  try {
+    const id = await rpc('match_create', { p_game: 'conquest', p_state: packG() });
+    ONLINE = { id, ver: 1, me: null };
+    history.replaceState(null, '', linkFor(id));
+    pickTeamCard();
+  } catch (e) { cardShow(`<h2>${t('online')}</h2><p class="warn">${t('netFail')}</p><div class="row"><button class="btn" id="re">${t('tryAgain')}</button></div>`); $('#re').onclick = startOnline; }
+}
+async function joinOnline(id) {
+  try {
+    const rows = await rpc('match_get', { p_id: id });
+    if (!rows.length || rows[0].game !== 'conquest') { cardShow(`<h2>${t('title')}</h2><p class="warn">${t('gameGone')}</p><div class="row"><a class="btn" href="${location.pathname}">${t('newGame')}</a></div>`); return; }
+    ONLINE = { id, ver: rows[0].version, me: mySeat(id) }; seenReplay = rows[0].state.replayId;
+    loadOnline(rows[0].state);
+    if (!ONLINE.me || !G.seats[ONLINE.me]) pickTeamCard(); else { cardHide(); onlineReady(true); }
+  } catch (e) { cardShow(`<h2>${t('title')}</h2><p class="warn">${t('netFail')}</p><div class="row"><button class="btn" id="re">${t('tryAgain')}</button></div>`); $('#re').onclick = () => joinOnline(id); }
+}
+function loadOnline(state) {
+  G = state; uid = Math.max(0, ...G.units.map(u => u.id), ...G.units.flatMap(u => (u.cargo || []).map(o => o.id))) + 1;
+  for (const u of G.units) { u.px = u.x; u.py = u.y; }
+  if (ONLINE.me) G.view = ONLINE.me;
+}
+function pickTeamCard(msg = '') {
+  const free = TEAMS.filter(s => G.ctrl[s] === 'human' && !G.seats[s]);
+  if (!free.length) { cardShow(`<h2>${t('pickTeamTitle')}</h2><p>${t('noSeats')}</p>`); return; }
+  cardShow(`<h2>${t('pickTeamTitle')}</h2>${msg ? `<p class="warn">${msg}</p>` : ''}<p>${t('pickTeamBody')}</p><div class="row">${free.map(s => `<button class="btn quiet" data-seat="${s}">${chip(s)}${tn(s)}</button>`).join('')}</div>`);
+  $('#card').querySelectorAll('[data-seat]').forEach(b => b.onclick = () => claimSeat(b.dataset.seat));
+}
+async function claimSeat(side) {
+  try {
+    const [row] = await rpc('match_get', { p_id: ONLINE.id });
+    if (row.state.seats?.[side]) { ONLINE.ver = row.version; loadOnline(row.state); pickTeamCard(t('teamTaken')); return; }
+    row.state.seats = { ...(row.state.seats || {}), [side]: 1 };
+    ONLINE.ver = await rpc('match_save', { p_id: ONLINE.id, p_state: row.state, p_version: row.version });
+    ONLINE.me = side; try { localStorage.setItem(seatKey(ONLINE.id), side); } catch (e) { }
+    loadOnline(row.state);
+    shareCard(() => { cardHide(); onlineReady(true); });
+  } catch (e) { pickTeamCard(t('netFail')); }
+}
+function shareCard(after = cardHide) {
+  const url = linkFor(ONLINE.id);
+  cardShow(`<h2>${t('shareTitle')}</h2><p>${t('shareBody')}</p><p><input id="link" readonly value="${url}" style="width:100%;font:inherit;padding:.4rem;background:#2f2d23;color:var(--ink);border:2px solid var(--line)"></p>
+    <div class="row">${navigator.share ? `<button class="btn quiet" id="shr">${t('shareBtn')}</button>` : ''}<button class="btn quiet" id="cp">${t('copyLink')}</button><button class="btn" id="ok">${t('done')}</button></div>`);
+  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(url); } catch (e) { $('#link').select(); document.execCommand('copy'); } $('#cp').textContent = t('copied'); };
+  const sh = $('#shr'); if (sh) sh.onclick = () => navigator.share({ title: t('title'), url }).catch(() => { });
+  $('#ok').onclick = after;
+}
+// After loading: start my turn if it's waiting for me, otherwise wait.
+function onlineReady(first = false) {
+  $('#inviteBtn').hidden = false;
+  if (G.over) { render(); end(G.won || [], G.why || 'wonAll', true); return; }
+  if (G.waiting && !isHuman(G.side)) { G.waiting = false; G.replay = []; G.replayId = seenReplay = Math.random().toString(36).slice(2); render(); begin(G.side); return; }   // computer teams go first: they play here
+  if (G.side === ONLINE.me && G.waiting) { G.waiting = false; G.replay = []; G.replayId = seenReplay = Math.random().toString(36).slice(2); startTurn(ONLINE.me); seeHome(ONLINE.me, first); }   // startTurn saves it
+  else { sel = null; render(); if (first) seeHome(ONLINE.me, true); if (G.side !== ONLINE.me) log(t('waitBody', { team: tn(G.side) })); }
+  watchOnline();
+}
+// Decided 10 Nov: the other players watch what happened, not just the end
+// result. Everything from the start of a player's turn until the next
+// player's (theirs, then the computer teams') is kept in `G.replay` (moves,
+// shots, units lost, units bought), and the waiting devices play it back on
+// their map, the camera following, before showing the new turn. `G.replayId`
+// makes sure each one plays once.
+let seenReplay = null;
+function rec(e) { if (ONLINE && G && G.replay && G.replay.length < 3000) G.replay.push(e); }
+async function playReplay(evs) {
+  busy = true; render();
+  const byId = id => G.units.find(u => u.id === id);
+  for (const e of evs) {
+    if (e.k === 'm') { const u = byId(e.id); if (!u) continue; if (seeTile(e.x, e.y)) await sleep(380); u.x = e.x; u.y = e.y; u.ang = e.ang; sfx('step'); await sleep(260); }
+    else if (e.k === 'f') {
+      const a = byId(e.a); if (a) a.ang = e.ang;
+      if (seeTile(e.x1, e.y1)) await sleep(380);
+      fx.push({ kind: 'shot', x0: e.x0, y0: e.y0, x1: e.x1, y1: e.y1, t0: performance.now(), dur: 260 });
+      fx.push({ kind: 'num', x: e.x1, y: e.y1, text: '-' + fmt(e.d), t0: performance.now() + 200, dur: 900 });
+      sfx('shot'); await sleep(420);
+    }
+    else if (e.k === 'x') { const u = byId(e.id); if (!u) continue; G.units = G.units.filter(o => o !== u); if (e.boom) { fx.push({ kind: 'boom', x: u.x, y: u.y, t0: performance.now(), dur: 600 }); sfx('boom'); await sleep(300); } }
+    else if (e.k === 'b') { if (byId(e.u.id)) continue; if (seeTile(e.u.x, e.u.y)) await sleep(380); G.units.push({ ...e.u, px: e.u.x, py: e.u.y }); sfx('buy'); await sleep(200); }
+  }
+  busy = false;
+}
+let pollT = null;
+function watchOnline() {
+  clearTimeout(pollT);
+  if (!ONLINE || (G.side === ONLINE.me && !G.over)) return;
+  pollT = setTimeout(async () => {
+    try {
+      const [row] = await rpc('match_get', { p_id: ONLINE.id });
+      if (row && row.version > ONLINE.ver) {
+        const was = G.side; ONLINE.ver = row.version;
+        const st = row.state;
+        if (st.replayId && st.replayId !== seenReplay && st.replay?.length) { seenReplay = st.replayId; await playReplay(st.replay); }
+        loadOnline(st);
+        if (G.side === ONLINE.me && G.waiting) { showBanner(t('yourTurnOnline', { team: tn(was) })); sfx('take'); }
+        onlineReady(); return;
+      }
+    } catch (e) { }
+    watchOnline();
+  }, 4000);
 }
 
 // ---------- how the teams get along ----------
@@ -567,8 +737,8 @@ function relWord(a, b) {
 // unit, the air one flying above. A landed plane still takes the air spot.
 const layerOf = u => UNITS[u.type].air ? 'air' : 'ground';
 const isAir = u => !!UNITS[u.type].air && !u.landed;
-const unitAt = (x, y, layer) => G.units.find(u => u.x === x && u.y === y && (!layer || layerOf(u) === layer));
-const unitsAt = (x, y) => G.units.filter(u => u.x === x && u.y === y).sort((a, b) => isAir(b) - isAir(a));
+const unitAt = (x, y, layer) => G.units.find(u => (!layer || layerOf(u) === layer) && covers(u, x, y));
+const unitsAt = (x, y) => G.units.filter(u => covers(u, x, y)).sort((a, b) => isAir(b) - isAir(a));
 const cityAt = (x, y) => G.cities.find(c => c.x === x && c.y === y);
 const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const fmt = n => String(Math.round(n * 10) / 10);
@@ -586,7 +756,7 @@ const dmgTo = (R, o) => (isAir(o) ? R.dmgA : R.dmg) * (UNITS[o.type].fixed ? .5 
 function reach(u) {
   const out = new Map(), R = UNITS[u.type];
   if (R.fixed || u.moved) return out;
-  const air = !!R.air, lay = layerOf(u);
+  const air = !!R.air, sea = !!R.len, lay = layerOf(u);
   const budget = R.air === 'plane' ? Math.min(R.spd, Math.max(0, u.fuel)) : R.spd;
   const best = new Map([[u.x + ',' + u.y, 0]]), q = [[u.x, u.y, 0]];
   while (q.length) {
@@ -595,15 +765,16 @@ function reach(u) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy;
       if (!inMap(nx, ny)) continue;
-      const nc = c + (air ? 1 : moveCost(tileAt(nx, ny)));
+      const nc = c + (air ? 1 : sea ? (tileAt(nx, ny) === 'w' ? 1 : Infinity) : moveCost(tileAt(nx, ny)));
       if (nc > budget) continue;
-      const o = unitAt(nx, ny, lay);
+      let o = unitAt(nx, ny, lay); if (o === u) o = null;   // a ship can slide along its own length
       if (!air && o && !allied(o.side, u.side)) continue;
       const k = nx + ',' + ny;
       if (best.has(k) && best.get(k) <= nc) continue;
       best.set(k, nc); q.push([nx, ny, nc]);
       const cc = cityAt(nx, ny);
-      if (!o && !(!air && cc?.owner && cc.owner !== u.side && allied(cc.owner, u.side))) out.set(k, { x: nx, y: ny });
+      if (sea) { if (!o && shipFits(u.type, nx, ny, face(nx - u.x, ny - u.y), u)) out.set(k, { x: nx, y: ny }); }
+      else if (!o && !(!air && cc?.owner && cc.owner !== u.side && allied(cc.owner, u.side))) out.set(k, { x: nx, y: ny });
     }
   }
   return out;
@@ -611,7 +782,7 @@ function reach(u) {
 function targetsFrom(u, x, y) {
   if (u.acted || u.reloading) return [];
   const R = UNITS[u.type];
-  return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && Math.abs(o.x - x) + Math.abs(o.y - y) <= rangeTo(R, o));
+  return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && reachGap(u, x, y, o) <= rangeTo(R, o));
 }
 const cityPay = c => (c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY;
 function income(side) {
@@ -662,6 +833,7 @@ function startTurn(side) {
   }
   if (!isHuman(side)) cpuDistricts(side);
   hospitals(side);
+  for (const u of G.units.filter(u => u.side === side && UNITS[u.type].deck)) for (const o of u.cargo) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
   for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
   for (const u of G.units.filter(u => u.side === side)) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
@@ -679,6 +851,7 @@ function startTurn(side) {
 }
 // Takes a unit off the map with a boom, counts it, and returns the line to show.
 function remove(u, why) {
+  rec({ k: 'x', id: u.id, boom: 1 });
   G.units = G.units.filter(o => o !== u);
   fx.push({ kind: 'boom', x: u.x, y: u.y, t0: performance.now() + 220, dur: 600 });
   setTimeout(() => sfx('boom'), 220);
@@ -695,6 +868,7 @@ function moveUnit(u, x, y) {
   if (R.air === 'plane') { u.fuel -= dist(u, { x, y }); u.flew = true; }
   u.ang = face(x - u.x, y - u.y);
   u.x = x; u.y = y; u.moved = true;
+  rec({ k: 'm', id: u.id, x, y, ang: u.ang });
   const c = cityAt(x, y);
   if (R.air === 'plane') u.landed = !!(c && c.owner === u.side);
   // only ground units take cities
@@ -710,14 +884,27 @@ function moveUnit(u, x, y) {
   const aa = aaReact(u);
   if (aa) log(aa);
   if (G.units.includes(u)) board(u);
+  if (G.units.includes(u) && R.air === 'plane' && !u.landed) {   // onto your carrier's deck
+    const cr = G.units.find(o => UNITS[o.type].deck && covers(o, x, y));
+    if (cr && canLoad(cr, u)) { rec({ k: 'x', id: u.id }); G.units = G.units.filter(o => o !== u); cr.cargo.push(u); u.moved = u.acted = true; u.fuel = FUEL; log(t('onDeck', { a: R.name })); sfx('click'); }
+  }
   checkEnd();
+}
+// A plane on a carrier takes off from a free square of the deck. It can fly
+// this turn unless it landed this turn.
+function deckSpot(cr) { return cells(cr).map(([x, y]) => ({ x, y })).find(p => inMap(p.x, p.y) && !unitAt(p.x, p.y, 'air')); }
+function takeOff(cr, i) {
+  const p = deckSpot(cr); if (!p) return;
+  const o = cr.cargo.splice(i, 1)[0];
+  o.x = o.px = p.x; o.y = o.py = p.y; o.landed = false; o.ang = cr.ang; G.units.push(o); rec({ k: 'b', u: { ...o } });
+  log(t('tookOff', { a: UNITS[o.type].name })); sfx('click');
 }
 // After a move: a unit that ends under your transport gets in, and a
 // transport that ends over one of your units picks it up.
 function board(u) {
   const tr = UNITS[u.type].holds ? u : unitAt(u.x, u.y, 'air'), o = tr === u ? unitAt(u.x, u.y, 'ground') : u;
   if (!o || !canLoad(tr, o)) return;
-  G.units = G.units.filter(x => x !== o); tr.cargo.push(o); o.moved = o.acted = true;
+  G.units = G.units.filter(x => x !== o); tr.cargo.push(o); o.moved = o.acted = true; rec({ k: 'x', id: o.id });
   log(t('gotIn', { a: UNITS[o.type].name, b: UNITS[tr.type].name.toLowerCase() })); sfx('click');
 }
 // where the units inside can get out: a free land square next to it, or under it
@@ -728,7 +915,7 @@ function dropSpots(tr) {
 }
 function dropOff(tr, i, p) {
   const o = tr.cargo.splice(i, 1)[0];
-  o.x = o.px = p.x; o.y = o.py = p.y; o.moved = o.acted = true; G.units.push(o);
+  o.x = o.px = p.x; o.y = o.py = p.y; o.moved = o.acted = true; G.units.push(o); rec({ k: 'b', u: { ...o } });
   log(t('gotOut', { a: UNITS[o.type].name })); sfx('click');
 }
 function fire(a, b) {
@@ -741,6 +928,7 @@ function fire(a, b) {
   if (R.reload) a.reload = 1;
   b.hp = r1(b.hp - d);
   fx.push({ kind: 'shot', x0: a.x, y0: a.y, x1: b.x, y1: b.y, t0: performance.now(), dur: 260 });
+  rec({ k: 'f', a: a.id, ang: a.ang, x0: a.x, y0: a.y, x1: b.x, y1: b.y, d });
   fx.push({ kind: 'num', x: b.x, y: b.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
   sfx('shot');
   let msg = (aa ? aa + ' ' : '') + t('hit', { a: R.name, b: UNITS[b.type].name.toLowerCase() });
@@ -765,6 +953,7 @@ function aaReact(plane) {
     g.ang = face(plane.x - g.x, plane.y - g.y);
     plane.hp = r1(plane.hp - d);
     fx.push({ kind: 'shot', x0: g.x, y0: g.y, x1: plane.x, y1: plane.y, t0: performance.now(), dur: 260 });
+    rec({ k: 'f', a: g.id, ang: g.ang, x0: g.x, y0: g.y, x1: plane.x, y1: plane.y, d });
     fx.push({ kind: 'num', x: plane.x, y: plane.y, text: '-' + fmt(d), t0: performance.now() + 200, dur: 900 });
     sfx('shot');
     let msg = t('aaFired', { a: R.name, b: UNITS[plane.type].name.toLowerCase() });
@@ -786,16 +975,17 @@ function checkEnd() {
   if (!owners.includes(null) && friends(owners)) end(owners, owners.length > 1 ? 'wonAllies' : 'wonAll');
 }
 const listNames = list => list.map(tn).reduce((a, b, i, all) => i === all.length - 1 ? t('and', { a, b }) : a + ', ' + b);
-function end(winners, why) {
-  G.over = true; save();
-  const hum = humans(), winHum = winners.filter(isHuman);
+function end(winners, why, loaded = false) {
+  G.over = true; G.won = winners; G.why = why;
+  if (!loaded) save();
+  const hum = humans(), winHum = ONLINE ? winners.filter(s => s === ONLINE.me) : winners.filter(isHuman);
   const head = !winHum.length ? t('lost') : hum.length === 1 ? t('won') : t('teamsWon', { teams: listNames(winHum) });
   const sub = !winHum.length ? t('lostWhy') : t(why);
   const lines = (hum.length ? hum : TEAMS).map(s => `<li>${t('statTeam', { team: tn(s), c: G.stats[s].taken, k: G.stats[s].killed, l: G.stats[s].lost })}</li>`).join('');
   setTimeout(() => {
     cardShow(`<h2>${head}</h2><p>${sub}</p><ul><li>${t('statTurns', { n: G.turn })}</li>${lines}</ul>
       <div class="row"><a class="btn quiet" href="../">${t('back')}</a><button class="btn" id="again">${t('playAgain')}</button></div>`);
-    $('#again').onclick = () => setupCard();
+    $('#again').onclick = () => { if (ONLINE) location.href = location.pathname; else setupCard(); };
     sfx(winHum.length ? 'win' : 'lose');
   }, 900);
 }
@@ -804,6 +994,12 @@ function end(winners, why) {
 function begin(side) {
   if (G.over) return;
   if (!isHuman(side)) { cpuTurn(side); return; }
+  if (ONLINE) {   // a friend's team: save the game for them and wait
+    G.side = side;
+    if (side === ONLINE.me) { startTurn(side); seeHome(side); return; }
+    G.waiting = true; sel = null; G.view = ONLINE.me;
+    onlineSave().then(watchOnline); log(t('waitBody', { team: tn(side) })); render(); return;
+  }
   const go = () => { startTurn(side); seeHome(side); };
   // with more than one player on the device, hand it over first
   if (humans().filter(s => !G.out[s]).length > 1) {
@@ -818,7 +1014,7 @@ function nextTurn() {
   for (let k = 0; k < TEAMS.length; k++) { i = (i + 1) % TEAMS.length; if (i === 0) G.turn++; if (!G.out[TEAMS[i]]) break; }
   begin(TEAMS[i]);
 }
-const myTurn = () => G && !G.over && !busy && isHuman(G.side) && G.side === G.view;
+const myTurn = () => G && !G.over && !busy && isHuman(G.side) && G.side === G.view && (!ONLINE || (G.side === ONLINE.me && !G.waiting));
 
 // ---------- the player ----------
 function tapTile(x, y) {
@@ -843,7 +1039,7 @@ function tapTile(x, y) {
   const cur = sel ? stack.indexOf(sel.unit || sel.city) : -1;
   const next = cur === -1 ? stack[0] : stack[(cur + 1) % stack.length];
   sel = !next ? null : next.hp !== undefined ? { unit: next } : { city: next };
-  if (!sel && canBuildNear(x, y)) sel = { build: { x, y } };
+  if (!sel && (canBuildNear(x, y) || canBuildSea(x, y))) sel = { build: { x, y, sea: tileAt(x, y) === 'w' } };
   if (sel?.unit?.side === me) sfx('click');
   render();
 }
@@ -873,14 +1069,22 @@ function canBuildNear(x, y, side = G.side) {
   if (moveCost(tileAt(x, y)) === Infinity || unitAt(x, y, 'ground') || cityAt(x, y)) return false;
   return G.units.some(u => u.side === side && Math.max(Math.abs(u.x - x), Math.abs(u.y - y)) === 1);
 }
-const underFire = (x, y, side = G.side) => G.units.some(e => !allied(e.side, side) && UNITS[e.type].hits.includes('G') && Math.abs(e.x - x) + Math.abs(e.y - y) <= groundRange(UNITS[e.type]));
+// An empty water square touching one of your units or cities (corners count).
+function canBuildSea(x, y, side = G.side) {
+  if (tileAt(x, y) !== 'w' || unitAt(x, y, 'ground')) return false;
+  const touch = o => Math.max(Math.abs(o.x - x), Math.abs(o.y - y)) === 1;
+  return G.units.some(u => u.side === side && !UNITS[u.type].air && touch(u)) || G.cities.some(c => c.owner === side && touch(c));
+}
+const shipFace = (k, x, y) => FACES.find(a => shipFits(k, x, y, a, null));
+const underFire = (x, y, side = G.side) => G.units.some(e => !allied(e.side, side) && UNITS[e.type].hits.includes('G') && gap(e, x, y) <= groundRange(UNITS[e.type]));
 function buy(type) {
   if (!myTurn()) return;
   const me = G.side, R = UNITS[type];
   let p = null;
   if (sel?.build) {
     const b = sel.build;
-    if (!FIELD_GUNS.includes(type) || !canBuildNear(b.x, b.y) || underFire(b.x, b.y)) return;
+    if (underFire(b.x, b.y)) return;
+    if (b.sea ? !SHIPS.includes(type) || !canBuildSea(b.x, b.y) || shipFace(type, b.x, b.y) === undefined : !FIELD_GUNS.includes(type) || !canBuildNear(b.x, b.y)) return;
     p = b;
   } else {
     const c = sel?.city;
@@ -889,7 +1093,9 @@ function buy(type) {
   }
   if (!p || G.money[me] < R.cost) return;
   G.money[me] = r1(G.money[me] - R.cost);
-  const u = mkUnit(type, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
+  const u = mkUnit(type, me, p.x, p.y); u.moved = u.acted = u.fresh = true;
+  if (R.len) u.ang = shipFace(type, p.x, p.y);
+  G.units.push(u); rec({ k: 'b', u: { ...u } });
   log(t('bought', { unit: R.name.toLowerCase() })); sfx('buy');
   if (sel.build) sel = { unit: u };
   render();
@@ -928,13 +1134,13 @@ async function cpuTurn(me) {
     if (!can.includes(pick)) pick = can[0];
     const p = spot(c, layerOfType(pick));
     G.money[me] = r1(G.money[me] - UNITS[pick].cost);
-    const u = mkUnit(pick, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u);
+    const u = mkUnit(pick, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u); rec({ k: 'b', u: { ...u } });
   }
   render();
   for (const u of G.units.filter(u => u.side === me && !u.fresh)) {
     if (G.over || !G.units.includes(u)) continue;
     const plan = cpuPlan(u);
-    if (plan.move) { seeTile(plan.move.x, plan.move.y); moveUnit(u, plan.move.x, plan.move.y); sfx('step'); render(); await sleep(260); }
+    if (plan.move) { if (seeTile(u.x, u.y)) await sleep(380); seeTile(plan.move.x, plan.move.y); moveUnit(u, plan.move.x, plan.move.y); sfx('step'); render(); await sleep(260); }
     if (G.over) break;
     if (!G.units.includes(u)) continue;
     const tg = bestTarget(u);
@@ -953,15 +1159,15 @@ function bestTarget(u) {
 function cpuPlan(u) {
   const me = u.side, opts = [{ x: u.x, y: u.y, stay: true }, ...reach(u).values()];
   const R = UNITS[u.type], plane = R.air === 'plane';
-  const land = R.air ? -1 : landOf(u.x, u.y), here = o => R.air || landOf(o.x, o.y) === land;   // ground units: only what's on their own island
-  const goals = G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)) && here(c));
+  const land = R.air || R.len ? -1 : landOf(u.x, u.y), here = o => R.air || R.len || landOf(o.x, o.y) === land;   // ground units: only what's on their own island
+  const goals = R.len ? [] : G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)) && here(c));
   const mine = G.cities.filter(c => c.owner === me);
   const prey = G.units.filter(o => fairGame(me, o.side) && (here(o) || (isAir(o) && canHit(R, o))));
   const threats = G.units.filter(o => !allied(o.side, me));
   let best = null, bestScore = -Infinity;
   for (const o of opts) {
     let s = 0;
-    const ts = prey.filter(f => canHit(R, f) && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= rangeTo(R, f));
+    const ts = prey.filter(f => canHit(R, f) && reachGap(u, o.x, o.y, f) <= rangeTo(R, f));
     if (ts.length) s += 4 + Math.max(...ts.map(f => f.hp <= dmgTo(R, f) ? 5 : dmgTo(R, f)));
     const c = cityAt(o.x, o.y);
     if (!R.air && c && c.owner !== me) {
@@ -982,7 +1188,7 @@ function cpuPlan(u) {
       else if (left < home + 3) s -= 6;
     }
     const inAir = R.air === 'heli' || (plane && !landing);
-    const danger = threats.filter(f => UNITS[f.type].hits.includes(inAir ? 'A' : 'G') && Math.abs(f.x - o.x) + Math.abs(f.y - o.y) <= (inAir ? UNITS[f.type].rng : groundRange(UNITS[f.type]))).length;
+    const danger = threats.filter(f => UNITS[f.type].hits.includes(inAir ? 'A' : 'G') && gap(f, o.x, o.y) <= (inAir ? UNITS[f.type].rng : groundRange(UNITS[f.type]))).length;
     s -= danger * (u.hp <= 1 ? 1.2 : .5);
     s += Math.random() * .3;
     if (s > bestScore) { bestScore = s; best = o; }
@@ -1035,7 +1241,8 @@ function sprite(type, side) {
   const im = IMG[UNITS[type].img]; if (!im) return null;
   // aircraft are drawn bigger than a square: his planes are thin drawings, and
   // squeezed to a square they were hard to see over the ground
-  const box = (UNITS[type].air ? TS + 10 : TS - 6) / 2, sc = Math.min(box / im.width, box / im.height);
+  const R = UNITS[type], bx = (R.len ? R.wid * TS - 8 : R.air ? TS + 10 : TS - 6) / 2, by = (R.len ? R.len * TS - 8 : R.air ? TS + 10 : TS - 6) / 2;
+  const sc = Math.min(bx / im.width, by / im.height);   // ships fill their length
   const w = Math.max(1, Math.round(im.width * sc)), h = Math.max(1, Math.round(im.height * sc));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.drawImage(im, 0, 0, w, h);
@@ -1125,68 +1332,70 @@ function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
     c.fillRect(X + ax - (sx < 0 ? w : 0), Y + ay - (sy < 0 ? len : 0), w, len);
   }
 }
-// The sector on screen. Each player keeps their own (`G.look`), starting
-// with their home sector; the computer teams' turns don't move it.
-const sectorKey = () => (G && G.look[G.view]) || (G ? G.view : 'orange');
-const sec = () => SECTORS[sectorKey()];
-function showSector(k) {
-  if (!G) return;
-  G.look[G.view] = k;
-  const S = SECTORS[k];
-  if (cv.width !== S.w * TS || cv.height !== S.h * TS) { cv.width = S.w * TS; cv.height = S.h * TS; ctx.imageSmoothingEnabled = false; }
-  // as wide as fits the screen's height, like before; tall sectors are narrower
-  $('#mapcol').style.maxWidth = `calc((100dvh - 8rem) * ${S.w} / ${S.h})`;
-  // Squares stay at least 1.5rem across so they're tappable on a phone (the
-  // map scrolls sideways there). The 24-square map used 46rem, about 1.9 a
-  // square, which made orange's tall sector run off the bottom of a laptop.
-  cv.style.minWidth = `${S.w * 1.5}rem`;
-  cursor = { x: Math.max(S.x, Math.min(S.x + S.w - 1, cursor.x)), y: Math.max(S.y, Math.min(S.y + S.h - 1, cursor.y)) };
-  $('#sectors').querySelectorAll('[data-sector]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sector === k));
+// Decided 10 Nov, his next ask: no sector buttons. The map is a camera you
+// drag around (mouse or finger; arrow keys move the cursor and the camera
+// follows), and it glides to whoever is moving: your capital at the start of
+// your turn, and each computer unit as it moves. (Sector buttons, one part
+// of the map at a time, were the first try the same day; switching by hand
+// was clumsy.) VW by VH squares fit the screen at a tappable size.
+let VW = 20, VH = 16;
+const cam = { x: 0, y: 0 }, camGo = { x: 0, y: 0 };
+const clampCam = p => { p.x = Math.max(0, Math.min(MW - VW, p.x)); p.y = Math.max(0, Math.min(MH - VH, p.y)); return p; };
+function fitView() {
+  const w = box.clientWidth || 800, top = box.getBoundingClientRect().top + window.scrollY;
+  const sq = Math.max(34, Math.min(52, w / 20));                      // CSS pixels per square
+  VW = Math.min(MW, Math.max(8, Math.floor(w / sq)));
+  const px = w / VW, h = Math.max(240, window.innerHeight - top - 12);
+  VH = Math.min(MH, Math.max(6, Math.floor(h / px)));
+  if (cv.width !== VW * TS || cv.height !== VH * TS) { cv.width = VW * TS; cv.height = VH * TS; ctx.imageSmoothingEnabled = false; }
+  clampCam(cam); clampCam(camGo);
 }
-function sectorBar() {
-  $('#sectors').innerHTML = `<span class="slabel">${t('sectors')}</span>` + SECTOR_ORDER.map(k => `<button class="pill" data-sector="${k}" aria-pressed="false">${chip(k)}${tn(k)}</button>`).join('');
-  $('#sectors').querySelectorAll('[data-sector]').forEach(b => b.onclick = () => { showSector(b.dataset.sector); sel = null; render(); });
-  $('#sectors').title = t('sectorHint');
+// Glides the camera so a square is on screen (now: jump there). Returns true
+// when it has to move.
+function seeTile(x, y, now = false) {
+  const m = Math.min(2, Math.floor(VW / 4), Math.floor(VH / 4));
+  const vis = x >= camGo.x + m && x < camGo.x + VW - m && y >= camGo.y + m && y < camGo.y + VH - m;
+  if (vis && !now) return false;
+  clampCam(Object.assign(camGo, { x: x - (VW - 1) / 2, y: y - (VH - 1) / 2 }));
+  if (now) Object.assign(cam, camGo);
+  return true;
 }
-// Scrolls the map so a square is in view, when the sector is wider than the screen.
-function seeTile(x, y) {
-  const S = sec();
-  if (!inSector(S, x, y) || box.scrollWidth <= box.clientWidth + 2) return;
-  const w = cv.clientWidth / S.w, px = (x - S.x) * w + w / 2;
-  if (px < box.scrollLeft + w * 1.5 || px > box.scrollLeft + box.clientWidth - w * 1.5) box.scrollTo({ left: px - box.clientWidth / 2, behavior: 'smooth' });
-}
-function seeHome(side) {
-  if (!isHuman(side)) return;   // you only see what your own sector shows
-  if (!G.look[side]) G.look[side] = side;
-  showSector(G.look[side]);
+function seeHome(side, now = false) {
   const hq = G.cities.find(c => c.owner === side && c.hq) || G.cities.find(c => c.owner === side) || G.units.find(u => u.side === side);
-  if (hq && inSector(sec(), hq.x, hq.y)) { cursor = { x: hq.x, y: hq.y }; seeTile(hq.x, hq.y); }
+  if (!hq) return;
+  if (isHuman(side)) cursor = { x: hq.x, y: hq.y };
+  seeTile(hq.x, hq.y, now); camGo.x = Math.round(camGo.x); camGo.y = Math.round(camGo.y);
+  clampCam(camGo);
 }
 function render() {
   if (!G) return;
   const v = G.view;
-  showSector(sectorKey());
   $('#hTeam').innerHTML = `<span class="chip" style="background:${TEAM[v].flag}"></span>${tn(v)}`;
   $('#hTurn').textContent = t('turn', { n: G.turn });
   $('#hMoney').textContent = t('money', { m: fmt(G.money[v]) });
   const endBtn = $('#endBtn');
-  endBtn.textContent = isHuman(G.side) && G.side === G.view ? t('endTurn') : t('teamTurn', { team: tn(G.side) });
+  endBtn.textContent = ONLINE && isHuman(G.side) && G.side !== ONLINE.me ? t('waitFor', { team: tn(G.side) }) : isHuman(G.side) && G.side === G.view ? t('endTurn') : t('teamTurn', { team: tn(G.side) });
   endBtn.disabled = !myTurn();
   panel();
 }
 // one unit where it stands (u.px, u.py), on any canvas; marks: show what it has left
 function drawUnit(c, u, now, marks) {
   const sp = sprite(u.type, u.side); if (!sp) return;
-  const R = UNITS[u.type], flying = isAir(u), bw = TS - 16, X = u.px * TS, Y = u.py * TS;
-  const cx = X + TS / 2, cy = Y + TS / 2 - (flying ? 4 : 0);
+  const R = UNITS[u.type], flying = isAir(u);
+  // a ship covers several squares: draw it across all of them
+  let X = u.px * TS, Y = u.py * TS, W = TS, H = TS;
+  if (R.len) { const cs = cellsAt(u.type, u.px, u.py, u.ang), xs = cs.map(p => p[0]), ys = cs.map(p => p[1]); X = Math.min(...xs) * TS; Y = Math.min(...ys) * TS; W = (Math.max(...xs) + 1) * TS - X; H = (Math.max(...ys) + 1) * TS - Y; }
+  const bw = Math.min(W, TS * 2) - 16, cx = X + W / 2, cy = Y + H / 2 - (flying ? 4 : 0);
   const dim = (marks && u.moved && u.acted) ? .6 : 1;
+  // his ships are thin drawings: a shadow on the water shows every square it takes
+  if (R.len) { c.fillStyle = 'rgba(20,18,12,.35)'; c.fillRect(X + 3, Y + 3, W - 6, H - 6); c.fillStyle = 'rgba(200,210,215,.18)'; c.fillRect(X + 3, Y + 3, W - 6, 2); }
   if (flying) { const sh = shadow(u.type); if (sh) { c.save(); c.translate(cx + 6, cy + 10); c.rotate(u.ang); c.globalAlpha = .3; c.drawImage(sh, -sh.width, -sh.height, sh.width * 2, sh.height * 2); c.restore(); } }
   c.save(); c.translate(cx, cy); c.rotate(u.ang); c.globalAlpha = dim;
   c.drawImage(sp, -sp.width, -sp.height, sp.width * 2, sp.height * 2);
   c.restore();
   // health bar: under a ground unit, over an air unit, so both show on a
   // shared square; the team's little flag sits at its left end
-  const by = R.air ? Y + 2 : Y + TS - 7;
+  const by = R.air ? Y + 2 : Y + H - 7;
   c.fillStyle = '#1b1a15'; c.fillRect(X + 2, by, 8, 6); c.fillRect(X + 10, by, bw, 5);
   flagShape(u.side, X + 3, by + 1, 6, 4, c);
   c.fillStyle = TEAM[u.side].bar; c.fillRect(X + 11, by + 1, Math.max(1, (bw - 2) * u.hp / R.hp), 3);
@@ -1198,22 +1407,26 @@ function drawUnit(c, u, now, marks) {
   // left. A filled square: it hasn't moved yet. An empty one: it has moved
   // and can still fire. None (and greyed out): it's done.
   if (marks && dim === 1) {
-    const qx = X + TS - 14, qy = R.air ? Y + TS - 15 : Y + 2;
+    const qx = X + W - 14, qy = R.air ? Y + H - 15 : Y + 2;
     c.fillStyle = '#1b1a15'; c.fillRect(qx - 2, qy - 2, 15, 15);
     c.fillStyle = '#f2d06a';
     if (!u.moved) c.fillRect(qx, qy, 11, 11);
     else { c.fillRect(qx, qy, 11, 3); c.fillRect(qx, qy + 8, 11, 3); c.fillRect(qx, qy, 3, 11); c.fillRect(qx + 8, qy, 3, 11); }
   }
-  if (u.cargo?.length) { c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + TS - 17, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(u.cargo.length, X + 9, Y + TS - 6); }   // how many are inside
+  if (u.cargo?.length) { c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + H - 17, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(u.cargo.length, X + 9, Y + H - 6); }   // how many are inside
   if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; c.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; c.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
 }
 function frame(now) {
   requestAnimationFrame(frame);
   if (!G || !ground) return;
-  const S = sec();
-  ctx.drawImage(ground, S.x * TS / 2, S.y * TS / 2, S.w * TS / 2, S.h * TS / 2, 0, 0, cv.width, cv.height);   // the ground is painted at half size
-  ctx.save(); ctx.translate(-S.x * TS, -S.y * TS);   // from here on, squares are whole-map squares
-  for (const c of G.cities) if (inSector(S, c.x, c.y)) { drawCity(c, now); drawFlag(c); }
+  cam.x += (camGo.x - cam.x) * .2; cam.y += (camGo.y - cam.y) * .2;
+  if (Math.abs(camGo.x - cam.x) < .01) cam.x = camGo.x;
+  if (Math.abs(camGo.y - cam.y) < .01) cam.y = camGo.y;
+  ctx.fillStyle = '#3a4852'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save(); ctx.translate(-Math.round(cam.x * TS), -Math.round(cam.y * TS));   // from here on, squares are whole-map squares
+  ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
+  const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
+  for (const c of G.cities) if (seen(c.x, c.y)) { drawCity(c, now); drawFlag(c); }
   const s = sel?.unit, mine = myTurn();
   if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
@@ -1249,7 +1462,7 @@ function frame(now) {
   ctx.restore();
   if (banner && now < banner.until) {
     // across the part of the map that's on screen, not the middle of the whole map
-    const sc = cv.width / (cv.clientWidth || cv.width), left = box.scrollLeft * sc, w = Math.min(cv.width, box.clientWidth * sc || cv.width);
+    const left = 0, w = cv.width;
     ctx.fillStyle = 'rgba(20,18,12,.75)'; ctx.fillRect(left, cv.height / 2 - 30, w, 60);
     ctx.font = '16px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#e8c35a';
     ctx.fillText(banner.text.split('.')[0], left + w / 2, cv.height / 2 + 6);
@@ -1263,7 +1476,7 @@ function statsHTML(type, hp, u) {
   const hits = R.hits === 'GA' ? t('groundAir') : R.hits === 'A' ? t('air') : t('ground');
   const dmg = R.hits === 'A' ? fmt(R.dmgA) : R.hits === 'G' || R.dmgA === R.dmg ? fmt(R.dmg) : t('dmgSplit', { a: fmt(R.dmgA), g: fmt(R.dmg) });
   const range = R.rngG !== undefined ? t('rngSplit', { g: R.rngG, a: R.rng }) : t('spaces', { n: R.rng });
-  const extra = R.air === 'plane' ? `<dt>${t('fuel')}</dt><dd>${t('fuelOf', { n: fmt(Math.max(0, u ? u.fuel : FUEL)), max: FUEL })}</dd>` : R.air === 'heli' ? `<dt>${t('fuel')}</dt><dd>${t('hovers')}</dd>` : '';
+  const extra = R.len ? `<dt>${t('shipSize')}</dt><dd>${t('shipSizeOf', { l: R.len, w: R.wid })}</dd>` : R.air === 'plane' ? `<dt>${t('fuel')}</dt><dd>${t('fuelOf', { n: fmt(Math.max(0, u ? u.fuel : FUEL)), max: FUEL })}</dd>` : R.air === 'heli' ? `<dt>${t('fuel')}</dt><dd>${t('hovers')}</dd>` : '';
   return `<dl class="stats"><dt>${t('hp')}</dt><dd>${hp === undefined ? fmt(R.hp) : t('hpOf', { n: fmt(Math.max(0, hp)), max: fmt(R.hp) })}</dd><dt>${t('dmg')}</dt><dd>${dmg}</dd>${extra}
     <dt>${t('rng')}</dt><dd>${range}</dd><dt>${t('spd')}</dt><dd>${R.fixed ? t('staysPut') : t('spaces', { n: R.spd })}</dd>
     <dt>${t('cost')}</dt><dd>${fmt(R.cost)}</dd><dt>${t('hits')}</dt><dd>${hits}</dd></dl>`;
@@ -1289,7 +1502,11 @@ function panel() {
       else { const m = reach(u).size, f = targetsFrom(u, u.x, u.y).length; tip = [m ? t('canMove') : '', f ? t('canFire') : ''].filter(Boolean).join(' ') || t('unitDone'); }
     }
     let inside = '';
-    if (R.holds) {
+    if (R.deck) {
+      const canGo = u.side === G.side && mine && deckSpot(u);
+      inside = `<p>${t('room', { n: fmt(used(u)), of: R.holds })}</p>` + (u.cargo.length ? `<div class="shop">` + u.cargo.map((o, i) =>
+        `<button class="buy" data-off="${i}" ${canGo ? '' : 'disabled'}><img src="units/${UNITS[o.type].img}.png" alt=""><span>${UNITS[o.type].name}</span><b>${t('takeOffBtn')}</b></button>`).join('') + '</div>' : '') + `<p>${t('deckHow')}</p>`;
+    } else if (R.holds) {
       const canDrop = u.side === G.side && mine && dropSpots(u).length;
       inside = `<p>${t('room', { n: fmt(used(u)), of: R.holds })}</p>` + (u.cargo.length ? `<div class="shop">` + u.cargo.map((o, i) =>
         `<button class="buy" data-drop="${i}" ${canDrop ? '' : 'disabled'}><img src="units/${UNITS[o.type].img}.png" alt=""><span>${UNITS[o.type].name}</span><b>${t('dropOff')}</b></button>`).join('') + '</div>' : `<p>${t('loadHow')}</p>`)
@@ -1297,6 +1514,7 @@ function panel() {
     }
     el.innerHTML = `<h2>${R.name} · ${whose(u.side)}</h2>
       ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${inside}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
+    el.querySelectorAll('[data-off]').forEach(b => b.onclick = () => { takeOff(u, +b.dataset.off); sel = null; render(); });
     el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { sel = { unit: u, drop: { tr: u, i: +b.dataset.drop } }; render(); });
     return;
   }
@@ -1304,11 +1522,15 @@ function panel() {
     const b = sel.build;
     let body;
     if (underFire(b.x, b.y)) body = `<p>${t('tooClose')}</p>`;
+    else if (b.sea) body = `<p>${t('buildShip')}</p><div class="shop">` + SHIPS.map(k => {
+      const R = UNITS[k], poor = G.money[v] < R.cost, full = shipFace(k, b.x, b.y) === undefined;
+      return `<button class="buy" data-buy="${k}" ${poor || full || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name} · ${t('sizeOf', { l: R.len, w: R.wid })}</span><b>${full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+    }).join('') + '</div>';
     else body = `<p>${t('buildHere')}</p><div class="shop">` + FIELD_GUNS.map(k => {
       const R = UNITS[k], poor = G.money[v] < R.cost;
       return `<button class="buy" data-buy="${k}" ${poor || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
     }).join('') + `</div><p>${t('artyCity')}</p>`;
-    el.innerHTML = `<h2>${t('buildSpot')}</h2>${body}`;
+    el.innerHTML = `<h2>${t(b.sea ? 'buildSea' : 'buildSpot')}</h2>${body}`;
     el.querySelectorAll('[data-buy]').forEach(btn => btn.onclick = () => buy(btn.dataset.buy));
     return;
   }
@@ -1393,10 +1615,11 @@ function setupCard(sure = false) {
   const who = TEAMS.map(s => `<div class="who"><b>${chip(s)}${tn(s)}</b>${['human', 'cpu'].map(c =>
     `<label><input type="radio" name="ctrl-${s}" value="${c}"${PREFS.ctrl[s] === c ? ' checked' : ''}> ${t(c === 'human' ? 'player' : 'computer')}</label>`).join('')}</div>`).join('');
   cardShow(`<h2>${t('setupTitle')}</h2>${sure ? `<p>${t('newSure')}</p>` : ''}<fieldset class="lvl"><legend>${t('whoPlays')}</legend>${who}</fieldset>${levelPick()}
+    <fieldset class="lvl"><legend>${t('wherePlay')}</legend><label><input type="radio" name="where" value="here"${PREFS.where !== 'online' ? ' checked' : ''}> <b>${t('hereDevice')}</b></label><label><input type="radio" name="where" value="online"${PREFS.where === 'online' ? ' checked' : ''}> <b>${t('online')}</b> <span>${t('onlineWhy')}</span></label></fieldset>
     <p class="warn" id="setupMsg" hidden>${t('needPlayer')}</p>
     <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
   $('#no').onclick = () => titleCard();
-  const keep = () => { const card = $('#card'); for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
+  const keep = () => { const card = $('#card'); PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here'; for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
   $('#card').querySelectorAll('input').forEach(i => i.onchange = keep);
   $('#how').onclick = () => { keep(); guideCard(0, () => setupCard(sure)); };
   $('#yes').onclick = () => {
@@ -1405,7 +1628,9 @@ function setupCard(sure = false) {
     if (!TEAMS.some(s => ctrl[s] === 'human')) { $('#setupMsg').hidden = false; return; }
     PREFS.ctrl = ctrl;
     const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value;
-    savePrefs(); cardHide(); newGame();
+    PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here';
+    savePrefs();
+    if (PREFS.where === 'online') startOnline(); else { cardHide(); newGame(); }
   };
 }
 function teamsCard() {
@@ -1509,6 +1734,14 @@ const GUIDE = [
     drawUnit(c, gUnit('soldier', 'green', 1, 1, { hp: healed ? 1 : .4 }), now, false);
     gNum(c, '+' + fmt(HOSPITAL_HEAL), 1, 1, (k - 4.3) / .9);
   } },
+  { key: 'ships', map: ['ppwww', 'ppwww', 'ppwww'], loop: 5, draw(c, k, now) {
+    drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: true }), now, true);
+    if (k > .4 && k < 1.6) { c.fillStyle = 'rgba(232,223,200,.22)'; c.fillRect(2 * TS + 3, TS + 3, TS - 6, TS - 6); }
+    gTap(c, 2, 1, (k - .8) / .5);
+    const go = span(k, 2.4, 3.6);
+    if (k > 1.6 && k < 2.4) drawUnit(c, gUnit('destroyer', 'green', 2, 0, { ang: 0 }), now, false);          // built, bow up
+    if (k >= 2.4) drawUnit(c, gUnit('destroyer', 'green', 3 + go, 1, { ang: Math.PI / 2 }), now, false);   // then it sails off
+  } },
   { key: 'air', map: ['ppmwp', 'cpmww', 'ppwwp'], loop: 6.4, draw(c, k, now) {
     drawFlag({ x: 0, y: 1, owner: 'green' }, c);
     const out = span(k, .4, 2.6), back = span(k, 3, 5.2), x = 4 * out - 4 * back;
@@ -1597,7 +1830,7 @@ function guideText(pg, L, name) {
   const buy = v => t(v >= 1 ? 'buy_all' : v >= .75 ? 'buy_most' : 'buy_half');
   if (pg.key === 'level') return t('g_level', { m: fmt(L.start), pay: frac(L.pay), buy: buy(L.buy), air: L.air });
   if (pg.key === 'city') return t('g_city', { m: fmt(L.start) });
-  if (pg.key === 'move' && box.scrollWidth > box.clientWidth + 2) return t('g_move') + ' ' + t('g_drag');
+  if (pg.key === 'move') return t('g_move') + ' ' + t('g_drag');
   return t('g_' + pg.key);
 }
 function guideCard(i = 0, back = guideBack) {
@@ -1643,32 +1876,36 @@ function titleCard() {
   $('#how').onclick = () => guideCard(0, titleCard);
 }
 function resume(s) {
-  G = s; G.look = G.look || {}; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
+  G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
-  sel = null; log(t('pickHint')); render(); seeHome(G.side);
+  sel = null; log(t('pickHint')); render(); seeHome(G.side, true);
 }
 
 // ---------- input ----------
-// A tap picks a square; dragging with a mouse scrolls the map. On touch
-// screens the browser scrolls it, and a drag never counts as a tap.
+// A tap picks a square; dragging (mouse or finger) moves the camera, and a
+// drag never counts as a tap.
 let drag = null;
-cv.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') drag = { x: e.clientX, left: box.scrollLeft, moved: false }; });
+cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, cx: camGo.x, cy: camGo.y, moved: false, id: e.pointerId }; });
 window.addEventListener('pointermove', e => {
-  if (!drag) return;
-  const dx = e.clientX - drag.x;
-  if (Math.abs(dx) > 6) drag.moved = true;
-  if (drag.moved) box.scrollLeft = drag.left - dx;
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.hypot(dx, dy) > 8) drag.moved = true;
+  if (!drag.moved) return;
+  const px = cv.clientWidth / VW;
+  clampCam(Object.assign(camGo, { x: drag.cx - dx / px, y: drag.cy - dy / px })); Object.assign(cam, camGo);
 });
 window.addEventListener('pointerup', () => { if (drag) setTimeout(() => { drag = null; }, 0); });
+window.addEventListener('pointercancel', () => { drag = null; });
+window.addEventListener('resize', () => fitView());
 cv.addEventListener('click', e => {
   if (drag?.moved) return;
   const b = cv.getBoundingClientRect();
-  const S = sec(), x = S.x + Math.floor((e.clientX - b.left) / b.width * S.w), y = S.y + Math.floor((e.clientY - b.top) / b.height * S.h);
-  if (inSector(S, x, y)) tapTile(x, y);
+  const x = Math.floor(cam.x + (e.clientX - b.left) / b.width * VW), y = Math.floor(cam.y + (e.clientY - b.top) / b.height * VH);
+  if (inMap(x, y)) tapTile(x, y);
 });
 cv.addEventListener('keydown', e => {
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-  if (d) { const S = sec(); cursor.x = Math.max(S.x, Math.min(S.x + S.w - 1, cursor.x + d[0])); cursor.y = Math.max(S.y, Math.min(S.y + S.h - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
+  if (d) { cursor.x = Math.max(0, Math.min(MW - 1, cursor.x + d[0])); cursor.y = Math.max(0, Math.min(MH - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' ') { tapTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Escape') { sel = null; render(); }
 });
@@ -1679,9 +1916,13 @@ $('#helpBtn').setAttribute('aria-label', t('howBtn')); $('#helpBtn').title = t('
 $('#soundBtn').onclick = () => { PREFS.sound = !PREFS.sound; savePrefs(); hud(); };
 $('#backLink').textContent = t('back');
 $('#teamsBtn').textContent = t('teams');
-sectorBar();
+$('#inviteBtn').textContent = t('invite');
+$('#inviteBtn').onclick = () => { if (ONLINE && $('#cover').hidden) shareCard(); };
 hud();
-loadArt().then(() => { paintGround(); requestAnimationFrame(frame); titleCard(); });
+loadArt().then(() => { fitView(); paintGround(); requestAnimationFrame(frame);
+  const gid = new URLSearchParams(location.search).get('game');
+  if (gid) joinOnline(gid); else titleCard();
+});
 </script>
 </body>
 </html>
