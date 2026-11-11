@@ -308,6 +308,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   camera (`cam`, `fitView`): as many squares as fit the screen at a tappable
   size, dragged with a mouse or finger, and it glides to whoever is moving
   (your capital at the start of your turn, each computer unit as it moves).
+  Zoom (decided the same day): + and − on the map, pinch on touch, the mouse
+  wheel or + and - keys. All the way out shows the whole map; tapping works
+  at any zoom (`setZoom`, `ZOOM`; `BW` by `BH` is the view at zoom 1). On a
+  phone the map takes about 55% of the height so the shop shows under it,
+  and tapping your city scrolls the shop into view.
   Every city has four districts (`c.d`), set free on your turn in the city
   panel: hospital (heals your ground units on or next to the city 1 a turn
   per hospital, a guess), quarantine (keeps viruses out; viruses aren't in the
