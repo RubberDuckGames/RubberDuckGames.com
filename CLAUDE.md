@@ -296,6 +296,23 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Decided 5 Nov, from a play-test: on your turn each unit shows a filled
   yellow square if it hasn't moved, an empty one if it has moved and can still
   fire, and nothing (greyed out) when it's done.
+  Decided 10 Nov, his map: `DRAWN` is his graph-paper map square for square
+  (27 by 19; his paper photo stays off this repo), and each drawn square is
+  split 2 by 2 into the game's 54 by 38 `MAP`. Orange is a fifth team (flag: a
+  checker of two squares) on the big land in the middle; its capital is where
+  he coloured red, inside the rock, with one square south of it left open so
+  its units can get out. 45 cities (`CAPITALS`, `TOWNS`): 8 per island nation
+  and 13 in orange's sector. You see one sector at a time (`SECTORS`, picked
+  with the buttons above the map; each player keeps their own, starting at
+  home). Sectors are only for looking; moving and firing cross them. The
+  computer's ground units only go after things on their own island (`LAND`).
+  Every city has four districts (`c.d`), set free on your turn in the city
+  panel: hospital (heals your ground units on or next to the city 1 a turn
+  per hospital, a guess), quarantine (keeps viruses out; viruses aren't in the
+  game yet), industrial (+0.5 money a turn, at most 2 a city). Later, 4
+  industrial will make the city spawn robots (bad guys): not built. Still to
+  ask him: what the "4" on industrial is, and how much a hospital heals.
+  Runways on his map aren't in the game yet. Saves are `v: 3`.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
