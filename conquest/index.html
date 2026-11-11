@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conquest · Rubber Duck Games</title>
-<meta name="description" content="A turn-based war game for up to four teams: move your army, make allies, take the cities and win the map.">
+<meta name="description" content="A turn-based war game for up to five teams: move your army, make allies, take the cities and win the map.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
@@ -22,7 +22,19 @@ button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(
 .game{display:flex;gap:1rem;justify-content:center;align-items:flex-start;padding:0 .75rem 1rem;flex-wrap:wrap}
 /* Decided 5 Nov: the map is twice as wide (24 squares). Where it doesn't fit,
    the squares keep a tappable size and the map scrolls sideways. */
-.mapbox{position:relative;flex:1 1 40rem;min-width:0;max-width:calc((100vh - 5rem) * 24 / 14);max-width:calc((100dvh - 5rem) * 24 / 14);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:3px solid #1b1a15}
+/* Decided 10 Nov: his map, one sector at a time. The buttons above the map
+   pick the sector; the map's width follows the sector's shape (set in
+   showSector), so a whole sector fits the screen's height. */
+.mapcol{flex:1 1 40rem;min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.sectors{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.sectors .slabel{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--soft);margin-right:.2rem}
+.sectors .pill[aria-pressed="true"]{background:var(--accent);color:#211f18;border-color:#1b1a15}
+.dist{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;padding:.3rem 0;border-top:1px solid var(--line)}
+.dist span{flex:1 1 100%;color:var(--ink)}
+.dbtn{background:#2f2d23;border:2px solid var(--line);padding:.3rem .55rem;font-size:.85rem}
+.dbtn[aria-pressed="true"]{background:var(--accent);color:#211f18;border-color:#1b1a15}
+.dbtn:disabled{opacity:.5;cursor:default}
+.mapbox{position:relative;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:3px solid #1b1a15}
 canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixelated;background:#4a4834;touch-action:manipulation}
 .side{flex:1 1 18rem;max-width:26rem;display:flex;flex-direction:column;gap:.75rem}
 .info{background:var(--panel);border:2px solid var(--line);padding:.9rem 1rem;min-height:8rem}
@@ -88,7 +100,10 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
   <button class="pill" id="soundBtn"></button>
 </div>
 <main class="game">
-  <div class="mapbox" id="mapbox"><canvas id="cv" width="1152" height="672" tabindex="0"></canvas></div>
+  <div class="mapcol" id="mapcol">
+    <div class="sectors" id="sectors" role="group"></div>
+    <div class="mapbox" id="mapbox"><canvas id="cv" width="960" height="864" tabindex="0"></canvas></div>
+  </div>
   <div class="side">
     <section class="info" id="info" aria-live="polite"></section>
     <p class="log" id="log" aria-live="polite"></p>
@@ -122,7 +137,10 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 // team 4 money raises it half a point. At +1 the two are allies (they can't
 // fire on each other or take each other's cities), as long as neither is
 // allied with a team the other doesn't like. At -2 they are enemies for good.
-// His hand-drawn map of five island nations may become the map later.
+// Decided 10 Nov, his next round: his own hand-drawn map. Five nations
+// (orange joins, on the big land in the middle), 45 cities, and you see one
+// sector of the map at a time. Every city has four districts he can set:
+// hospital, quarantine or industrial (`DISTRICTS`).
 
 // ---------- words ----------
 const STR = {
@@ -152,7 +170,7 @@ const STR = {
   frac_half: 'half', frac_most: 'three quarters', frac_all: 'all',
   buy_half: 'half their cities', buy_most: 'three out of four of their cities', buy_all: 'every city',
   intro: 'Take every city, or be the last army on the map with only your allies left.',
-  how9: 'There are four teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy for good.',
+  how9: 'There are five teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy for good.',
   start: 'Start',
   startGame: 'Start game',
   keepPlaying: 'Keep playing',
@@ -164,7 +182,18 @@ const STR = {
   whoPlays: 'Who plays each team?',
   player: 'Player', computer: 'Computer',
   needPlayer: 'Pick Player for at least one team.',
-  team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue',
+  team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue', team_orange: 'Orange',
+  sectors: 'Sectors', sectorHint: 'You see one sector of the map at a time. Tap a sector to look there.',
+  districts: 'Districts', district: 'District {n}', dEmpty: 'Empty',
+  d_hospital: 'Hospital', d_quarantine: 'Quarantine', d_industrial: 'Industrial',
+  dWhy_hospital: 'Hospital: heals your units on or next to the city by 1 a turn.',
+  dWhy_quarantine: 'Quarantine: keeps viruses out of the city.',
+  dWhy_industrial: 'Industrial: +{m} money a turn. Up to {max} in a city.',
+  dVirus: 'Viruses aren’t in the game yet.',
+  dSetHow: 'Pick what each district is. You can change them on your turn.',
+  dMaxIndustry: 'This city already has {max} industrial districts.',
+  healed: '+{n}',
+  g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. Hospital heals your units next to it, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city).',
   passTitle: '{team} turn',
   passBody: 'Pass the device to the {team} player.',
   startTurn: 'Start turn',
@@ -196,6 +225,7 @@ const STR = {
   cityYours: 'Your city', cityOf: '{team} city', cityFree: 'Free city',
   hqYours: 'Your capital', hqOf: '{team} capital',
   cityGives: 'Gives {m} money each turn.',
+  cityGivesMore: 'Gives {m} money each turn ({base}, plus {extra} from industrial districts).',
   cityTake: 'Move a unit onto it to take it.',
   cityNeutral: 'Taking it will make {team} like you less.',
   cityAlly: 'This is an ally’s city. Allies can’t take each other’s cities.',
@@ -312,36 +342,113 @@ const BURN = 1, BURN_TURNS = 2; // his fire burns 2 more turns after the hit; 1 
 // ---------- the teams ----------
 // Decided 4 Nov: the green parts of his drawings are the team's colour. Each
 // team's flag has its own shape too, so colour isn't the only way to tell.
-const TEAMS = ['green', 'red', 'yellow', 'blue'];   // turn order
+const TEAMS = ['green', 'red', 'yellow', 'blue', 'orange'];   // turn order
 const TEAM = {
   green:  { tint: [104, 116, 62], flag: '#7d8a4a', bar: '#a9b46a' },
   red:    { tint: [150, 62, 48],  flag: '#a8483a', bar: '#d0705e' },
   yellow: { tint: [170, 138, 48], flag: '#c9a23e', bar: '#e3c568' },
   blue:   { tint: [62, 90, 128],  flag: '#5a7aa8', bar: '#86a6d4' },
+  orange: { tint: [178, 102, 40], flag: '#c8742e', bar: '#e8a060' },
 };
 const tn = s => t('team_' + s);
 const ALLY = 1, FOE = -2, AID = 4, STEP = .5;
 
 // ---------- the map ----------
-// . open ground, f forest (2 to cross), w water, m mountain, c city, and the
-// capitals: R red, Y yellow, G green, B blue. One corner is drawn; the other
-// three are it mirrored, so every team starts the same.
-const CORNER = [
-  'mm...R....ff',
-  'm..c....f...',
-  '...ff..w..c.',
-  'c..f..ww....',
-  '....f.w..ff.',
-  '.ww....c....',
-  '..ww...f.w..',
+// Decided 10 Nov: his hand-drawn map (Trello #47; the photo stays off this
+// public repo). He drew it on graph paper where one drawn square is 4 game
+// squares, so DRAWN is his paper, square for square (27 by 19), and the game
+// splits each one 2 by 2 into MAP (54 by 38). His key: green land (.), blue
+// water (w), grey rock (m). The grid on paper isn't exact, so the coastlines
+// are read off the photo as closely as squares allow.
+// Orange's capital sits in the middle of the rock, where he coloured it red.
+// The rock would close it in on every side, so the square just south of it is
+// left as land: a way out for its ground units.
+const DRAWN = [
+  'wwwwwwwwwwwwwwwwwwwwwwwwwww',
+  'wwwwwwwwwwwwwww..www..m..ww',
+  'w..w.ww..wwwwwwwwww......ww',
+  'wmm..wwww....wwwwww.....mm.',
+  '.mm..www.....ww..ww.....mm.',
+  '.m....ww.....ww...ww......w',
+  '......w...........www.....w',
+  '.....mw...mmmm....www.....w',
+  'wwwwwww....m.mmm..www...www',
+  'wwwwwww.m..m.mmm..wwwwwwwww',
+  'wwwwwww......m....w.wwwwwww',
+  'wwwwwww.........m.wwww.wwww',
+  'mwww.www........wwwwww.wwww',
+  '...wwwwwwwww.....w..wwwwwww',
+  '......wwwwww.....wwwwww....',
+  '......w..wwwwwwwwwwwwww..m.',
+  'm.....w..wwwwwwwww.........',
+  '......wwwwwwwwwwww......www',
+  'w.....wwwwwwwwwwwwwwwwmm..w',
 ];
-const flipX = r => [...r].reverse().join('');
-const TOPHALF = CORNER.map(r => r + flipX(r).replace('R', 'Y'));
-const MAP = [...TOPHALF, ...TOPHALF.slice().reverse().map(r => r.replace('R', 'G').replace('Y', 'B'))];
-const CAP = { R: 'red', Y: 'yellow', G: 'green', B: 'blue' };
-const MW = 24, MH = 14, TS = 48;
+const MW = 54, MH = 38, TS = 48;
+const MAP = DRAWN.flatMap(r => { const row = [...r].map(ch => ch + ch).join(''); return [row, row]; });
+// The cities, on game squares. The five capitals first, then the cities he
+// dotted on the map, and more on the same islands to make 45 in all: 8 for
+// each island nation and 13 in orange's sector (the top middle island counts
+// there).
+const CAPITALS = { red: [7, 8], blue: [44, 8], yellow: [5, 33], green: [44, 33], orange: [25, 17] };
+const TOWNS = [
+  [5, 5], [1, 9], [5, 13], [11, 13], [1, 15], [9, 4], [17, 5],                        // red
+  [42, 13], [47, 11], [45, 17], [41, 4], [48, 2], [53, 7], [39, 21],                  // blue
+  [19, 7], [21, 9], [17, 13], [33, 17], [20, 21], [29, 23], [32, 8], [35, 12], [14, 20], [18, 25], [27, 29], [31, 3],   // orange
+  [4, 27], [1, 29], [10, 28], [9, 35], [3, 37], [8, 24], [15, 31],                    // yellow
+  [47, 29], [52, 28], [37, 33], [41, 35], [49, 36], [44, 22], [37, 26],               // green
+];
+// Decided 10 Nov, his rule: you see one sector at a time. Each nation's
+// sector is its own island and the sea around it; red's takes in a corner of
+// the big land, and orange's shows all of the big land and a little sea.
+// Sectors overlap where they meet. They're for looking only: units move and
+// fire across them.
+const SECTORS = {
+  red:    { x: 0,  y: 0,  w: 20, h: 18 },
+  blue:   { x: 34, y: 0,  w: 20, h: 22 },
+  orange: { x: 12, y: 2,  w: 26, h: 30 },
+  yellow: { x: 0,  y: 20, w: 20, h: 18 },
+  green:  { x: 34, y: 22, w: 20, h: 16 },
+};
+const SECTOR_ORDER = ['red', 'blue', 'orange', 'yellow', 'green'];   // as they sit on the map
+const inSector = (S, x, y) => x >= S.x && y >= S.y && x < S.x + S.w && y < S.y + S.h;
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 1;
+// Which piece of land each square is on (-1 for water and rock). The computer's
+// ground units only head for cities and units on their own island: on this
+// map most of them are across the sea, and the units piled up on the beach.
+const LAND = (() => {
+  const id = Array(MW * MH).fill(-1); let n = 0;
+  for (let i = 0; i < MW * MH; i++) {
+    if (id[i] !== -1 || moveCost(MAP[i / MW | 0][i % MW]) === Infinity) continue;
+    const q = [i]; id[i] = n;
+    while (q.length) {
+      const j = q.pop(), x = j % MW, y = j / MW | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, k = ny * MW + nx;
+        if (nx >= 0 && ny >= 0 && nx < MW && ny < MH && id[k] === -1 && moveCost(MAP[ny][nx]) < Infinity) { id[k] = n; q.push(k); }
+      }
+    }
+    n++;
+  }
+  return id;
+})();
+const landOf = (x, y) => LAND[y * MW + x];
+// ---------- city districts ----------
+// Decided 10 Nov, his new city: each city is four little cities, its
+// districts, and each can be set to one of these. Hospital heals your units
+// around it (and will heal viruses caught in the city); quarantine keeps
+// viruses out; industrial pays 0.5 money a turn. Only 2 industrial in a city
+// for now: later, a city with all 4 industrial will start making robots (the
+// bad guys). Viruses and robots aren't built yet.
+// Guesses to check with him: the hospital heals 1 health a turn to your
+// ground units on the city or touching it (corners count), each hospital in
+// the city adds 1; setting a district is free and can be changed on any of
+// your turns. He also said industrial gives "a four", not built until we know
+// what the 4 is.
+const DISTRICTS = ['hospital', 'quarantine', 'industrial'];
+const MAX_INDUSTRY = 2, INDUSTRY_MONEY = .5, HOSPITAL_HEAL = 1;
+const countD = (c, k) => c.d.filter(x => x === k).length;
 const HQ_MONEY = 3, CITY_MONEY = 1;
 // How tough the computer teams are: their share of city money, the chance
 // they buy in each city each turn, a player's starting money, and the turn
@@ -354,9 +461,10 @@ const LEVELS = {
 const lvl = () => LEVELS[G.level] || LEVELS.normal;
 
 // ---------- state ----------
-const KEY = 'conquest', SAVE_V = 2;   // v1 saves were the two-team map and can't be loaded
+const KEY = 'conquest', SAVE_V = 3;   // v1 was the two-team map, v2 the four-team one; neither fits his map
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-const PREFS = Object.assign({ sound: true, level: 'easy', ctrl: { green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu' } }, read().prefs);
+const PREFS = Object.assign({ sound: true, level: 'easy' }, read().prefs);
+PREFS.ctrl = Object.assign({ green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu', orange: 'cpu' }, PREFS.ctrl);   // orange came on 10 Nov
 const savePrefs = () => { const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } };
 let G = null;          // the game in play
 let sel = null;        // { unit } or { city } or { build }
@@ -367,19 +475,33 @@ let cursor = { x: 5, y: 12 };
 let uid = 1;
 
 function newGame() {
-  const cities = [];
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
-    const ch = MAP[y][x];
-    if (ch === 'c' || CAP[ch]) cities.push({ x, y, hq: !!CAP[ch], owner: CAP[ch] || null });
-  }
+  const cities = [
+    ...TEAMS.map(s => ({ x: CAPITALS[s][0], y: CAPITALS[s][1], hq: true, owner: s, d: [null, null, null, null] })),
+    ...TOWNS.map(([x, y]) => ({ x, y, hq: false, owner: null, d: [null, null, null, null] })),
+  ];
   const ctrl = { ...PREFS.ctrl }, money = {}, stats = {};
   for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
-  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats };
+  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats, look: {} };
+  // two soldiers and a tank on the nearest free land around each capital
   for (const c of cities.filter(c => c.hq)) {
-    const y = c.y === 0 ? 1 : c.y - 1;
-    G.units.push(mkUnit('soldier', c.owner, c.x - 1, y), mkUnit('tank', c.owner, c.x, y), mkUnit('soldier', c.owner, c.x + 1, y));
+    const spots = landNear(c.x, c.y, 3);
+    ['soldier', 'tank', 'soldier'].forEach((k, i) => spots[i] && G.units.push(mkUnit(k, c.owner, spots[i].x, spots[i].y)));
   }
   begin(TEAMS[0]);
+}
+// Free land squares near a square, nearest first, not counting it or any city.
+function landNear(x0, y0, n) {
+  const out = [], seen = new Set([x0 + ',' + y0]), q = [[x0, y0]];
+  while (q.length && out.length < n) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) {
+      const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
+      if (seen.has(k) || moveCost(tileAt(nx, ny)) === Infinity) continue;
+      seen.add(k); q.push([nx, ny]);
+      if (!G.cities.some(c => c.x === nx && c.y === ny) && !G.units.some(u => u.x === nx && u.y === ny) && out.length < n) out.push({ x: nx, y: ny });
+    }
+  }
+  return out;
 }
 function mkUnit(type, side, x, y) {
   const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: y < MH / 2 ? Math.PI : 0 };
@@ -491,8 +613,30 @@ function targetsFrom(u, x, y) {
   const R = UNITS[u.type];
   return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && Math.abs(o.x - x) + Math.abs(o.y - y) <= rangeTo(R, o));
 }
+const cityPay = c => (c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY;
 function income(side) {
-  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + (c.hq ? HQ_MONEY : CITY_MONEY), 0);
+  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0);
+}
+// Hospitals heal your ground units on the city or touching it.
+function hospitals(side) {
+  for (const c of G.cities.filter(c => c.owner === side && countD(c, 'hospital'))) {
+    const n = countD(c, 'hospital') * HOSPITAL_HEAL;
+    for (const u of G.units.filter(u => u.side === side && !UNITS[u.type].air && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1)) {
+      const max = UNITS[u.type].hp; if (u.hp >= max) continue;
+      const got = r1(Math.min(max, u.hp + n) - u.hp); u.hp = r1(u.hp + got);
+      fx.push({ kind: 'num', x: u.x, y: u.y, text: t('healed', { n: fmt(got) }), t0: performance.now(), dur: 900 });
+    }
+  }
+}
+// The computer fills its empty districts: industrial first, then a hospital
+// and a quarantine.
+function cpuDistricts(side) {
+  const want = ['industrial', 'industrial', 'hospital', 'quarantine'];
+  for (const c of G.cities.filter(c => c.owner === side)) for (let i = 0; i < 4; i++) {
+    if (c.d[i]) continue;
+    const k = want.find(k => countD(c, k) < want.filter(w => w === k).length);
+    if (k) c.d[i] = k;
+  }
 }
 function startTurn(side) {
   G.side = side; G.soured = {};
@@ -516,6 +660,8 @@ function startTurn(side) {
       fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(BURN), t0: performance.now(), dur: 900 });
     }
   }
+  if (!isHuman(side)) cpuDistricts(side);
+  hospitals(side);
   for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
   for (const u of G.units.filter(u => u.side === side)) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
@@ -806,11 +952,12 @@ function bestTarget(u) {
 }
 function cpuPlan(u) {
   const me = u.side, opts = [{ x: u.x, y: u.y, stay: true }, ...reach(u).values()];
-  const goals = G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)));
-  const mine = G.cities.filter(c => c.owner === me);
-  const prey = G.units.filter(o => fairGame(me, o.side));
-  const threats = G.units.filter(o => !allied(o.side, me));
   const R = UNITS[u.type], plane = R.air === 'plane';
+  const land = R.air ? -1 : landOf(u.x, u.y), here = o => R.air || landOf(o.x, o.y) === land;   // ground units: only what's on their own island
+  const goals = G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)) && here(c));
+  const mine = G.cities.filter(c => c.owner === me);
+  const prey = G.units.filter(o => fairGame(me, o.side) && (here(o) || (isAir(o) && canHit(R, o))));
+  const threats = G.units.filter(o => !allied(o.side, me));
   let best = null, bestScore = -Infinity;
   for (const o of opts) {
     let s = 0;
@@ -921,12 +1068,6 @@ function paintTiles(map, seed) {
     if (ch === 'f') for (let i = 0; i < 5; i++) { const cx = X + 3 + r() * 16, cy = Y + 3 + r() * 16; x.fillStyle = '#3d4628'; x.beginPath(); x.arc(cx, cy, 4 + r() * 2, 0, 7); x.fill(); x.fillStyle = '#4c5532'; x.fillRect(cx - 2, cy - 3, 2, 2); }
     if (ch === 'w') for (let i = 0; i < 3; i++) fill('#4d5d66', X + 2 + r() * 14, Y + 4 + i * 7, 6, 1);
     if (ch === 'm') { x.fillStyle = '#857e70'; x.beginPath(); x.moveTo(X + 2, Y + 21); x.lineTo(X + 10, Y + 4); x.lineTo(X + 19, Y + 21); x.fill(); x.fillStyle = '#b3ab98'; x.beginPath(); x.moveTo(X + 7, Y + 10); x.lineTo(X + 10, Y + 4); x.lineTo(X + 13, Y + 10); x.fill(); }
-    if (ch === 'c' || CAP[ch]) {
-      const big = !!CAP[ch];
-      fill('#57533c', X + 1, Y + 1, half - 2, half - 2);
-      const blocks = big ? [[3, 8, 6, 12], [10, 4, 6, 16], [17, 10, 5, 10]] : [[4, 10, 6, 10], [12, 7, 7, 13]];
-      for (const [bx, by, bw, bh] of blocks) { fill('#2c2a22', X + bx + 1, Y + by + 1, bw, bh); fill('#8a826c', X + bx, Y + by, bw, bh); for (let wy = by + 2; wy < by + bh - 1; wy += 3) for (let wx = bx + 1; wx < bx + bw - 1; wx += 2) fill(r() < .3 ? '#c9b46a' : '#3a372c', X + wx, Y + wy, 1, 1); }
-    }
     if (ch !== 'w') for (let i = 0; i < 6; i++) fill(r() < .5 ? 'rgba(40,36,24,.35)' : 'rgba(200,190,150,.12)', X + r() * half, Y + r() * half, 1 + (r() * 2 | 0), 1);
   }
   const d = x.getImageData(0, 0, W, H); grime(d.data, W, H, 9); x.putImageData(d, 0, 0);
@@ -940,10 +1081,11 @@ ctx.imageSmoothingEnabled = false;
 const $ = s => document.querySelector(s);
 const box = $('#mapbox');
 // Each team's flag shape: green square, red pennant, yellow swallowtail, blue
-// two bars.
+// two bars, orange a checker of two squares.
 function flagShape(side, x, y, w, h, c = ctx) {
   c.fillStyle = TEAM[side].flag;
   if (side === 'green') c.fillRect(x, y, w, h);
+  else if (side === 'orange') { const hw = Math.ceil(w / 2), hh = Math.ceil(h / 2); c.fillRect(x, y, hw, hh); c.fillRect(x + w - hw, y + h - hh, hw, hh); }
   else if (side === 'blue') { const b = Math.max(1, Math.round(h * .4)); c.fillRect(x, y, w, b); c.fillRect(x, y + h - b, w, b); }
   else {
     c.beginPath(); c.moveTo(x, y);
@@ -958,6 +1100,23 @@ function drawFlag(o, c = ctx) {
   c.fillStyle = '#1b1a15'; c.fillRect(X + 36, Y + 4, 3, 22);
   flagShape(o.owner, X + 39, Y + 4, 9, 8, c);
 }
+// A city is his four little cities, one in each corner of its square, each
+// drawn as its district: a plain block (empty), a hospital with a cross, a
+// quarantine fence of yellow and black stripes, or a factory with a smoking
+// chimney. Each has its own shape, so colour isn't the only way to tell. A
+// capital has a gold edge.
+function drawCity(o, now = 0, c = ctx) {
+  const X = o.x * TS, Y = o.y * TS, q = TS / 2, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  f('#1b1a15', X + 1, Y + 1, TS - 2, TS - 2); f('#57533c', X + 2, Y + 2, TS - 4, TS - 4);
+  if (o.hq) { c.strokeStyle = '#c9a44a'; c.lineWidth = 2; c.strokeRect(X + 2, Y + 2, TS - 4, TS - 4); }
+  (o.d || [null, null, null, null]).forEach((k, i) => {
+    const x = X + (i % 2) * q + 4, y = Y + (i > 1 ? q : 0) + 4, w = q - 6;
+    if (k === 'hospital') { f('#2c2a22', x + 1, y + 1, w, w); f('#d8d0bc', x, y, w, w); f('#b0402e', x + w / 2 - 2, y + 3, 4, w - 6); f('#b0402e', x + 3, y + w / 2 - 2, w - 6, 4); }
+    else if (k === 'quarantine') { for (let j = 0; j < 4; j++) for (let e = 0; e < 4; e++) { const on = (j + e) % 2 ? '#1b1a15' : '#d9b443'; f(on, x + e * w / 4, y, w / 4, 3); f(on, x + e * w / 4, y + w - 3, w / 4, 3); f(on, x, y + j * w / 4, 3, w / 4); f(on, x + w - 3, y + j * w / 4, 3, w / 4); } f('#8a826c', x + 6, y + 6, w - 12, w - 12); }
+    else if (k === 'industrial') { f('#2c2a22', x + 1, y + 7, w, w - 7); f('#6a645a', x, y + 6, w, w - 7); f('#3a372c', x + w - 6, y, 4, 8); for (let z = 0; z < 3; z++) f('#3a372c', x + 2 + z * 4, y + 10, 2, 2); const p = (now / 700) % 1; c.globalAlpha = 1 - p; f('#b9ad92', x + w - 6, y - 2 - p * 6, 4, 3); c.globalAlpha = 1; }
+    else { f('#2c2a22', x + 3, y + 5, w - 6, w - 6); f('#8a826c', x + 2, y + 4, w - 6, w - 6); f('#3a372c', x + 4, y + 7, 2, 2); f('#c9b46a', x + 8, y + 7, 2, 2); }
+  });
+}
 function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
   const X = x * TS + inset, Y = y * TS + inset, S = TS - inset * 2;
   c.fillStyle = col;
@@ -966,19 +1125,47 @@ function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
     c.fillRect(X + ax - (sx < 0 ? w : 0), Y + ay - (sy < 0 ? len : 0), w, len);
   }
 }
-// Scrolls the map so a square is in view, when the map is wider than the screen.
+// The sector on screen. Each player keeps their own (`G.look`), starting
+// with their home sector; the computer teams' turns don't move it.
+const sectorKey = () => (G && G.look[G.view]) || (G ? G.view : 'orange');
+const sec = () => SECTORS[sectorKey()];
+function showSector(k) {
+  if (!G) return;
+  G.look[G.view] = k;
+  const S = SECTORS[k];
+  if (cv.width !== S.w * TS || cv.height !== S.h * TS) { cv.width = S.w * TS; cv.height = S.h * TS; ctx.imageSmoothingEnabled = false; }
+  // as wide as fits the screen's height, like before; tall sectors are narrower
+  $('#mapcol').style.maxWidth = `calc((100dvh - 8rem) * ${S.w} / ${S.h})`;
+  // Squares stay at least 1.5rem across so they're tappable on a phone (the
+  // map scrolls sideways there). The 24-square map used 46rem, about 1.9 a
+  // square, which made orange's tall sector run off the bottom of a laptop.
+  cv.style.minWidth = `${S.w * 1.5}rem`;
+  cursor = { x: Math.max(S.x, Math.min(S.x + S.w - 1, cursor.x)), y: Math.max(S.y, Math.min(S.y + S.h - 1, cursor.y)) };
+  $('#sectors').querySelectorAll('[data-sector]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sector === k));
+}
+function sectorBar() {
+  $('#sectors').innerHTML = `<span class="slabel">${t('sectors')}</span>` + SECTOR_ORDER.map(k => `<button class="pill" data-sector="${k}" aria-pressed="false">${chip(k)}${tn(k)}</button>`).join('');
+  $('#sectors').querySelectorAll('[data-sector]').forEach(b => b.onclick = () => { showSector(b.dataset.sector); sel = null; render(); });
+  $('#sectors').title = t('sectorHint');
+}
+// Scrolls the map so a square is in view, when the sector is wider than the screen.
 function seeTile(x, y) {
-  if (box.scrollWidth <= box.clientWidth + 2) return;
-  const w = cv.clientWidth / MW, px = x * w + w / 2;
+  const S = sec();
+  if (!inSector(S, x, y) || box.scrollWidth <= box.clientWidth + 2) return;
+  const w = cv.clientWidth / S.w, px = (x - S.x) * w + w / 2;
   if (px < box.scrollLeft + w * 1.5 || px > box.scrollLeft + box.clientWidth - w * 1.5) box.scrollTo({ left: px - box.clientWidth / 2, behavior: 'smooth' });
 }
 function seeHome(side) {
+  if (!isHuman(side)) return;   // you only see what your own sector shows
+  if (!G.look[side]) G.look[side] = side;
+  showSector(G.look[side]);
   const hq = G.cities.find(c => c.owner === side && c.hq) || G.cities.find(c => c.owner === side) || G.units.find(u => u.side === side);
-  if (hq) seeTile(hq.x, hq.y);
+  if (hq && inSector(sec(), hq.x, hq.y)) { cursor = { x: hq.x, y: hq.y }; seeTile(hq.x, hq.y); }
 }
 function render() {
   if (!G) return;
   const v = G.view;
+  showSector(sectorKey());
   $('#hTeam').innerHTML = `<span class="chip" style="background:${TEAM[v].flag}"></span>${tn(v)}`;
   $('#hTurn').textContent = t('turn', { n: G.turn });
   $('#hMoney').textContent = t('money', { m: fmt(G.money[v]) });
@@ -1023,8 +1210,10 @@ function drawUnit(c, u, now, marks) {
 function frame(now) {
   requestAnimationFrame(frame);
   if (!G || !ground) return;
-  ctx.drawImage(ground, 0, 0, cv.width, cv.height);
-  for (const c of G.cities) drawFlag(c);
+  const S = sec();
+  ctx.drawImage(ground, S.x * TS / 2, S.y * TS / 2, S.w * TS / 2, S.h * TS / 2, 0, 0, cv.width, cv.height);   // the ground is painted at half size
+  ctx.save(); ctx.translate(-S.x * TS, -S.y * TS);   // from here on, squares are whole-map squares
+  for (const c of G.cities) if (inSector(S, c.x, c.y)) { drawCity(c, now); drawFlag(c); }
   const s = sel?.unit, mine = myTurn();
   if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
@@ -1057,6 +1246,7 @@ function frame(now) {
       ctx.fillStyle = '#f2d98a'; ctx.fillText(f.text, f.x * TS + TS / 2, f.y * TS + 12 - k * 16);
     }
   }
+  ctx.restore();
   if (banner && now < banner.until) {
     // across the part of the map that's on screen, not the middle of the whole map
     const sc = cv.width / (cv.clientWidth || cv.width), left = box.scrollLeft * sc, w = Math.min(cv.width, box.clientWidth * sc || cv.width);
@@ -1124,7 +1314,8 @@ function panel() {
   }
   const c = sel.city;
   const name = c.hq ? (c.owner === v ? t('hqYours') : t('hqOf', { team: tn(c.owner) })) : c.owner === v ? t('cityYours') : c.owner ? t('cityOf', { team: tn(c.owner) }) : t('cityFree');
-  let body = `<p>${t('cityGives', { m: c.hq ? HQ_MONEY : CITY_MONEY })}</p>`;
+  const base = c.hq ? HQ_MONEY : CITY_MONEY, extra = countD(c, 'industrial') * INDUSTRY_MONEY;
+  let body = `<p>${extra ? t('cityGivesMore', { m: fmt(base + extra), base: fmt(base), extra: fmt(extra) }) : t('cityGives', { m: fmt(base) })}</p>` + districtsHTML(c, c.owner === v && mine);
   if (c.owner && c.owner !== v && allied(c.owner, v)) body += `<p>${t('cityAlly')}</p>`;
   else if (c.owner !== v) body += `<p>${t('cityTake')}</p>${c.owner && rel(v, c.owner) >= 0 ? `<p class="warn">${t('cityNeutral', { team: tn(c.owner) })}</p>` : ''}`;
   else if (!spot(c, 'ground') && !spot(c, 'air')) body += `<p>${t('cityBusy')}</p>`;
@@ -1136,6 +1327,27 @@ function panel() {
   }
   el.innerHTML = `<h2>${name}</h2>${body}`;
   el.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => buy(b.dataset.buy));
+  el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => setDistrict(c, +b.dataset.slot, b.dataset.d));
+}
+// The four districts of a city: buttons to set them in your own city on your
+// turn, a plain list anywhere else.
+function districtsHTML(c, canSet) {
+  const rows = c.d.map((k, i) => {
+    const name = t('district', { n: i + 1 });
+    if (!canSet) return `<div class="dist"><span>${name}: ${k ? t('d_' + k) : t('dEmpty')}</span></div>`;
+    return `<div class="dist"><span>${name}</span>` + DISTRICTS.map(d => {
+      const full = d === 'industrial' && k !== 'industrial' && countD(c, 'industrial') >= MAX_INDUSTRY;
+      return `<button class="dbtn" data-slot="${i}" data-d="${d}" aria-pressed="${k === d}" ${full ? `disabled title="${t('dMaxIndustry', { max: MAX_INDUSTRY })}"` : ''}>${t('d_' + d)}</button>`;
+    }).join('') + '</div>';
+  }).join('');
+  const why = canSet ? `<p>${t('dSetHow')}</p><p>${t('dWhy_hospital')} ${t('dWhy_quarantine')} ${t('dWhy_industrial', { m: fmt(INDUSTRY_MONEY), max: MAX_INDUSTRY })} ${t('dVirus')}</p>` : '';
+  return `<p class="grp">${t('districts')}</p>${why}${rows}`;
+}
+function setDistrict(c, i, k) {
+  if (!myTurn() || c.owner !== G.side) return;
+  if (k === 'industrial' && c.d[i] !== 'industrial' && countD(c, 'industrial') >= MAX_INDUSTRY) return;
+  c.d[i] = c.d[i] === k ? null : k;   // tapping the one it already is empties it
+  sfx('click'); render();
 }
 function log(s) { $('#log').textContent = s; }
 
@@ -1288,6 +1500,15 @@ const GUIDE = [
     }
     if (bought) drawUnit(c, gUnit('tank', 'green', 1, 1), now, false);
   } },
+  { key: 'districts', map: ['ppppp', 'ppcpp', 'ppppp'], loop: 6, draw(c, k, now) {
+    const d = [k > .6 ? 'industrial' : null, k > 1.4 ? 'industrial' : null, k > 2.2 ? 'hospital' : null, k > 3 ? 'quarantine' : null];
+    drawCity({ x: 2, y: 1, d }, now, c); drawFlag({ x: 2, y: 1, owner: 'green' }, c);
+    gTap(c, 2, 1, (k - .2) / .5);
+    gNum(c, '+' + fmt(INDUSTRY_MONEY * 2), 2, 1, (k - 3.6) / .9);
+    const healed = k > 4.4;
+    drawUnit(c, gUnit('soldier', 'green', 1, 1, { hp: healed ? 1 : .4 }), now, false);
+    gNum(c, '+' + fmt(HOSPITAL_HEAL), 1, 1, (k - 4.3) / .9);
+  } },
   { key: 'air', map: ['ppmwp', 'cpmww', 'ppwwp'], loop: 6.4, draw(c, k, now) {
     drawFlag({ x: 0, y: 1, owner: 'green' }, c);
     const out = span(k, .4, 2.6), back = span(k, 3, 5.2), x = 4 * out - 4 * back;
@@ -1403,6 +1624,7 @@ function guideDraw(now) {
   const pg = GUIDE[guideAt], [, L] = guideLevel();
   const g = guideTiles[pg.key] || (guideTiles[pg.key] = paintTiles(pg.map, 11 + guideAt));
   c.imageSmoothingEnabled = false; c.drawImage(g, 0, 0, GW * TS, GH * TS);
+  if (pg.key !== 'districts') pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
   pg.draw(c, ((now - guideT0) / 1000) % pg.loop, now, L);
   return true;
 }
@@ -1421,7 +1643,7 @@ function titleCard() {
   $('#how').onclick = () => guideCard(0, titleCard);
 }
 function resume(s) {
-  G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
+  G = s; G.look = G.look || {}; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
   sel = null; log(t('pickHint')); render(); seeHome(G.side);
 }
@@ -1441,12 +1663,12 @@ window.addEventListener('pointerup', () => { if (drag) setTimeout(() => { drag =
 cv.addEventListener('click', e => {
   if (drag?.moved) return;
   const b = cv.getBoundingClientRect();
-  const x = Math.floor((e.clientX - b.left) / b.width * MW), y = Math.floor((e.clientY - b.top) / b.height * MH);
-  if (inMap(x, y)) tapTile(x, y);
+  const S = sec(), x = S.x + Math.floor((e.clientX - b.left) / b.width * S.w), y = S.y + Math.floor((e.clientY - b.top) / b.height * S.h);
+  if (inSector(S, x, y)) tapTile(x, y);
 });
 cv.addEventListener('keydown', e => {
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-  if (d) { cursor.x = Math.max(0, Math.min(MW - 1, cursor.x + d[0])); cursor.y = Math.max(0, Math.min(MH - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
+  if (d) { const S = sec(); cursor.x = Math.max(S.x, Math.min(S.x + S.w - 1, cursor.x + d[0])); cursor.y = Math.max(S.y, Math.min(S.y + S.h - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' ') { tapTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Escape') { sel = null; render(); }
 });
@@ -1457,6 +1679,7 @@ $('#helpBtn').setAttribute('aria-label', t('howBtn')); $('#helpBtn').title = t('
 $('#soundBtn').onclick = () => { PREFS.sound = !PREFS.sound; savePrefs(); hud(); };
 $('#backLink').textContent = t('back');
 $('#teamsBtn').textContent = t('teams');
+sectorBar();
 hud();
 loadArt().then(() => { paintGround(); requestAnimationFrame(frame); titleCard(); });
 </script>
