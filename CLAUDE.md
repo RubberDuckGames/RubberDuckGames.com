@@ -147,6 +147,27 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   day and dropped as too much. Each stall now has its own straw bed and feed
   box, since the testers took the three stalls for one pen. The help bar no
   longer opens by itself.
+  Decided 10 Nov: the aquarium (`AQUA`, `WORLDS.aquarium`, `S.aquarium`), the
+  next stop on the road after the farm (it opens once Crumb is found at the
+  coop). The move is sniffing (`S.moves.sniff`, C or the 👃 Sniff button):
+  Bread sniffs and puffs of smell float along the path to the current goal
+  (`scentPath`, round walls rather than through them), with three puffs where
+  the smell comes from, and yellow puffs over hidden pieces within 6 tiles. It
+  works in every world. One trip, a job at a time: Crumb runs in and under the
+  dark room's door; the octopus in her tank by the left wall teaches sniffing
+  (first time) and climbs out; her shell game hides the door key under one of
+  three shells and swaps them (3 swaps; a wrong shell shows the key again with
+  one swap fewer, never under 2; no clock); sniffing makes the right shell
+  puff. The key opens the dark room, a rock maze where Bread sees only a little
+  way round her (`drawDark`, 4-pixel blocks so the edge stays 8-bit); Crumb is
+  at the far dead end, picked as at least 6 tiles from the door in a straight
+  line (the first pick was a long walk round but one rock from the door, and
+  looked close enough to touch). Crabs scuttle like the squirrels; jellyfish
+  drift in the dark room and glow over the dark. No fleas there, so the tally
+  leaves the fleas row out (`W.noFleas`). Pieces: octopus costume, starfish
+  clip (touch pool, a swim), pearl necklace (dark room), toy fish (kelp in the
+  hall), gold paw (dark room); Crumb's clownfish costume is in the kelp by
+  the shark tank. The ? hint flashes the octopus, the right shell, the door or Crumb.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits

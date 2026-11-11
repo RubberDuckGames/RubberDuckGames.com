@@ -66,7 +66,7 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
 .stickpad i{position:absolute;left:50%;top:50%;width:3.6rem;height:3.6rem;margin:-1.8rem;border-radius:50%;background:#3b2a1a;opacity:.85;pointer-events:none}
 #levelBtns{align-items:flex-end}
 /* Decided 7 Nov: on the map, the play controls drive the car: the pad points the way, Paw goes in */
-#levelBtns.mapmode #barkBtn,#levelBtns.mapmode #digBtn,#levelBtns.mapmode [data-home]{display:none!important}
+#levelBtns.mapmode #barkBtn,#levelBtns.mapmode #digBtn,#levelBtns.mapmode #sniffBtn,#levelBtns.mapmode [data-home]{display:none!important}
 .acts{display:contents}
 @media (pointer:coarse) and (min-width:43.76rem) and (orientation:portrait){#levelBtns{left:1rem}}
 /* Decided 28 Oct: a phone turned sideways plays like a Switch. The game sits
@@ -84,8 +84,8 @@ canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow
   .pad.stickpad{width:8rem;height:8rem;border-radius:50%;background:#1d1f2b;border:3px solid #262839;box-shadow:none}
   .stickpad i{background:#cfd1dc}
   .acts{right:.6rem;display:grid;grid-template-columns:repeat(3,3rem);grid-template-rows:repeat(3,3rem);gap:0}
-  #pawBtn{grid-area:2/3}#barkBtn{grid-area:3/2}#digBtn{grid-area:2/1}
-  #barkBtn,#pawBtn,#digBtn{width:3.4rem;height:3.4rem;margin:-.2rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.45rem;box-shadow:0 .25rem 0 #6e1631}
+  #pawBtn{grid-area:2/3}#barkBtn{grid-area:3/2}#digBtn{grid-area:2/1}#sniffBtn{grid-area:1/2}
+  #barkBtn,#pawBtn,#digBtn,#sniffBtn{width:3.4rem;height:3.4rem;margin:-.2rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.45rem;box-shadow:0 .25rem 0 #6e1631}
   #levelBtns>[data-home]{position:fixed;right:.8rem;bottom:.6rem;border-radius:999px;font-size:.5rem;padding:.4rem .8rem}
 }
 /* Arrows are drawn shapes, not ◀ ▶ characters: iPhones turn those two into
@@ -167,8 +167,8 @@ canvas{box-shadow:none}
   .pad.stickpad{width:9rem;height:9rem;background:#b3ae9f;border-color:#a8a294}
   .stickpad i{background:#2a2a33;opacity:1}
   .pad .btn.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
-  #barkBtn,#pawBtn,#digBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
-  #barkBtn:active,#pawBtn:active,#digBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
+  #barkBtn,#pawBtn,#digBtn,#sniffBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
+  #barkBtn:active,#pawBtn:active,#digBtn:active,#sniffBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
   #pressBtns{justify-content:center;margin-top:2.5rem}
   #startBtn{border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.6rem;padding:.6rem 1.6rem;box-shadow:0 .2rem 0 #6f6b63}
   #levelBtns>[data-home]{grid-area:home;justify-self:center;border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.55rem;padding:.5rem 1.1rem;box-shadow:0 .2rem 0 #6f6b63}
@@ -208,7 +208,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv"></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> <button class="pill" id="hayBtn" hidden>Put the hay back</button> · Help: <b>H</b></p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="sniffHelp" hidden> · Sniff: <b>C</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> <button class="pill" id="hayBtn" hidden>Put the hay back</button> · Help: <b>H</b></p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -250,6 +250,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
       <button class="btn go" id="barkBtn">🐶 Bark</button>
       <button class="btn go" id="pawBtn">🐾 Paw</button>
       <button class="btn go" id="digBtn" hidden>⛏️ Dig</button>
+      <button class="btn go" id="sniffBtn" hidden>👃 Sniff</button>
     </div>
     <button class="btn" data-home>🚗 Map</button>
   </div>
@@ -298,7 +299,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -338,6 +339,9 @@ const ITEMS = {
   cowboy: { slot: 'body', name: 'Cowboy costume', world: 'horse ring' },
   cowboyHat: { slot: 'hat', name: 'Cowboy hat', world: 'horse ring' },
   bandana: { slot: 'neck', name: 'Bandana', world: 'horse ring' },
+  octopus: { slot: 'body', name: 'Octopus costume', world: 'aquarium' },
+  starfish: { slot: 'hat', name: 'Starfish clip', world: 'aquarium' },
+  pearls: { slot: 'neck', name: 'Pearl necklace', world: 'aquarium' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
@@ -351,6 +355,7 @@ const PARTS = {
   barn: [['beat', 'Cow costume'], ['cowbell', 'Cowbell'], ['horns', 'Little horns'], ['milk', 'Milk bottle toy'], ['gold', 'Gold paw print']],
   ring: [['beat', 'Cowboy costume'], ['cowboyHat', 'Cowboy hat'], ['bandana', 'Bandana'], ['horseshoe', 'Horseshoe toy'], ['gold', 'Gold paw print']],
   coop: [['beat', 'Chicken costume'], ['comb', 'Rooster comb'], ['feathers', 'Tail feathers'], ['goldEgg', 'Golden egg toy'], ['gold', 'Gold paw print']],
+  aquarium: [['beat', 'Octopus costume'], ['starfish', 'Starfish clip'], ['pearls', 'Pearl necklace'], ['toyFish', 'Toy fish'], ['gold', 'Gold paw print']],
 };
 
 // ---------- Sounds ----------
@@ -396,6 +401,10 @@ const sfx = {
   found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
   start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
+  sniff: () => [0, .11, .22].forEach(w => tone(2400, .05, 'sawtooth', w, .012, 900)),
+  blub: () => { tone(300, .08, 'sine', 0, .06, 600); tone(420, .1, 'sine', .1, .06, 800); },
+  shell: () => tone(700, .06, 'square', 0, .025, 500),
+  pinch: () => [1500, 1700].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
 };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
 $('#soundBtn').textContent = S.sound ? '🔔' : '🔕';
@@ -501,6 +510,10 @@ const WEAR_PIX = {
   vest: [5, 8, ['tttttttt', 'tttttttt', '.tttttt.']],      // the cowboy costume: a leather vest
   cowboyHat: [12, -2, ['...tttt..', '..tttttt.', 'ttttttttt']],
   bandana: [12, 9, ['rrr', 'rhr', '.r.']],
+  octoSpots: [5, 8, ['.e...e...e.', '...e...e...']],     // suckers on the octopus costume
+  octoArms: [2, 14, ['M.M..M..M.M..', '.M..M..M...M.']],   // its curly arms under her tummy
+  starfish: [15, -3, ['..b..', 'bbbbb', '.bbb.', '.b.b.']],
+  pearls: [12, 9, ['g.g.g', '.g.g.']],              // gray, so they show on her white chest
 };
 function breadRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
@@ -510,6 +523,7 @@ function breadRows(frame, wear) {
   if (wear.body === 'cow') over(WEAR_PIX.cowSpots);
   if (wear.body === 'chicken') over(WEAR_PIX.beak);
   if (wear.body === 'cowboy') over(WEAR_PIX.vest);
+  if (wear.body === 'octopus') { over(WEAR_PIX.octoSpots); over(WEAR_PIX.octoArms); }
   if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
   if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
@@ -524,6 +538,7 @@ function wearMap(wear) {
   if (wear.body === 'pig') Object.assign(map, { o: COL.P, d: COL.Q, p: COL.Q });
   if (wear.body === 'cow') Object.assign(map, { o: COL.h, d: COL.g, p: COL.P });
   if (wear.body === 'chicken') Object.assign(map, { o: COL.h, d: COL.g, p: COL.r });
+  if (wear.body === 'octopus') Object.assign(map, { o: COL.M, d: COL.N, p: COL.N });
   if (wear.feet === 'duckFeet') map.f = COL.b;
   return map;
 }
@@ -612,8 +627,27 @@ const GOLD_EGG = ['..yy..', '.yyey.', 'yyyyyy', 'yyyyyy', '.yyyy.'];
 const MILK = ['..rr..', '..hh..', '.hhhh.', 'hhhhhh', 'huuuuh', 'huuuuh', 'hhhhhh', '.hhhh.'];
 const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
 const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
+// The aquarium (decided 10 Nov: the next world on the plan, the octopus and
+// sniffing). The octopus wiggles her arms; crabs scuttle like the squirrels;
+// jellyfish glow in the dark room; fish swim behind the tank glass.
+const OCTOPUS = [
+  ['....MMMMMM....', '...MMMMMMMM...', '..MMMMMMMMMM..', '..MhnMMMMhnM..', '..MMMMMMMMMM..', '...NMMMMMMN...', '..MM.MM.MM.MM.', '.MM.MM..MM.MM.', 'M..M..MM..M..M', '.M..M....M..M.'],
+  ['....MMMMMM....', '...MMMMMMMM...', '..MMMMMMMMMM..', '..MhnMMMMhnM..', '..MMMMMMMMMM..', '...NMMMMMMN...', '.MM.MM.MM.MM..', 'MM.MM..MM.MM..', '.M..M.MM.M..M.', 'M..M....M..M..'],
+];
+const CRAB = [
+  ['.rr......rr.', 'r..r....r..r', '.rr.n..n.rr.', '..rrrrrrrr..', '.rrrrrrrrrr.', '..RRRRRRRR..', '.r.r....r.r.'],
+  ['.rr......rr.', 'r.r......r.r', '.rr.n..n.rr.', '..rrrrrrrr..', '.rrrrrrrrrr.', '..RRRRRRRR..', '..r.r..r.r..'],
+];
+const JELLY = [
+  ['..PPPPP..', '.PPhPPPP.', 'PPhPPPPPP', 'PPPPPPPPP', 'QQQQQQQQQ', '.Q.Q.Q.Q.', 'Q.Q.Q.Q..', '.Q.Q.Q.Q.'],
+  ['..PPPPP..', '.PPhPPPP.', 'PPhPPPPPP', 'PPPPPPPPP', 'QQQQQQQQQ', 'Q.Q.Q.Q.Q', '.Q.Q.Q.Q.', '..Q.Q.Q.Q'],
+];
+const FISH = ['....bb..', 'b.bbhbb.', 'bbbbhbnb', 'b.bbhbb.', '....bb..'];
+const SHELL = ['...cccc...', '..cscscc..', '.ccscsccc.', 'cscscscscc', 'cscscscscc', '.cccccccc.'];
+const SHARK = ['.........g......', '........gg......', '.gggggggggggg...', 'gggggggggggnggg.', '.g.ggghhhhhhgg..', 'g.......g.......'];
+const WISP = ['.h.', 'h..', '.h.', '..h', '.h.'];   // a puff of smell, for sniffing
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -649,6 +683,7 @@ const CRUMB_ITEMS = {
   mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
   chick: { slot: 'body', name: 'Chick costume', world: 'coop', map: { D: COL.e, s: COL.y, p: COL.e }, pix: [15, 4, ['YY', '.Y']] },
   foal: { slot: 'body', name: 'Foal costume', world: 'horse ring', map: { D: COL.t, s: COL.s, p: COL.t }, pix: [8, 1, ['n.', 'nn', 'nn', 'n.']] },
+  clownfish: { slot: 'body', name: 'Clownfish costume', world: 'aquarium', map: { D: COL.b, s: COL.h, p: COL.b }, pix: [6, 4, ['.b..', 'bbb.', '.h..', '.h..', '.h..', '.h..']] },
   bow: { slot: 'hat', name: 'Little bow', cost: 15, pix: [11, -1, ['P.P', 'PPP']] },
   crown: { slot: 'hat', name: 'Tiny crown', cost: 45, pix: [10, -3, ['y.y.y', 'yyyyy']] },
   bell: { slot: 'neck', name: 'Collar bell', cost: 20, pix: [9, 7, ['ggg', '.y.']] },
@@ -727,7 +762,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2] };
 const picCache = {};
 function pic(rows, dark, colors = {}) {
   const key = rows.join('/') + dark + JSON.stringify(colors);
@@ -808,8 +843,9 @@ document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
 // Decided 28 Oct: the car ride is the level map. Bread's car drives along the
 // road from home to a place, and home again after. New places get added as
 // they're built.
-// The road comes in parts: 0 is home, 1 the pond, 2 the farm.
-const ROAD = [[[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]], [[11.6, 4.2], [13.2, 5.6], [11.4, 8.8], [13.9, 9.1]]];
+// The road comes in parts: 0 is home, 1 the pond, 2 the farm, 3 the aquarium
+// (up the right side, past the pond).
+const ROAD = [[[4.3, 8.3], [8.5, 10], [8.5, 3], [11.6, 4.2]], [[11.6, 4.2], [13.2, 5.6], [11.4, 8.8], [13.9, 9.1]], [[13.9, 9.1], [17.4, 9.6], [17.4, 5.2], [16.4, 2.9]]];
 const bez = t => { const n = Math.min(ROAD.length - 1, Math.floor(t)), k = t - n, u = 1 - k, [a, b, c, d] = ROAD[n]; return [0, 1].map(i => u * u * u * a[i] + 3 * u * u * k * b[i] + 3 * u * k * k * c[i] + k * k * k * d[i]); };
 let ride = null;
 function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from, to, t: 0, dur: 1.5 * Math.abs(to - from), then }; sfx.honk(); }
@@ -818,7 +854,7 @@ function drive(from, to, then) { screen = 'drive'; showRow(null); ride = { from,
 // Decided 7 Nov: no buttons or words on the map. The pad (arrow keys, the
 // stick, or the cross pad) points the way, and the car drives to the next
 // place the road heads off in that direction; Paw (or Space, or Enter) goes in.
-const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }];
+const STOPS = [{ name: 'home', go: 'Go home' }, { name: 'pond', go: 'Go to the pond', world: 'pond' }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond' }, { name: 'aquarium', go: 'Go to the aquarium', world: 'aquarium', needs: 'coop', needName: 'farm' }];
 let mapAt = 0;
 function atStop(msg) {
   screen = 'map'; showRow('levelBtns');
@@ -839,7 +875,7 @@ function mapMove(step) {
   if (screen !== 'map') return;
   const to = mapAt + step, st = STOPS[to];
   if (!st) return;
-  if (st.needs && !S[st.needs].beat) return toast(`Find Crumb at the ${st.needs} first.`);
+  if (st.needs && !S[st.needs].beat) return toast(`Find Crumb at the ${st.needName || st.needs} first.`);
   drive(mapAt, to, () => { mapAt = to; atStop(); });
 }
 function mapGo() {
@@ -882,6 +918,15 @@ function drawMap(t) {
     if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
     else ['farm', 'barn', 'coop', 'ring'].forEach((k, i) => pips(k, X + 17, 143 + i * 7));   // a row for each part of the farm
   }
+  // the aquarium: a blue building with a wave along the top and a big fish window
+  { const X = 236, Y = 4;
+    px(X, Y + 4, 44, 30, LINE); px(X + 1, Y + 5, 42, 28, '#5a7fb0');
+    for (let i = 0; i < 6; i++) { px(X + 1 + i * 7, Y + 4 - (i % 2) * 2, 7, 3, LINE); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 5, 2, COL.l); }   // the wavy roof
+    px(X + 4, Y + 10, 18, 12, LINE); px(X + 5, Y + 11, 16, 10, COL.W); put(sprite(FISH, { flip: Math.floor(t / 1400) % 2 === 1 }), X + 9 + Math.round(Math.sin(t / 700) * 3), Y + 14);
+    px(X + 27, Y + 17, 12, 16, LINE); px(X + 28, Y + 18, 10, 15, '#2b3a5c'); px(X + 32, Y + 18, 1, 15, LINE);   // the doors
+    if (!S.coop.beat) { px(X + 27, Y + 9, 12, 10, LINE); px(X + 28, Y + 10, 10, 8, COL.y); px(X + 29, Y + 5, 8, 1, LINE); px(X + 29, Y + 5, 1, 6, LINE); px(X + 36, Y + 5, 1, 6, LINE); }
+    else pips('aquarium', X - 4, Y + 32);
+  }
   // trees, for a nicer drive
   [[96, 32], [48, 48], [176, 150], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
   const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(screen === 'map' ? mapAt : 0);
@@ -910,7 +955,7 @@ let LW = 36, LH = 22;                         // a world's size, in tiles; set w
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhBKRPLAaNQO', SOLID_LAND = BLOCK + 'Gw';
+const BLOCK = '#THFCXhBKRPLAaNQOYg', SOLID_LAND = BLOCK + 'Gw';
 let G = null, W = null;
 const breadSolid = () => G && G.gateOpen ? BLOCK : BLOCK + 'G';
 function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
@@ -1151,6 +1196,69 @@ const inBarn = (x, y) => { const [x0, y0, x1, y1] = FB.rect; return G.world === 
 const FC = FARM_OPEN.coop, FR = FARM_OPEN.ring;
 const inCoop = (x, y) => { const [x0, y0, x1, y1] = FC.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
 const indoors = (x, y) => inBarn(x, y) || inCoop(x, y);
+// The aquarium (decided 10 Nov, the next world on the plan: the octopus, and
+// the move is sniffing). One trip, a job at a time, like the pond. Crumb runs
+// in and squeezes under the door of the dark room at the back. The octopus in
+// her tank by the left wall teaches Bread to sniff, climbs out, and plays a
+// shell game for the door key; sniffing makes the shell with the key puff. In
+// the dark room Bread only sees a little way around her, so sniffing shows
+// the way to Crumb. Y is the aquarium wall (rock in the dark room), g tank
+// glass, n the floor, k kelp in a pot (things hide in it), G the dark room's
+// door.
+const AQUA = (() => {
+  const r = seeded(5), m = [];
+  for (let y = 0; y < 22; y++) { m.push([]); for (let x = 0; x < 36; x++) m[y].push(y <= 17 ? (x === 0 || x === 35 || y === 0 || y === 17 ? 'Y' : 'n') : x === 0 || x === 35 || y === 21 ? '#' : '.'); }
+  // the big shark tank along the back of the hall, and two round jelly tanks
+  for (let y = 1; y <= 3; y++) for (let x = 1; x <= 16; x++) m[y][x] = 'g';
+  for (const [x, y] of [[4, 6], [5, 6], [4, 7], [5, 7], [11, 6], [12, 6], [11, 7], [12, 7]]) m[y][x] = 'g';
+  // the walls round the dark room, with its door onto the lobby
+  for (let y = 1; y <= 10; y++) m[y][17] = 'Y';
+  for (let x = 17; x <= 34; x++) m[10][x] = x === 26 ? 'G' : 'Y';
+  // the dark room is a maze of rocks, carved from the door outward (paths on
+  // every other square), with a few extra gaps so there's more than one way round
+  const X0 = 18, Y0 = 1, cw = 17, ch = 9, start = [26, 9];
+  for (let y = Y0; y < Y0 + ch; y++) for (let x = X0; x < X0 + cw; x++) m[y][x] = 'Y';
+  const seen = new Set([start + '']), stack = [start]; m[9][26] = 'n';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= X0 && a < X0 + cw && b >= Y0 && b < Y0 + ch && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = 'n'; m[(y + ny) / 2][(x + nx) / 2] = 'n'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  for (let y = Y0 + 1; y < Y0 + ch - 1; y++) for (let x = X0 + 1; x < X0 + cw - 1; x++) if (m[y][x] === 'Y' && r() < .12 && ((m[y][x - 1] === 'n' && m[y][x + 1] === 'n') || (m[y - 1][x] === 'n' && m[y + 1][x] === 'n'))) m[y][x] = 'n';
+  // its dead ends, farthest from the door first: Crumb, the pearls, then the
+  // gold paw print. Far means both ways: a dead end can be a long walk round
+  // yet sit just behind one rock from the door, where Crumb looked close enough
+  // to touch (seen in the first test), so dead ends at least 6 squares away in
+  // a straight line come first.
+  const dist = { [start]: 0 }, q = [start];
+  while (q.length) { const [x, y] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const k = (x + a) + ',' + (y + b); if (m[y + b][x + a] === 'n' && y + b < 10 && !(k in dist)) { dist[k] = dist[x + ',' + y] + 1; q.push([x + a, y + b]); } }); }
+  const ends = Object.keys(dist).map(k => k.split(',').map(Number)).filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => m[y + b][x + a] !== 'n').length === 3);
+  const far = ([x, y]) => dist[x + ',' + y] + (Math.hypot(x - start[0], y - start[1]) >= 6 ? 1000 : 0);
+  ends.sort((a, b) => far(b) - far(a) || a[0] - b[0]);
+  const mid = ([x, y]) => [x + .5, y + .5];
+  // the lobby: the octopus tank by the left wall, the touch pool on the right, kelp in pots
+  for (let y = 11; y <= 13; y++) for (let x = 1; x <= 6; x++) m[y][x] = 'g';
+  for (let y = 11; y <= 16; y++) for (let x = 22; x <= 33; x++) if (((x + .5 - 27.5) / 4.6) ** 2 + ((y + .5 - 13.5) / 2.4) ** 2 < 1) m[y][x] = 'w';
+  for (const [x, y] of [[1, 9], [2, 9], [16, 4], [1, 16], [34, 11], [20, 16], [14, 9]]) m[y][x] = 'k';
+  // the doors, and the path out to the car; grass, trees and soft dirt outside
+  m[17][17] = m[17][18] = 'n';
+  for (let y = 18; y <= 20; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (const [x, y] of [[3, 19], [10, 18], [26, 19], [32, 18]]) m[y][x] = 'T';
+  for (const [x, y] of [[6, 20], [30, 20]]) m[y][x] = 'x';
+  return {
+    m, start: [18, 19.4], car: [18, 20.6], door: [26.5, 10.5], dark: [18, 1, 34, 9],
+    run: [[18, 13], [26.5, 12], [26.5, 10.4]], crumbAt: mid(ends[0]),
+    octo: [3.5, 12.4], octoOut: [7.5, 14.1], shells: [[5.5, 15.6], [7.5, 15.6], [9.5, 15.6]],
+    // where the pieces hide: the starfish in the touch pool (a swim), the
+    // pearls at the end of the dark room, the toy fish in the kelp by the hall
+    spots: { starfish: [27.5, 13.5], pearls: mid(ends[1]), toyFish: [1.5, 9.5] },
+    goldSpots: ends.slice(2, 5).map(mid),
+    crumbSpots: { clownfish: [16.5, 4.5] },   // in the kelp by the shark tank
+    tanks: [[1, 1, 16, 3, 'shark'], [4, 6, 5, 7, 'jelly'], [11, 6, 12, 7, 'jelly']],
+  };
+})();
+const inDark = (x, y) => { const [x0, y0, x1, y1] = AQUA.dark; return G && G.world === 'aquarium' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
 const solidAt = (x, y, set) => set.includes(tileAt(x, y));
 function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
@@ -1176,7 +1284,7 @@ function startWorld(key) {
     stage: '', key: null, hasKey: false, gateOpen: false, holeDug: false, lost: 0, digT: 0, muddy: 0,
     // Crumb hops out of the car and runs off
     crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
-  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p'); G.treats.push({ x, y, v }); } };
+  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p', W.treatOk); G.treats.push({ x, y, v }); } };
   add(22, 1); add(6, 2); add(3, 5);
   // the gold paw print: in a bush at the pond, buried in a mound at the farm
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
@@ -1229,6 +1337,30 @@ const WORLDS = {
       if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
       if (G.stage === 'ducks') return G.ducklings.filter(d => !d.home).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
       if (G.stage === 'frogs') return G.song.state === 'listen' ? G.frogs[G.song.seq[G.song.i]] : { x: 14.3, y: 7.6 };
+    },
+  },
+  aquarium: {
+    key: 'aquarium', name: 'aquarium', Name: 'Aquarium', map: AQUA, stop: 3, costume: 'octopus', pic: OCTOPUS[0], baddies: 'Crabs and jellyfish caught', noFleas: true, soil: 2, open: 'n', treatOk: (x, y) => !(x < 12 && y > 13),   // no treats by the shells
+    goals: { octo: 'Find the octopus', shells: 'Paw the shell with the key', door: 'Take the key to the dark room', find: 'Sniff out Crumb in the dark', back: 'Bring Crumb to the car' },
+    setup() {
+      // crabs in the hall and the lobby (not on the octopus's corner), jellyfish in the dark room
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(4, 'n', (x, y) => !inDark(x, y) && y > 3 && y < 17 && !(x < 12 && y > 12)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crab: true }); }
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, 'n', (x, y) => inDark(x, y) && Math.hypot(x - 26, y - 9) > 3); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, jelly: true }); }
+      G.octo = { x: AQUA.octo[0], y: AQUA.octo[1], t: 0, out: 0 };
+      G.shells = null;
+      const FISH_COL = [COL.b, COL.y, COL.P, COL.r];
+      G.fish = AQUA.tanks.flatMap(([x0, y0, x1, y1, kind]) => [...Array(kind === 'shark' ? 7 : 2)].map((_, i) => ({
+        kind: kind === 'jelly' ? 'jelly' : i < 2 ? 'shark' : 'fish', col: FISH_COL[i % 4], box: [x0, y0, x1, y1],
+        x: x0 + .5 + Math.random() * (x1 - x0), y: y0 + .6 + (kind === 'jelly' ? .4 : i < 2 ? .9 : Math.random() * (y1 - y0)), v: (kind === 'jelly' ? .15 : .7 + Math.random() * .8) * (i % 2 ? 1 : -1), t: Math.random() * 9 })));
+      stage('octo', 'Crumb ran into the dark room!');
+    },
+    step(b, dt) { stepAquarium(b, dt); },
+    paw: b => pawShell(b),
+    reached: () => G.gateOpen,
+    target() {
+      if (G.stage === 'octo') return { x: AQUA.octo[0], y: AQUA.octo[1] + 1.8 };
+      if (G.stage === 'shells') { const s = G.shells; return s && s.state === 'pick' ? { x: s.pos[s.key][0], y: s.pos[s.key][1] } : G.octo; }
+      if (G.stage === 'door') return { x: AQUA.door[0], y: AQUA.door[1] + .6 };
     },
   },
   farm: {
@@ -1287,6 +1419,150 @@ const WORLDS = {
     },
   },
 };
+// ---------- The aquarium ----------
+function stepAquarium(b, dt) {
+  const o = G.octo; o.t += dt;
+  G.fish.forEach(f => { f.t += dt; f.x += f.v * dt; const [x0, , x1] = f.box; if (f.x < x0 + .4 || f.x > x1 + .6) { f.v = -f.v; f.x = Math.max(x0 + .4, Math.min(x1 + .6, f.x)); } });
+  // Bread at the octopus's glass: she teaches sniffing (the first time), then climbs out
+  if (G.stage === 'octo' && Math.hypot(AQUA.octo[0] - b.x, AQUA.octo[1] + 1.8 - b.y) < 2.4) {
+    G.stage = 'hi'; sfx.blub(); G.pops.push({ x: o.x, y: o.y - .6, txt: 'Blub!', t: 0, c: LINE });
+    const out = () => { o.out = .001; stage('shells', 'The octopus has the key!'); };
+    if (!S.moves.sniff) { S.moves.sniff = true; persist(); showDig(); hold(OCTOPUS[0], 'The octopus taught Bread to sniff!', out); }
+    else out();
+  }
+  if (o.out > 0 && o.out < 1) {               // up over the glass and down onto the floor
+    o.out = Math.min(1, o.out + dt / 1.2); const k = o.out, [ax, ay] = AQUA.octo, [bx, by] = AQUA.octoOut;
+    o.x = ax + (bx - ax) * k; o.y = ay + (by - ay) * k - Math.sin(k * Math.PI) * 1.5;
+    if (o.out >= 1) G.shells = shellRound(3);
+  }
+  if (G.shells) stepShells(dt);
+  if (G.hasKey && !G.gateOpen && Math.hypot(AQUA.door[0] - b.x, AQUA.door[1] + .6 - b.y) < 1.6) {
+    G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(AQUA.door[0], AQUA.door[1]);
+    stage('find', 'The door is open! It’s dark in there.');
+  }
+}
+// The octopus's shell game (decided 10 Nov). She shows the key, tucks it
+// under a shell and swaps the shells about; Bread paws the one she thinks has
+// it. A wrong shell is empty, the octopus blubs, and she shows the key again
+// with one swap fewer (never under 2). No clock, no penalty. Sniffing makes
+// the right shell puff, which is how she teaches it.
+function shellRound(swaps) { return { pos: AQUA.shells.map(p => [...p]), slot: [0, 1, 2], key: Math.floor(Math.random() * 3), state: 'show', t: 0, swaps, n: swaps, sw: null, lift: -1 }; }
+function stepShells(dt) {
+  const s = G.shells; s.t += dt;
+  if (s.state === 'show') { s.lift = s.key; if (s.t > 1.8) { s.state = 'swap'; s.t = 0; s.lift = -1; } }
+  else if (s.state === 'swap') {
+    if (!s.sw) {
+      if (!s.swaps) { s.state = 'pick'; G.octo.wave = 1; return; }
+      const a = Math.floor(Math.random() * 3), c = (a + 1 + Math.floor(Math.random() * 2)) % 3;
+      s.sw = { a, c, t: 0, from: [[...s.pos[a]], [...s.pos[c]]] }; sfx.shell();
+    }
+    const w = s.sw; w.t = Math.min(1, w.t + dt / .8); const k = ease(w.t);
+    s.pos[w.a] = [w.from[0][0] + (w.from[1][0] - w.from[0][0]) * k, w.from[0][1] - Math.sin(k * Math.PI) * .7];
+    s.pos[w.c] = [w.from[1][0] + (w.from[0][0] - w.from[1][0]) * k, w.from[1][1] + Math.sin(k * Math.PI) * .5];
+    if (w.t >= 1) { s.sw = null; s.swaps--; }
+  } else if (s.state === 'lift' && s.t > 1) {
+    if (s.lift === s.key) { s.state = 'won'; s.lift = -1; G.hasKey = true; burst(s.pos[s.key][0], s.pos[s.key][1]); hold(GATE_KEY, 'The door key!', () => stage('door')); }
+    else { s.state = 'show'; s.t = 0; s.n = Math.max(2, s.n - 1); s.swaps = s.n; }
+  }
+}
+function pawShell(b) {
+  const s = G.shells; if (!s || s.state !== 'pick') return false;
+  const i = [0, 1, 2].map(i => [i, Math.hypot(s.pos[i][0] - b.x, s.pos[i][1] - b.y)]).filter(([, d]) => d < 1.5).sort((a, c) => a[1] - c[1])[0]?.[0];
+  if (i === undefined) return false;
+  s.state = 'lift'; s.lift = i; s.t = 0; G.pawT = performance.now() + 250; sfx.paw();
+  if (i !== s.key) { sfx.nope(); G.pops.push({ x: G.octo.x, y: G.octo.y - .6, txt: 'Blub!', t: 0, c: LINE }); }
+  return true;
+}
+// Decided 10 Nov: sniffing, learned from the octopus. Bread sniffs the air and
+// little puffs of smell float along the way to whatever she's after (the same
+// thing the edge arrow points at), round the walls rather than through them,
+// and over any hidden piece close by. It's how to find Crumb in the dark room.
+function scentPath(tx, ty) {
+  const b = G.bread, sx = Math.floor(b.x), sy = Math.floor(b.y), ex = Math.floor(tx), ey = Math.floor(ty), solid = breadSolid();
+  const prev = new Map([[sx + ',' + sy, null]]), q = [[sx, sy]];
+  while (q.length) {
+    const [x, y] = q.shift(); if (x === ex && y === ey) break;
+    for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + a, ny = y + c, k = nx + ',' + ny;
+      if (prev.has(k) || nx < 0 || ny < 0 || nx >= LW || ny >= LH || (solid.includes(G.m[ny][nx]) && !(nx === ex && ny === ey))) continue;
+      prev.set(k, [x, y]); q.push([nx, ny]);
+    }
+  }
+  if (!prev.has(ex + ',' + ey)) return [[b.x, b.y], [tx, ty]];
+  const path = []; for (let p = [ex, ey]; p; p = prev.get(p[0] + ',' + p[1])) path.unshift([p[0] + .5, p[1] + .5]);
+  return path;
+}
+function sniff() {
+  if (screen !== 'level' || !G || G.done || G.sniffT > performance.now()) return;
+  if (!S.moves.sniff) return toast("Bread can't sniff yet.");
+  const b = G.bread, now = performance.now(); G.sniffT = now + 900; sfx.sniff();
+  G.pops.push({ x: b.x + b.face * .7, y: b.y - .5, txt: 'Sniff!', t: 0, c: LINE });
+  const puffs = [], tg = stageTarget();
+  if (tg) {
+    const path = scentPath(tg.x, tg.y);
+    path.forEach(([x, y], i) => { if (i && i <= 26 && (i % 2 === 0 || i === path.length - 1)) puffs.push({ x, y, at: now + i * 45, col: COL.b }); });
+    if (path.length <= 27) for (let k = 1; k <= 3; k++) puffs.push({ x: tg.x + (k - 2) * .3, y: tg.y, at: now + path.length * 45 + k * 350, col: COL.b });   // the smell is strongest where it's coming from
+  }
+  G.sparkles.forEach(sp => { if (Math.hypot(sp.x - b.x, sp.y - b.y) < 6) puffs.push({ x: sp.x, y: sp.y - .2, at: now + 250, col: COL.y }); });
+  G.scent = puffs;
+}
+function drawScent() {
+  const now = performance.now();
+  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col } }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5, 2); });
+}
+// the aquarium's own tiles: blue walls, pale tiled floor, tank glass, kelp pots,
+// the dark room's rocks and sandy floor, and its door
+function drawAquaTile(c, x, y, X, Y) {
+  const dark = inDark(x + .5, y + .5), is = (ch, i, j) => G.m[j]?.[i] === ch;
+  if (c === 'Y') {
+    if (dark) { px(X, Y, T, T, '#3a3f52'); if ((x * 3 + y) % 3 === 0) px(X + 4, Y + 5, 5, 3, '#4c5268'); return; }   // a rock
+    px(X, Y, T, T, '#2b3a5c'); if (!is('Y', x, y - 1)) px(X, Y, T, 4, '#5a7fb0');
+    if (!is('Y', x, y - 1)) px(X, Y, T, 1, LINE); if (!is('Y', x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
+    if (!is('Y', x - 1, y)) px(X, Y, 1, T, LINE); if (!is('Y', x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
+    return;
+  }
+  if (dark) { px(X, Y, T, T, '#3b4f73'); if ((x * 5 + y * 3) % 4 === 0) px(X + 5, Y + 9, 2, 1, '#566c94'); }
+  else px(X, Y, T, T, (x + y) % 2 ? '#d6e2ee' : '#c8d6e6');
+  if (c === 'g') {                            // tank glass, with a shine here and there; the fish swim behind it
+    px(X, Y, T, T, COL.W);
+    if (!is('g', x, y - 1)) px(X, Y, T, 2, LINE);
+    if (!is('g', x, y + 1)) { px(X, Y + T - 4, T, 3, '#e3c48e'); px(X, Y + T - 1, T, 1, LINE); }   // sand along the bottom
+    if (!is('g', x - 1, y)) px(X, Y, 2, T, LINE); if (!is('g', x + 1, y)) px(X + T - 2, Y, 2, T, LINE);
+    if ((x + y) % 4 === 0) { px(X + 4, Y + 4, 1, 4, COL.l); px(X + 5, Y + 3, 1, 2, COL.l); }
+  }
+  if (c === 'k') { px(X + 4, Y + 10, 8, 6, LINE); px(X + 5, Y + 11, 6, 4, '#b8773a'); }   // the pot; the kelp is drawn over things
+  if (c === 'G') {
+    if (G.gateOpen) { px(X, Y, 2, T, LINE); px(X + T - 2, Y, 2, T, LINE); }
+    else { px(X, Y, T, T, LINE); px(X + 1, Y + 1, T - 2, T - 1, '#7a8aa8'); px(X + 3, Y + 3, T - 6, 3, '#9aaac6'); px(X + 5, Y + 8, 6, 5, LINE); px(X + 6, Y + 9, 4, 3, COL.y); }   // a steel door with a gold lock
+  }
+}
+function drawAquarium(t) {
+  G.fish.forEach(f => {                       // inside the tanks, clipped to the glass
+    const [x0, y0, x1, y1] = f.box; cx.save(); cx.beginPath(); cx.rect(x0 * T + 2, y0 * T + 2, (x1 - x0 + 1) * T - 4, (y1 - y0 + 1) * T - 6); cx.clip();
+    const img = f.kind === 'shark' ? sprite(SHARK, { flip: f.v < 0 }) : f.kind === 'jelly' ? sprite(JELLY[Math.floor(t / 400 + f.t) % 2]) : sprite(FISH, { flip: f.v < 0, map: { b: f.col } });
+    const fy = f.kind === 'jelly' ? f.y + Math.sin(f.t * 1.5) * .5 : f.y + Math.sin(f.t * 2) * .15;
+    put(img, f.x * T - img.width / 2, fy * T - img.height / 2); cx.restore();
+  });
+  const o = G.octo, img = sprite(OCTOPUS[Math.floor(t / (o.wave ? 160 : 400)) % 2]);
+  if (!o.out) { cx.save(); cx.beginPath(); cx.rect(1 * T + 2, 11 * T + 2, 6 * T - 4, 3 * T - 6); cx.clip(); }
+  put(img, o.x * T - 7, o.y * T - 9 + (Math.floor(t / 500) % 2));
+  if (!o.out) cx.restore();
+  const s = G.shells;
+  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q } }), p[0] * T - 10, p[1] * T - 9 - up, 2); });   // drawn double size, so they don't look like treats
+}
+// Decided 10 Nov: the dark room is dark. From outside it's all black but the
+// glowing jellyfish; inside, Bread sees a little way round her. The dark is
+// drawn in blocks of 4 pixels, with a speckled ring at the edge, so it stays 8-bit.
+function drawDark(b, t) {
+  const [x0, y0, x1, y1] = AQUA.dark, inside = b.x >= x0 && b.x < x1 + 1 && b.y >= y0 && b.y < y1 + 1.7, R = 2.7, cam = G.cam;
+  const ax = Math.max(x0 * T, Math.floor(cam.x) * T), bx = Math.min((x1 + 1) * T, (Math.floor(cam.x) + VW + 1) * T), ay = Math.max(y0 * T, Math.floor(cam.y) * T), by = Math.min((y1 + 1) * T, (Math.floor(cam.y) + VH + 1) * T);
+  for (let y = ay; y < by; y += 4) for (let x = ax; x < bx; x += 4) {
+    const d = inside ? Math.hypot((x + 2) / T - b.x, (y + 2) / T - (b.y - .4)) : 99;
+    if (d < R || (d < R + .7 && (x / 4 + y / 4) % 2)) continue;
+    px(x, y, 4, 4, '#0b0f1e');
+  }
+  G.sq.forEach(j => { if (j.jelly) drawSquirrel(j, t); });
+}
 // ---------- The ducklings, at the pond ----------
 // Decided 5 Nov: the mama duck's four ducklings are loose in the lower park.
 // They run from Bread like the cows (and scatter from a bark), so she herds
@@ -1641,7 +1917,7 @@ function stageTarget() {
 // Decided 28 Oct: digging, learned from the farm pig. It works next to soft
 // dirt (treats, the rubber chicken, the gold paw at the farm) and on the
 // fence where Crumb dug under. Back at the pond there's soft dirt waiting.
-function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; $('#pushHelp').hidden = !S.moves.push; }
+function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; $('#pushHelp').hidden = !S.moves.push; $('#sniffBtn').hidden = !S.moves.sniff; $('#sniffHelp').hidden = !S.moves.sniff; }
 function digSpot() {
   const b = G.bread; let best = null, bd = 1.5;
   for (let y = Math.floor(b.y) - 1; y <= Math.floor(b.y) + 1; y++) for (let x = Math.floor(b.x) - 1; x <= Math.floor(b.x) + 1; x++) {
@@ -1764,6 +2040,12 @@ function stepLevel(dt, t) {
   G.sq.forEach(s => {
     s.t += dt;
     if (s.stun > 0) { s.stun -= dt; return; }
+    if (s.jelly) {                            // jellyfish just drift about
+      s.a += (Math.random() - .5) * 1.5 * dt; const ox = s.x, oy = s.y;
+      move(s, Math.cos(s.a) * .5 * dt, Math.sin(s.a) * .5 * dt, .3);
+      if (ox === s.x && oy === s.y) s.a += 2;
+      return;
+    }
     const d = Math.hypot(s.x - b.x, s.y - b.y);
     let ax, ay, v;
     if (d < 3.5) { const ux = (s.x - b.x) / d, uy = (s.y - b.y) / d, z = Math.sin(s.t * 7) * .8; ax = ux - uy * z; ay = uy + ux * z; v = 3.3; }
@@ -1890,6 +2172,7 @@ function paw() {
   if (screen === 'map') return mapGo();
   if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
   if (G.riding) { G.riding = false; G.race = null; G.pony.home = true; G.pony.x = G.bread.x + 1.8; G.pawT = performance.now() + 900; toast('Bread hopped off.'); return; }
+  if (W.paw && W.paw(G.bread)) return;      // the world's own use for the paw (the octopus's shells)
   const b = G.bread, tg = pawTarget(); G.pawT = performance.now() + 250; sfx.paw();
   if (tg) { const d = Math.hypot(tg.x - b.x, tg.y - b.y) || 1; b.dx = (tg.x - b.x) / d; b.dy = (tg.y - b.y) / d; if (Math.abs(b.dx) > .2) b.face = b.dx > 0 ? 1 : -1; }
   const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
@@ -1902,6 +2185,7 @@ function paw() {
 }
 $('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
 $('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
+$('#sniffBtn').addEventListener('pointerdown', e => { e.preventDefault(); sniff(); });
 // The stick, like Math Force's. Decided 28 Oct the cross became a pad you slide
 // a thumb on; decided 2 Nov, after more play-tests, it's a round stick: Bread
 // walks the way it's pushed, any direction. Lifting the thumb stops her.
@@ -1927,7 +2211,7 @@ const stick = { x: 0, y: 0, on: false, id: null };
   const stop = e => { if (playing() && e.cancelable) e.preventDefault(); };
   ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
   document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
-  ['#pad', '#barkBtn', '#pawBtn', '#digBtn'].forEach(q => $(q).addEventListener('touchstart', stop, { passive: false }));
+  ['#pad', '#barkBtn', '#pawBtn', '#digBtn', '#sniffBtn'].forEach(q => $(q).addEventListener('touchstart', stop, { passive: false }));
   let lastEnd = 0;
   document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
 }
@@ -1938,6 +2222,12 @@ function drawTreat(x, y, v, t) {
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
+  if (s.crab || s.jelly) {
+    const img = sprite((s.crab ? CRAB : JELLY)[s.jelly ? Math.floor(s.t * 2) % 2 : frame]), lift = s.jelly ? 6 + Math.round(Math.sin(s.t * 3) * 2) : 0;
+    put(img, s.x * T - img.width / 2, s.y * T - img.height + 3 - lift);
+    if (s.stun > 0) text('!', s.x * T, s.y * T - 12 - lift);
+    return;
+  }
   put(sprite((s.crow ? CROW : s.mouse ? MOUSE : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - (s.mouse ? 5 : 6), s.y * T - (s.crow ? 10 : s.mouse ? 4 : 8) - (frame && s.stun <= 0 ? 1 : 0));
   if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
   if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
@@ -1961,7 +2251,8 @@ function drawLevel(t) {
   const wet = (x, y) => 'wd'.includes(G.m[y]?.[x] ?? '.');
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const c = G.m[y][x], X = x * T, Y = y * T;
-    if (c === 'w' || c === 'd') {
+    if (G.world === 'aquarium' && c !== 'w' && y <= 17) drawAquaTile(c, x, y, X, Y);
+    else if (c === 'w' || c === 'd') {
       px(X, Y, T, T, COL.W);
       if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, COL.l); px(X + 2 + o, Y + 8, 1, 1, COL.l); }
       if (!wet(x, y - 1)) px(X, Y, T, 1, COL.V);
@@ -2063,6 +2354,7 @@ function drawLevel(t) {
     for (let i = 3; i < w - 4; i += 5) for (let j = 3; j < h - 2; j += 6) px(X + 1 + i, Y + j + (i % 3), 3, 1, '#c9a03a');
     px(a * T, Y + h / 2 - 4, 6, 9, LINE); px(a * T + 1, Y + h / 2 - 3, 4, 7, '#8a4f2a'); px(a * T + 1, Y + h / 2 - 3, 4, 2, '#9be27a');
   });
+  if (G.octo) drawAquarium(t);
   drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
   (G.eggs || []).forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: EGG_COL[e.col] } }), e.x * T - 3, e.y * T - 3 - (Math.floor(t / 400 + e.x) % 2)); });
@@ -2102,7 +2394,7 @@ function drawLevel(t) {
     G.ducklings.forEach(d => put(sprite(DUCKLING, { flip: d.face < 0 }), d.x * T - 4, d.y * T - 4 - (Math.floor(t / 300 + d.t) % 2)));
   }
   G.fl.forEach(f => drawFlea(f, t));
-  G.sq.forEach(s => drawSquirrel(s, t));
+  G.sq.forEach(s => { if (!s.jelly) drawSquirrel(s, t); });   // the jellyfish go over the dark, so they glow
   if (G.goose) drawGoose(t);
   const tg = !G.done && pawTarget();
   if (tg) {                                  // white corners on whoever the paw will reach
@@ -2131,6 +2423,7 @@ function drawLevel(t) {
     const c = G.m[y][x], X = x * T, Y = y * T;
     if (c === 'T') put(sprite(blob(26, 22, 'G', 'q', 'L')), X - 5, Y - 15);
     if (c === 'b') put(sprite(blob(20, 16, 'G', 'q', 'L')), X - 2, Y);
+    if (c === 'k') for (let i = 0; i < 3; i++) { const kx = X + 3 + i * 4 + (Math.floor(t / 600 + x + i) % 2); px(kx - 1, Y - 7 + i * 2, 4, 19 - i * 2, LINE); px(kx, Y - 6 + i * 2, 2, 17 - i * 2, i % 2 ? COL.G : COL.L); }   // kelp
     if (c === 'C') { for (let i = 0; i < 3; i++) { const sx = X + 2 + i * 5 + (Math.floor(t / 900 + x + i) % 2); px(sx, Y - 8, 2, T + 6, '#4f8f3a'); px(sx - 2, Y - 4 + i, 2, 1, '#79bd66'); px(sx + 2, Y - 1 - i, 2, 1, '#79bd66'); px(sx, Y - 10, 2, 2, COL.y); } }
     if (c === 'H') { px(X, Y - 5, T, 6, '#3f8a5c'); px(X + 3 + (x % 3) * 3, Y - 3, 2, 1, '#5aa772'); if (G.m[y - 1]?.[x] !== 'H') px(X, Y - 6, T, 1, LINE); if (G.m[y][x - 1] !== 'H') px(X, Y - 6, 1, 6, LINE); if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y - 6, 1, 6, LINE); }
     if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
@@ -2148,6 +2441,8 @@ function drawLevel(t) {
     px(X - 2, fy, w + 4, fw, LINE); px(X - 1, fy + 1, w + 2, fw - 2, light); for (let i = 3; i < w; i += 6) px(X + i, fy + 1, 1, fw - 2, dark);
     const dx = door * T; px(dx - 2, fy, 2 * T + 4, fw, LINE); px(dx, fy + 1, 2 * T, fw - 1, '#3b2a1a'); px(dx - 1, fy, 2 * T + 2, 2, '#fff1d6');
   });
+  if (G.octo) drawDark(b, t);
+  if (G.scent) drawScent();
   if (!G.hold && !G.done) drawHints(b, t);
   if (G.hold) {                              // Bread and the find she holds up go over the trees too
     if (!b.swim) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
@@ -2202,6 +2497,7 @@ function drawHints(b, t) {
     const next = G.song.state === 'listen' ? [G.frogs[G.song.seq[G.song.i]]] : G.frogs;
     cx.globalAlpha = .6; next.forEach(f => px(f.x * T - 12, f.y * T - 12, 24, 17, COL.h)); cx.globalAlpha = 1;
   }
+  if (G.world === 'aquarium') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
   if (G.world !== 'farm') return;
   if (G.eggs && G.stage === 'eggs') {
     if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); flashTile(n[0], n[1], COL.y); }
@@ -2230,7 +2526,7 @@ function finishWorld() {
   persist();
   const pctOf = list => Math.round(list.filter(p => p.got).length / list.length * 100);
   const pct = pctOf(every);
-  const rows = [[W.baddies, G.caught.sq], ['Fleas caught', G.caught.fl], ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
+  const rows = [[W.baddies, G.caught.sq], ...(W.noFleas ? [] : [['Fleas caught', G.caught.fl]]), ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
     ...(SS.length > 1 ? SS.map(sc => [sc.name, pctOf(every.filter(p => p.sc === sc)), '%']) : []),
     ...(S.ring && S.ring.best && W.key === 'farm' ? [['Best barrel race', Math.round(S.ring.best), ' s']] : [])];
   // the pieces as pictures: found in color, still hidden as dark shapes
@@ -2287,6 +2583,7 @@ addEventListener('keydown', e => {
   if ((k === ' ' || k === 'p' || k === 'enter') && screen === 'level') { e.preventDefault(); paw(); }
   if (k === 'h' && screen === 'level') help();
   if ((k === 'z' || k === 'x') && screen === 'level') dig();
+  if (k === 'c' && screen === 'level') sniff();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
