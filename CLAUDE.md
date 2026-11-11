@@ -302,10 +302,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   checker of two squares) on the big land in the middle; its capital is where
   he coloured red, inside the rock, with one square south of it left open so
   its units can get out. 45 cities (`CAPITALS`, `TOWNS`): 8 per island nation
-  and 13 in orange's sector. You see one sector at a time (`SECTORS`, picked
-  with the buttons above the map; each player keeps their own, starting at
-  home). Sectors are only for looking; moving and firing cross them. The
-  computer's ground units only go after things on their own island (`LAND`).
+  and 13 in orange's sector. The computer's ground units only go after things
+  on their own island (`LAND`). Later the same day, his ask: no sector buttons
+  (one sector on screen at a time, picked by hand, was clumsy). The map is a
+  camera (`cam`, `fitView`): as many squares as fit the screen at a tappable
+  size, dragged with a mouse or finger, and it glides to whoever is moving
+  (your capital at the start of your turn, each computer unit as it moves).
   Every city has four districts (`c.d`), set free on your turn in the city
   panel: hospital (heals your ground units on or next to the city 1 a turn
   per hospital, a guess), quarantine (keeps viruses out; viruses aren't in the
@@ -313,6 +315,35 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   industrial will make the city spawn robots (bad guys): not built. Still to
   ask him: what the "4" on industrial is, and how much a hospital heals.
   Runways on his map aren't in the game yet. Saves are `v: 3`.
+  Decided 10 Nov, his ask: ships, built like the field guns on an empty water
+  square touching one of your units or cities, out of enemy fire (`SHIPS`).
+  His sizes: destroyer 2 long (a guess: he didn't name the 2-square one),
+  cruiser 3, battleship 3 by 2, carrier 4 by 2 (`len`, `wid`). A ship covers
+  all its squares (`cellsAt`; `x, y` is the bow), turns to face the way it
+  moves, and range counts from its nearest square (`gap`). A shadow under a
+  ship shows every square it takes, because his ship drawings are thin. The
+  carrier holds 6 of his basic units of planes (`AIR_ROOM`): a plane flown
+  onto it lands, rides along, fills up each turn, and takes off from a free
+  deck square. The computer doesn't build ships yet, and the trade ships wait
+  for their sizes.
+  Decided 10 Nov: online play with friends, a turn at a time. Setup has
+  "Online, each on their own device"; starting makes a link (`?game=<id>`)
+  to send, each friend picks a free Player team (`G.seats`, remembered per
+  device under `conquest-online:<id>`), and Invite shows the link again.
+  Ending your turn runs the computer teams on your device, then saves the
+  game for the next player (`G.waiting` until their device starts the turn).
+  Waiting devices check every 4 seconds, play back what happened
+  (`G.replay`, moves, shots, losses and buys, camera following), then show
+  the new turn. No refresh needed. No accounts, no names, no chat; anyone
+  with the link can play.
+- `db/` holds the database setup (Supabase project RubberDuckGames, created
+  10 Nov; its URL and publishable key are in `conquest/index.html`, public by
+  design). Decided 10 Nov: one shared set of tables for every game, not one
+  per game. `matches` is any online game, tagged with its game; browsers only
+  reach it through `match_create`, `match_get` and `match_save` (security
+  definer, so nobody can list games, and a save from an old copy is refused).
+  Families with a parent sign-in, player profiles every game can use, and
+  saves go beside it later (#14), so a kid sets up once for every game.
 - `og-image.png`, `apple-touch-icon.png`, `favicon.ico` and `brand/github-social-preview.png`
   are rendered from the matching `brand/*.html` with headless Chrome
   (`--headless=new --window-size=1200,630 --screenshot=...`); favicon.ico comes
