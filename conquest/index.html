@@ -26,6 +26,8 @@ button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(
    many squares as fit the screen (fitView); drag it to look around. */
 .mapbox{flex:1 1 40rem;min-width:0;position:relative;border:3px solid #1b1a15}
 #cv{min-width:0;touch-action:none;cursor:grab}
+.zoom{position:absolute;top:.4rem;right:.4rem;display:flex;flex-direction:column;gap:.3rem}
+.zoom .pill{font-size:1rem;line-height:1;padding:.5rem .7rem;min-width:2.75rem;min-height:2.75rem}
 .dist{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;padding:.3rem 0;border-top:1px solid var(--line)}
 .dist span{flex:1 1 100%;color:var(--ink)}
 .dbtn{background:#2f2d23;border:2px solid var(--line);padding:.3rem .55rem;font-size:.85rem}
@@ -97,7 +99,8 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
   <button class="pill" id="soundBtn"></button>
 </div>
 <main class="game">
-  <div class="mapbox" id="mapbox"><canvas id="cv" width="960" height="768" tabindex="0"></canvas></div>
+  <div class="mapbox" id="mapbox"><canvas id="cv" width="960" height="768" tabindex="0"></canvas>
+    <div class="zoom"><button class="pill" id="zIn">+</button><button class="pill" id="zOut">−</button></div></div>
   <div class="side">
     <section class="info" id="info" aria-live="polite"></section>
     <p class="log" id="log" aria-live="polite"></p>
@@ -150,7 +153,8 @@ const STR = {
   howBtn: 'How to play',
   gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
   g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
-  g_drag: 'Drag the map to look around.',
+  g_drag: 'Drag the map to look around. Pinch, or tap + and −, to zoom.',
+  zoomIn: 'Zoom in', zoomOut: 'Zoom out',
   g_fire_t: 'Fire', g_fire: 'Then tap a unit in a red box to fire at it.',
   g_marks_t: 'What each unit has left', g_marks: 'Filled square: it can still move. Empty square: it moved, and can still fire. Greyed out: it’s done. When you’re done, press End turn.',
   g_city_t: 'Cities and money', g_city: 'Every city you own pays you each turn: 1 money, or 3 for your home city. Tap your city to buy units there. On this level you start with {m} money.',
@@ -1357,27 +1361,44 @@ function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
 // your turn, and each computer unit as it moves. (Sector buttons, one part
 // of the map at a time, were the first try the same day; switching by hand
 // was clumsy.) VW by VH squares fit the screen at a tappable size.
-let VW = 20, VH = 16;
+// Decided 10 Nov, the next ask: zoom. + and − on the map, pinch on a phone,
+// the mouse wheel or + and - keys on a computer. All the way out shows the
+// whole map; BW by BH is the view at zoom 1 (tappable squares), and VW by VH
+// is what's on screen at the current zoom.
+let BW = 20, BH = 16, ZOOM = 1, VW = 20, VH = 16;
+const ZMAX = 1.6, zMin = () => Math.max(.2, Math.min(BW / MW, BH / MH));
 const cam = { x: 0, y: 0 }, camGo = { x: 0, y: 0 };
-const clampCam = p => { p.x = Math.max(0, Math.min(MW - VW, p.x)); p.y = Math.max(0, Math.min(MH - VH, p.y)); return p; };
+// a view wider than the map centres it, with sea around
+const clampAxis = (v, view, size) => view >= size ? (size - view) / 2 : Math.max(0, Math.min(size - view, v));
+const clampCam = p => { p.x = clampAxis(p.x, VW, MW); p.y = clampAxis(p.y, VH, MH); return p; };
+// zooms keeping the square (fx, fy) where it is on screen (the middle if none given)
+function setZoom(z, fx, fy) {
+  z = Math.max(zMin(), Math.min(ZMAX, z));
+  if (fx === undefined) { fx = cam.x + VW / 2; fy = cam.y + VH / 2; }
+  const sx = (fx - cam.x) / VW, sy = (fy - cam.y) / VH;
+  ZOOM = z; VW = BW / z; VH = BH / z;
+  cam.x = fx - sx * VW; cam.y = fy - sy * VH; clampCam(cam); Object.assign(camGo, cam);
+}
 function fitView() {
   const w = box.clientWidth || 800, top = box.getBoundingClientRect().top + window.scrollY;
   const sq = Math.max(34, Math.min(52, w / 20));                      // CSS pixels per square
-  VW = Math.min(MW, Math.max(8, Math.floor(w / sq)));
+  BW = Math.min(MW, Math.max(8, Math.floor(w / sq)));
   // Decided 10 Nov, from the first phone game: when the side panel sits under
   // the map (narrow screens), a map as tall as the screen left no way to scroll
   // down to the shop, because swiping the map moves the camera. There the map
   // takes about 55% of the height and the panel shows below it.
   const stacked = $('.side').getBoundingClientRect().top > box.getBoundingClientRect().top + 40;
-  const px = w / VW, h = Math.max(240, stacked ? window.innerHeight * .55 : window.innerHeight - top - 12);
-  VH = Math.min(MH, Math.max(6, Math.floor(h / px)));
-  if (cv.width !== VW * TS || cv.height !== VH * TS) { cv.width = VW * TS; cv.height = VH * TS; ctx.imageSmoothingEnabled = false; }
+  const px = w / BW, h = Math.max(240, stacked ? window.innerHeight * .55 : window.innerHeight - top - 12);
+  BH = Math.min(MH, Math.max(6, Math.floor(h / px)));
+  if (cv.width !== BW * TS || cv.height !== BH * TS) { cv.width = BW * TS; cv.height = BH * TS; ctx.imageSmoothingEnabled = false; }
+  ZOOM = Math.max(zMin(), Math.min(ZMAX, ZOOM)); VW = BW / ZOOM; VH = BH / ZOOM;
   clampCam(cam); clampCam(camGo);
 }
 // Glides the camera so a square is on screen (now: jump there). Returns true
 // when it has to move.
 function seeTile(x, y, now = false) {
   const m = Math.min(2, Math.floor(VW / 4), Math.floor(VH / 4));
+  if (VW >= MW && VH >= MH) return false;   // the whole map is on screen
   const vis = x >= camGo.x + m && x < camGo.x + VW - m && y >= camGo.y + m && y < camGo.y + VH - m;
   if (vis && !now) return false;
   clampCam(Object.assign(camGo, { x: x - (VW - 1) / 2, y: y - (VH - 1) / 2 }));
@@ -1447,7 +1468,7 @@ function frame(now) {
   if (Math.abs(camGo.x - cam.x) < .01) cam.x = camGo.x;
   if (Math.abs(camGo.y - cam.y) < .01) cam.y = camGo.y;
   ctx.fillStyle = '#3a4852'; ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.save(); ctx.translate(-Math.round(cam.x * TS), -Math.round(cam.y * TS));   // from here on, squares are whole-map squares
+  ctx.save(); ctx.scale(ZOOM, ZOOM); ctx.translate(-Math.round(cam.x * TS * ZOOM) / ZOOM, -Math.round(cam.y * TS * ZOOM) / ZOOM);   // from here on, squares are whole-map squares
   ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
   const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
   for (const c of G.cities) if (seen(c.x, c.y)) { drawCity(c, now); drawFlag(c); }
@@ -1908,18 +1929,41 @@ function resume(s) {
 // ---------- input ----------
 // A tap picks a square; dragging (mouse or finger) moves the camera, and a
 // drag never counts as a tap.
-let drag = null;
-cv.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, cx: camGo.x, cy: camGo.y, moved: false, id: e.pointerId }; });
+let drag = null, pinch = null;
+const touches = new Map();
+const worldAt = (cx, cy) => { const b = cv.getBoundingClientRect(); return { x: cam.x + (cx - b.left) / b.width * VW, y: cam.y + (cy - b.top) / b.height * VH }; };
+cv.addEventListener('pointerdown', e => {
+  touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touches.size === 2) {   // two fingers: pinch to zoom
+    const [a, b] = [...touches.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: ZOOM };
+    if (drag) drag.moved = true;
+    return;
+  }
+  drag = { x: e.clientX, y: e.clientY, cx: camGo.x, cy: camGo.y, moved: false, id: e.pointerId };
+});
 window.addEventListener('pointermove', e => {
-  if (!drag || e.pointerId !== drag.id) return;
+  if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && touches.size >= 2) {
+    const [a, b] = [...touches.values()], m = worldAt((a.x + b.x) / 2, (a.y + b.y) / 2);
+    setZoom(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, m.x, m.y);
+    return;
+  }
+  if (!drag || e.pointerId !== drag.id || pinch) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.hypot(dx, dy) > 8) drag.moved = true;
   if (!drag.moved) return;
   const px = cv.clientWidth / VW;
   clampCam(Object.assign(camGo, { x: drag.cx - dx / px, y: drag.cy - dy / px })); Object.assign(cam, camGo);
 });
-window.addEventListener('pointerup', () => { if (drag) setTimeout(() => { drag = null; }, 0); });
-window.addEventListener('pointercancel', () => { drag = null; });
+const lift = e => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; if (!touches.size && drag) setTimeout(() => { drag = null; }, 0); };
+window.addEventListener('pointerup', lift);
+window.addEventListener('pointercancel', e => { lift(e); drag = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); const m = worldAt(e.clientX, e.clientY); setZoom(ZOOM * (e.deltaY < 0 ? 1.12 : 1 / 1.12), m.x, m.y); }, { passive: false });
+$('#zIn').onclick = () => setZoom(ZOOM * 1.25);
+$('#zOut').onclick = () => setZoom(ZOOM / 1.25);
+$('#zIn').setAttribute('aria-label', t('zoomIn')); $('#zIn').title = t('zoomIn');
+$('#zOut').setAttribute('aria-label', t('zoomOut')); $('#zOut').title = t('zoomOut');
 window.addEventListener('resize', () => fitView());
 cv.addEventListener('click', e => {
   if (drag?.moved) return;
@@ -1932,6 +1976,8 @@ cv.addEventListener('keydown', e => {
   if (d) { cursor.x = Math.max(0, Math.min(MW - 1, cursor.x + d[0])); cursor.y = Math.max(0, Math.min(MH - 1, cursor.y + d[1])); seeTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Enter' || e.key === ' ') { tapTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Escape') { sel = null; render(); }
+  else if (e.key === '+' || e.key === '=') setZoom(ZOOM * 1.25);
+  else if (e.key === '-' || e.key === '_') setZoom(ZOOM / 1.25);
 });
 $('#endBtn').onclick = () => { if (myTurn()) { sel = null; nextTurn(); } else if (ONLINE && !busy) watchOnline(0); };
 $('#teamsBtn').onclick = teamsCard;
