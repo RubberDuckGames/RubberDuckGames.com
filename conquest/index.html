@@ -559,8 +559,14 @@ function save() {
 // older copy is refused, so two devices can't overwrite each other.
 const SB_URL = 'https://hybjirpyeyomedhluvvl.supabase.co', SB_KEY = 'sb_publishable_3n3_7kk6BSLnDQ1_FLdOHA_xyXEJm8P';
 let ONLINE = null;   // { id, ver, me }
+// Decided 10 Nov, from the first real game: a waiting phone stopped picking up
+// turns. Phones pause pages when the screen sleeps or the app switches, and a
+// request caught in that never came back, so the checking stopped for good.
+// Now every request gives up after 8 seconds, the game checks again as soon
+// as the page is back on screen, and the Waiting button checks right away.
 async function rpc(fn, body) {
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', signal: ctl.signal, headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).finally(() => clearTimeout(tm));
   const j = await r.json().catch(() => null);
   if (!r.ok) throw new Error(j?.message || 'net');
   return j;
@@ -665,25 +671,36 @@ async function playReplay(evs) {
   }
   busy = false;
 }
-let pollT = null;
-function watchOnline() {
+let pollT = null, polling = false;
+function watchOnline(soon = 4000) {
   clearTimeout(pollT);
   if (!ONLINE || (G.side === ONLINE.me && !G.over)) return;
-  pollT = setTimeout(async () => {
-    try {
-      const [row] = await rpc('match_get', { p_id: ONLINE.id });
-      if (row && row.version > ONLINE.ver) {
-        const was = G.side; ONLINE.ver = row.version;
-        const st = row.state;
-        if (st.replayId && st.replayId !== seenReplay && st.replay?.length) { seenReplay = st.replayId; await playReplay(st.replay); }
-        loadOnline(st);
-        if (G.side === ONLINE.me && G.waiting) { showBanner(t('yourTurnOnline', { team: tn(was) })); sfx('take'); }
-        onlineReady(); return;
-      }
-    } catch (e) { }
-    watchOnline();
-  }, 4000);
+  pollT = setTimeout(checkOnline, soon);
 }
+async function checkOnline() {
+  if (!ONLINE || polling || busy) { watchOnline(); return; }
+  polling = true;
+  try {
+    const [row] = await rpc('match_get', { p_id: ONLINE.id });
+    if (row && row.version > ONLINE.ver) {
+      const was = G.side; ONLINE.ver = row.version;
+      const st = row.state;
+      if (st.replayId && st.replayId !== seenReplay && st.replay?.length) {
+        seenReplay = st.replayId;
+        try { await playReplay(st.replay); } catch (e) { busy = false; }   // a broken replay never blocks the turn
+      }
+      loadOnline(st);
+      if (G.side === ONLINE.me && G.waiting) { showBanner(t('yourTurnOnline', { team: tn(was) })); sfx('take'); }
+      polling = false; onlineReady(); return;
+    }
+  } catch (e) { }
+  polling = false;
+  watchOnline();
+}
+// back on screen: check now instead of waiting
+document.addEventListener('visibilitychange', () => { if (!document.hidden) watchOnline(50); });
+window.addEventListener('focus', () => watchOnline(50));
+window.addEventListener('online', () => watchOnline(50));
 
 // ---------- how the teams get along ----------
 const pk = (a, b) => a < b ? a + '|' + b : b + '|' + a;
@@ -1042,6 +1059,8 @@ function tapTile(x, y) {
   if (!sel && (canBuildNear(x, y) || canBuildSea(x, y))) sel = { build: { x, y, sea: tileAt(x, y) === 'w' } };
   if (sel?.unit?.side === me) sfx('click');
   render();
+  // on a phone the panel is under the map: slide it up so the shop is in reach
+  if (sel?.city || sel?.build) { const r = $('#info').getBoundingClientRect(); if (r.top > window.innerHeight * .6) $('#info').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
 function afterAct(u) {
   if (G.over) { sel = null; render(); return; }
@@ -1345,7 +1364,12 @@ function fitView() {
   const w = box.clientWidth || 800, top = box.getBoundingClientRect().top + window.scrollY;
   const sq = Math.max(34, Math.min(52, w / 20));                      // CSS pixels per square
   VW = Math.min(MW, Math.max(8, Math.floor(w / sq)));
-  const px = w / VW, h = Math.max(240, window.innerHeight - top - 12);
+  // Decided 10 Nov, from the first phone game: when the side panel sits under
+  // the map (narrow screens), a map as tall as the screen left no way to scroll
+  // down to the shop, because swiping the map moves the camera. There the map
+  // takes about 55% of the height and the panel shows below it.
+  const stacked = $('.side').getBoundingClientRect().top > box.getBoundingClientRect().top + 40;
+  const px = w / VW, h = Math.max(240, stacked ? window.innerHeight * .55 : window.innerHeight - top - 12);
   VH = Math.min(MH, Math.max(6, Math.floor(h / px)));
   if (cv.width !== VW * TS || cv.height !== VH * TS) { cv.width = VW * TS; cv.height = VH * TS; ctx.imageSmoothingEnabled = false; }
   clampCam(cam); clampCam(camGo);
@@ -1375,7 +1399,7 @@ function render() {
   $('#hMoney').textContent = t('money', { m: fmt(G.money[v]) });
   const endBtn = $('#endBtn');
   endBtn.textContent = ONLINE && isHuman(G.side) && G.side !== ONLINE.me ? t('waitFor', { team: tn(G.side) }) : isHuman(G.side) && G.side === G.view ? t('endTurn') : t('teamTurn', { team: tn(G.side) });
-  endBtn.disabled = !myTurn();
+  endBtn.disabled = !myTurn() && !(ONLINE && !busy && G.side !== ONLINE.me);   // while waiting online, tapping it checks for the new turn
   panel();
 }
 // one unit where it stands (u.px, u.py), on any canvas; marks: show what it has left
@@ -1909,7 +1933,7 @@ cv.addEventListener('keydown', e => {
   else if (e.key === 'Enter' || e.key === ' ') { tapTile(cursor.x, cursor.y); e.preventDefault(); }
   else if (e.key === 'Escape') { sel = null; render(); }
 });
-$('#endBtn').onclick = () => { if (myTurn()) { sel = null; nextTurn(); } };
+$('#endBtn').onclick = () => { if (myTurn()) { sel = null; nextTurn(); } else if (ONLINE && !busy) watchOnline(0); };
 $('#teamsBtn').onclick = teamsCard;
 $('#helpBtn').onclick = () => { if ($('#cover').hidden) guideCard(guideBack && G ? guideAt : 0, cardHide); };
 $('#helpBtn').setAttribute('aria-label', t('howBtn')); $('#helpBtn').title = t('howBtn');
