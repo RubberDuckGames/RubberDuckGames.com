@@ -188,6 +188,16 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   floats by at a time between ducks, lily pads, logs and boats, and a missed
   one comes back a few seconds later until he gets it (the gaps are in `GAP`).
   `S.abc` and `S.num` count finished runs.
+  Decided 14 Nov: a party harbor (`isParty`, `G.party`), the harbor dressed up
+  for a birthday, all 8-bit drawings (no emoji): three balloons tied to the
+  tugboat, Space plays a party horn with a puff of confetti, half the dockets
+  are a cake or a present (`PARTY_ITEMS`; delivering one plays Happy Birthday),
+  bunting along the top shore, and a cake on the shore that gets a candle per
+  delivery; the third one plays the whole tune, and the candles blow out with
+  confetti and start again. It shows only in the party month
+  (`S.partyMonth`), which a grown-up picks on the Boat name card; like the
+  name, it stays on the device so the month isn't in this public repo.
+  `?party` in the address shows it in any month.
   Progress is in localStorage under `tugboat`.
 - `rodeo/index.html` is Rodeo (Trello #46). It
   opens on a title screen with a cowgirl racing across and PRESS START, then

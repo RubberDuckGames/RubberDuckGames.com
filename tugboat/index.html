@@ -33,7 +33,8 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;text-align:center;box-shadow:.4rem .4rem 0 rgba(0,0,0,.25)}
 .card h2{margin:0 0 .5rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
 .card p{margin:.4rem 0;color:var(--soft)}
-.card input{display:block;width:100%;font:inherit;font-size:1.2rem;padding:.5rem .7rem;border:3px solid var(--ink);margin:.6rem 0}
+.card input,.card select{display:block;width:100%;font:inherit;font-size:1.2rem;padding:.5rem .7rem;border:3px solid var(--ink);margin:.6rem 0;background:#fff;color:var(--ink)}
+.card label{display:block;text-align:left;font-weight:600;margin-top:.6rem}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.75rem}
 .btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
 @media (max-width:30rem){#pickBtn .lbl{display:none}.bar{gap:.35rem;padding-left:.5rem;padding-right:.5rem}.bar .pill{padding:.3rem .5rem;font-size:.6rem}}   /* the bar has to fit a phone held upright */
@@ -115,9 +116,16 @@ const PIX = '"Press Start 2P", monospace';
 // The tugboat's name is typed in once and kept here, so the kid's name is only
 // ever on the family's own device, never on the public site.
 const KEY = 'tugboat';
-const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true, abc: 0, num: 0 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
+const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true, abc: 0, num: 0, partyMonth: -1 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
+// The party harbor: balloons on the tugboat, a party horn, cake and present
+// crates, bunting on the shore, and a birthday cake that gets a candle per
+// delivery. Decided 14 Nov: it shows only in the party month, which a grown-up
+// picks on the Boat name card and is kept on this device like the name, so the
+// month isn't on the public site. ?party in the address shows it any month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const isParty = () => S.partyMonth === new Date().getMonth() || /[?&]party\b/.test(location.search);
 const title = () => S.name ? `Tugboat ${S.name}'s Deliveries` : 'Tugboat Deliveries';
 
 // ---------- Sounds ----------
@@ -140,6 +148,15 @@ const sfx = {
   cheer: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .12, 'square', i * .1, .04)),
   sparkle: () => [988, 1319, 1568].forEach((f, i) => tone(f, .08, 'square', i * .05, .03)),
   quack: () => { tone(620, .09, 'square', 0, .04, 420); tone(560, .12, 'square', .1, .04, 380); },
+  // the party horn: a buzzy blow up, like a paper party blower
+  party: () => { tone(330, .1, 'sawtooth', 0, .035, 440); tone(440, .38, 'sawtooth', .1, .04, 494); tone(1319, .06, 'square', .5, .02); },
+  // Happy Birthday, the first line (or both lines when the candles are blown out)
+  bday: (both) => {
+    const q = .26, n = [[392, .75], [392, .25], [440, 1], [392, 1], [523, 1], [494, 2]];
+    if (both) n.push([392, .75], [392, .25], [440, 1], [392, 1], [587, 1], [523, 2]);
+    let w = 0; n.forEach(([f, b]) => { tone(f, b * q * .9, 'square', w, .045); w += b * q; });
+  },
+  puff: () => tone(900, .35, 'triangle', 0, .03, 200),
   start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
 };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
@@ -198,6 +215,14 @@ const ITEMS = [
   { key: 'fish', name: 'the fish', rows: crate('.VVu.VVu.VVu') },
   { key: 'toys', name: 'the toys', rows: crate('rr.uu.yy.mm.') },
 ];
+// party things, drawn like the rest (no emoji): a cake with candles on a plate,
+// and a blue present with a red ribbon and bow
+const PARTY_ITEMS = [
+  { key: 'cake', name: 'the cake', rows: ['...e...e...e..', '...u...r...m..', '..pppppppppp..', '.pphpphpphpphp', '.cccccccccccc.', '.rrrrrrrrrrrr.', '.cccccccccccc.', 'hhhhhhhhhhhhhh'] },
+  { key: 'present', name: 'the present', rows: ['...rr.rr...', '....rrr....', 'uuuuuruuuuu', 'uuuuuruuuuu', 'rrrrrrrrrrr', 'uuuuuruuuuu', 'uuuuuruuuuu', 'uuuuuruuuuu'] },
+];
+const BALLOON = ['.xxx.', 'xhxxx', 'xxxxx', 'xxxxx', '.xxx.', '..x..'];
+const BALLOON_COLS = ['#e04848', '#ffd23f', '#3a6fd8'];
 // docks: a big number, a color and a shape, so he can find it three ways
 const SHAPES = {
   circle: ['..xxx..', '.xxxxx.', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '.xxxxx.', '..xxx..'],
@@ -231,6 +256,7 @@ function newHarbor() {
     tug: { x: 10, y: 6.5, vx: 0, vy: 0, face: 1 }, job: null, wait: 0, carry: null, hop: null,
     boats: [{ x: -2, y: 4.6, dir: 1, v: .9, img: SAIL }, { x: VW + 2, y: 7.3, dir: -1, v: .6, img: FISHER }],
     sparkles: [], fx: [], smoke: [], bonk: 0, idle: 0,
+    party: isParty(), candles: 0, blow: 0,
   };
   for (let i = 0; i < 3; i++) addSparkle();
   newJob();
@@ -249,7 +275,7 @@ function addSparkle() { const p = openWater({ ...G.tug, d: 3 }); G.sparkles.push
 // ---------- Dockets ----------
 // Each docket is one thing waiting at one dock, going to another dock.
 function newJob() {
-  const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+  const pool = G.party && Math.random() < .5 ? PARTY_ITEMS : ITEMS, item = pool[Math.floor(Math.random() * pool.length)];
   let from = DOCKS[Math.floor(Math.random() * DOCKS.length)], to;
   do to = DOCKS[Math.floor(Math.random() * DOCKS.length)]; while (to === from);
   G.job = { item, from, to, got: false };
@@ -315,14 +341,32 @@ function step(dt, t) {
       else delivered();
     }
   }
-  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += (f.g ?? 3) * dt, f.t < (f.life || 1)));
+  // the shore cake: three candles lit, then a puff blows them out
+  if (G.blow && (G.blow -= dt) <= 0) {
+    G.blow = 0; G.candles = 0; sfx.puff();
+    CAKE_CANDLES.forEach(c => { for (let i = 0; i < 3; i++) G.smoke.push({ x: CAKE.x + c / T, y: CAKE.y - .6 - i * .15, t: i * .1 }); });
+    confetti(CAKE.x + .8, CAKE.y - 1, 40);
+  }
+}
+// confetti: lots of little bits that flutter down slowly
+function confetti(x, y, n = 30) {
+  const cols = ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#9b5cd8', '#f7c6d8', '#ffffff'];
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.5, t: 0, c: cols[i % cols.length], g: 2, life: 1.8, w: i % 2 ? 2 : 1 }); }
 }
 function bonk() { if (G.bonk <= 0) { G.bonk = .4; sfx.boing(); } }
 function burst(x, y, cols) { for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: cols[i % cols.length] }); } }
 function delivered() {
   const j = G.job, p = onPier(j.to);
   S.trips++; S.stickers.push(j.item.key); if (S.stickers.length > 60) S.stickers.shift(); persist(); hud();
-  sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
+  if (G.party) {
+    // each delivery lights a candle on the shore cake; the third blows them out
+    if (!G.blow) G.candles = Math.min(3, G.candles + 1);
+    const three = G.candles === 3 && !G.blow;
+    if (three) G.blow = 3.4;
+    if (three || j.item.key === 'cake' || j.item.key === 'present') sfx.bday(three); else sfx.cheer();
+    confetti(p.x, p.y - .5);
+  } else { sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']); }
   G.left = { item: j.item, ...p, t: 0 };
   G.job = null; showDocket();
   setTimeout(() => { if (G) { G.left = null; newJob(); } }, 2600);
@@ -469,6 +513,7 @@ function drawHarbor(t) {
     text(String(d.n), sx + 8, sy + 10, '#ffffff');
     put(sprite(SHAPES[d.shape], { map: { x: '#ffffff' }, outline: false }), sx + 17, sy + 3);
   });
+  if (G.party) drawParty(t);
   // what's waiting on the pier, bobbing, with a sparkle so it's easy to spot
   const j = G.job;
   if (j && !j.got && !(G.hop && G.hop.to === 'boat')) { const p = onPier(j.from), img = sprite(j.item.rows); put(img, p.x * T - img.width / 2, p.y * T - img.height + 4 - (Math.floor(t / 300) % 2)); twinkle(p.x * T + 9, p.y * T - 10, t); }
@@ -482,6 +527,7 @@ function drawHarbor(t) {
   // the tugboat, with whatever it's carrying on the back deck
   const b = G.tug, bob = Math.floor(t / 350) % 2, tug = sprite(TUG, { flip: b.face < 0 }), bx = b.x * T - tug.width / 2, by = b.y * T - tug.height + 4 + bob;
   G.smoke.forEach(s => { const r = 2 + s.t * 3; px(s.x * T - r / 2, s.y * T - r / 2, r, r, s.t < .7 ? '#e8e8ee' : '#c9c9d4'); });
+  if (G.party) balloons(b.face > 0 ? bx + 3 : bx + tug.width - 4, by + 8, b.face, t);
   if (j && j.got && !G.hop) { const img = sprite(j.item.rows, { flip: b.face < 0 }); put(img, b.face > 0 ? bx + 1 : bx + tug.width - img.width - 1, by + 8 - img.height + 1); }
   put(tug, bx, by);
   // ripples behind when moving
@@ -492,7 +538,42 @@ function drawHarbor(t) {
     const k = h.t, x = from.x + (to.x - from.x) * k, y = from.y + (to.y - from.y) * k - Math.sin(k * Math.PI) * 1.2, img = sprite(j.item.rows);
     put(img, x * T - img.width / 2, y * T - img.height);
   }
-  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+  G.fx.forEach(f => px(f.x * T, f.y * T, f.w || 2, 2, f.c));
+}
+// three balloons tied to the back of the tugboat, swaying a little
+function balloons(ax, ay, face, t) {
+  [[-6, -21], [0, -26], [6, -20]].forEach(([dx, dy], i) => {
+    const sway = Math.round(Math.sin(t / 600 + i * 2) * 1.5), x = ax - face * 4 + dx + sway, y = ay + dy + (Math.floor(t / 450 + i) % 2);
+    const img = sprite(BALLOON, { map: { x: BALLOON_COLS[i] } });
+    // the string, a pixel at a time from the knot down to the boat
+    const kx = x + 2, ky = y + img.height, n = ay - ky;
+    for (let s = 0; s < n; s++) px(Math.round(kx + (ax - kx) * s / n), ky + s, 1, 1, LINE);
+    put(img, x, y);
+  });
+}
+// the party harbor: bunting along the top shore and the birthday cake on the grass
+const CAKE = { x: 11.6, y: 1.75 }, CAKE_CANDLES = [6, 13, 20];
+function drawParty(t) {
+  const W = VW * T, cols = ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#9b5cd8'];
+  // the bunting: a sagging line between the signs with little flags hanging from it
+  const spans = [[0, 46], [80, 142], [272, W]];   // the cake sits in the gap between docks 2 and 3
+  spans.forEach(([a, b]) => {
+    for (let x = a; x < b; x++) { const k = (x - a) / (b - a), y = 23 + Math.round(Math.sin(k * Math.PI) * 4); px(x, y, 1, 1, LINE); }
+    for (let x = a + 4, i = 0; x < b - 4; x += 7, i++) {
+      const k = (x + 2 - a) / (b - a), y = 24 + Math.round(Math.sin(k * Math.PI) * 4), c = cols[(i + a) % cols.length];
+      px(x, y, 5, 1, c); px(x + 1, y + 1, 3, 1, c); px(x + 2, y + 2, 1, 1, c);
+    }
+  });
+  // the cake: three layers on a plate, with a candle for each delivery
+  const X = Math.round(CAKE.x * T), Y = Math.round(CAKE.y * T);   // Y is the bottom of the plate
+  px(X - 1, Y - 2, 28, 3, LINE); px(X, Y - 1, 26, 1, '#ffffff');
+  px(X + 1, Y - 15, 24, 13, LINE); px(X + 2, Y - 14, 22, 11, '#f2d8b8'); px(X + 2, Y - 9, 22, 2, '#e04848');
+  px(X + 2, Y - 14, 22, 3, '#f7c6d8'); for (let i = 0; i < 22; i += 4) px(X + 3 + i, Y - 11, 2, 1, '#f7c6d8');
+  CAKE_CANDLES.forEach((c, i) => {
+    const cx0 = X + c, lit = i < G.candles;
+    px(cx0 - 1, Y - 22, 3, 7, LINE); px(cx0, Y - 21, 1, 6, ['#3a6fd8', '#e04848', '#9b5cd8'][i]);
+    if (lit) { const f = Math.floor(t / 140 + i) % 2; px(cx0 - f, Y - 26, 1 + f, 3, '#ffd23f'); px(cx0, Y - 25, 1, 2, '#ff8a1f'); px(cx0, Y - 27, 1, 1, '#ffffff'); }
+  });
 }
 function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
 
@@ -541,12 +622,12 @@ function showPick(focus) {
 $('#pickBtn').onclick = () => { if (screen === 'play') showPick(G?.kind); };
 // Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
 function askName(thenStart) {
-  $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
+  $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><label for="pm">Party month: balloons and cake in the harbor</label><select id="pm" name="pm"><option value="-1">No party</option>${MONTHS.map((m, i) => `<option value="${i}"${S.partyMonth === i ? ' selected' : ''}>${m}</option>`).join('')}</select><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
   $('#cover').hidden = false;
   const f = $('#card form'); f.n.focus();
   const done = () => { S.asked = true; persist(); $('#cover').hidden = true; if (thenStart) { pressT = 0; pressStart(); } };
   $('#skipName').onclick = done;
-  f.onsubmit = e => { e.preventDefault(); S.name = f.n.value.trim().slice(0, 16); done(); };
+  f.onsubmit = e => { e.preventDefault(); S.name = f.n.value.trim().slice(0, 16); S.partyMonth = +f.pm.value; done(); };
 }
 $('#nameBtn').onclick = () => askName(false);
 
@@ -571,7 +652,10 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
 cv.addEventListener('pointerdown', () => { if (screen === 'press' && $('#cover').hidden) pressStart(); });
-function honk() { sfx.horn(); if (G) for (let i = 0; i < 4; i++) G.smoke.push({ x: G.tug.x, y: G.tug.y - 1.1 - i * .15, t: i * .05 }); }
+function honk() {
+  if (G && G.party) { sfx.party(); confetti(G.tug.x + G.tug.face * .8, G.tug.y - .8, 12); return; }
+  sfx.horn(); if (G) for (let i = 0; i < 4; i++) G.smoke.push({ x: G.tug.x, y: G.tug.y - 1.1 - i * .15, t: i * .05 });
+}
 $('#hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (screen === 'play') honk(); else pressStart(); });
 // the thumb pad: slide anywhere on it, like Bread's
 {
