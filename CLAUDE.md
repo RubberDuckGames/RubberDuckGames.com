@@ -332,7 +332,8 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   deck square. The trade ships wait for their sizes.
   Decided 14 Nov, his two asks: the computer teams build ships (`cpuShip`:
   one a turn at most, from the turn their aircraft start, mostly destroyers,
-  no carriers, at most one ship per two cities plus one), and every team
+  at most one ship per two cities plus one; one carrier once a team has 24
+  money and planes, which land on it to fill up and take off each turn), and every team
   starts owning the two free cities nearest its capital, because the early
   game was slow.
   Decided 10 Nov: online play with friends, a turn at a time. Setup has
