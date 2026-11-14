@@ -1142,15 +1142,21 @@ function fairGame(me, other) {
 // island map they could only fight with planes. Now each one may build one
 // ship a turn (from the turn its aircraft start, with its city-buy chance),
 // on open water touching its units or cities, out of enemy fire. Mostly
-// destroyers, cruisers with more money, a battleship now and then. No
-// carriers: the computer doesn't land planes on them. At most one ship for
+// destroyers, cruisers with more money, a battleship now and then, and one
+// carrier when it can spare the money (its planes land on it to fill up and
+// take off again each turn). At most one ship for
 // every two cities it owns, plus one, so the sea doesn't fill up.
 function cpuShip(me) {
   if (G.turn < lvl().air || Math.random() >= lvl().buy * .5) return;
   const ships = G.units.filter(u => u.side === me && UNITS[u.type].len).length;
   if (ships >= Math.floor(G.cities.filter(c => c.owner === me).length / 2) + 1) return;
   const m = G.money[me];
-  const k = m >= 16 && Math.random() < .25 ? 'battleship' : m >= 9 && Math.random() < .5 ? 'cruiser' : 'destroyer';
+  // Decided 14 Nov, his next ask: the computer uses carriers too. One carrier
+  // per team, once it has money to spare and planes to put on it.
+  const hasCarrier = G.units.some(u => u.side === me && UNITS[u.type].deck);
+  const hasPlanes = G.units.some(u => u.side === me && AIR_ROOM[u.type]);
+  const k = !hasCarrier && hasPlanes && m >= 24 && Math.random() < .3 ? 'carrier'
+    : m >= 16 && Math.random() < .25 ? 'battleship' : m >= 9 && Math.random() < .5 ? 'cruiser' : 'destroyer';
   if (m < UNITS[k].cost) return;
   const spots = new Map();
   for (const o of [...G.units.filter(u => u.side === me && !UNITS[u.type].air), ...G.cities.filter(c => c.owner === me)])
@@ -1191,6 +1197,8 @@ async function cpuTurn(me) {
     const u = mkUnit(pick, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u); rec({ k: 'b', u: { ...u } });
   }
   cpuShip(me);
+  // planes on its carriers take off so they can fly this turn (they come back to land when low)
+  for (const cr of G.units.filter(u => u.side === me && UNITS[u.type].deck)) while (cr.cargo.length && deckSpot(cr)) takeOff(cr, 0);
   render();
   for (const u of G.units.filter(u => u.side === me && !u.fresh)) {
     if (G.over || !G.units.includes(u)) continue;
@@ -1200,6 +1208,11 @@ async function cpuTurn(me) {
     if (!G.units.includes(u)) continue;
     const tg = bestTarget(u);
     if (tg) { fire(u, tg); render(); await sleep(480); }
+  }
+  // a plane that stayed over its own carrier lands on it
+  for (const pl of G.units.filter(u => u.side === me && AIR_ROOM[u.type] && !u.landed)) {
+    const cr = G.units.find(d => d.side === me && UNITS[d.type].deck && covers(d, pl.x, pl.y));
+    if (cr && canLoad(cr, pl)) { rec({ k: 'x', id: pl.id }); G.units = G.units.filter(o => o !== pl); cr.cargo.push(pl); pl.fuel = FUEL; }
   }
   busy = false;
   if (G.over) return;
@@ -1234,10 +1247,13 @@ function cpuPlan(u) {
     const nearGoal = Math.min(99, ...(R.air ? [] : goals.map(g => dist(g, o))), ...hunt.map(f => dist(f, o) + 2));
     s -= nearGoal * .6;
     // planes: never strand itself, and head home to land when the tank is low
-    const landing = plane && c && c.owner === me;
+    // a deck square of its own carrier with room counts as home, like a city
+    const deck = plane && AIR_ROOM[u.type] && G.units.find(d => d.side === me && UNITS[d.type].deck && covers(d, o.x, o.y) && used(d) + AIR_ROOM[u.type] <= UNITS[d.type].holds);
+    const landing = plane && ((c && c.owner === me) || !!deck);
     if (plane) {
       const left = u.fuel - dist(u, o) - (o.stay && !u.landed ? CIRCLE : 0);
-      const home = Math.min(99, ...mine.map(m => dist(m, o)));
+      const decks = G.units.filter(d => d.side === me && UNITS[d.type].deck).flatMap(d => cells(d).map(([x, y]) => ({ x, y })));
+      const home = Math.min(99, ...mine.map(m => dist(m, o)), ...decks.map(m => dist(m, o)));
       if (landing) s += u.fuel < FUEL * .6 ? 8 : 0;
       else if (left < home) s -= 40;
       else if (left < home + 3) s -= 6;
