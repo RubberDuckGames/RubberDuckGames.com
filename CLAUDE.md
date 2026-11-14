@@ -339,7 +339,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   ship shows every square it takes, because his ship drawings are thin. The
   carrier holds 6 of his basic units of planes (`AIR_ROOM`): a plane flown
   onto it lands, rides along, fills up each turn, and takes off from a free
-  deck square. The trade ships wait for their sizes.
+  deck square. Decided 14 Nov: the trade ship (holds 6, no guns, speed 3)
+  and armed trade ship (holds 5, fires at air), both 2 long and 1 wide (his
+  sizes); a unit on the shore walks aboard, and Drop off puts it on land
+  next to the ship. Trade routes (money from allies) and the computer
+  using trade ships aren't built yet.
   Decided 14 Nov, his two asks: the computer teams build ships (`cpuShip`:
   one a turn at most, from the turn their aircraft start, mostly destroyers,
   at most one ship per two cities plus one; one carrier once a team has 24
