@@ -513,6 +513,11 @@ function newGame(online = false) {
   const ctrl = { ...PREFS.ctrl }, money = {}, stats = {};
   for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
   G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats };
+  // Decided 14 Nov, his ask (early game was slow): each team starts owning
+  // the two free cities nearest its capital, as well as the capital.
+  for (const c of cities.filter(c => c.hq)) {
+    cities.filter(o => !o.owner).sort((a, b) => dist(a, c) - dist(b, c)).slice(0, 2).forEach(o => { o.owner = c.owner; });
+  }
   // two soldiers and a tank on the nearest free land around each capital
   for (const c of cities.filter(c => c.hq)) {
     const spots = landNear(c.x, c.y, 3);
@@ -1133,6 +1138,32 @@ function fairGame(me, other) {
   if (other === me || allied(me, other)) return false;
   return rel(me, other) < 0 || !G.cities.some(c => !c.owner);
 }
+// Decided 14 Nov, his catch: the computer teams didn't build ships, so on his
+// island map they could only fight with planes. Now each one may build one
+// ship a turn (from the turn its aircraft start, with its city-buy chance),
+// on open water touching its units or cities, out of enemy fire. Mostly
+// destroyers, cruisers with more money, a battleship now and then. No
+// carriers: the computer doesn't land planes on them. At most one ship for
+// every two cities it owns, plus one, so the sea doesn't fill up.
+function cpuShip(me) {
+  if (G.turn < lvl().air || Math.random() >= lvl().buy * .5) return;
+  const ships = G.units.filter(u => u.side === me && UNITS[u.type].len).length;
+  if (ships >= Math.floor(G.cities.filter(c => c.owner === me).length / 2) + 1) return;
+  const m = G.money[me];
+  const k = m >= 16 && Math.random() < .25 ? 'battleship' : m >= 9 && Math.random() < .5 ? 'cruiser' : 'destroyer';
+  if (m < UNITS[k].cost) return;
+  const spots = new Map();
+  for (const o of [...G.units.filter(u => u.side === me && !UNITS[u.type].air), ...G.cities.filter(c => c.owner === me)])
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = o.x + dx, y = o.y + dy;
+      if (inMap(x, y) && canBuildSea(x, y, me) && !underFire(x, y, me) && shipFace(k, x, y) !== undefined) spots.set(x + ',' + y, { x, y });
+    }
+  const list = [...spots.values()]; if (!list.length) return;
+  const p = list[Math.random() * list.length | 0];
+  G.money[me] = r1(m - UNITS[k].cost);
+  const u = mkUnit(k, me, p.x, p.y); u.ang = shipFace(k, p.x, p.y); u.moved = u.acted = u.fresh = true;
+  G.units.push(u); rec({ k: 'b', u: { ...u } });
+}
 async function cpuTurn(me) {
   busy = true; sel = null;
   startTurn(me);
@@ -1159,6 +1190,7 @@ async function cpuTurn(me) {
     G.money[me] = r1(G.money[me] - UNITS[pick].cost);
     const u = mkUnit(pick, me, p.x, p.y); u.moved = u.acted = u.fresh = true; G.units.push(u); rec({ k: 'b', u: { ...u } });
   }
+  cpuShip(me);
   render();
   for (const u of G.units.filter(u => u.side === me && !u.fresh)) {
     if (G.over || !G.units.includes(u)) continue;

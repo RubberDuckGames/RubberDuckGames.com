@@ -329,8 +329,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   ship shows every square it takes, because his ship drawings are thin. The
   carrier holds 6 of his basic units of planes (`AIR_ROOM`): a plane flown
   onto it lands, rides along, fills up each turn, and takes off from a free
-  deck square. The computer doesn't build ships yet, and the trade ships wait
-  for their sizes.
+  deck square. The trade ships wait for their sizes.
+  Decided 14 Nov, his two asks: the computer teams build ships (`cpuShip`:
+  one a turn at most, from the turn their aircraft start, mostly destroyers,
+  no carriers, at most one ship per two cities plus one), and every team
+  starts owning the two free cities nearest its capital, because the early
+  game was slow.
   Decided 10 Nov: online play with friends, a turn at a time. Setup has
   "Online, each on their own device"; starting makes a link (`?game=<id>`)
   to send, each friend picks a free Player team (`G.seats`, remembered per
