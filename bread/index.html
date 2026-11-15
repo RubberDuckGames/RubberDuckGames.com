@@ -462,19 +462,89 @@ const COL = {
 };
 const LINE = COL.k;
 const spriteCache = new Map();
-function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
-  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
+// Decided 15 Nov: 16-bit, like Super Mario World: the same pixel size, but
+// softer. Every sprite gets a light row along its top edges and a dark row
+// along its bottom edges (3 shades of each color), and its outline is a dark
+// shade of the color next to it instead of plain black. New shades join the
+// palette, so snap() keeps them.
+const rgb = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+const hex = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const shadeCache = new Map();
+function tone2(h, kind) {                    // 'hi' a lighter shade, 'lo' a darker one, 'edge' the outline
+  const key = h + kind; if (shadeCache.has(key)) return shadeCache.get(key);
+  const [r, g, b] = rgb(h), L = rgb(LINE);
+  const c = kind === 'hi' ? [r + (255 - r) * .28, g + (255 - g) * .28, b + (255 - b) * .22]
+    : kind === 'lo' ? [r * .74 + 12 * .26, g * .72 + 8 * .28, b * .78 + 40 * .22]
+    : [r * .3 + L[0] * .7, g * .3 + L[1] * .7, b * .3 + L[2] * .7];
+  const out = hex(c); shadeCache.set(key, out);
+  if (!PALETTE.some(q => hex(q) === out)) { PALETTE.push(rgb(out)); snapCache.clear(); }
+  return out;
+}
+// Decided 15 Nov: one pixel size everywhere. Things that were drawn at 2x
+// (the dinosaur, the shells, the frogs, the goose, the barrels) are made
+// bigger with Scale2x / Scale3x instead, which rounds the corners off rather
+// than doubling every pixel, and are drawn at 1x like everything else.
+const upCache = new Map();
+function up(rows, n) {
+  if (n <= 1) return rows;
+  const key = n + rows.join('/'); if (upCache.has(key)) return upCache.get(key);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, at = (x, y) => rows[y]?.[x] ?? '.';
+  let out;
+  if (n === 2 || n === 4) {
+    const g = [...Array(h * 2)].map(() => Array(w * 2).fill('.'));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+      g[y * 2][x * 2] = C === A && C !== D && A !== B ? A : P;
+      g[y * 2][x * 2 + 1] = A === B && A !== C && B !== D ? B : P;
+      g[y * 2 + 1][x * 2] = D === C && D !== B && C !== A ? C : P;
+      g[y * 2 + 1][x * 2 + 1] = B === D && B !== A && D !== C ? D : P;
+    }
+    out = g.map(r => r.join(''));
+    if (n === 4) out = up(out, 2);
+  } else {
+    const g = [...Array(h * 3)].map(() => Array(w * 3).fill('.'));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const A = at(x - 1, y - 1), B = at(x, y - 1), C = at(x + 1, y - 1), D = at(x - 1, y), E = at(x, y), F = at(x + 1, y), G2 = at(x - 1, y + 1), H = at(x, y + 1), I = at(x + 1, y + 1);
+      const c = [
+        D === B && B !== F && D !== H ? D : E,
+        (D === B && B !== F && D !== H && E !== C) || (B === F && B !== D && F !== H && E !== A) ? B : E,
+        B === F && B !== D && F !== H ? F : E,
+        (D === B && B !== F && D !== H && E !== G2) || (D === H && D !== B && H !== F && E !== A) ? D : E,
+        E,
+        (B === F && B !== D && F !== H && E !== I) || (H === F && D !== H && B !== F && E !== C) ? F : E,
+        D === H && D !== B && H !== F ? D : E,
+        (D === H && D !== B && H !== F && E !== I) || (H === F && D !== H && B !== F && E !== G2) ? H : E,
+        H === F && D !== H && B !== F ? F : E];
+      c.forEach((ch, i) => { g[y * 3 + Math.floor(i / 3)][x * 3 + i % 3] = ch; });
+    }
+    out = g.map(r => r.join(''));
+  }
+  upCache.set(key, out);
+  return out;
+}
+function sprite(rows, { map = {}, flip = false, outline = true, shade = true, size = 1 } = {}) {
+  rows = up(rows, size);
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline + shade;
   if (spriteCache.has(key)) return spriteCache.get(key);
-  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;   // the outline goes in the sprite's own empty border, as before
   const grid = rows.map(r => [...r.padEnd(w, '.')]);
-  if (outline) {
-    const src = grid.map(r => r.slice());
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
-      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
+  const colOf = ch => map[ch] || COL[ch];
+  const cell = grid.map(r => r.map(ch => ch === '.' ? null : colOf(ch)));
+  // shading: a light pixel where a color starts at the top, a dark one where it ends at the bottom
+  if (shade) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const ch = grid[y][x]; if (ch === '.' || ch === 'k' || ch === 'n') continue;
+    const above = grid[y - 1]?.[x], below = grid[y + 1]?.[x];
+    if (above !== ch && below === ch && grid[y + 2]?.[x] === ch) cell[y][x] = tone2(colOf(ch), 'hi');
+    else if (below !== ch && above === ch && grid[y - 2]?.[x] === ch) cell[y][x] = tone2(colOf(ch), 'lo');
+  }
+  if (outline) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (grid[y][x] !== '.') continue;
+    const nb = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([a, b]) => grid[y + b]?.[x + a]).find(ch => ch && ch !== '.');
+    if (nb) cell[y][x] = nb === 'k' || nb === 'n' ? COL.k : tone2(colOf(nb), 'edge');
   }
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
-  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  cell.forEach((r, y) => r.forEach((col, x) => { if (!col) return; g.fillStyle = col; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
   spriteCache.set(key, c);
   return c;
 }
@@ -573,8 +643,8 @@ function wearMap(wear) {
 }
 function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
   const map = wearMap(wear);
-  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0 });
-  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
+  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0, size: scale });   // bigger is Scale2x/3x, never fat pixels
+  put(img, x - img.width / 2, y - img.height);
 }
 const SQUIRREL = [
   ['.............', '..ttt........', '.ttttt.......', '.tt..tt...s..', '......tt.sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '......s..s...', '.............'],
@@ -750,8 +820,8 @@ function crumbMap(wear) {
 }
 // (x, y) is the ground under the middle of Crumb
 function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
-  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0 });
-  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
+  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0, size: scale });
+  put(img, x - img.width / 2, y - img.height);
 }
 
 // ---------- Home ----------
@@ -1014,7 +1084,7 @@ function drawMap(t) {
     else pips(['ocean'], X + 30, Y + 10);
   }
   // trees, for a nicer drive
-  [[96, 74], [176, 104], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(sprite(blob(20, 16, 'G', 'q', 'L')), x - 10, y - 10); });
+  [[96, 74], [176, 104], [120, 96]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(leafy(20, 16, x % 3), x - 10, y - 10); });
   const p = ride ? bez(ride.from + (ride.to - ride.from) * ease(ride.t)) : bez(screen === 'map' ? mapAt : 0);
   drawCar(p[0] * T, p[1] * T + 6, ride && ride.to < ride.from ? -1 : 1, ride ? t : 0);
 }
@@ -1706,7 +1776,7 @@ function sniff() {
 }
 function drawScent() {
   const now = performance.now();
-  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col } }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5, 2); });
+  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col }, size: 2 }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5); });
 }
 // the aquarium's own tiles: blue walls, pale tiled floor, tank glass, kelp pots,
 // the dark room's rocks and sandy floor, and its door
@@ -1746,7 +1816,7 @@ function drawAquarium(t) {
   put(img, o.x * T - 7, o.y * T - 9 + (Math.floor(t / 500) % 2));
   if (!o.out) cx.restore();
   const s = G.shells;
-  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q } }), p[0] * T - 10, p[1] * T - 9 - up, 2); });   // drawn double size, so they don't look like treats
+  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q }, size: 2 }), p[0] * T - 10, p[1] * T - 9 - up); });   // drawn double size, so they don't look like treats
 }
 // Decided 10 Nov: the dark room is dark. From outside it's all black but the
 // glowing jellyfish; inside, Bread sees a little way round her. The dark is
@@ -1971,7 +2041,7 @@ function starLine([ax, ay], [bx, by], lit, t) {
 }
 function drawMuseum(t) {
   const d = G.dino, up = d.awake ? Math.round(Math.abs(Math.sin(d.t * 6)) * 3) : 0;
-  put(sprite(DINO_BONES, { flip: true }), 11.5 * T - 28, 6 * T + 8 - 30 - up, 2);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
+  put(sprite(DINO_BONES, { flip: true, size: 2 }), 11.5 * T - 28, 6 * T + 8 - 30 - up);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
   const s = G.stars;
   MUSE.edges.forEach(([a, c], k) => starLine(MUSE.stars[a], MUSE.stars[c], s.lit[k], t));
   MUSE.stars.forEach(([x, y], i) => put(sprite(STAR, { map: { h: s.done || MUSE.edges.some(([a, c], k) => s.lit[k] && (a === i || c === i)) ? COL.y : '#9fb4e0' } }), x * T - 2 - (i === s.cur ? 1 : 0), y * T - 2 - (i === s.cur ? 1 : 0), i === s.cur ? 1.4 : 1));
@@ -2315,7 +2385,7 @@ function hitGoose() {
   return true;
 }
 function drawGoose(t) {
-  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0 }), k = 1.5;
+  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0, size: 2 }), k = 1;
   put(img, g.x * T - img.width * k / 2, g.y * T - img.height * k + 2, k);
   if (g.stun > 0) text('!', g.x * T, g.y * T - img.height * k - 2);
   for (let i = 0; i < 3; i++) px(g.x * T - 7 + i * 5, g.y * T + 4, 4, 2, i < g.hp ? COL.r : COL.g);   // how many hits it has left
@@ -2663,9 +2733,181 @@ function drawFlea(f, t) {
 // A fence running up and down the screen is seen end on: one rail with the
 // tops of the posts along it. Decided 2 Nov, after a tester pointed out that the
 // side fences were drawn front on, the same as the ones running across.
-function sideFence(X, Y, wood) {
-  px(X + 6, Y, 1, T, LINE); px(X + 7, Y, 2, T, wood); px(X + 9, Y, 1, T, LINE);
-  for (const py of [1, 9]) { px(X + 5, Y + py, 6, 6, LINE); px(X + 6, Y + py + 1, 4, 4, wood); px(X + 6, Y + py + 4, 4, 1, '#d8cbb0'); }
+function sideFence(X, Y, wood) { put(sideFenceTile(wood === '#fffaf0' ? 'white' : 'wood'), X, Y); }
+// ---------- Tiles, 16-bit ----------
+// Decided 15 Nov: the tiles are hand-painted pixel by pixel in the 16-bit
+// style instead of flat blocks: grass with tufts and light specks, paths with
+// pebbles and a grassy lip, water with a dark rim and a light foam line,
+// shaded pickets, leafy hedges and tree tops. Each tile is painted once into a
+// 16 x 16 canvas and kept; a few variants per kind, picked by where it is, so
+// the ground doesn't repeat.
+const tileCache = new Map();
+function paint(key, w, h, fn) {
+  if (tileCache.has(key)) return tileCache.get(key);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), set = (x, y, col) => { if (x < 0 || y < 0 || x >= w || y >= h) return; g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  const fill = (x, y, a, b, col) => { g.fillStyle = col; g.fillRect(x, y, a, b); };
+  fn(set, fill, seeded(key.split('').reduce((a, ch) => a * 31 + ch.charCodeAt(0) | 0, 7) >>> 0 || 1));
+  tileCache.set(key, c);
+  return c;
+}
+const vary = (x, y, n) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % n;
+const GRASS = { hi: '#b4e39a', base: '#8fd17a', mid: '#79bd66', dark: '#5ea352' };
+function grassTile(v) {
+  return paint('grass' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, GRASS.base);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 14) + 1, y = Math.floor(r() * 12) + 2; fill(x, y, 2, 1, GRASS.mid); }   // soft patches
+    for (let i = 0; i < 2 + v % 2; i++) {    // little tufts of blades
+      const x = Math.floor(r() * 12) + 1, y = Math.floor(r() * 11) + 3;
+      set(x, y, GRASS.dark); set(x + 2, y - 1, GRASS.dark); set(x + 1, y, GRASS.mid); set(x, y + 1, GRASS.mid); set(x + 1, y + 1, GRASS.dark); set(x + 2, y, GRASS.mid); set(x + 2, y + 1, GRASS.mid); set(x + 1, y - 1, GRASS.hi);
+    }
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), GRASS.hi);   // light specks
+  });
+}
+const PATH = { hi: '#f6e5b8', base: '#ecd6a0', dark: '#d4bb82', peb: '#bfa26c', lip: '#c9a86a' };
+// mask: which sides are NOT path (1 up, 2 right, 4 down, 8 left); there the grass lips over the edge
+function pathTile(v, mask) {
+  return paint('path' + v + '/' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, PATH.base);
+    for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), PATH.dark);
+    if (v % 2 === 0) { const x = Math.floor(r() * 11) + 3, y = Math.floor(r() * 9) + 4; set(x, y, PATH.hi); set(x + 1, y, PATH.dark); set(x, y + 1, PATH.dark); set(x + 1, y + 1, PATH.peb); }   // a pebble
+    if (v % 3 === 0) { const x = Math.floor(r() * 12) + 2, y = Math.floor(r() * 10) + 3; set(x, y, PATH.peb); set(x + 1, y, PATH.hi); }
+    const lip = (pts) => pts.forEach(([x, y, c]) => set(x, y, c));
+    for (let i = 0; i < T; i++) {
+      const bump = (i * 7 + v) % 5 === 0 ? 1 : 0;
+      if (mask & 1) lip([[i, 0, GRASS.base], [i, 1, bump ? GRASS.mid : PATH.lip]]);
+      if (mask & 4) lip([[i, T - 1, GRASS.base], [i, T - 2, bump ? GRASS.base : PATH.lip]]);
+      if (mask & 8) lip([[0, i, GRASS.base], [1, i, bump ? GRASS.mid : PATH.lip]]);
+      if (mask & 2) lip([[T - 1, i, GRASS.base], [T - 2, i, bump ? GRASS.base : PATH.lip]]);
+    }
+    // round off the outside corners, so a path turns rather than steps
+    const corner = (fx, fy) => [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [0, 2], [0, 3], [1, 1]].forEach(([a, b]) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, GRASS.base));
+    const cornerLip = (fx, fy) => [[4, 1], [2, 2], [1, 4], [3, 1], [1, 3]].forEach(([a, b]) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, PATH.lip));
+    if ((mask & 9) === 9) { corner(0, 0); cornerLip(0, 0); }
+    if ((mask & 3) === 3) { corner(1, 0); cornerLip(1, 0); }
+    if ((mask & 12) === 12) { corner(0, 1); cornerLip(0, 1); }
+    if ((mask & 6) === 6) { corner(1, 1); cornerLip(1, 1); }
+  });
+}
+const WATERC = { foam: '#d7f1ff', light: '#8fd3f5', base: '#5bb8e8', deep: '#4aa8dc', rim: '#2e7ab0' };
+function waterTile(v, mask) {                  // mask: sides that are bank, not water
+  return paint('water' + v + '/' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, WATERC.base);
+    for (let i = 0; i < 3; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 14) + 1; fill(x, y, 3 + Math.floor(r() * 3), 1, WATERC.deep); }
+    if (mask & 1) { fill(0, 0, T, 1, WATERC.rim); fill(0, 1, T, 1, WATERC.foam); fill(0, 2, T, 1, WATERC.light); }
+    if (mask & 4) { fill(0, T - 2, T, 1, WATERC.deep); fill(0, T - 1, T, 1, WATERC.rim); }
+    if (mask & 8) { fill(0, 0, 1, T, WATERC.rim); fill(1, mask & 1 ? 1 : 0, 1, T, WATERC.light); }
+    if (mask & 2) { fill(T - 1, 0, 1, T, WATERC.rim); fill(T - 2, mask & 1 ? 1 : 0, 1, T, WATERC.deep); }
+    if (mask & 1) fill(0, 0, T, 1, WATERC.rim);
+    // round the bank's outside corners: grass in the corner, the rim curving round it
+    const corner = (fx, fy) => {
+      const P = (a, b, c) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, c);
+      [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [0, 2], [0, 3]].forEach(([a, b]) => P(a, b, GRASS.base));
+      [[4, 0], [2, 1], [3, 1], [1, 2], [1, 3], [0, 4]].forEach(([a, b]) => P(a, b, WATERC.rim));
+      [[4, 1], [2, 2], [1, 4]].forEach(([a, b]) => P(a, b, fy ? WATERC.deep : WATERC.foam));
+    };
+    if ((mask & 9) === 9) corner(0, 0); if ((mask & 3) === 3) corner(1, 0); if ((mask & 12) === 12) corner(0, 1); if ((mask & 6) === 6) corner(1, 1);
+  });
+}
+function plankTile(mask, sideLine) {           // a dock: wood planks with grain and nail heads
+  return paint('plank' + mask + sideLine, T, T, (set, fill, r) => {
+    for (let y = 0; y < T; y += 4) { fill(0, y, T, 3, '#b07a46'); fill(0, y, T, 1, '#c99460'); fill(0, y + 3, T, 1, '#8d5c30'); }
+    for (let i = 0; i < 5; i++) fill(Math.floor(r() * 12), Math.floor(r() * 4) * 4 + 1, 3, 1, '#9c6a3a');
+    for (let y = 1; y < T; y += 4) { set(2, y, '#5e3319'); set(13, y, '#5e3319'); }
+    const L = '#4a2c18';
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L); if (mask & 1) fill(0, 0, T, 1, L); if (sideLine) fill(0, T - 1, T, 1, L);
+  });
+}
+// a picket fence seen front on; wood is 'white' or 'wood' (the gate)
+const FENCE = { white: { hi: '#ffffff', base: '#f4ecdc', lo: '#d8cbb0', line: '#6b5646' }, wood: { hi: '#d9a066', base: '#b07a46', lo: '#8d5c30', line: '#4a2c18' } };
+function fenceTile(kind) {
+  const f = FENCE[kind];
+  return paint('fence' + kind, T, T, (set, fill) => {
+    fill(0, 15, T, 1, GRASS.dark);                                                    // its shadow on the grass
+    fill(0, 6, T, 1, f.line); fill(0, 7, T, 1, f.hi); fill(0, 8, T, 1, f.lo); fill(0, 9, T, 1, f.line);   // the rail
+    for (let i = 0; i < 3; i++) {
+      const sx = 1 + i * 5;
+      fill(sx, 4, 5, 11, f.line); set(sx + 2, 2, f.line); fill(sx + 1, 3, 3, 1, f.line);
+      set(sx + 2, 3, f.hi); fill(sx + 1, 4, 1, 10, f.hi); fill(sx + 2, 4, 1, 10, f.base); fill(sx + 3, 4, 1, 10, f.lo);
+      fill(sx + 1, 13, 3, 1, f.lo);
+    }
+  });
+}
+function sideFenceTile(kind) {                  // the same fence seen end on: one rail, with post tops
+  const f = FENCE[kind];
+  return paint('sidefence' + kind, T, T, (set, fill) => {
+    fill(6, 0, 1, T, f.line); fill(7, 0, 1, T, f.hi); fill(8, 0, 1, T, f.lo); fill(9, 0, 1, T, f.line);
+    for (const py of [1, 9]) { fill(5, py, 6, 6, f.line); fill(6, py + 1, 4, 1, f.hi); fill(6, py + 2, 4, 2, f.base); fill(6, py + 4, 4, 1, f.lo); fill(10, py + 2, 1, 4, GRASS.dark); }
+  });
+}
+const LEAF = { out: '#1f4a30', dark: '#2e6b45', base: '#3f8a5c', light: '#5aa772', hi: '#7fc48f' };
+// a leafy round shape (tree tops, bushes): bumpy edge, lit from the top left, in clumps
+function leafy(w, h, seed = 1) {
+  return paint('leafy' + w + 'x' + h + '/' + seed, w, h, (set, fill, r) => {
+    const cx0 = w / 2, cy0 = h / 2, clump = [...Array(64)].map(() => r());
+    const inside = (x, y) => { const dx = (x + .5 - cx0) / (w / 2 - 1), dy = (y + .5 - cy0) / (h / 2 - 1), a = Math.atan2(dy, dx); return dx * dx + dy * dy < (1 - .1 * Math.abs(Math.sin(a * 4 + seed))) ** 2; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!inside(x, y)) { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => inside(x + a, y + b))) set(x, y, LEAF.out); continue; }
+      const dx = (x + .5 - cx0) / (w / 2), dy = (y + .5 - cy0) / (h / 2), lit = -dx * .55 - dy * .85 + (clump[(Math.floor(x / 3) * 7 + Math.floor(y / 3) * 3) % 64] - .5) * .7;
+      set(x, y, lit > .55 ? LEAF.hi : lit > .15 ? LEAF.light : lit > -.4 ? LEAF.base : LEAF.dark);
+    }
+  });
+}
+function hedgeTile(mask) {                      // mask: sides with no hedge (outline there)
+  return paint('hedge' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, LEAF.base);
+    for (let i = 0; i < 9; i++) {            // clumps of leaves: a lit top, a shaded bottom
+      const x = Math.floor(r() * 14) - 1, y = Math.floor(r() * 13);
+      fill(x + 1, y, 3, 1, LEAF.light); set(x + 1, y, LEAF.hi); fill(x, y + 1, 5, 1, LEAF.base); fill(x + 1, y + 2, 3, 1, LEAF.dark);
+    }
+    for (let y = 9; y < T; y++) for (let x = 0; x < T; x++) if ((x + y) % 3 === 0 || y > 12) set(x, y, LEAF.dark);
+    // a bumpy leafy edge where the hedge ends, rather than a straight line
+    if (mask & 4) for (let x = 0; x < T; x++) { const b = x % 5 === 0 ? 1 : 0; fill(x, T - 3 - b, 1, 2, '#1f4a30'); set(x, T - 1 - b, '#173a26'); if (b) set(x, T - 1, GRASS.dark); }
+    if (mask & 8) for (let y = 0; y < T; y++) { const b = y % 5 === 2; set(0, y, b ? GRASS.base : '#173a26'); if (b) set(1, y, '#173a26'); }
+    if (mask & 2) for (let y = 0; y < T; y++) { const b = y % 5 === 2; set(T - 1, y, b ? GRASS.base : '#173a26'); if (b) set(T - 2, y, '#173a26'); }
+  });
+}
+function hedgeTop(mask) {                       // the hedge's top, drawn over things behind it
+  return paint('hedgetop' + mask, T, 8, (set, fill, r) => {
+    fill(0, 2, T, 6, LEAF.base);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 13); fill(x, 4 + Math.floor(r() * 3), 3, 1, LEAF.light); }
+    for (let x = 0; x < T; x++) {            // a row of round leafy bumps along the top
+      const k = x % 4, top = mask & 1 ? (k === 1 || k === 2 ? 1 : 2) : 2;
+      if (mask & 1) set(x, top - 1, '#173a26');
+      set(x, top, k === 1 ? LEAF.hi : LEAF.light); if (top === 1) set(x, 2, LEAF.light);
+      if (k === 3) set(x, 3, LEAF.base);
+    }
+    if (mask & 8) fill(0, 1, 1, 7, '#173a26'); if (mask & 2) fill(T - 1, 1, 1, 7, '#173a26');
+  });
+}
+function trunkTile() {
+  return paint('trunk', T, T, (set, fill) => {
+    fill(5, 3, 6, 13, '#4a2c18'); fill(6, 3, 1, 12, '#a8743f'); fill(7, 3, 2, 12, '#7a4a2a'); fill(9, 3, 1, 12, '#5e3319');
+    set(7, 8, '#5e3319'); set(8, 11, '#5e3319'); fill(3, 15, 10, 1, GRASS.dark); fill(4, 14, 1, 1, '#4a2c18'); fill(11, 14, 1, 1, '#4a2c18');   // roots and shadow
+  });
+}
+function reedsTile(f) {                        // three cattails: stems with a leaf, shaded brown heads
+  return paint('reeds' + f, T, 20, (set, fill) => {
+    [[3, 4], [8, 1], [13, 5]].forEach(([x, top], i) => {
+      const sx = x + (f && i !== 1 ? 1 : 0);
+      fill(sx, top + 6, 1, 20 - top - 6, '#3f8a5c'); set(sx - 1, top + 12, '#5aa772'); set(sx - 2, top + 11, '#5aa772');   // the stem and a leaf
+      fill(sx - 1, top, 3, 7, '#4a2c18'); fill(sx, top + 1, 1, 5, '#7a4a2a'); set(sx, top + 1, '#a8743f'); set(sx, top - 1, '#3f8a5c');
+    });
+  });
+}
+function mudTile(v) {
+  return paint('mud' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#7a5a3a');
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 13); fill(x, y, 3 + Math.floor(r() * 2), 2, '#5f4428'); set(x, y, '#4e3720'); }
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#94704a');
+  });
+}
+function cornGround(v) {
+  return paint('cornground' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#b98a4e');
+    for (const y of [4, 11]) { fill(0, y, T, 1, '#a0743c'); fill(0, y + 1, T, 1, '#cfa36a'); }
+    for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#a0743c');
+  });
 }
 function drawLevel(t) {
   const b = G.bread, cam = G.cam;
@@ -2679,21 +2921,9 @@ function drawLevel(t) {
     else if (G.world === 'aquarium' && c !== 'w' && y <= 17) drawAquaTile(c, x, y, X, Y);
     else if (G.world === 'museum' && y <= 17) drawMuseTile(c, x, y, X, Y);
     else if (c === 'w' || c === 'd') {
-      px(X, Y, T, T, COL.W);
-      if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, COL.l); px(X + 2 + o, Y + 8, 1, 1, COL.l); }
-      if (!wet(x, y - 1)) px(X, Y, T, 1, COL.V);
-      if (!wet(x, y + 1)) px(X, Y + T - 1, T, 1, COL.V);
-      if (!wet(x - 1, y)) px(X, Y, 1, T, COL.V);
-      if (!wet(x + 1, y)) px(X + T - 1, Y, 1, T, COL.V);
-      if (c === 'd') {
-        px(X, Y, T, T, '#b07a46');
-        for (let i = 3; i < T; i += 4) px(X, Y + i, T, 1, '#8d5c30');
-        px(X + 2, Y + 1, 1, 1, LINE); px(X + 13, Y + 1, 1, 1, LINE);
-        if (G.m[y][x - 1] !== 'd') px(X, Y, 1, T, LINE);
-        if (G.m[y][x + 1] !== 'd') px(X + T - 1, Y, 1, T, LINE);
-        if (G.m[y - 1]?.[x] !== 'd') px(X, Y, T, 1, LINE);
-        if (G.m[y + 1]?.[x] === 'w') px(X, Y + T - 1, T, 1, LINE);   // the floating dock's far edge
-      }
+      put(waterTile(vary(x, y, 4), (wet(x, y - 1) ? 0 : 1) | (wet(x + 1, y) ? 0 : 2) | (wet(x, y + 1) ? 0 : 4) | (wet(x - 1, y) ? 0 : 8)), X, Y);
+      if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, WATERC.light); px(X + 4 + o, Y + 6, 3, 1, WATERC.foam); }   // a ripple drifting by
+      if (c === 'd') { const isD = (i, j) => G.m[j]?.[i] === 'd'; put(plankTile((isD(x, y - 1) ? 0 : 1) | (isD(x + 1, y) ? 0 : 2) | (isD(x - 1, y) ? 0 : 8), G.m[y + 1]?.[x] === 'w'), X, Y); }
     } else if (indoors(x, y)) {              // inside the barn or the coop: plank floor, walls, stall rails, hay
       px(X, Y, T, T, '#c9925a'); for (let i = 3; i < T; i += 5) px(X, Y + i, T, 1, '#a8743f');
       if ((x * 3 + y) % 4 === 0) px(X + 6, Y, 1, 3, '#a8743f');
@@ -2720,28 +2950,22 @@ function drawLevel(t) {
       if (c === 'h' || c === 'P') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }
       if (c === 'P') { px(X + 4, Y + 3, 1, T - 4, '#7a4a2a'); px(X + 11, Y + 3, 1, T - 4, '#7a4a2a'); }   // a loose bale, tied with twine
     } else if (c === 'C') {                  // corn rows on dirt; the tall stalks are drawn later, over things
-      px(X, Y, T, T, '#b98a4e'); px(X, Y + 4, T, 1, '#a0743c'); px(X, Y + 11, T, 1, '#a0743c');
+      put(cornGround(vary(x, y, 3)), X, Y);
     } else if (c === 'm') {                  // mud
-      px(X, Y, T, T, '#7a5a3a');
-      if ((x + y) % 2) { px(X + 3, Y + 4, 4, 2, '#5f4428'); px(X + 10, Y + 10, 3, 2, '#5f4428'); }
+      put(mudTile(vary(x, y, 3)), X, Y);
       px(X + 9 + (Math.floor(t / 600 + x) % 2), Y + 5, 2, 1, '#a07c56');
     } else if (c === 's' || c === 'O') {     // the horse ring's sand, and its barrels
       px(X, Y, T, T, '#e3c48e'); if ((x * 5 + y * 3) % 4 === 0) px(X + 5, Y + 9, 2, 1, '#cfae74');
       if (c === 'O') { const i = FR.barrels.findIndex(([bx, by]) => Math.floor(bx) === x && Math.floor(by) === y), done = G.race && G.race.done[i];
-        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), X + 1, Y - 1, 2); }   // drawn double size, so it reads next to the pony
+        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {}, size: 2 }), X + 1, Y - 1); }   // drawn double size, so it reads next to the pony
     } else if (c === 'p') {
-      px(X, Y, T, T, '#ecd6a0');
-      if ((x * 5 + y * 7) % 4 === 0) px(X + 4, Y + 10, 2, 1, '#d4bb82');
-      if ((x * 3 + y * 5) % 5 === 0) px(X + 11, Y + 4, 1, 1, '#d4bb82');
+      const pth = (i, j) => (G.m[j]?.[i] ?? 'p') === 'p';
+      put(pathTile(vary(x, y, 6), (pth(x, y - 1) ? 0 : 1) | (pth(x + 1, y) ? 0 : 2) | (pth(x, y + 1) ? 0 : 4) | (pth(x - 1, y) ? 0 : 8)), X, Y);
     } else {
-      px(X, Y, T, T, '#8fd17a');
-      if ((x * 7 + y * 3) % 5 === 0) { px(X + 5, Y + 8, 1, 2, '#79bd66'); px(X + 7, Y + 7, 1, 3, '#79bd66'); px(X + 9, Y + 8, 1, 2, '#79bd66'); }
+      put(grassTile(vary(x, y, 6)), X, Y);
       if (c === '#' && (x === 0 || x === LW - 1 || (G.m[y - 1]?.[x] === '#' && G.m[y][x - 1] !== '#' && G.m[y][x + 1] !== '#')) && y > 0 && y < LH - 1) sideFence(X, Y, '#fffaf0');
-      else if (c === '#') {                 // white picket fence
-        px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, '#fffaf0'); px(X, Y + 9, T, 1, LINE);
-        for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, '#fffaf0'); }
-      }
-      if (c === 'T') { px(X + 5, Y + 4, 6, 12, LINE); px(X + 6, Y + 4, 4, 12, '#7a4a2a'); }
+      else if (c === '#') put(fenceTile('white'), X, Y);   // white picket fence
+      if (c === 'T') put(trunkTile(), X, Y);
       if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
       if (c === 'o') { px(X + 3, Y + 7, 10, 6, LINE); px(X + 4, Y + 8, 8, 4, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); }   // a dug hole
       if (c === 'h') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }   // a hay bale
@@ -2755,20 +2979,15 @@ function drawLevel(t) {
       const fenceAt = (i, j) => 'FXuG'.includes(G.m[j]?.[i] ?? '.');
       if (c === 'F' && (fenceAt(x, y - 1) || fenceAt(x, y + 1)) && !fenceAt(x - 1, y) && !fenceAt(x + 1, y)) sideFence(X, Y, '#fffaf0');
       else if (c === 'F' || c === 'X' || c === 'u' || (c === 'G' && !G.gateOpen)) {   // fences; the park gate is wooden, with a lock
-        const wood = c === 'G' ? '#b07a46' : '#fffaf0';
-        px(X, Y + 6, T, 1, LINE); px(X, Y + 7, T, 2, wood); px(X, Y + 9, T, 1, LINE);
-        for (let i = 0; i < 3; i++) { const sx = X + 1 + i * 5; px(sx, Y + 3, 5, 12, LINE); px(sx + 1, Y + 2, 3, 1, LINE); px(sx + 1, Y + 3, 3, 11, wood); }
+        put(fenceTile(c === 'G' ? 'wood' : 'white'), X, Y);
         if (c === 'X') { px(X + 5, Y + 12, 6, 3, '#1d1410'); px(X + 2, Y + 13, 3, 2, '#8a4f2a'); px(X + 11, Y + 13, 3, 2, '#8a4f2a'); }   // where Crumb squeezed under
         if (c === 'u') { px(X + 2, Y + 9, 12, 7, '#1d1410'); px(X, Y + 13, 3, 3, '#8a4f2a'); px(X + 13, Y + 13, 3, 3, '#8a4f2a'); }     // dug out, big enough for Bread
         if (c === 'G' && x === 17) { px(X + 13, Y + 6, 6, 6, LINE); px(X + 14, Y + 7, 4, 4, COL.y); px(X + 14, Y + 4, 4, 1, LINE); px(X + 14, Y + 4, 1, 3, LINE); px(X + 17, Y + 4, 1, 3, LINE); px(X + 15, Y + 8, 2, 2, LINE); }
       }
       if (c === 'G' && G.gateOpen && x === 17) { px(X, Y + 2, 2, 13, LINE); px(X + 2 * T - 2, Y + 2, 2, 13, LINE); }   // just the posts once it's open
       if (c === 'H') {                        // a clipped hedge; its top is drawn later, over things behind it
-        px(X, Y, T, T, '#2e6b45'); px(X, Y + T - 2, T, 2, '#1f4a30');
-        if ((x + y) % 2) { px(X + 4, Y + 6, 2, 2, '#3f8a5c'); px(X + 10, Y + 10, 2, 2, '#3f8a5c'); }
-        if (G.m[y][x - 1] !== 'H') px(X, Y, 1, T, LINE);
-        if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y, 1, T, LINE);
-        if (G.m[y + 1]?.[x] !== 'H') px(X, Y + T - 1, T, 1, LINE);
+        const isH = (i, j) => G.m[j]?.[i] === 'H';
+        put(hedgeTile((isH(x + 1, y) ? 0 : 2) | (isH(x, y + 1) ? 0 : 4) | (isH(x - 1, y) ? 0 : 8)), X, Y);
       }
     }
   }
@@ -2811,11 +3030,11 @@ function drawLevel(t) {
   if (G.frogs) {                             // the lily pads and the four frogs
     put(sprite(blob(24, 13, 'L', 'G', 'q')), 14.3 * T - 12, 7.6 * T - 3);   // Crumb's pad, in the middle
     { const c = G.crumb; if (c.mode === 'wait' && Math.hypot(c.x - 14.3, c.y - 7.6) < .3) drawCrumb(c.x * T, c.y * T + 5, c.face, t, false); }
-    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG), g.x * T - 14, g.y * T - 13 - up, 2.2); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
+    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG, { size: 3 }), g.x * T - 19, g.y * T - 19 - up); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
     G.frogs.forEach(f => {
       const X = f.x * T, Y = f.y * T, up = f.litT > 0 || f.hopT > 0 ? 3 : 0;
       put(sprite(blob(24, 13, 'L', 'G', 'q')), X - 12, Y - 3);
-      put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col } }), X - 10, Y - 11 - up, 1.5);   // drawn bigger, so each color reads
+      put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col }, size: 2 }), X - 13, Y - 14 - up);   // drawn bigger (Scale2x), so each color reads
       if (f.litT > 0) { px(X - 4, Y - 1 - up, 8, 5, LINE); px(X - 3, Y - up, 6, 3, COL.h); }   // the croak puffs its throat out
     });
     const s = G.song, done = s.state === 'won' ? 3 : s.len - 2;
@@ -2854,12 +3073,12 @@ function drawLevel(t) {
   // tree tops, bushes and reeds go over everything, so things can hide behind them
   for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
     const c = G.m[y][x], X = x * T, Y = y * T;
-    if (c === 'T') put(sprite(blob(26, 22, 'G', 'q', 'L')), X - 5, Y - 15);
-    if (c === 'b') put(sprite(blob(20, 16, 'G', 'q', 'L')), X - 2, Y);
+    if (c === 'T') put(leafy(26, 22, vary(x, y, 3)), X - 5, Y - 15);
+    if (c === 'b') put(leafy(20, 16, vary(x, y, 3) + 3), X - 2, Y);
     if (c === 'k') for (let i = 0; i < 3; i++) { const kx = X + 3 + i * 4 + (Math.floor(t / 600 + x + i) % 2); px(kx - 1, Y - 7 + i * 2, 4, 19 - i * 2, LINE); px(kx, Y - 6 + i * 2, 2, 17 - i * 2, i % 2 ? COL.G : COL.L); }   // kelp
     if (c === 'C') { for (let i = 0; i < 3; i++) { const sx = X + 2 + i * 5 + (Math.floor(t / 900 + x + i) % 2); px(sx, Y - 8, 2, T + 6, '#4f8f3a'); px(sx - 2, Y - 4 + i, 2, 1, '#79bd66'); px(sx + 2, Y - 1 - i, 2, 1, '#79bd66'); px(sx, Y - 10, 2, 2, COL.y); } }
-    if (c === 'H') { px(X, Y - 5, T, 6, '#3f8a5c'); px(X + 3 + (x % 3) * 3, Y - 3, 2, 1, '#5aa772'); if (G.m[y - 1]?.[x] !== 'H') px(X, Y - 6, T, 1, LINE); if (G.m[y][x - 1] !== 'H') px(X, Y - 6, 1, 6, LINE); if (G.m[y][x + 1] !== 'H') px(X + T - 1, Y - 6, 1, 6, LINE); }
-    if (c === 'r') for (let i = 0; i < 3; i++) { const rx = X + 3 + i * 5 + (Math.floor(t / 700 + x + i) % 2); px(rx, Y + 4, 1, 12, '#3f8a5c'); px(rx - 1, Y + 1, 3, 6, LINE); px(rx, Y + 2, 1, 4, '#7a4a2a'); }
+    if (c === 'H') { const isH = (i, j) => G.m[j]?.[i] === 'H'; put(hedgeTop((isH(x, y - 1) ? 0 : 1) | (isH(x + 1, y) ? 0 : 2) | (isH(x - 1, y) ? 0 : 8)), X, Y - 7); }
+    if (c === 'r') put(reedsTile(Math.floor(t / 700 + x) % 2), X, Y - 4);   // cattails, swaying a little
   }
   G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
   // the roofs hide the insides until Bread goes in the door (drawn after the
