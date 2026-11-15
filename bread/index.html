@@ -422,6 +422,8 @@ const sfx = {
   shell: () => tone(700, .06, 'square', 0, .025, 500),
   pinch: () => [1500, 1700].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
   jump: () => tone(300, .18, 'square', 0, .035, 900),
+  zap: () => tone(1400, .08, 'square', 0, .025, 500),
+  boom: () => { tone(160, .22, 'sawtooth', 0, .04, 50); tone(900, .08, 'square', 0, .02, 200); },
   roar: () => { tone(110, .5, 'sawtooth', 0, .06, 70); tone(160, .4, 'square', .05, .03, 90); },
   dive: () => [600, 450, 330, 240].forEach((f, i) => tone(f, .08, 'sine', i * .07, .05)),
   surface: () => [240, 330, 450, 600].forEach((f, i) => tone(f, .06, 'sine', i * .05, .05)),
@@ -1429,7 +1431,8 @@ const MUSE = (() => {
     spots: { rocketHat: [33.5, 9.5], medal: [2.5, 14.5], toyRocket: [33.5, 15.5] },
     goldSpots: [[1.5, 16.5], [24.5, 1.5], [21.5, 2.5]],
     crumbSpots: { astronaut: [24.5, 9.5] },
-    timeDoor: [20.5, 5.2],   // in the hall; it wakes up once the museum is done
+    timeDoor: [20.5, 5.2],
+    rocket: [32.6, 9],       // the rocket ride in the space room; the stars wake it up   // in the hall; it wakes up once the museum is done
   };
 })();
 // The ocean (decided 15 Nov: the next stop after the museum, the plan's
@@ -1593,7 +1596,7 @@ const WORLDS = {
   },
   museum: {
     key: 'museum', name: 'museum', Name: 'Museum', map: MUSE, stop: 4, costume: 'dino', pic: DINOSAUR, baddies: 'Toy robots caught', noFleas: true, soil: 2, open: 'n',
-    goals: { dino: 'Find the dinosaur', rope: 'Jump over the rope', stars: 'Walk the lines between the stars', down: 'Find Crumb', back: 'Bring Crumb to the car' },
+    goals: { dino: 'Find the dinosaur', rope: 'Jump over the rope', stars: 'Walk the lines between the stars', rocket: 'Get in the rocket', back: 'Bring Crumb to the car' },
     setup() {
       for (let i = 0; i < 4; i++) { const [x, y] = randOpen(4, 'n', (x, y) => !inSpace(x, y) && y > 7 && y < 17 && x > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, robot: true }); }
       G.dino = { t: 0, awake: 0 };
@@ -1601,11 +1604,12 @@ const WORLDS = {
       stage('dino', 'Crumb ran past the rope!');
     },
     step(b, dt) { stepMuseum(b, dt); },
-    reached: () => G.starsDone,
+    reached: () => G.moonDone,
     target() {
       if (G.stage === 'dino') return { x: MUSE.dino[0], y: MUSE.dino[1] };
       if (G.stage === 'rope') return { x: MUSE.rope[0], y: MUSE.rope[1] };
       if (G.stage === 'stars') { const i = nextStar(); return { x: MUSE.stars[i][0], y: MUSE.stars[i][1] }; }
+      if (G.stage === 'rocket') return { x: MUSE.rocket[0], y: MUSE.rocket[1] };
     },
   },
   ocean: {
@@ -2021,6 +2025,76 @@ function drawJungle(t) {
   // the time door, where the trip started
   drawTimeDoor(JUNGLE.car[0] * T, (JUNGLE.car[1] + .4) * T, t, true);
 }
+// ---------- The rocket ride to the moon ----------
+// Decided 15 Nov, the middle kid tester's idea: in the museum's space room
+// Crumb is stuck up on the moon, and Bread flies there in the rocket ride,
+// zapping asteroids on the way (an asteroid shoot). Walking the star lines
+// wakes the rocket up. The ride fills the screen: the pad steers, the action
+// button zaps. An asteroid that bumps the rocket only wobbles it (no lost
+// bones, no losing, no clock); the moon just keeps getting closer.
+const RIDE_ROCKET = ['.....rr.....', '....rrrr....', '...rrrrrr...', '...hhhhhh...', '..hhhllhhh..', '..hhl..lhh..', '..hhl..lhh..', '..hhhllhhh..', '..hhhhhhhh..', '..hhrhhrhh..', '..hhhhhhhh..', '.rhhhhhhhhr.', 'rrhhhhhhhhrr', 'rr.hhhhhh.rr', 'r...gggg...r'];
+const FLAME = [['...yyyy...', '....yy....'], ['..yyeeyy..', '...yyyy...', '....yy....']];
+const FLIGHT_S = 30;                             // seconds to the moon
+function startFlight() {
+  const r = seeded(Math.floor(Math.random() * 1e6) + 1);
+  G.flight = { p: 0, ship: { x: VW / 2, y: VH - 2.4, bonk: 0 }, rocks: [], shots: [], spawn: 1, t: 0, shotT: 0,
+    stars: [...Array(45)].map(() => ({ x: r() * VW, y: r() * VH, s: .5 + r() * 2.5 })) };
+  G.zapped = G.zapped || 0; sfx.start(); toast('Zap the asteroids! Fly to the moon.');
+}
+function zap() {
+  const f = G.flight; if (!f || f.shotT > 0) return;
+  f.shotT = .22; sfx.zap(); f.shots.push({ x: f.ship.x, y: f.ship.y - .9 });
+}
+function stepFlight(dt, dx, dy) {
+  const f = G.flight, s = f.ship; f.t += dt; f.shotT -= dt; s.bonk = Math.max(0, s.bonk - dt);
+  if (!dx && !dy && goal) { const gx = goal.x - s.x, gy = goal.y - s.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }   // a finger held on the screen steers too
+  const m = Math.hypot(dx, dy); if (m > .1) { s.x += dx / Math.max(1, m) * 7 * dt; s.y += dy / Math.max(1, m) * 5 * dt; }
+  s.x = Math.max(.8, Math.min(VW - .8, s.x)); s.y = Math.max(VH * .45, Math.min(VH - 1.2, s.y));
+  f.p = Math.min(1, f.p + dt / FLIGHT_S);
+  f.stars.forEach(st => { st.y += st.s * dt * 2; if (st.y > VH) { st.y -= VH; st.x = Math.random() * VW; } });
+  // asteroids drift down at the rocket, more as the moon gets close
+  f.spawn -= dt;
+  if (f.spawn <= 0 && f.p < .93) { f.spawn = Math.max(.45, 1.1 - f.p * .6); const big = Math.random() < .35; f.rocks.push({ x: 1 + Math.random() * (VW - 2), y: -1, vx: (Math.random() - .5) * 1.2, vy: 2.2 + Math.random() * 1.6 + f.p, r: big ? .7 : .45, a: Math.random() * 6 }); }
+  f.shots.forEach(sh => sh.y -= 13 * dt); f.shots = f.shots.filter(sh => sh.y > -1);
+  f.rocks.forEach(k => { k.x += k.vx * dt; k.y += k.vy * dt; k.a += dt; });
+  f.rocks = f.rocks.filter(k => {
+    const hit = f.shots.find(sh => Math.hypot(sh.x - k.x, sh.y - k.y) < k.r + .3);
+    if (hit) { f.shots.splice(f.shots.indexOf(hit), 1); G.zapped++; sfx.boom(); flightBurst(k.x, k.y); return false; }
+    if (s.bonk <= 0 && Math.hypot(s.x - k.x, s.y - .2 - k.y) < k.r + .55) { s.bonk = 1; sfx.ouch(); flightBurst(k.x, k.y); return false; }   // a bump: the rocket wobbles, that's all
+    return k.y < VH + 1;
+  });
+  f.fx = (f.fx || []).filter(p => (p.t += dt, p.x += p.vx * dt, p.y += p.vy * dt, p.t < .6));
+  if (f.p >= 1 && !f.landed) {                   // at the moon: Crumb hops in, and the rocket lands back in the space room
+    f.landed = true;
+    const c = G.crumb, w = S.crumbWear || {}, [rx, ry] = MUSE.rocket;
+    hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'Crumb hopped in!', () => {
+      G.flight = null; G.moonDone = true;
+      G.bread.x = rx - 1.3; G.bread.y = ry + .3; G.bread.face = -1;
+      c.x = rx - .4; c.y = ry + .3; c.mode = 'follow'; G.trail = []; sfx.found();
+      stage('back', 'Back from the moon!');
+    });
+  }
+}
+function flightBurst(x, y) { const f = G.flight; f.fx = f.fx || []; for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 3; f.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, c: ['#c9c9d4', '#ffd23f', '#ffffff'][i % 3] }); } }
+function drawFlight(t) {
+  const f = G.flight, s = f.ship, W = VW * T, H = VH * T;
+  px(0, 0, W, H, '#0b0f2a');
+  f.stars.forEach(st => px(st.x * T, st.y * T, st.s > 2 ? 2 : 1, st.s > 2 ? 2 : 1, st.s > 1.5 ? '#fff6ea' : '#8a92c0'));
+  // the moon, growing as the rocket gets close; Crumb waves from the top of it
+  const R = Math.round((6 + f.p * 40) / 2) * 2, mx = W / 2, my = 6 + f.p * 40, GRAY = { D: '#9a9aa6' };
+  put(sprite(blob(R * 2, R * 2, 'g', 'D', 'h'), { map: GRAY }), mx - R, my - R);
+  [[-.4, -.15, .2], [.35, .1, .14], [-.1, .5, .12]].forEach(([a, b, k]) => { const cr = Math.max(2, Math.round(R * k)) * 2; put(sprite(blob(cr, cr, 'D', 'D', 'D'), { map: GRAY }), mx + a * R - cr / 2, my + b * R - cr / 2); });   // round craters
+  if (f.p > .4) drawCrumb(mx + 3, my + R * .35, -1, t, Math.floor(t / 300) % 2 === 0);   // Crumb, waving from the moon
+  f.rocks.forEach(k => { const d = Math.round(k.r * 2 * T); put(sprite(blob(d, d - 2, 'g', 'D', 'h'), { map: { D: '#6b6b78' } }), k.x * T - d / 2, k.y * T - d / 2); px(k.x * T - 2 + Math.round(Math.sin(k.a) * 2), k.y * T - 1, 2, 2, '#6b6b78'); });
+  f.shots.forEach(sh => { px(sh.x * T - 1, sh.y * T - 4, 2, 7, '#ffd23f'); px(sh.x * T - 1, sh.y * T - 4, 2, 2, '#ffffff'); });
+  (f.fx || []).forEach(p => px(p.x * T, p.y * T, 2, 2, p.c));
+  const wob = s.bonk > 0 ? Math.round(Math.sin(t / 30) * 2) : 0, X = Math.round(s.x * T - 6 + wob), Y = Math.round(s.y * T - 10);
+  put(sprite(FLAME[Math.floor(t / 90) % 2]), X + 1, Y + 15);
+  put(sprite(RIDE_ROCKET), X, Y);
+  put(sprite(CAR_HEAD, { map: wearMap(S.wear) }), X + 3, Y + 3);   // Bread in the window
+  // how far to the moon: a little track down the right side
+  px(W - 8, 12, 3, H - 40, '#2b2b44'); px(W - 8, 12 + (H - 40) * (1 - f.p) - 2, 3, 4, '#ffd23f'); put(sprite(blob(8, 8, 'g', 'D', 'h')), W - 11, 3);
+}
 // ---------- The museum ----------
 function stepMuseum(b, dt) {
   const d = G.dino; d.t += dt;
@@ -2033,6 +2107,7 @@ function stepMuseum(b, dt) {
   }
   if (G.stage === 'rope' && inSpace(b.x, b.y)) stage('stars', 'Stars on the floor!');
   stepStars(b);
+  if (G.stage === 'rocket' && Math.hypot(MUSE.rocket[0] - b.x, MUSE.rocket[1] - b.y) < 1.3) { G.stage = 'flying'; startFlight(); }
   // the time door: asleep until the museum is done, then it takes Bread to Dino Land
   const [tx, ty] = MUSE.timeDoor, near = Math.hypot(tx - b.x, ty + .3 - b.y) < .8;
   if (near && !G.done && !G.hold) {
@@ -2055,8 +2130,7 @@ function stepStars(b) {
   else sfx.tick();
   if (s.lit.every(Boolean)) {
     s.done = true; G.starsDone = true; sfx.sparkle(); MUSE.stars.forEach(([x, y]) => burst(x, y, COL.y));
-    const c = G.crumb; [c.x, c.y] = MUSE.down;
-    hold(STAR, 'The stars made a dog!', () => stage('down', 'Crumb hopped down!'));
+    hold(STAR, 'The stars woke up the rocket!', () => stage('rocket', 'Crumb is stuck on the moon!'));
   }
 }
 // the star to go to next: one joined to the star Bread is on by a line not lit
@@ -2080,7 +2154,11 @@ function jump() {
   const [dx, dy] = Math.abs(b.dx) >= Math.abs(b.dy) ? [Math.sign(b.dx) || b.face, 0] : [0, Math.sign(b.dy)];
   const solid = breadSolid(), over = (x, y) => { const c = tileAt(x, y); return c === 'J' || !solid.includes(c); };
   let to = [b.x, b.y];
-  if (over(b.x + dx, b.y + dy) && !hits(b.x + dx * 2, b.y + dy * 2, .3, solid)) to = [b.x + dx * 2, b.y + dy * 2];
+  // over a rope, land in the middle of the square past it (decided 15 Nov: two
+  // squares on could still overlap the rope's row, and the hop did nothing)
+  const past = [dx ? Math.floor(b.x + dx) + dx + .5 : b.x, dy ? Math.floor(b.y + dy) + dy + .5 : b.y];
+  if (tileAt(b.x + dx, b.y + dy) === 'J' && !hits(past[0], past[1], .3, solid)) to = past;
+  else if (over(b.x + dx, b.y + dy) && !hits(b.x + dx * 2, b.y + dy * 2, .3, solid)) to = [b.x + dx * 2, b.y + dy * 2];
   else if (!hits(b.x + dx, b.y + dy, .3, solid)) to = [b.x + dx, b.y + dy];
   G.jump = { from: [b.x, b.y], to, t: 0 }; sfx.jump();
 }
@@ -2117,9 +2195,13 @@ function drawMuseum(t) {
   const s = G.stars;
   MUSE.edges.forEach(([a, c], k) => starLine(MUSE.stars[a], MUSE.stars[c], s.lit[k], t));
   MUSE.stars.forEach(([x, y], i) => put(sprite(STAR, { map: { h: s.done || MUSE.edges.some(([a, c], k) => s.lit[k] && (a === i || c === i)) ? COL.y : '#9fb4e0' } }), x * T - 2 - (i === s.cur ? 1 : 0), y * T - 2 - (i === s.cur ? 1 : 0), i === s.cur ? 1.4 : 1));
-  // the planet model, with its ring; Crumb is drawn on top of it
-  put(sprite(blob(22, 18, 'b', 'd', 'y')), 29 * T - 11, 7 * T - 4);
-  px(29 * T - 19, 7 * T + 5, 38, 3, LINE); px(29 * T - 18, 7 * T + 6, 36, 1, '#e8c35a');
+  // the moon model (decided 15 Nov; it was a ringed planet); Crumb is stuck on top of it
+  put(sprite(blob(22, 18, 'g', 'D', 'h'), { map: { D: '#9a9aa6' } }), 29 * T - 11, 7 * T - 4);
+  put(sprite(blob(6, 5, 'D', 'D', 'D'), { map: { D: '#9a9aa6' } }), 29 * T - 7, 7 * T + 1); put(sprite(blob(4, 4, 'D', 'D', 'D'), { map: { D: '#9a9aa6' } }), 29 * T + 3, 7 * T + 4);
+  // the rocket ride: its flame flickers once the stars have woken it up
+  { const [rx, ry] = MUSE.rocket, X = rx * T - 6, Y = ry * T - 10, on = G.stage === 'rocket';
+    if (on) put(sprite(FLAME[Math.floor(t / 90) % 2]), X + 1, Y + 15);
+    put(sprite(RIDE_ROCKET), X, Y); }
 }
 // ---------- The ducklings, at the pond ----------
 // Decided 5 Nov: the mama duck's four ducklings are loose in the lower park.
@@ -2497,6 +2579,7 @@ function ropeAhead() {
 function actionNow() {
   if (screen !== 'level' || !G || G.done) return 'paw';
   const b = G.bread;
+  if (G.flight) return 'shoot';
   if (G.riding) return 'off';
   if (G.under) return 'up';
   if (pawTarget() || (G.shells && G.shells.state === 'pick')) return 'paw';
@@ -2508,9 +2591,9 @@ function actionNow() {
 function act() {
   if (screen !== 'level') return paw();
   const a = actionNow();
-  if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
+  if (a === 'shoot') zap(); else if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
 }
-const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump' };
+const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump', shoot: '💥 Zap' };
 const ARROW_UP = ['..h..', '.hhh.', 'hhhhh', '.hhh.', '.hhh.'], ARROW_DOWN = [...ARROW_UP].reverse();
 const ACT_ICON = { dig: [ARROW_DOWN, '#b8773a'], dive: [ARROW_DOWN, '#3a8fd8'], up: [ARROW_UP, '#3a8fd8'], jump: [ARROW_UP, '#ffd23f'] };
 let shownAct = '';
@@ -2589,6 +2672,7 @@ function stepLevel(dt, t) {
   let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (stick.on && Math.hypot(stick.x, stick.y) > .2) { dx = stick.x; dy = stick.y; }
+  if (G.flight) { stepFlight(dt, dx, dy); return; }   // the rocket ride to the moon fills the screen
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
   G.shake = Math.max(0, (G.shake || 0) - dt); G.digT = Math.max(0, G.digT - dt); G.muddy = Math.max(0, G.muddy - dt);
@@ -3154,6 +3238,7 @@ function cornGround(v) {
   });
 }
 function drawLevel(t) {
+  if (G.flight) return drawFlight(t);
   const b = G.bread, cam = G.cam;
   cam.x = Math.max(0, Math.min(LW - VW, b.x - VW / 2)); cam.y = Math.max(0, Math.min(LH - VH, b.y - VH / 2));
   cx.save(); cx.translate(-Math.round(cam.x * T), -Math.round(cam.y * T));
@@ -3415,7 +3500,7 @@ function finishWorld() {
   persist();
   const pctOf = list => Math.round(list.filter(p => p.got).length / list.length * 100);
   const pct = pctOf(every);
-  const rows = [[W.baddies, G.caught.sq], ...(W.noFleas ? [] : [['Fleas caught', G.caught.fl]]), ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
+  const rows = [[W.baddies, G.caught.sq], ...(W.noFleas ? [] : [['Fleas caught', G.caught.fl]]), ...(G.zapped ? [['Asteroids zapped', G.zapped]] : []), ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
     ...(SS.length > 1 ? SS.map(sc => [sc.name, pctOf(every.filter(p => p.sc === sc)), '%']) : []),
     ...(S.ring && S.ring.best && W.key === 'farm' ? [['Best barrel race', Math.round(S.ring.best), ' s']] : [])];
   // the pieces as pictures: found in color, still hidden as dark shapes

@@ -188,6 +188,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   the rope in the corner, a jump), toy rocket (gift shop), gold paw; Crumb's
   astronaut costume is in the space room. The time door with a dinosaur is
   still a later world.
+  Decided 15 Nov, the middle kid tester's idea: an asteroid shoot. The planet
+  model is now a moon model, and Crumb is stuck on top of it; the star dog
+  wakes up the rocket ride in the space room (`MUSE.rocket`), and walking
+  into it starts the flight (`G.flight`, `stepFlight`, `drawFlight`): the
+  screen is space, the pad steers the rocket, the action button zaps
+  (`zap`), asteroids drift down, and the moon grows until Crumb hops in
+  (about 30 seconds). A bump only wobbles the rocket: no lost bones, no
+  losing, no clock. Then Crumb follows Bread back over the rope to the car;
+  the tally counts asteroids zapped.
   Decided 15 Nov: one action button, like a Nintendo A button, instead of a
   button per move (there were six). Paw/Space does what fits where Bread is
   (`actionNow`, `act`): paw a baddie in reach, dig on soft dirt, dive in deep
