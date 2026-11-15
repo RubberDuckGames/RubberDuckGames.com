@@ -75,6 +75,7 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 .chip{display:inline-block;width:.8rem;height:.8rem;border:2px solid #1b1a15;vertical-align:-.1rem;margin-right:.35rem}
 .tm{border-top:2px solid var(--line);padding:.6rem 0;display:flex;flex-wrap:wrap;gap:.3rem .8rem;align-items:center}
 .tm .grow{flex:1 1 10rem}
+.tm .col{display:flex;flex-direction:column;gap:.3rem;margin-left:auto;align-items:flex-end}
 .tm p{margin:.1rem 0;color:var(--soft);font-size:.95rem}
 .warn{color:#e3a07a}
 .gstep{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--soft)}
@@ -165,7 +166,7 @@ const STR = {
   g_carry_t: 'Transports', g_carry: 'A transport chopper, transport jet or trade ship carries your ground units and guns. Walk onto a trade ship from the shore. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
   g_aa_t: 'AA guns', g_aa: 'AA guns fire on their own at aircraft from teams that don’t like you, as soon as they fly in range.',
   g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy for good.',
-  g_ally_t: 'Make an ally', g_ally: 'Tap Teams, then give a team 4 money, twice. At +1 you’re allies: you can’t fire on each other or take each other’s cities, and you win together. A team won’t become your ally if it and one of your allies don’t get along.',
+  g_ally_t: 'Make an ally', g_ally: 'Tap Teams, then give a team 4 money, twice. At +1 you’re allies: you can’t fire on each other or take each other’s cities, and you win together. Allies share a trade route worth 1 money a turn each. If an ally has a virus, it can come down the route: tap Lock down to close it. A team won’t become your ally if it and one of your allies don’t get along.',
   g_level_t: 'Your level: {name}', g_level: 'You start with {m} money. The computer teams get {pay} of their city money, buy units in {buy} each turn, and start buying aircraft after turn {air}.',
   frac_half: 'half', frac_most: 'three quarters', frac_all: 'all',
   buy_half: 'half their cities', buy_most: 'three out of four of their cities', buy_all: 'every city',
@@ -202,11 +203,24 @@ const STR = {
   dWhy_hospital: 'Hospital: heals your units on or next to the city by 1 a turn.',
   dWhy_quarantine: 'Quarantine: keeps viruses out of the city.',
   dWhy_industrial: 'Industrial: +{m} money a turn. Up to {max} in a city.',
-  dVirus: 'Viruses aren’t in the game yet.',
+  dFree: 'This city’s first district is free.',
+  dCost: 'Each new district costs {m}.',
+  vCity: 'This city has a virus: it makes half its money, and your units in it get sick. A hospital cures it.',
+  vUnit: 'Sick: it loses 0.5 health a turn for {n} more turns. A hospital cures it.',
+  vCaught: 'A city caught a virus!',
+  vCured: 'A hospital cured a city’s virus.',
+  vRoute: 'A virus came down the trade route from {team}!',
+  routeOpen: 'Trade route open: +{m} money a turn.',
+  routeShut: 'Trade route locked down: no money, and no viruses get through.',
+  routeRisk: '{team} has a virus. It can come down the trade route. Lock it down to stay safe.',
+  routeSafe: '{team} has a virus, but your route is locked down.',
+  routeShutBtn: 'Lock down', routeOpenBtn: 'Open route',
+  routeShutLog: 'You locked down the trade route with {team}.',
+  routeOpenLog: 'You opened the trade route with {team}.',
   dSetHow: 'Pick what each district is. You can change them on your turn.',
   dMaxIndustry: 'This city already has {max} industrial districts.',
   healed: '+{n}',
-  g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. Hospital heals your units next to it, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city).',
+  g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. The first district is free, then each costs 1. Hospital heals your units next to it and cures viruses, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city). A city with a virus makes half its money and makes your units sick.',
   passTitle: '{team} turn',
   passBody: 'Pass the device to the {team} player.',
   startTurn: 'Start turn',
@@ -340,7 +354,7 @@ const UNITS = {
   // Decided 14 Nov: the trade ships, his stats and his sizes (2 long, 1 wide).
   // They carry ground units and guns (his basic units, like the transports):
   // a unit on the shore next to one walks aboard, and Drop off puts it on
-  // land next to the ship. Trade routes (money from allies) aren't built yet.
+  // land next to the ship. Trade routes are with allies (see `routes`).
   tradeShip:     { name: 'Trade ship',            img: 'trade-ship',       hp: 4,   dmg: 0,                rng: 2, spd: 3, cost: 3,  hits: '',   len: 2, wid: 1, holds: 6 },
   armedTradeShip: { name: 'Armed trade ship',     img: 'armed-trade-ship', hp: 4,   dmgA: 2,               rng: 2, spd: 2, cost: 3,  hits: 'A',  len: 2, wid: 1, holds: 5 },
   carrier:       { name: 'Carrier',               img: 'carrier',          hp: 8,   dmgA: 2,               rng: 3, spd: 2, cost: 20, hits: 'A',  len: 4, wid: 2, holds: 6, deck: true },
@@ -483,14 +497,25 @@ const landOf = (x, y) => LAND[y * MW + x];
 // around it (and will heal viruses caught in the city); quarantine keeps
 // viruses out; industrial pays 0.5 money a turn. Only 2 industrial in a city
 // for now: later, a city with all 4 industrial will start making robots (the
-// bad guys). Viruses and robots aren't built yet.
-// Guesses to check with him: the hospital heals 1 health a turn to your
-// ground units on the city or touching it (corners count), each hospital in
-// the city adds 1; setting a district is free and can be changed on any of
-// your turns. He also said industrial gives "a four", not built until we know
-// what the 4 is.
+// bad guys); robots wait for his drawings.
+// The hospital heals 1 health a turn to your ground units on the city or
+// touching it (corners count), each hospital in the city adds 1 (he said 1 is
+// fine, 15 Nov). Decided 15 Nov, his answers: a city's first district is free
+// and every one after costs 1 money (changing a district counts as building
+// one; emptying it is free). Viruses make a city earn less and hurt the
+// units in it.
+// Filled in here, to check with him: a city with no quarantine has a small
+// chance each turn to catch a virus, and sick units carry it into the next
+// city they stand in. A sick city earns half. Your ground units in a sick
+// city get sick; a sick unit loses 0.5 health a turn for 3 turns but never
+// drops below 0.5 (a virus slows you down, it doesn't kill). A hospital
+// cures its city and the units it heals.
 const DISTRICTS = ['hospital', 'quarantine', 'industrial'];
-const MAX_INDUSTRY = 2, INDUSTRY_MONEY = .5, HOSPITAL_HEAL = 1;
+const MAX_INDUSTRY = 2, INDUSTRY_MONEY = .5, HOSPITAL_HEAL = 1, DISTRICT_COST = 1;
+const VIRUS_CHANCE = .02, VIRUS_HURT = .5, VIRUS_TURNS = 3, VIRUS_FLOOR = .5;
+// the first district a city ever gets is free (old saves: a city that already
+// has one has used its free one)
+const dCost = c => c.dFree === false || (c.dFree === undefined && c.d.some(Boolean)) ? DISTRICT_COST : 0;
 const countD = (c, k) => c.d.filter(x => x === k).length;
 const HQ_MONEY = 3, CITY_MONEY = 1;
 // How tough the computer teams are: their share of city money, the chance
@@ -827,9 +852,24 @@ function targetsFrom(u, x, y) {
   const R = UNITS[u.type];
   return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && reachGap(u, x, y, o) <= rangeTo(R, o));
 }
-const cityPay = c => (c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY;
+const cityPay = c => ((c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY) * (c.sick ? .5 : 1);
 function income(side) {
-  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0);
+  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0) + routes(side).length * ROUTE_MONEY;
+}
+// Decided 15 Nov, his answer: trade routes bring in money, but a virus can
+// come down a route from a nation that has one, so you can lock the route
+// down. Filled in here, to check with him: every two allies have a trade
+// route, open until either of them locks it down (Teams). An open route pays
+// each of them 1 money a turn. While your ally has a sick city, each turn
+// there's a 1 in 4 chance the virus comes down the route into one of your
+// cities that has no quarantine. The computer locks a route while its ally
+// is sick and opens it again once the ally is well.
+const ROUTE_MONEY = 1, ROUTE_SPREAD = .25;
+const routes = side => TEAMS.filter(s => s !== side && !G.out[s] && allied(side, s) && !(G.shut || {})[pk(side, s)]);
+const hasVirus = side => G.cities.some(c => c.owner === side && c.sick);
+function lockRoute(a, b, shut) {
+  G.shut = G.shut || {};
+  if (shut) G.shut[pk(a, b)] = 1; else delete G.shut[pk(a, b)];
 }
 // Hospitals heal your ground units on the city or touching it.
 function hospitals(side) {
@@ -837,19 +877,49 @@ function hospitals(side) {
     const n = countD(c, 'hospital') * HOSPITAL_HEAL;
     for (const u of G.units.filter(u => u.side === side && !UNITS[u.type].air && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1)) {
       const max = UNITS[u.type].hp; if (u.hp >= max) continue;
+      u.sick = 0;
       const got = r1(Math.min(max, u.hp + n) - u.hp); u.hp = r1(u.hp + got);
-      fx.push({ kind: 'num', x: u.x, y: u.y, text: t('healed', { n: fmt(got) }), t0: performance.now(), dur: 900 });
+      if (got) fx.push({ kind: 'num', x: u.x, y: u.y, text: t('healed', { n: fmt(got) }), t0: performance.now(), dur: 900 });
     }
+    for (const u of G.units.filter(u => u.side === side && u.sick && Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y)) <= 1)) u.sick = 0;
   }
+}
+// Viruses, at the start of a team's turn, for its own cities and units.
+// Returns lines for the turn's log.
+function viruses(side) {
+  const notes = [], here = c => G.units.filter(u => u.side === side && !UNITS[u.type].air && !UNITS[u.type].len && u.x === c.x && u.y === c.y);
+  for (const c of G.cities.filter(c => c.owner === side)) {
+    if (c.sick && countD(c, 'hospital')) { c.sick = false; notes.push(t('vCured')); continue; }
+    if (c.sick || countD(c, 'quarantine')) continue;
+    // sick units carry it in, or it just shows up
+    if (G.units.some(u => u.sick && u.x === c.x && u.y === c.y) || Math.random() < VIRUS_CHANCE) { c.sick = true; notes.push(t('vCaught')); }
+  }
+  // down an open trade route from a sick ally
+  for (const s of routes(side).filter(hasVirus)) {
+    if (Math.random() >= ROUTE_SPREAD) continue;
+    const open = G.cities.filter(c => c.owner === side && !c.sick && !countD(c, 'quarantine'));
+    if (open.length) { open[Math.floor(Math.random() * open.length)].sick = true; notes.push(t('vRoute', { team: tn(s) })); }
+  }
+  for (const c of G.cities.filter(c => c.sick)) for (const u of here(c)) u.sick = Math.max(u.sick || 0, VIRUS_TURNS);
+  for (const u of G.units.filter(u => u.side === side && u.sick > 0)) {
+    u.sick--;
+    const lose = r1(Math.min(VIRUS_HURT, u.hp - VIRUS_FLOOR));
+    if (lose > 0) { u.hp = r1(u.hp - lose); fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(lose), t0: performance.now(), dur: 900 }); }
+  }
+  return notes;
 }
 // The computer fills its empty districts: industrial first, then a hospital
 // and a quarantine.
+// and a quarantine. A sick city with no hospital gets one first. It pays
+// for them like you do and keeps 2 money for units.
 function cpuDistricts(side) {
-  const want = ['industrial', 'industrial', 'hospital', 'quarantine'];
   for (const c of G.cities.filter(c => c.owner === side)) for (let i = 0; i < 4; i++) {
     if (c.d[i]) continue;
+    const want = c.sick && !countD(c, 'hospital') ? ['hospital'] : ['industrial', 'industrial', 'hospital', 'quarantine'];
     const k = want.find(k => countD(c, k) < want.filter(w => w === k).length);
-    if (k) c.d[i] = k;
+    const cost = dCost(c);
+    if (!k || (cost && G.money[side] - cost < 2)) continue;
+    G.money[side] = r1(G.money[side] - cost); c.d[i] = k; c.dFree = false;
   }
 }
 function startTurn(side) {
@@ -874,7 +944,8 @@ function startTurn(side) {
       fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(BURN), t0: performance.now(), dur: 900 });
     }
   }
-  if (!isHuman(side)) cpuDistricts(side);
+  notes.push(...viruses(side));
+  if (!isHuman(side)) { cpuDistricts(side); for (const s of TEAMS.filter(s => s !== side && allied(side, s))) lockRoute(side, s, hasVirus(s)); }
   hospitals(side);
   for (const u of G.units.filter(u => u.side === side && UNITS[u.type].deck)) for (const o of u.cargo) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
   for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
@@ -1477,6 +1548,9 @@ function drawCity(o, now = 0, c = ctx) {
     else if (k === 'industrial') { f('#2c2a22', x + 1, y + 7, w, w - 7); f('#6a645a', x, y + 6, w, w - 7); f('#3a372c', x + w - 6, y, 4, 8); for (let z = 0; z < 3; z++) f('#3a372c', x + 2 + z * 4, y + 10, 2, 2); const p = (now / 700) % 1; c.globalAlpha = 1 - p; f('#b9ad92', x + w - 6, y - 2 - p * 6, 4, 3); c.globalAlpha = 1; }
     else { f('#2c2a22', x + 3, y + 5, w - 6, w - 6); f('#8a826c', x + 2, y + 4, w - 6, w - 6); f('#3a372c', x + 4, y + 7, 2, 2); f('#c9b46a', x + 8, y + 7, 2, 2); }
   });
+  if (o.sick) {   // a virus: green germs bobbing over the city
+    for (let i = 0; i < 3; i++) { const gx = X + 8 + i * (TS - 16) / 2, gy = Y + TS / 2 - 3 + Math.sin(now / 300 + i * 2) * 4; f('#1b1a15', gx - 4, gy - 4, 9, 9); f('#7fc24a', gx - 3, gy - 3, 7, 7); f('#3f6e22', gx - 1, gy - 1, 3, 3); }
+  }
 }
 function brackets(x, y, col, inset = 2, len = 10, w = 3, c = ctx) {
   const X = x * TS + inset, Y = y * TS + inset, S = TS - inset * 2;
@@ -1590,6 +1664,7 @@ function drawUnit(c, u, now, marks) {
     else { c.fillRect(qx, qy, 11, 3); c.fillRect(qx, qy + 8, 11, 3); c.fillRect(qx, qy, 3, 11); c.fillRect(qx + 8, qy, 3, 11); }
   }
   if (u.cargo?.length) { c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + H - 17, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(u.cargo.length, X + 9, Y + H - 6); }   // how many are inside
+  if (u.sick > 0) for (let i = 0; i < 2; i++) { const gx = X + 6 + i * 8, gy = Y + 14 + Math.sin(now / 250 + i * 3) * 2; c.fillStyle = '#1b1a15'; c.fillRect(gx - 1, gy - 1, 6, 6); c.fillStyle = '#7fc24a'; c.fillRect(gx, gy, 4, 4); }
   if (u.burn > 0) for (let i = 0; i < 4; i++) { const f = (now / 90 + i * 1.7) % 3 | 0; c.fillStyle = ['#e0a040', '#f2d98a', '#c0502e'][f]; c.fillRect(cx - 9 + i * 5, cy - 6 - ((now / 60 + i * 3) % 6), 4, 4); }
 }
 function frame(now) {
@@ -1666,6 +1741,7 @@ function panel() {
     let tip = '';
     const notes = [];
     if (u.burn > 0) notes.push(t('burning', { n: u.burn }));
+    if (u.sick > 0) notes.push(t('vUnit', { n: u.sick }));
     if (u.reloading) notes.push(t('reloading'));
     if (AA_AUTO.includes(u.type)) notes.push(t('autoFire'));
     if (R.rngG !== undefined) notes.push(t('bombNear'));
@@ -1712,7 +1788,7 @@ function panel() {
   }
   const c = sel.city;
   const name = c.hq ? (c.owner === v ? t('hqYours') : t('hqOf', { team: tn(c.owner) })) : c.owner === v ? t('cityYours') : c.owner ? t('cityOf', { team: tn(c.owner) }) : t('cityFree');
-  const base = c.hq ? HQ_MONEY : CITY_MONEY, extra = countD(c, 'industrial') * INDUSTRY_MONEY;
+  const half = c.sick ? .5 : 1, base = (c.hq ? HQ_MONEY : CITY_MONEY) * half, extra = countD(c, 'industrial') * INDUSTRY_MONEY * half;
   let body = `<p>${extra ? t('cityGivesMore', { m: fmt(base + extra), base: fmt(base), extra: fmt(extra) }) : t('cityGives', { m: fmt(base) })}</p>` + districtsHTML(c, c.owner === v && mine);
   if (c.owner && c.owner !== v && allied(c.owner, v)) body += `<p>${t('cityAlly')}</p>`;
   else if (c.owner !== v) body += `<p>${t('cityTake')}</p>${c.owner && rel(v, c.owner) >= 0 ? `<p class="warn">${t('cityNeutral', { team: tn(c.owner) })}</p>` : ''}`;
@@ -1735,16 +1811,23 @@ function districtsHTML(c, canSet) {
     if (!canSet) return `<div class="dist"><span>${name}: ${k ? t('d_' + k) : t('dEmpty')}</span></div>`;
     return `<div class="dist"><span>${name}</span>` + DISTRICTS.map(d => {
       const full = d === 'industrial' && k !== 'industrial' && countD(c, 'industrial') >= MAX_INDUSTRY;
-      return `<button class="dbtn" data-slot="${i}" data-d="${d}" aria-pressed="${k === d}" ${full ? `disabled title="${t('dMaxIndustry', { max: MAX_INDUSTRY })}"` : ''}>${t('d_' + d)}</button>`;
+      const poor = k !== d && G.money[G.side] < dCost(c);
+      return `<button class="dbtn" data-slot="${i}" data-d="${d}" aria-pressed="${k === d}" ${full ? `disabled title="${t('dMaxIndustry', { max: MAX_INDUSTRY })}"` : poor ? `disabled title="${t('need', { m: fmt(dCost(c)) })}"` : ''}>${t('d_' + d)}</button>`;
     }).join('') + '</div>';
   }).join('');
-  const why = canSet ? `<p>${t('dSetHow')}</p><p>${t('dWhy_hospital')} ${t('dWhy_quarantine')} ${t('dWhy_industrial', { m: fmt(INDUSTRY_MONEY), max: MAX_INDUSTRY })} ${t('dVirus')}</p>` : '';
-  return `<p class="grp">${t('districts')}</p>${why}${rows}`;
+  const why = canSet ? `<p>${t('dSetHow')} ${dCost(c) ? t('dCost', { m: fmt(DISTRICT_COST) }) : t('dFree')}</p><p>${t('dWhy_hospital')} ${t('dWhy_quarantine')} ${t('dWhy_industrial', { m: fmt(INDUSTRY_MONEY), max: MAX_INDUSTRY })}</p>` : '';
+  const sick = c.sick ? `<p class="warn">${t('vCity')}</p>` : '';
+  return `${sick}<p class="grp">${t('districts')}</p>${why}${rows}`;
 }
 function setDistrict(c, i, k) {
   if (!myTurn() || c.owner !== G.side) return;
   if (k === 'industrial' && c.d[i] !== 'industrial' && countD(c, 'industrial') >= MAX_INDUSTRY) return;
-  c.d[i] = c.d[i] === k ? null : k;   // tapping the one it already is empties it
+  if (c.d[i] === k) c.d[i] = null;   // tapping the one it already is empties it, for free
+  else {
+    const cost = dCost(c);
+    if (G.money[G.side] < cost) return;
+    G.money[G.side] = r1(G.money[G.side] - cost); c.d[i] = k; c.dFree = false;
+  }
   sfx('click'); saveLocal(); render();
 }
 function log(s) { $('#log').textContent = s; }
@@ -1814,13 +1897,20 @@ function teamsCard() {
   const v = G.view;
   const rows = TEAMS.filter(s => s !== v).map(s => {
     const why = G.out[s] ? '' : aidProblem(v, s);
+    const route = !G.out[s] && s !== v && allied(v, s), shut = route && (G.shut || {})[pk(v, s)];
+    const rp = route ? `<p>${t(shut ? 'routeShut' : 'routeOpen', { m: ROUTE_MONEY })}</p>${hasVirus(s) ? `<p class="warn">${t(shut ? 'routeSafe' : 'routeRisk', { team: tn(s) })}</p>` : ''}` : '';
+    const rb = route ? `<button class="btn small" data-route="${s}" ${myTurn() && G.side === v ? '' : 'disabled'}>${t(shut ? 'routeOpenBtn' : 'routeShutBtn')}</button>` : '';
     return `<div class="tm"><div class="grow"><h3>${chip(s)}${tn(s)}</h3><p>${t(isHuman(s) ? 'player' : 'computer')} · ${relWord(v, s)}</p>
-      <p>${t('score', { n: signed(rel(v, s)) })}</p>${why ? `<p>${why}</p>` : ''}</div>
-      ${G.out[s] ? '' : `<button class="btn small" data-aid="${s}" ${why ? 'disabled' : ''}>${t('give', { m: AID })}</button>`}</div>`;
+      <p>${t('score', { n: signed(rel(v, s)) })}</p>${why ? `<p>${why}</p>` : ''}${rp}</div>
+      ${G.out[s] ? '' : `<div class="col">${rb}<button class="btn small" data-aid="${s}" ${why ? 'disabled' : ''}>${t('give', { m: AID })}</button></div>`}</div>`;
   }).join('');
   cardShow(`<h2>${t('teamsTitle')}</h2><p>${t('how9')}</p>${rows}<div class="row"><button class="btn" id="close">${t('done')}</button></div>`);
   $('#close').onclick = cardHide;
   $('#card').querySelectorAll('[data-aid]').forEach(b => b.onclick = () => { giveAid(v, b.dataset.aid); teamsCard(); });
+  $('#card').querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
+    const s = b.dataset.route, shut = !(G.shut || {})[pk(v, s)];
+    lockRoute(v, s, shut); sfx('click'); saveLocal(); log(t(shut ? 'routeShutLog' : 'routeOpenLog', { team: tn(s) })); teamsCard(); render();
+  });
 }
 // ---------- How to play ----------
 // Decided 6 Nov: the rules were an 11-line list on the start card that nobody

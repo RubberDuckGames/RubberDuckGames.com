@@ -327,8 +327,13 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   panel: hospital (heals your ground units on or next to the city 1 a turn
   per hospital, a guess), quarantine (keeps viruses out; viruses aren't in the
   game yet), industrial (+0.5 money a turn, at most 2 a city). Later, 4
-  industrial will make the city spawn robots (bad guys): not built. Still to
-  ask him: what the "4" on industrial is, and how much a hospital heals.
+  industrial will make the city spawn robots (bad guys): not built until he
+  draws them. Hospital heals 1 (his OK, 15 Nov); the "4" on industrial
+  doesn't matter (15 Nov). Decided 15 Nov: a city's first district is free,
+  then 1 money each; viruses halve a city's money and make units in it sick
+  (−0.5 a turn for 3 turns, never below 0.5); hospitals cure, quarantine
+  blocks; allies share a trade route (+1 a turn each) that a virus can come
+  down, so you can lock it down in Teams.
   Runways on his map aren't in the game yet. Saves are `v: 3`.
   Decided 10 Nov, his ask: ships, built like the field guns on an empty water
   square touching one of your units or cities, out of enemy fire (`SHIPS`).
