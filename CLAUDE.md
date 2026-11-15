@@ -188,6 +188,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   the rope in the corner, a jump), toy rocket (gift shop), gold paw; Crumb's
   astronaut costume is in the space room. The time door with a dinosaur is
   still a later world.
+  Decided 15 Nov: one action button, like a Nintendo A button, instead of a
+  button per move (there were six). Paw/Space does what fits where Bread is
+  (`actionNow`, `act`): paw a baddie in reach, dig on soft dirt, dive in deep
+  water and come back up, jump a rope she faces, otherwise paw. The button's
+  label and a small arrow over Bread show which. Bark and Sniff keep their own
+  buttons; Z, X and V still dig and jump on a keyboard.
   Decided 15 Nov: Bread moves from 8-bit toward 16-bit (Super Mario World):
   the same pixel size, one pixel size everywhere (nothing drawn at 2x or 1.5x;
   bigger things use Scale2x/Scale3x, `sprite(rows, { size })`), every sprite
