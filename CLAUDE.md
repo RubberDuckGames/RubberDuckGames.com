@@ -188,6 +188,15 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   the rope in the corner, a jump), toy rocket (gift shop), gold paw; Crumb's
   astronaut costume is in the space room. The time door with a dinosaur is
   still a later world.
+  Decided 15 Nov: Bread moves from 8-bit toward 16-bit (Super Mario World):
+  the same pixel size, one pixel size everywhere (nothing drawn at 2x or 1.5x;
+  bigger things use Scale2x/Scale3x, `sprite(rows, { size })`), every sprite
+  shaded light on top and dark underneath with colored outlines (`tone2`),
+  and the ground hand-painted in cached 16 x 16 tiles (`paint`, `grassTile`,
+  `pathTile`, `waterTile`, `fenceTile`, `hedgeTile`, `leafy` and the rest):
+  grass tufts, paths with rounded corners and a grassy lip, a rim and foam on
+  water, leafy hedges and trees. The pond and farm grounds are done; indoors,
+  the aquarium, the museum, the ocean and the map buildings are still to do.
   Decided 15 Nov: the ocean (`OCEAN`, `WORLDS.ocean`, `S.ocean`), the next
   stop after the museum, on a beach along the bottom of the map. The move is
   diving (`S.moves.dive`, B or the Dive button): in deep water Bread dives
