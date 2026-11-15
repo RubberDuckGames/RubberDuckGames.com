@@ -415,7 +415,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   down, so you can lock it down in Teams.
   Decided 15 Nov: runways (his black bars, 15 of them, `RUNWAY_CITIES`) are
   2 land squares next to a city and belong to whoever holds it; your planes
-  land and refuel there like in a city.
+  land and refuel there like in a city. Decided 15 Nov, next: a runway holds 6
+  basic units of planes like the carrier (`G.parked`, by runway index); take
+  the city and the planes parked there are caught.
   Saves are `v: 3`.
   Decided 10 Nov, his ask: ships, built like the field guns on an empty water
   square touching one of your units or cities, out of enemy fire (`SHIPS`).
