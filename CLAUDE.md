@@ -150,7 +150,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   car yourself (`mapCar`, `stepMapCar`). The pad, stick, cross pad or a
   finger held on the map steers it anywhere there's road (`roadMask`), and
   along the beach sand; each place has a driveway with a parking spot, and
-  parked there the button says Go in (an arrow bobs over the car). Locked
+  parked there the button says Go in (no arrow over the car). Locked
   places say where to find Crumb first.
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
@@ -212,7 +212,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   button per move (there were six). Paw/Space does what fits where Bread is
   (`actionNow`, `act`): paw a baddie in reach, dig on soft dirt, dive in deep
   water and come back up, jump a rope she faces, otherwise paw. The button's
-  label and a small arrow over Bread show which. Bark and Sniff keep their own
+  label shows which (no arrows over Bread or the car: the kids don't need them). Bark and Sniff keep their own
   buttons; Z, X and V still dig and jump on a keyboard.
   Decided 15 Nov: the backgrounds are 16-bit (Super Mario World), the
   characters stay 8-bit. The ground, walls and floors are hand-painted in

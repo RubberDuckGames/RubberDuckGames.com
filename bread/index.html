@@ -1100,7 +1100,6 @@ function drawMap(t) {
   [[24, 124], [268, 44], [272, 118], [178, 36]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(leafy(20, 16, x % 3), x - 10, y - 10); });
   const c = mapCar || { x: STOPS[0].at[0], y: STOPS[0].at[1], face: 1 };
   drawCar(c.x, c.y + 6, c.face, c.moving ? t : 0);
-  if (mapNear >= 0 && screen === 'map') { const st = STOPS[mapNear], locked = st.needs && !S[st.needs].beat; if (!locked) drawArrow(c.x, c.y - 22 + (Math.floor(t / 300) % 2), Math.PI / 2); }   // parked at a place: an arrow says you can go in
 }
 // Decided 28 Oct: no check marks or words on the map (no names either; the
 // pictures say what each place is, like an old game map). Under each place, five
@@ -2820,8 +2819,8 @@ function digSpot() {
 // Decided 15 Nov, after Bread had six move buttons: one action button, like
 // the A button on a Nintendo controller. It does what fits where Bread is:
 // paw a baddie in reach, dig on soft dirt, dive in deep water (and come back
-// up), jump a rope she's facing, and otherwise paw. The button's label and a
-// little arrow over Bread show what it will do. Bark and Sniff keep buttons of
+// up), jump a rope she's facing, and otherwise paw. The button's label shows
+// what it will do (decided 15 Nov: no arrow over Bread; the kids don't need it). Bark and Sniff keep buttons of
 // their own; Z, X and V still dig and jump on a keyboard.
 function ropeAhead() {
   const b = G.bread, [dx, dy] = Math.abs(b.dx) >= Math.abs(b.dy) ? [Math.sign(b.dx) || b.face, 0] : [0, Math.sign(b.dy)];
@@ -2846,8 +2845,6 @@ function act() {
   if (a === 'pour') pourAction(); else if (a === 'shoot') zap(); else if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
 }
 const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump', shoot: '💥 Zap', pour: '🧪 Pour', go: '🚪 Go in', drive: '🚗 Drive' };
-const ARROW_UP = ['..h..', '.hhh.', 'hhhhh', '.hhh.', '.hhh.'], ARROW_DOWN = [...ARROW_UP].reverse();
-const ACT_ICON = { dig: [ARROW_DOWN, '#b8773a'], dive: [ARROW_DOWN, '#3a8fd8'], up: [ARROW_UP, '#3a8fd8'], jump: [ARROW_UP, '#ffd23f'] };
 let shownAct = '';
 function showAct() {                           // the action button says what it will do
   const a = screen === 'level' ? actionNow() : screen === 'map' ? (mapNear >= 0 ? 'go' : 'drive') : 'paw';
@@ -3644,8 +3641,6 @@ function drawLevel(t) {
     if (G.muddy && !b.swim) [[-7, -9], [-2, -6], [4, -10], [-5, -4], [2, -4]].forEach(([dx, dy], i) => { if (i < 2 + G.muddy) px(b.x * T + dx * b.face, by + dy, 2, 2, '#6b4a2a'); });   // muddy spots
     if (clip) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
   }
-  { const ic = !G.hold && !G.done && ACT_ICON[actionNow()];   // a little arrow over Bread: what the action button will do
-    if (ic) put(sprite(ic[0], { map: { h: ic[1] } }), b.x * T - 3, b.y * T - (b.swim && !G.under ? 22 : 30) - (Math.floor(t / 300) % 2)); }
   if (G.carry && !G.hold) put(sprite(EGG, { map: { e: EGG_COL[G.carry.col] } }), b.x * T + b.face * 11 - 3, b.y * T - 4);   // the egg in her mouth
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
   if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
