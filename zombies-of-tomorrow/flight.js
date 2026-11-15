@@ -100,6 +100,8 @@ function update(dt) {
   // steer
   let ax = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
   let ay = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0);
+  const st = TOUCH.stick;
+  if (st.on && Math.hypot(st.x, st.y) > 0.15) { ax = st.x; ay = st.y; }
   if (pointer) {
     const tx = (pointer.x - W / 2) / F * SZ, ty = (pointer.y - VH / 2) / F * SZ;
     ax = Math.max(-1, Math.min(1, (tx - s.x) * 3)); ay = Math.max(-1, Math.min(1, (ty - s.y) * 3));

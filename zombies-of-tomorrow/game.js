@@ -343,9 +343,9 @@ function doorOpens() {
 function useBench() {
   if (!flag("wired")) { say([["", "Ivan Pert's old workbench. Tools, wire, a red toaster with no insides. The drawer is stuck shut."]]); return; }
   if (S.items.gun) { say([["", "The drawer is empty now."]]); return; }
-  S.items.gun = true; SFX.ok(); set("armed");
+  S.items.gun = true; SFX.ok(); set("armed"); document.getElementById("zapBtn").hidden = false;
   say([["", "The drawer sticks, then flies open. Inside: a ray gun, red and silver, with IVAN'S, HANDS OFF scratched on the side."],
-       ["A.R.P.F.", "Press F to zap! Don't let it touch you!"]],
+       ["A.R.P.F.", TOUCHY ? "Press Zap to zap! Don't let it touch you!" : "Press F to zap! Don't let it touch you!"]],
       () => {
         ents.push(sprout(10.5, 1.5), sprout(10.5, 4.5));
         hint("Zap them with F. They pop into goo and stars.");
@@ -407,7 +407,12 @@ function openGuide() {
 }
 
 let hintTimer = 0;
-function hint(t) { document.getElementById("hint").textContent = t; hintTimer = 6; }
+// on a phone the hints name the buttons, not the keys
+const TOUCHY = matchMedia("(pointer: coarse)").matches;
+function hint(t) {
+  if (TOUCHY) t = t.replace("press E", "press Use").replace("with F", "with Zap").replace("(G)", "(Book)");
+  document.getElementById("hint").textContent = t; hintTimer = 6;
+}
 
 // ---------- input ----------
 const keys = {};
@@ -488,8 +493,10 @@ function update(dt) {
     if (e.dead && e.popT !== undefined) { e.popT -= dt; if (e.popT <= 0) e.hidden = true; }
   }
   if (busy()) return;
-  const turn = (keys.ArrowLeft || keys.KeyA ? -1 : 0) + (keys.ArrowRight || keys.KeyD ? 1 : 0);
-  const walk = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
+  let turn = (keys.ArrowLeft || keys.KeyA ? -1 : 0) + (keys.ArrowRight || keys.KeyD ? 1 : 0);
+  let walk = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
+  const st = TOUCH.stick;                         // phone stick: up walks, sideways turns
+  if (st.on && Math.hypot(st.x, st.y) > 0.2) { turn = st.x; walk = Math.abs(st.y) > 0.25 ? -st.y : 0; }
   P.a += turn * 2.4 * dt;
   const sp = 2.2 * dt * walk, nx = P.x + Math.cos(P.a) * sp, ny = P.y + Math.sin(P.a) * sp;
   const pad = 0.22 * Math.sign(Math.cos(P.a) * sp), padY = 0.22 * Math.sign(Math.sin(P.a) * sp);
@@ -627,7 +634,7 @@ function render() {
   if (S.name) ctx.fillText(S.name.toUpperCase(), 96, VH + 38);
   const t = !busy() && target();
   ctx.fillStyle = "#f6efdc";
-  if (t) ctx.fillText("E: " + (typeof t.label === "function" ? t.label() : t.label), 240, VH + 38);
+  if (t) ctx.fillText((TOUCHY ? "USE: " : "E: ") + (typeof t.label === "function" ? t.label() : t.label), 240, VH + 38);
 }
 function dot2(x, y, v) { buf[y * W + x] = buf[y * W + x + 1] = buf[(y + 1) * W + x] = buf[(y + 1) * W + x + 1] = v; }
 function heart(x, y, full) {

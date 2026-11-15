@@ -1,0 +1,42 @@
+/* Phone controls, the same as the other Rubber Duck games (decided 15 Nov).
+   Only touch screens see them. Upright the page is a Game Boy: the screen in a
+   dark frame, the stick on the left and round red buttons on the right.
+   Sideways it's a Switch: the game in the middle, the stick on a dark
+   controller on the left, the buttons on one on the right. */
+.ctrl { display: none; }
+.stick { position: relative; width: 9rem; height: 9rem; border-radius: 50%; background: #b3ae9f; border: 3px solid #a8a294; touch-action: none; }
+.stick i { position: absolute; left: 50%; top: 50%; width: 3.6rem; height: 3.6rem; margin: -1.8rem; border-radius: 50%; background: #2a2a33; pointer-events: none; }
+.btns { display: flex; justify-content: flex-end; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.rb { width: 4.6rem; height: 4.6rem; border-radius: 50%; border: 0; padding: 0; background: #c8423b; color: #fff; font: 700 .85rem "Trebuchet MS", Verdana, sans-serif; box-shadow: 0 .3rem 0 #8e2a2a; touch-action: none; -webkit-user-select: none; user-select: none; }
+.rb.on { transform: translateY(.2rem); box-shadow: 0 .1rem 0 #8e2a2a; }
+.rb.small { width: 3.4rem; height: 3.4rem; font-size: .7rem; background: #3f9c96; box-shadow: 0 .3rem 0 #2a6b68; }
+.rb.small.on { box-shadow: 0 .1rem 0 #2a6b68; }
+.rb:focus-visible { outline: 3px solid #e8b33c; outline-offset: 3px; }
+
+@media (pointer: coarse) {
+  .ctrl { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 1rem; padding: 1rem 1.2rem 1.5rem; max-width: 60rem; margin: 0 auto; }
+  #prompt .keys { display: none; }
+  canvas { touch-action: none; }
+}
+
+/* upright: a Game Boy */
+@media (pointer: coarse) and (orientation: portrait) {
+  html, body { background: #c9c4b8; }
+  #wrap { width: auto; margin: .5rem; padding: .7rem .7rem 1.6rem; background: #4a4a58; border-radius: .6rem .6rem 2.4rem .6rem; box-shadow: inset 0 0 0 3px #3a3a46; }
+  #wrap::after { content: "ZOMBIES OF TOMORROW"; position: absolute; left: 1rem; bottom: .4rem; font: 700 .6rem "Trebuchet MS", Verdana, sans-serif; letter-spacing: .12em; color: #b9b9c9; }
+  #prompt { color: #e6e2d8; font-size: .95rem; }
+  canvas { border-color: #2a2a33; }
+}
+
+/* sideways: a Switch */
+@media (pointer: coarse) and (orientation: landscape) {
+  html, body { background: #202230; }
+  #wrap { width: fit-content; max-width: calc(100vw - 20rem); padding-top: .3rem; }
+  canvas { width: auto; height: calc(100vh - 2.6rem); max-width: 100%; margin: 0 auto; border-color: #111; }
+  #prompt { font-size: .85rem; margin-top: .2rem; min-height: 0; }
+  .ctrl { position: fixed; inset: 0; display: block; padding: 0; pointer-events: none; z-index: 5; }
+  .stick, .btns { position: fixed; top: 50%; transform: translateY(-50%); pointer-events: auto; background: #33364a; box-shadow: inset 0 0 0 3px #262839; }
+  .stick { left: .6rem; width: 8rem; height: 8rem; border: 0; background: #1d1f2b; box-shadow: 0 0 0 .7rem #33364a, inset 0 0 0 3px #262839; }
+  .stick i { background: #cfd1dc; }
+  .btns { right: .6rem; flex-direction: column; gap: .6rem; padding: 1rem .8rem; border-radius: 2.5rem; }
+}

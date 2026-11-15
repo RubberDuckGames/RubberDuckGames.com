@@ -35,6 +35,7 @@
   .wires button.picked { outline:4px solid var(--red); }
   .wires button.done { opacity:.45; }
 </style>
+<link rel="stylesheet" href="touch.css">
 </head>
 <body>
 <div id="wrap">
@@ -44,6 +45,15 @@
   <div id="panel" class="overlay"></div>
   <div id="card" class="overlay"></div>
 </div>
+<div class="ctrl" aria-label="Phone controls">
+  <div class="stick" id="stick" aria-label="Walk and turn"><i id="knob"></i></div>
+  <div class="btns">
+    <button class="rb small" data-code="KeyG" aria-label="Guide book">Book</button>
+    <button class="rb" data-code="KeyF" id="zapBtn" hidden>Zap</button>
+    <button class="rb" data-code="KeyE">Use</button>
+  </div>
+</div>
+<script src="touch.js"></script>
 <script src="art.js"></script>
 <script src="game.js"></script>
 </body>

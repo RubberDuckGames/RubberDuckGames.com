@@ -20,13 +20,21 @@
   button { font:inherit; font-size:18px; background:var(--mustard); color:var(--ink); border:3px solid var(--ink); padding:6px 16px; cursor:pointer; }
   button.alt { background:var(--teal); color:var(--cream); }
 </style>
+<link rel="stylesheet" href="touch.css">
 </head>
 <body>
 <div id="wrap">
   <canvas id="screen" width="640" height="400"></canvas>
-  <div id="prompt"><a class="home" href="../">&larr; All games</a><span id="hint"></span><span class="keys">Fly: arrows or WASD · Shoot: Space or F · Phone: drag to fly, it shoots by itself</span></div>
+  <div id="prompt"><a class="home" href="../">&larr; All games</a><span id="hint"></span><span class="keys">Fly: arrows or WASD · Shoot: Space or F · Phone: the stick flies, Shoot shoots</span></div>
   <div id="card"></div>
 </div>
+<div class="ctrl" aria-label="Phone controls">
+  <div class="stick" id="stick" aria-label="Fly"><i id="knob"></i></div>
+  <div class="btns">
+    <button class="rb" data-code="Space">Shoot</button>
+  </div>
+</div>
+<script src="touch.js"></script>
 <script src="flight_art.js"></script>
 <script src="flight.js"></script>
 </body>
