@@ -188,6 +188,21 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   the rope in the corner, a jump), toy rocket (gift shop), gold paw; Crumb's
   astronaut costume is in the space room. The time door with a dinosaur is
   still a later world.
+  Decided 15 Nov: the ocean (`OCEAN`, `WORLDS.ocean`, `S.ocean`), the next
+  stop after the museum, on a beach along the bottom of the map. The move is
+  diving (`S.moves.dive`, B or the Dive button): in deep water Bread dives
+  under and swims along the sea floor (`G.under`; the view goes dim and blue,
+  bubbles rise); she can only go where it's deep, and diving again comes back
+  up. No air to run out. A reef of rocks crosses the sea with one gap where
+  big waves (`z`) push Bread back to the beach, unless she's under them.
+  The trip: Crumb surfs out past the waves to a little island in the lagoon;
+  the shark circling the open sea teaches diving; dive under the waves; Crumb's
+  surfboard has sunk, so dive for it on the lagoon floor; Crumb rides it back
+  behind Bread (the waves carry them in). Crabs on the beach, jellyfish in the
+  deep water, no fleas. Things on the sea floor show faintly from the top and
+  can only be picked up under the water (`OCEAN.deep`). Pieces: shark costume,
+  snorkel mask (lagoon floor), pirate hat (the sunken ship), conch shell (up
+  the beach), gold paw; Crumb's sea turtle costume is on the sea floor.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
