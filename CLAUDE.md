@@ -168,6 +168,23 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   clip (touch pool, a swim), pearl necklace (dark room), toy fish (kelp in the
   hall), gold paw (dark room); Crumb's clownfish costume is in the kelp by
   the shark tank. The ? hint flashes the octopus, the right shell, the door or Crumb.
+  Decided 14 Nov: the museum (`MUSE`, `WORLDS.museum`, `S.museum`), the
+  middle kid tester's pick to come before the ocean; the next stop after the
+  aquarium, across the top of the map. The move is jumping (`S.moves.jump`,
+  V or the Jump button): Bread hops two squares the way she faces, over a
+  velvet rope (`J`) and nothing else, so fences, hay and gates still need
+  their keys and puzzles; where two squares on isn't clear she hops one. The
+  trip: the dinosaur skeleton on its stand in the big hall wakes, roars and
+  teaches jumping; Crumb has gone past the rope into the space room and
+  climbed the planet model; jump the rope; stars on the floor have faint
+  lines between them, and walking from a star to one it's joined to lights
+  that line (any order, no penalty, a wrong hop just starts from there); all
+  seven lines draw a dog, Crumb hops down, and Bread brings Crumb back over
+  the rope to the car. Toy robots from the gift shop are the baddies; no
+  fleas. Pieces: dino costume, rocket hat (space room), museum medal (behind
+  the rope in the corner, a jump), toy rocket (gift shop), gold paw; Crumb's
+  astronaut costume is in the space room. The time door with a dinosaur is
+  still a later world.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
