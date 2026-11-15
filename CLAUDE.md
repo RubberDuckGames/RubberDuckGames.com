@@ -194,15 +194,17 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   water and come back up, jump a rope she faces, otherwise paw. The button's
   label and a small arrow over Bread show which. Bark and Sniff keep their own
   buttons; Z, X and V still dig and jump on a keyboard.
-  Decided 15 Nov: Bread moves from 8-bit toward 16-bit (Super Mario World):
-  the same pixel size, one pixel size everywhere (nothing drawn at 2x or 1.5x;
-  bigger things use Scale2x/Scale3x, `sprite(rows, { size })`), every sprite
-  shaded light on top and dark underneath with colored outlines (`tone2`),
-  and the ground hand-painted in cached 16 x 16 tiles (`paint`, `grassTile`,
-  `pathTile`, `waterTile`, `fenceTile`, `hedgeTile`, `leafy` and the rest):
-  grass tufts, paths with rounded corners and a grassy lip, a rim and foam on
-  water, leafy hedges and trees. The pond and farm grounds are done; indoors,
-  the aquarium, the museum, the ocean and the map buildings are still to do.
+  Decided 15 Nov: the backgrounds are 16-bit (Super Mario World), the
+  characters stay 8-bit. The ground, walls and floors are hand-painted in
+  cached 16 x 16 tiles (`paint`, `grassTile`, `pathTile`, `waterTile`,
+  `fenceTile`, `hedgeTile`, `leafy`, `wallTile`, `squaresTile`, `rockTile`
+  and the rest): grass tufts, paths with rounded corners and a grassy lip, a
+  rim and foam on water, leafy hedges and trees, plank floors, brick walls,
+  marble, rocks; the map's grass and buildings are shaded too. A 16-bit pass
+  on the sprites (shading, colored outlines, Scale2x instead of fat pixels)
+  was live for an hour; the middle kid tester liked the old Crumb and Bread
+  better, so Bread, Crumb and the animals keep their black outlines and fat
+  pixels.
   Decided 15 Nov: the ocean (`OCEAN`, `WORLDS.ocean`, `S.ocean`), the next
   stop after the museum, on a beach along the bottom of the map. The move is
   diving (`S.moves.dive`, B or the Dive button): in deep water Bread dives
