@@ -285,9 +285,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
-  the screen, arrow keys drive, Space is the horn. A picture docket shows what
-  to pick up (an animal or a crate) and which dock it goes to (a big number, a
-  color and a shape), because he can't read yet. Decided 2 Nov: no voice, only
+  the screen, arrow keys drive, Space is the horn. The harbor shows what to
+  pick up (an animal or a crate, waiting on its pier with a sparkle) and which
+  dock it goes to (a big number, a color and a shape, blinking a white ring),
+  because he can't read yet. Decided 15 Nov: the picture docket card on screen
+  confused him, so it's gone from view; `#docket` stays as a screen-reader-only
+  status. Crates are pale pine (`f`/`F`) so they stand out on the brown docks. Decided 2 Nov: no voice, only
   chiptune sounds, like Bread.
   Loading and unloading happen by themselves near the dock. Bumping buoys and
   boats just boings: no damage, no timer, no losing. Sparkles float on the
@@ -309,9 +312,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   bunting along the top shore, and a cake on the shore that gets a candle per
   delivery; the third one plays the whole tune, and the candles blow out with
   confetti and start again. Decided 14 Nov, his ask: then he takes the cake.
-  The docket shows the cake going onto the tugboat (`G.cakeTake`; the
-  delivery he was on waits in `G.paused`, and the cake waits until he isn't
-  carrying anything), the shore cake blinks, and driving up to it makes it hop
+  The shore cake blinks when it's ready to go onto the tugboat (`G.cakeTake`;
+  the delivery he was on waits in `G.paused`, and the cake waits until he
+  isn't carrying anything), and driving up to it makes it hop
   onto the bow, where it rides along (up to three stacked, `G.cakes`, for this
   trip only); a new cake appears on the shore. It shows only in the party month
   (`S.partyMonth`), which a grown-up picks on the Boat name card; like the
