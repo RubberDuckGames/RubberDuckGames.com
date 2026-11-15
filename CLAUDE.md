@@ -317,6 +317,9 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (`S.partyMonth`), which a grown-up picks on the Boat name card; like the
   name, it stays on the device so the month isn't in this public repo.
   `?party` in the address shows it in any month.
+  Decided 15 Nov: every game gets the same phone controls, so the cross pad
+  became a round stick like Bread's (push it the way the boat should go), and
+  pinch and double-tap zoom are blocked while playing, as in Bread and Rodeo.
   Progress is in localStorage under `tugboat`.
 - `rodeo/index.html` is Rodeo (Trello #46). It
   opens on a title screen with a cowgirl racing across and PRESS START, then
@@ -504,6 +507,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   DwelLogs' App; only the playable files come here). Don't edit those files in
   this repo; change them there and release again. `card.png` is the one file
   made here, from `brand/capture.html`.
+- Decided 15 Nov: the same phone controls in every game that you steer: a
+  round stick on the left, round buttons on the right, a layout for upright and
+  for sideways, and pinch and double-tap zoom blocked only while playing (Bread,
+  Rodeo, Math Force, Tugboat, Zombies of Tomorrow). Treasure Trail and Conquest
+  are tapped, not steered, so they get no stick; Conquest pinches to zoom its
+  own map, and kids may zoom Treasure Trail to read, so neither blocks zoom.
 - `db/` holds the database setup (Supabase project RubberDuckGames, created
   10 Nov; its URL and publishable key are in `conquest/index.html`, public by
   design). Decided 10 Nov: one shared set of tables for every game, not one
