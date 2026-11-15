@@ -119,15 +119,15 @@ function homeEnts() {
     ent({ id: "clock", spr: "clock", x: 2.7, y: 5.6, label: "Turn off the alarm", use: useClock }),
     ent({ id: "comic", spr: "deskcomic", x: 4.4, y: 1.4, label: "Look at the comic", use: () => {
       say([["", "An old comic, soft as cloth. ORION GOES TO SPACE. A corgi in a fishbowl helmet flies a round silver rocket, and a friendly robot with a lid for a hat helps him steer."],
-           ["", "On the back, in pencil: For Rosie. Look up. Love, Dad. 1958."]],
-          () => addPage("The Orion comic", "Your great-grandfather Ivan Pert drew this for his daughter Rosie in 1958. The robot has a lid for a hat.", "art/orion-page-1.png"));
+           ["", "In the middle, a page has been torn out. Inside the cover, in faded colored pencil: For my little star. Look up. Love, Papa."]],
+          () => addPage("The Orion comic", "Your great-grandfather Ivan Pert drew this for his daughter Rosie in 1958. The robot has a lid for a hat. One page, just before the star map, is missing.", "art/orion-page-1.png"));
     } }),
     ent({ id: "paper", spr: "deskpaper", x: 1.5, y: 1.4, label: "Read the newspaper clipping", use: () => {
       say([["", "A yellow newspaper clipping, 1958: ANOTHER SCIENTIST LOST. Plane vanishes over the Bermuda Triangle. Ivan Pert, 38, an engineer, is the third scientist to go missing this year."]],
           () => addPage("Missing scientists", "1958: Ivan Pert's plane vanished over the Bermuda Triangle. He was the third scientist to go missing that year. Why so many?"));
     } }),
     ent({ id: "photo", spr: "shelf", x: 5.5, y: 5.5, label: "Look at the photo", use: () => {
-      say([["", "A black and white photo of your great-grandfather, Ivan Pert, grinning in front of a huge silver rocket in the desert."], ["", "Nobody in the family can explain the rocket."]],
+      say([["", "A black and white photo of your great-grandfather, Ivan Pert, grinning in front of a huge silver rocket in the desert."], ["", "On the back, in the same handwriting as the comic: Bottling machine. Ha. Love, Papa."], ["", "Nobody in the family can explain the rocket."]],
           () => addPage("Ivan Pert and the rocket", "A photo of Ivan Pert next to a rocket nobody can explain. Where was this taken? Who built it?"));
     } }),
     ent({ id: "mirror", spr: "mirror", x: 5.6, y: 1.3, label: "Look in the mirror", use: useMirror }),
@@ -227,13 +227,13 @@ function useBox() {
   say([
     ["", "Inside the lock box, packed like it's 1958:"],
     ["", "Old blueprints and star maps of stations nobody has ever heard of. Three great wheels, turning around a moon of Jupiter."],
-    ["", "A stack of letters in Ivan Pert's handwriting. Never mailed."],
+    ["", "A stack of typed letters from Ivan Pert, dated 1969 to 1987. The one on top ends: Wherever you are, Rosie, look up."],
     ["", "A brass key with a little rocket on it. The tag says: EGO ESTATE."],
     ["", "And pages about a fusion engine, with half the words blacked out: [REDACTED]."],
   ], () => {
     set("box"); S.items.key = true; SFX.ok();
     addPage("The blueprints", "Plans for three spinning stations around Europa, a moon of Jupiter, stamped COLONY OF TOMORROW, 1964. Every station has more to find than the plans show.");
-    addPage("Ivan's letters", "Letters from Ivan Pert, never mailed. The top one starts: Dear Rosie. Look up.");
+    addPage("Ivan's letters", "Letters from Ivan Pert, typed out by someone, dated 1969 to 1987, years after he died. The one on top ends: Wherever you are, Rosie, look up.");
     addPage("The brass key", "A brass key with a rocket on it. Tag: EGO ESTATE.");
     addPage("[REDACTED]", "Notes on a fusion engine. Half the words are blacked out. Somebody didn't want this read.");
     hint("It's been a long day. Go to bed.");
