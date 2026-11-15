@@ -193,6 +193,7 @@ canvas{box-shadow:none}
 canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 rgba(90,52,24,.2)}
 .toast{border-width:3px}
 </style>
+<script src="../shared/no-menu.js"></script>
 </head>
 <body>
 <div class="bar">
@@ -205,7 +206,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
 </div>
 <div class="wrap">
   <div class="stagebox" id="box">
-    <canvas id="cv"></canvas>
+    <canvas id="cv" data-hold></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
         <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="sniffHelp" hidden> · Sniff: <b>C</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> <button class="pill" id="hayBtn" hidden>Put the hay back</button> · Help: <b>H</b></p>

@@ -71,6 +71,7 @@ canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;backgrou
   .go{width:6rem;height:6rem;opacity:.9}
 }
 </style>
+<script src="../shared/no-menu.js"></script>
 </head>
 <body>
 <div class="bar">
@@ -81,7 +82,7 @@ canvas{display:block;width:100%;margin:0 auto;image-rendering:pixelated;backgrou
 </div>
 <div class="wrap">
   <div class="stagebox" id="box">
-    <canvas id="cv" aria-label="The arena"></canvas>
+    <canvas id="cv" data-hold aria-label="The arena"></canvas>
     <div class="cover" id="cover" hidden><div class="card" id="card"></div></div>
   </div>
 </div>

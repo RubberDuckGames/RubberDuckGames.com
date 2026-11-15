@@ -64,6 +64,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<script src="../shared/no-menu.js"></script>
 </head>
 <body>
 <div class="bar">
@@ -77,7 +78,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 </div>
 <div class="wrap">
   <div class="stagebox" id="box">
-    <canvas id="cv" aria-label="The harbor"></canvas>
+    <canvas id="cv" data-hold aria-label="The harbor"></canvas>
     <div class="docket" id="docket" hidden role="status">
       <img class="item" id="dItem" alt="">
       <svg class="to" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 3.5h5V1l3.5 4L6 9V6.5H1z"/></svg>
