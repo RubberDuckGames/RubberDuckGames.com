@@ -303,7 +303,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, museum: {}, ocean: {}, jungle: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff, jump, dive)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, museum: {}, ocean: {}, jungle: {}, lab: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff, jump, dive)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -353,6 +353,9 @@ const ITEMS = {
   snorkel: { slot: 'face', name: 'Snorkel mask', world: 'ocean' },
   pirateHat: { slot: 'hat', name: 'Pirate hat', world: 'ocean' },
   cavePup: { slot: 'body', name: 'Cave pup costume', world: 'Dino Land' },
+  labCoat: { slot: 'body', name: 'Scientist costume', world: 'science lab' },
+  goggles: { slot: 'face', name: 'Safety goggles', world: 'science lab' },
+  atomPin: { slot: 'neck', name: 'Atom pin', world: 'science lab' },
   boneClip: { slot: 'hat', name: 'Bone hair clip', world: 'Dino Land' },
   toothNecklace: { slot: 'neck', name: 'Tooth necklace', world: 'Dino Land' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
@@ -371,6 +374,7 @@ const PARTS = {
   aquarium: [['beat', 'Octopus costume'], ['starfish', 'Starfish clip'], ['pearls', 'Pearl necklace'], ['toyFish', 'Toy fish'], ['gold', 'Gold paw print']],
   museum: [['beat', 'Dino costume'], ['rocketHat', 'Rocket hat'], ['medal', 'Museum medal'], ['toyRocket', 'Toy rocket'], ['gold', 'Gold paw print']],
   ocean: [['beat', 'Shark costume'], ['snorkel', 'Snorkel mask'], ['pirateHat', 'Pirate hat'], ['conch', 'Conch shell'], ['gold', 'Gold paw print']],
+  lab: [['beat', 'Scientist costume'], ['goggles', 'Safety goggles'], ['atomPin', 'Atom pin'], ['testTube', 'Test tube toy'], ['gold', 'Gold paw print']],
   jungle: [['beat', 'Cave pup costume'], ['boneClip', 'Bone hair clip'], ['toothNecklace', 'Tooth necklace'], ['fossil', 'Fossil'], ['gold', 'Gold paw print']],
 };
 
@@ -549,6 +553,9 @@ const WEAR_PIX = {
   sharkTeeth: [17, 11, ['h.h.h']],
   snorkel: [13, 5, ['uuuuuuuu', '...ullu.', '...uuuu.']],
   pirateHat: [11, -3, ['...nnnn...', '..nnhnnn..', 'nnnnnnnnnn']],
+  labCoat: [5, 8, ['hhhhhhhh', 'hhhhhhhh', 'hhgh.hhh', '.hhh.hh.']],   // a white lab coat
+  goggles: [13, 4, ['DDDDDDDD', '..DlDDlD', '...DDDD.']],
+  atomPin: [12, 9, ['.m.', 'mym', '.m.']],
   leopard: [5, 8, ['.n...n...n.', '...n...n...', 'n.....n....']],   // spots on the cave pup costume
   boneClip: [13, -2, ['h...h', 'hhhhh', 'h...h']],
   toothNecklace: [11, 9, ['ttttt', 'h.h.h']],
@@ -565,6 +572,7 @@ function breadRows(frame, wear) {
   if (wear.body === 'dino') over(WEAR_PIX.dinoSpikes);
   if (wear.body === 'shark') { over(WEAR_PIX.sharkFin); over(WEAR_PIX.sharkTeeth); }
   if (wear.body === 'cavePup') over(WEAR_PIX.leopard);
+  if (wear.body === 'labCoat') over(WEAR_PIX.labCoat);
   if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
   if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
@@ -722,7 +730,7 @@ const RAPTOR = [
 const FERN = ['....L....', '..L.L.L..', '.L.LLL.L.', 'L.LL.LL.L', '..LLGLL..', 'L..LGL..L', '...GGG...'];
 const AMMONITE = ['..ggg..', '.g...g.', 'g..g..g', 'g.g.g.g', 'g..gg.g', '.g...g.', '..ggg..'];
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH }, toyRocket: { name: 'toy rocket', pic: ROCKET }, conch: { name: 'conch shell', pic: SHELL }, fossil: { name: 'fossil', pic: AMMONITE } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH }, toyRocket: { name: 'toy rocket', pic: ROCKET }, conch: { name: 'conch shell', pic: SHELL }, fossil: { name: 'fossil', pic: AMMONITE }, testTube: { name: 'test tube', pic: ['g.g', 'g.g', 'gmg', 'gmg', 'gmg', '.g.'] } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -758,8 +766,10 @@ const CRUMB_ITEMS = {
   mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
   chick: { slot: 'body', name: 'Chick costume', world: 'coop', map: { D: COL.e, s: COL.y, p: COL.e }, pix: [15, 4, ['YY', '.Y']] },
   foal: { slot: 'body', name: 'Foal costume', world: 'horse ring', map: { D: COL.t, s: COL.s, p: COL.t }, pix: [8, 1, ['n.', 'nn', 'nn', 'n.']] },
+  slime: { slot: 'body', name: 'Slime costume', world: 'science lab', map: { D: '#5aa772', s: '#9be27a', p: '#9be27a' }, pix: [7, 9, ['L..L..L', 'L.....L']] },
   triceratops: { slot: 'body', name: 'Triceratops costume', world: 'Dino Land', map: { D: COL.L, s: COL.G, p: COL.G }, pix: [9, 0, ['h...', '.qq.', 'qqqq']] },
   astronaut: { slot: 'body', name: 'Astronaut costume', world: 'museum', map: { D: COL.h, s: COL.g, p: COL.g }, pix: [11, 3, ['lll', 'lll']] },
+  crab: { slot: 'body', name: 'Crab costume', world: 'ocean', map: { D: COL.r, s: COL.R, p: COL.R }, pix: [12, 0, ['r...r', 'rr.rr']] },
   turtle: { slot: 'body', name: 'Sea turtle costume', world: 'ocean', map: { D: COL.G, s: '#9be27a', p: '#9be27a' }, pix: [3, 5, ['..ttttt...', '.tqtttqt..', 'tttqqtttt.']] },
   clownfish: { slot: 'body', name: 'Clownfish costume', world: 'aquarium', map: { D: COL.b, s: COL.h, p: COL.b }, pix: [6, 4, ['.b..', 'bbb.', '.h..', '.h..', '.h..', '.h..']] },
   bow: { slot: 'hat', name: 'Little bow', cost: 15, pix: [11, -1, ['P.P', 'PPP']] },
@@ -821,13 +831,20 @@ function drawHome(t) {
   // window
   px(111, 15, 66, 50, LINE); px(112, 16, 64, 48, '#fffdf7'); px(115, 19, 58, 42, '#9fdcff');
   px(155, 25, 8, 8, '#ffe680'); px(143, 19, 2, 42, '#fffdf7'); px(115, 39, 58, 2, '#fffdf7');
-  // shelf with toys and trophies
-  px(15, 51, 76, 5, LINE); px(16, 52, 74, 3, '#7a4a2a');
-  const shelf = [];
-  Object.keys(TOYS).forEach(k => { if (S.toys.includes(k)) shelf.push(sprite(TOYS[k].pic)); });
-  Object.keys(PARTS).forEach(w => { if (S[w]?.trophy) shelf.push(sprite(TROPHY)); });
-  if (!shelf.length) text('Toys go here', 53, 46, '#b8854e');
-  shelf.forEach((img, i) => put(img, 22 + i * 22, 52 - img.height + 1));
+  // Decided 15 Nov: toys on two shelves left of the window, trophies on two
+  // shelves to the right. It was one shelf, and with every toy and trophy the
+  // row ran across the window and off the wall.
+  const shelves = (imgs, x0, x1, ys) => {
+    let row = 0, x = x0 + 3;
+    const placed = imgs.map(img => { if (x + img.width > x1 - 3) { row++; x = x0 + 3; } const at = [x, row]; x += img.width + 3; return [img, at]; }).filter(([, [, r]]) => r < ys.length);
+    ys.forEach((y, r) => { if (!r || placed.some(([, [, rr]]) => rr === r)) { px(x0, y, x1 - x0, 5, LINE); px(x0 + 1, y + 1, x1 - x0 - 2, 3, '#7a4a2a'); px(x0 + 1, y + 1, x1 - x0 - 2, 1, '#94603a'); } });
+    placed.forEach(([img, [ix, r]]) => put(img, ix, ys[r] - img.height + 1));
+  };
+  const toys = Object.keys(TOYS).filter(k => S.toys.includes(k)).map(k => sprite(TOYS[k].pic));
+  const cups = Object.keys(PARTS).filter(w => S[w]?.trophy).map(() => sprite(TROPHY));
+  shelves(toys, 8, 104, [51, 83]);
+  if (!toys.length) text('Toys go here', 56, 46, '#b8854e');
+  if (cups.length) shelves(cups, 186, 282, [51, 83]);
   // Bread's bed and rug
   put(sprite(blob(70, 22, 'M', 'N', 'M')), 205, 138);
   put(sprite(blob(64, 16, 'N', 'N', 'N')), 208, 139);
@@ -840,7 +857,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2], dino: DINOSAUR, rocketHat: WEAR_PIX.rocketHat[2], medal: WEAR_PIX.medal[2], shark: BIG_SHARK, snorkel: WEAR_PIX.snorkel[2], pirateHat: WEAR_PIX.pirateHat[2], cavePup: BIG_BONE, boneClip: WEAR_PIX.boneClip[2], toothNecklace: WEAR_PIX.toothNecklace[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2], dino: DINOSAUR, rocketHat: WEAR_PIX.rocketHat[2], medal: WEAR_PIX.medal[2], shark: BIG_SHARK, snorkel: WEAR_PIX.snorkel[2], pirateHat: WEAR_PIX.pirateHat[2], labCoat: ['.hh.hh.', 'hhhhhhh', 'hhh.hhh', 'hhh.hhh', 'hhh.hhh'], goggles: WEAR_PIX.goggles[2], atomPin: WEAR_PIX.atomPin[2], cavePup: BIG_BONE, boneClip: WEAR_PIX.boneClip[2], toothNecklace: WEAR_PIX.toothNecklace[2] };
 const picCache = {};
 function pic(rows, dark, colors = {}) {
   const key = rows.join('/') + dark + JSON.stringify(colors);
@@ -1075,7 +1092,7 @@ function drawMap(t) {
       put(sprite(DINOSAUR), X + 18, Y + 18);
       if (!S.aquarium.beat) { px(X + 16, Y + 16, 12, 10, LINE); px(X + 17, Y + 17, 10, 8, COL.y); px(X + 18, Y + 12, 8, 1, LINE); px(X + 18, Y + 12, 1, 6, LINE); px(X + 25, Y + 12, 1, 6, LINE); }
       else pips(['museum'], X + 54, Y + 34);   // beside the steps
-      if (S.museum.beat) { drawTimeDoor(X + 72, Y + 33, t, true); pips(['jungle'], X + 87, Y + 34); }   // the time door to Dino Land, once the museum is done
+      if (S.museum.beat) { drawTimeDoor(X + 72, Y + 33, t, true); pips(['jungle'], X + 87, Y + 34); pips(['lab'], X - 7, Y + 34); }   // and the science lab's flag, on the left   // the time door to Dino Land, once the museum is done
     }
   }
   cx.restore();
@@ -1083,7 +1100,7 @@ function drawMap(t) {
   { const X = 0, Y = 150, w = VW * T;
     px(X, Y, w, 26, '#f0d9a0'); for (let i = 0; i < w; i += 7) px(X + i, Y + 3 + (i % 3), 2, 1, '#d9bf85');
     px(X, Y + 12, w, 14, '#3a8fd8'); px(X, Y + 11, w, 1, LINE);
-    for (let i = 0; i < w; i += 12) { const o = Math.floor(t / 400 + i) % 3; px(X + i + o, Y + 12, 7, 1, COL.h); px(X + i + 5 - o, Y + 18, 5, 1, '#7fc4f0'); }
+    px(X, Y + 12, w, 1, '#d7f1ff'); for (let i = 6; i < w; i += 24) px(X + i, Y + 18 + (Math.floor(t / 900 + i) % 2), 6, 1, '#5aa6e4');   // foam along the shore, soft ripples
     const fx = X + 120 + Math.round(Math.sin(t / 1200) * 60); put(sprite(FIN, { flip: Math.cos(t / 1200) < 0 }), fx, Y + 15); px(fx - 4, Y + 19, 12, 1, COL.h);
     if (!S.museum.beat) { const Lx = 258, Ly = Y + 2; px(Lx, Ly, 12, 10, LINE); px(Lx + 1, Ly + 1, 10, 8, COL.y); px(Lx + 2, Ly - 4, 8, 1, LINE); px(Lx + 2, Ly - 4, 1, 6, LINE); px(Lx + 9, Ly - 4, 1, 6, LINE); }
     else pips(['ocean'], 270, Y + 10);
@@ -1121,7 +1138,7 @@ let LW = 36, LH = 22;                         // a world's size, in tiles; set w
 // what stops everyone: border, trees, hedges, fences, corn, the fence with a
 // hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
 // water stops everyone but Bread (and Crumb).
-const BLOCK = '#THFCXhBKRPLAaNQOYgEJ', SOLID_LAND = BLOCK + 'Gwvz';
+const BLOCK = '#THFCXhBKRPLAaNQOYgEJ1234', SOLID_LAND = BLOCK + 'Gwvz';
 // water to swim in: the pond's (w), and at the ocean the shallows (w), deep
 // water (v) and the breaking waves (z). Under the water Bread can only go
 // where it's deep, and the sea's jellyfish stay in the deep water.
@@ -1463,7 +1480,8 @@ const MUSE = (() => {
     goldSpots: [[1.5, 16.5], [24.5, 1.5], [21.5, 2.5]],
     crumbSpots: { astronaut: [24.5, 9.5] },
     timeDoor: [20.5, 5.2],
-    rocket: [32.6, 9],       // the rocket ride in the space room; the stars wake it up   // in the hall; it wakes up once the museum is done
+    rocket: [32.6, 9],
+    labDoor: [3.5, 10.6],    // the science lab's door, in the hall; it opens once the museum is done       // the rocket ride in the space room; the stars wake it up   // in the hall; it wakes up once the museum is done
   };
 })();
 // The ocean (decided 15 Nov: the next stop after the museum, the plan's
@@ -1484,6 +1502,7 @@ const OCEAN = (() => {
   for (const [x, y] of [[5, 3], [6, 3], [28, 4], [31, 2], [30, 11], [31, 11], [3, 10], [24, 13]]) m[y][x] = 'Y';   // rocks in the water
   for (let y = 11; y <= 16; y++) m[y][8] = 'd';                                   // the pier
   for (const [x, y] of [[5, 19], [30, 19]]) m[y][x] = 'x';                       // soft sand to dig
+  for (const [x, y, c] of [[12, 18, '1'], [6, 17, '2'], [29, 18, '3'], [31, 17, '4']]) m[y][x] = c;   // the sandcastle's blocks, scattered up the beach
   return {
     m, start: [18, 19.4], car: [18, 20.6],
     run: [[18, 16], [17.5, 9.5], [17.5, 5.2]], crumbAt: [17.4, 3.9],
@@ -1493,7 +1512,8 @@ const OCEAN = (() => {
     spots: { snorkel: [25.5, 2.5], pirateHat: [4.4, 12.6], conch: [33.5, 18.5] },
     deep: ['snorkel', 'pirateHat', 'turtle'],
     goldSpots: [[1.5, 19.5], [33.5, 1.5], [33.5, 13.5]],
-    crumbSpots: { turtle: [27.5, 10.5] },                                           // on the sea floor
+    crumbSpots: { turtle: [27.5, 10.5] },
+    castle: [[23, 17, '1'], [26, 17, '4'], [24, 18, '2'], [25, 18, '3']],   // where each sandcastle block goes: towers at the back, the wall and the gate in front                                           // on the sea floor
   };
 })();
 // Dino Land (decided 15 Nov: the time door, from the 28 Oct plan). Once the
@@ -1543,6 +1563,138 @@ const JUNGLE = (() => {
     crumbSpots: { triceratops: [12.5, 2.5] },
   };
 })();
+// ---------- The science lab (decided 15 Nov, the middle kid tester's idea) ----------
+// Once the museum is done, a lab door in the museum's hall opens. Crumb runs
+// in, knocks the experiments over and ends up covered in green slime. At the
+// lab bench the beakers are all mixed up: pour the top layer from one beaker
+// into another (onto the same color, or into an empty one) until every
+// beaker holds one color. The beaker that comes out clean and clear is the
+// cure; take it to Crumb and the slime washes off. The deal is always
+// solvable (checked when it's made). No clock, no limit on pours.
+const LAB = (() => {
+  const m = [];
+  for (let y = 0; y < 11; y++) { m.push([]); for (let x = 0; x < 18; x++) m[y].push(x === 0 || x === 17 || y === 0 || y === 10 ? 'Y' : 'n'); }
+  for (let x = 7; x <= 10; x++) m[2][x] = 'E';                      // the bench with the mixed-up beakers
+  for (let x = 1; x <= 3; x++) m[5][x] = 'E'; for (let x = 13; x <= 16; x++) m[2][x] = 'E';   // side benches
+  m[10][8] = m[10][9] = 'n';                                        // the door back to the museum
+  return {
+    m, start: [9, 8.6], car: [9, 9.9], run: [[9, 7], [12, 6.5], [14.5, 7.4]], crumbAt: [14.5, 7.4],
+    bench: [8.9, 3.7],
+    spots: { goggles: [2.5, 4.4], atomPin: [16.5, 9.5], testTube: [15.5, 1.6] },
+    goldSpots: [[1.5, 9.5], [16.5, 4.5], [5.5, 1.5]],
+    crumbSpots: { slime: [1.5, 1.5] },
+  };
+})();
+const LIQ = { g: '#7ed957', m: '#a07bc4', o: '#ff8a1f', c: '#e9fbff' };   // slime green, purple, orange, and the clear cure
+const CAP = 3;
+const tubeKey = tubes => tubes.map(t => t.join('')).join('|');
+function canPour(tubes, a, b) {
+  const A = tubes[a], B = tubes[b];
+  return a !== b && A.length && B.length < CAP && (!B.length || B.at(-1) === A.at(-1));
+}
+function pourInto(tubes, a, b) {                 // moves every unit of the top color that fits
+  const A = tubes[a], B = tubes[b], col = A.at(-1);
+  while (A.length && A.at(-1) === col && B.length < CAP) B.push(A.pop());
+}
+const labSolved = tubes => tubes.every(t => !t.length || (t.length === CAP && t.every(c => c === t[0])));
+function labMoves(tubes) {                       // fewest pours to solve, or -1 if it can't be done
+  const seen = new Set([tubeKey(tubes)]), q = [[tubes, 0]];
+  while (q.length) {
+    const [ts, d] = q.shift(); if (labSolved(ts)) return d;
+    for (let a = 0; a < ts.length; a++) for (let b = 0; b < ts.length; b++) if (canPour(ts, a, b)) {
+      const n = ts.map(t => [...t]); pourInto(n, a, b); const k = tubeKey(n);
+      if (!seen.has(k)) { seen.add(k); q.push([n, d + 1]); }
+    }
+  }
+  return -1;
+}
+function labDeal() {                             // four colors, three of each, in four beakers, and two empty
+  for (;;) {
+    const units = [...'gggmmmoooccc'].sort(() => Math.random() - .5), tubes = [0, 1, 2, 3].map(i => units.slice(i * CAP, i * CAP + CAP));
+    tubes.push([], []);
+    const n = labMoves(tubes);
+    if (n >= 5 && !tubes.some(t => t.length === CAP && t.every(c => c === t[0]))) return tubes;   // nothing sorted to start with, the cure least of all
+  }
+}
+function openBench() {
+  const L = G.lab; L.open = true; L.cur = 0; L.sel = -1; L.padT = .3; sfx.blub();
+  toast('Pour the beakers until each is one color.');
+}
+function stepBench(dt, dx, dy) {
+  const L = G.lab; L.padT -= dt;
+  if (goal && !L.tapLock) {                      // a tap on a beaker picks it
+    L.tapLock = true; const i = L.tubes.findIndex((t, k) => Math.abs(benchX(k) / T - goal.x) < .8);
+    if (i >= 0) { L.cur = i; pourAction(); } else if (goal.y > VH - 2) closeBench();
+  }
+  if (!goal) L.tapLock = false;
+  if (L.padT > 0) return;
+  if (Math.abs(dx) > .6) { L.cur = (L.cur + Math.sign(dx) + L.tubes.length) % L.tubes.length; L.padT = .22; sfx.tick(); }
+  else if (dy > .6) closeBench();
+  else if (dy < -.6) { L.tubes = L.start.map(t => [...t]); L.sel = -1; L.padT = .5; sfx.shell(); toast('Back to the start.'); }
+}
+function closeBench() { const L = G.lab; L.open = false; L.sel = -1; G.bread.y = LAB.bench[1] + .6; }
+function pourAction() {
+  const L = G.lab;
+  if (L.sel < 0) { if (L.tubes[L.cur].length) { L.sel = L.cur; sfx.paw(); } return; }
+  if (L.sel === L.cur) { L.sel = -1; return; }
+  if (!canPour(L.tubes, L.sel, L.cur)) { sfx.nope(); L.sel = -1; return; }
+  pourInto(L.tubes, L.sel, L.cur); L.sel = -1; sfx.splash();
+  if (labSolved(L.tubes)) {
+    L.open = false; L.done = true; sfx.win();
+    hold(BEAKER_CURE, 'The cure!', () => stage('cure', 'Take it to Crumb!'));
+  }
+}
+const benchX = k => (VW * T) / 2 + (k - (G.lab.tubes.length - 1) / 2) * 34;
+const BEAKER_CURE = ['.gggg.', '.g..g.', '.g..g.', 'gllllg', 'glhllg', 'gllllg', '.gggg.'];
+function drawBench(t) {
+  const L = G.lab, W = VW * T, H = VH * T;
+  px(0, 0, W, H, '#e9eef3'); for (let x = 0; x < W; x += 16) px(x, 0, 1, H, '#dce3ea');   // the lab wall
+  px(0, 118, W, 58, '#8a93a6'); px(0, 118, W, 3, '#b8c0cc'); px(0, 121, W, 1, LINE);          // the bench top
+  L.tubes.forEach((tube, k) => {
+    const X = Math.round(benchX(k)) - 11, lift = L.sel === k ? 8 : 0, Y = 72 - lift;
+    tube.forEach((c, i) => { const y = Y + 40 - (i + 1) * 12; px(X + 2, y, 18, 12, LIQ[c]); px(X + 2, y, 18, 2, c === 'c' ? '#ffffff' : '#ffffff'); if (c === 'c' && (Math.floor(t / 200) + i) % 3 === 0) px(X + 6 + i * 3, y + 5, 2, 2, '#ffffff'); });
+    px(X, Y - 4, 2, 46, LINE); px(X + 20, Y - 4, 2, 46, LINE); px(X, Y + 42, 22, 2, LINE); px(X - 2, Y - 4, 4, 2, LINE); px(X + 20, Y - 4, 4, 2, LINE);   // the glass
+    px(X + 3, Y, 1, 34, '#ffffff');
+    if (k === L.cur) drawArrow(X + 11, Y - 14 + (Math.floor(t / 300) % 2), Math.PI / 2);   // which beaker the pad is on
+  });
+  text('▲ start over   ▼ step away', W / 2, H - 6, '#3b3f52');
+}
+function stepLab(b, dt) {
+  const c = G.crumb;
+  if (G.stage === 'find' && c.mode === 'wait' && Math.hypot(c.x - b.x, c.y - b.y) < 3) stage('mix', 'Crumb is covered in slime!');
+  if (G.stage === 'mix' && !G.lab.open && Math.hypot(LAB.bench[0] - b.x, LAB.bench[1] - b.y) < 1.1 && (G.lab.cool || 0) <= 0) openBench();
+  G.lab.cool = Math.max(0, (G.lab.cool || 0) - dt); if (G.lab.open) G.lab.cool = 1;
+  if (G.stage === 'cure' && Math.hypot(c.x - b.x, c.y - b.y) < 1.3) {
+    G.cured = true; sfx.sparkle(); burst(c.x, c.y - .3, '#e9fbff'); stage('find', 'Crumb is clean!');
+  }
+}
+function drawLabTile(c, x, y, X, Y) {
+  const is = (ch, i, j) => G.m[j]?.[i] === ch;
+  if (c === 'Y') return put(wallTile('muse', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
+  put(squaresTile('aqua', 0), X, Y);
+  if (c === 'E') {                               // a lab bench: a gray top and cupboard doors
+    px(X, Y + 2, T, T - 2, LINE); px(X, Y + 3, T, 4, '#b8c0cc'); px(X, Y + 3, T, 1, '#d6dce4'); px(X, Y + 7, T, 8, '#8a93a6');
+    if (!is('E', x - 1, y)) px(X, Y + 2, 1, T - 2, LINE); if (!is('E', x + 1, y)) px(X + T - 1, Y + 2, 1, T - 2, LINE);
+    px(X + 7, Y + 9, 1, 5, '#5e6578'); px(X + 5, Y + 10, 1, 2, '#d6dce4'); px(X + 10, Y + 10, 1, 2, '#d6dce4');
+  }
+}
+function drawLab(t) {
+  // beakers and flasks on the benches, bubbling
+  const glass = (X, Y, col, k) => { px(X, Y, 6, 9, LINE); px(X + 1, Y + 3, 4, 5, col); px(X + 1, Y, 4, 1, '#e9eef3'); if ((Math.floor(t / 300) + k) % 3 === 0) px(X + 2, Y + 1 - (Math.floor(t / 150) % 2), 1, 1, col); };
+  [[13, 2, LIQ.m], [14, 2, LIQ.o], [15, 2, LIQ.g], [16, 2, LIQ.m], [1, 5, LIQ.o], [2, 5, LIQ.g], [3, 5, LIQ.c]].forEach(([x, y, col], k) => glass(x * T + 5, y * T - 6, col, k));
+  if (!G.lab.done) { const L = G.lab; L.tubes.forEach((tube, k) => { const X = 7 * T + 4 + k * 9, Y = 2 * T - 8; px(X, Y, 6, 10, LINE); tube.forEach((c, i) => px(X + 1, Y + 8 - i * 3, 4, 3, LIQ[c])); }); }   // the mixed-up beakers on the bench
+  else { const X = 8.5 * T, Y = 2 * T - 10; put(sprite(BEAKER_CURE), X - 3, Y); }
+  // the slime: a puddle round Crumb, and drips on Crumb until the cure
+  const c = G.crumb;
+  if (!G.cured) { put(sprite(blob(30, 10, 'L', 'G', 'L')), LAB.crumbAt[0] * T - 15, LAB.crumbAt[1] * T + 1); }
+  // the lab door at the bottom, back to the museum
+  { const X = 8 * T, Y = 10 * T; px(X, Y - 2, 32, 4, LINE); px(X + 1, Y - 1, 30, 2, '#b8c0cc'); }
+}
+function drawSlime(c, t) {                      // drips over Crumb, drawn after Crumb
+  if (G.cured) return;
+  const X = c.x * T, Y = c.y * T + 5;
+  [[-6, -13, 4], [-1, -16, 6], [4, -12, 3], [-8, -6, 3], [6, -7, 2]].forEach(([dx, dy, h], i) => { px(X + dx, Y + dy, 3, h + (Math.floor(t / 400 + i) % 2), '#7ed957'); px(X + dx, Y + dy, 1, 1, '#c6f5a8'); });
+}
 const inSpace = (x, y) => { const [x0, y0, x1, y1] = MUSE.space; return G && G.world === 'museum' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
 const inDark = (x, y) => { const [x0, y0, x1, y1] = AQUA.dark; return G && G.world === 'aquarium' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
 const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
@@ -1571,7 +1723,10 @@ function startWorld(key) {
     // Crumb hops out of the car and runs off
     crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
   const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p', W.treatOk); G.treats.push({ x, y, v }); } };
-  add(22, 1); add(6, 2); add(3, 5);
+  // Decided 15 Nov: fewer treats (there were 31 everywhere, which crowded the
+  // ground, and the small rooms most). Now about half as many in a full-size
+  // world, and fewer still in a small room, by how big the place is.
+  const k = Math.min(1, LW * LH / 792); add(Math.round(10 * k), 1); add(Math.round(4 * k), 2); add(Math.max(1, Math.round(2 * k)), 5);
   // the gold paw print: in a bush at the pond, buried in a mound at the farm
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
   if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
@@ -1678,6 +1833,22 @@ const WORLDS = {
     target() {
       if (G.stage === 'ferns') return G.ferns.filter(f => !f.got).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
       if (G.stage === 'feed') return { x: JUNGLE.neck[0] - 1.9, y: JUNGLE.neck[1] + .4 };
+    },
+  },
+  lab: {
+    key: 'lab', name: 'science lab', Name: 'Science lab', map: LAB, stop: 4, costume: 'labCoat', pic: BEAKER_CURE, baddies: 'Lab mice caught', noFleas: true, soil: 2, open: 'n',
+    exit: { ask: 'Go back to the museum?', go: '🚪 Go back' },
+    goals: { find: 'Find Crumb', mix: 'Mix the cure at the bench', cure: 'Take the cure to Crumb', back: 'Take Crumb to the door' },
+    setup() {
+      for (let i = 0; i < 2; i++) { const [x, y] = randOpen(3, 'n', (x, y) => y > 3 && y < 9); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, mouse: true }); }
+      G.lab = { tubes: labDeal(), open: false }; G.lab.start = G.lab.tubes.map(t => [...t]); G.cured = false;
+      stage('find', 'Crumb ran into the science lab!');
+    },
+    step(b, dt) { stepLab(b, dt); },
+    reached: () => G.cured,
+    target() {
+      if (G.stage === 'mix') return { x: LAB.bench[0], y: LAB.bench[1] };
+      if (G.stage === 'cure') return G.crumb;
     },
   },
   aquarium: {
@@ -1891,8 +2062,55 @@ function drawDark(b, t) {
   }
   G.sq.forEach(j => { if (j.jelly) drawSquirrel(j, t); });
 }
+// ---------- The sandcastle (decided 15 Nov, the middle kid tester's idea) ----------
+// On the ocean's beach a sandcastle is drawn in the sand: four spots, each
+// the shape of a block (a big tower, a wall, the gate, a tower with a flag).
+// The four blocks are scattered up the beach; Bread pushes them into their
+// spots, straight pushes like the hay in the barn. Blocks only slide over
+// sand and never into the bottom row or the end columns, so one can't get
+// stuck where Bread can't reach round it. The finished castle puts up its
+// flag, pays a few treats, and wins Crumb's crab costume the first time.
+const SANDC = { hi: '#f4dfae', base: '#e6c88a', lo: '#c9a86a', line: '#8a6a3a' };
+function castleTile(kind, ghost) {
+  return paint('castle' + kind + ghost, T, T, (set, fill) => {
+    const C = ghost ? { hi: '#d9bf85', base: '#d9bf85', lo: '#d9bf85', line: '#c9a86a' } : SANDC;
+    const block = (x, y, w, h) => { fill(x, y, w, h, C.line); if (!ghost) { fill(x + 1, y + 1, w - 2, h - 2, C.base); fill(x + 1, y + 1, w - 2, 1, C.hi); fill(x + w - 2, y + 1, 1, h - 2, C.lo); } else fill(x + 1, y + 1, w - 2, h - 2, '#f0d9a0'); };
+    if (kind === '1' || kind === '4') {          // a tower with battlements (4 also flies a flag)
+      block(2, 4, 12, 12); for (const bx of [2, 6, 10]) block(bx, 1, 4, 4);
+      if (!ghost) { fill(7, 8, 2, 3, C.line); set(7, 8, '#5e4a30'); }
+      if (kind === '4' && !ghost) { fill(7, -1, 1, 3, C.line); }
+    } else if (kind === '2') {                   // a stretch of wall, with sand bricks
+      block(0, 5, 16, 11); for (const bx of [0, 5, 10]) block(bx + 1, 2, 4, 4);
+      if (!ghost) for (const [x, y] of [[3, 9], [9, 9], [6, 12], [12, 12]]) fill(x, y, 3, 1, C.lo);
+    } else {                                     // the gate, with an arched door
+      block(1, 3, 14, 13); for (const bx of [1, 6, 11]) block(bx, 0, 4, 4);
+      if (!ghost) { fill(5, 8, 6, 8, '#5e4a30'); fill(6, 7, 4, 1, '#5e4a30'); fill(6, 9, 1, 6, '#3b2a1a'); }
+    }
+  });
+}
+const CRAB_HAT = ['r...r', 'rr.rr'];
+function stepCastle() {
+  if (G.castleDone || !OCEAN.castle.every(([x, y, c]) => G.m[y][x] === c)) return;
+  G.castleDone = true; sfx.win();
+  OCEAN.castle.forEach(([x, y]) => burst(x + .5, y + .5, COL.y));
+  for (let i = 0; i < 5; i++) G.treats.push({ x: 22.5 + i, y: 19.6, v: i % 2 ? 2 : 1 });
+  if (!S.crumbHave.includes('crab')) {
+    S.crumbHave.push('crab'); persist();
+    const w = { body: 'crab' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The sandcastle is done! For Crumb: the crab costume!');
+  } else toast('The sandcastle is done!');
+}
+function drawCastle(t) {
+  // the outline in the sand for each spot still empty, and a flag once it's done
+  OCEAN.castle.forEach(([x, y, c]) => { if (G.m[y][x] !== c) { cx.globalAlpha = .55; put(castleTile(c, true), x * T, y * T); cx.globalAlpha = 1; } });
+  if (G.castleDone) { const [fx, fy] = OCEAN.castle.find(p => p[2] === '4'); const X = fx * T + 7, Y = fy * T - 10, k = Math.floor(t / 250) % 2; px(X, Y, 1, 11, LINE); px(X + 1, Y, 6, 3, COL.r); px(X + 1, Y + 3, 4 + k, 1, COL.r); }
+  // a bucket and spade by the castle, and a starfish on the sand
+  { const X = 21 * T + 3, Y = 18 * T + 6; px(X, Y, 8, 8, LINE); px(X + 1, Y + 1, 6, 6, COL.u); px(X + 1, Y + 1, 6, 1, '#7fa8f0'); px(X + 2, Y - 2, 4, 1, LINE); px(X + 1, Y - 1, 1, 2, LINE); px(X + 6, Y - 1, 1, 2, LINE);
+    px(X + 10, Y - 3, 1, 9, LINE); px(X + 9, Y + 5, 3, 3, COL.r); }
+  put(sprite(['..b..', 'bbbbb', '.bbb.', '.b.b.']), 13 * T + 4, 20 * T + 4);
+}
 // ---------- The ocean ----------
 function stepOcean(b, dt) {
+  stepCastle();
   const sh = G.shark; sh.a += dt * .45;           // the shark swims round and round in the open sea
   const nx = OCEAN.shark[0] + Math.cos(sh.a) * 2.6, ny = OCEAN.shark[1] + Math.sin(sh.a) * 1.1;
   sh.face = nx > sh.x ? 1 : -1; sh.x = nx; sh.y = ny;
@@ -1944,8 +2162,9 @@ function drawSeaTile(c, x, y, X, Y, t) {
       return;
     }
     put(seaTile(deep, vary(x, y, 4)), X, Y);
-    if ((x + y * 2) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, deep ? '#7fc4f0' : COL.h); }
+    if (vary(x, y, 6) === 0) px(X + 5, Y + 7 + (Math.floor(t / 900 + x) % 2), 5, 1, deep ? '#5aa6e4' : '#a6dff5');   // a soft ripple, now and then
   };
+  if ('1234'.includes(c)) { sand(); put(castleTile(c, false), X, Y); return; }   // a sandcastle block
   if (c === 'S' || c === 'x' || c === 'o' || c === 'P') {
     sand();
     if ('wvz'.includes(at(x, y - 1))) { px(X, Y, T, 2, COL.h); px(X + ((x * 5) % 9), Y + 2, 4, 1, COL.h); }   // foam along the water's edge
@@ -1995,8 +2214,9 @@ function drawOcean(t) {
     for (let i = 0; i < 6; i++) px(X + 6 + Math.round(Math.sin(i / 2) * 2), Y + 12 - i * 3, 4, 4, i % 2 ? '#8a5a34' : '#a8743f');
     [[-9, -1], [-6, -4], [0, -5], [6, -4], [9, -1]].forEach(([dx, dy]) => { px(X + 8 + dx - 4, Y - 6 + dy, 8, 3, '#2e6b45'); px(X + 8 + dx - 3, Y - 6 + dy, 6, 1, COL.L); });
     px(X + 6, Y - 3, 2, 2, '#6b4226'); px(X + 9, Y - 2, 2, 2, '#6b4226'); }
-  [[10, 18], [26, 18]].forEach(([ux, uy], i) => { const X = ux * T, Y = uy * T; px(X + 7, Y - 6, 2, 18, LINE);
+  [[10, 18], [3, 18]].forEach(([ux, uy], i) => { const X = ux * T, Y = uy * T; px(X + 7, Y - 6, 2, 18, LINE);
     for (let k = 0; k < 5; k++) { px(X - 6 + k * 4, Y - 10 + Math.abs(k - 2), 4, 5 - Math.abs(k - 2), k % 2 ? COL.h : i ? COL.u : COL.r); } px(X - 7, Y - 10, 30, 1, LINE); });
+  drawCastle(t);
   // jellyfish, over the dim
   G.sq.forEach(j => { if (j.jelly) drawSquirrel(j, t); });
   // the surfboard, once found, floats along beside Bread
@@ -2139,6 +2359,11 @@ function stepMuseum(b, dt) {
   if (G.stage === 'rope' && inSpace(b.x, b.y)) stage('stars', 'Stars on the floor!');
   stepStars(b);
   if (G.stage === 'rocket' && Math.hypot(MUSE.rocket[0] - b.x, MUSE.rocket[1] - b.y) < 1.3) { G.stage = 'flying'; startFlight(); }
+  { const [lx, ly] = MUSE.labDoor;               // the science lab's door
+    if (Math.hypot(lx - b.x, ly + .3 - b.y) < .8 && !G.done && !G.hold) {
+      if (S.museum.beat) { G.done = true; sfx.gate(); toast('The science lab!'); setTimeout(() => startWorld('lab'), 500); }
+      else if (!G.labTip) { G.labTip = true; toast('The science lab is shut.'); }
+    } }
   // the time door: asleep until the museum is done, then it takes Bread to Dino Land
   const [tx, ty] = MUSE.timeDoor, near = Math.hypot(tx - b.x, ty + .3 - b.y) < .8;
   if (near && !G.done && !G.hold) {
@@ -2221,6 +2446,9 @@ function starLine([ax, ay], [bx, by], lit, t) {
 }
 function drawMuseum(t) {
   drawTimeDoor(MUSE.timeDoor[0] * T, MUSE.timeDoor[1] * T, t, !!S.museum.beat);
+  { const X = Math.round(MUSE.labDoor[0] * T - 10), Y = Math.round(MUSE.labDoor[1] * T - 26), open = !!S.museum.beat;   // the lab door: white, with a beaker on it
+    px(X, Y, 20, 26, LINE); px(X + 1, Y + 1, 18, 25, open ? '#3b3f52' : '#e9eef3'); if (!open) { px(X + 2, Y + 2, 16, 23, '#d6dce4'); px(X + 15, Y + 13, 2, 2, LINE); }
+    put(sprite(BEAKER_CURE, { map: { l: open ? LIQ.g : '#9fdcff' } }), X + 7, Y - 9); }
   const d = G.dino, up = d.awake ? Math.round(Math.abs(Math.sin(d.t * 6)) * 3) : 0;
   put(sprite(DINO_BONES, { flip: true }), 11.5 * T - 28, 6 * T + 8 - 30 - up, 2);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
   const s = G.stars;
@@ -2536,13 +2764,14 @@ function tryPush(b, dx, dy, dt) {
   const ax = Math.abs(dx) > .7 ? Math.sign(dx) : 0, ay = !ax && Math.abs(dy) > .7 ? Math.sign(dy) : 0;
   const tx = Math.floor(b.x + ax * .6), ty = Math.floor(b.y + ay * .6);
   const what = G.m[ty]?.[tx];
-  if ((!ax && !ay) || (what !== 'P' && what !== 'A')) { G.pushT = 0; return; }
+  if ((!ax && !ay) || !'PA1234'.includes(what || '.')) { G.pushT = 0; return; }
   if (!S.moves.push) { if (!G.pushTip) { G.pushTip = true; toast('Too heavy. Ask the cow?'); } return; }
   G.pushT = (G.pushT || 0) + dt; if (G.pushT < .3) return;
   G.pushT = 0;
   const nx = tx + ax, ny = ty + ay, c = G.crumb;
-  if (!'.pn'.includes(G.m[ny]?.[nx]) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
-  G.m[ny][nx] = what; G.m[ty][tx] = indoors(tx, ty) ? 'n' : '.'; sfx.push();
+  const sandOk = G.world === 'ocean' && G.m[ny]?.[nx] === 'S' && ny < LH - 2 && nx > 1 && nx < LW - 2;   // sandcastle blocks slide over sand, never into the bottom row or the end columns
+  if (!(G.world === 'ocean' ? sandOk : '.pn'.includes(G.m[ny]?.[nx])) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
+  G.m[ny][nx] = what; G.m[ty][tx] = G.world === 'ocean' ? 'S' : indoors(tx, ty) ? 'n' : '.'; sfx.push();
   if (what === 'A' && G.m[ny - 1]?.[nx] === 'L') ladderUp(nx, ny);
   for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 1.5; G.fx.push({ x: tx + .5, y: ty + .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: ['#e8c35a', '#c9a03a', '#fff1d6'][i % 3] }); }
 }
@@ -2611,6 +2840,7 @@ function actionNow() {
   if (screen !== 'level' || !G || G.done) return 'paw';
   const b = G.bread;
   if (G.flight) return 'shoot';
+  if (G.lab && G.lab.open) return 'pour';
   if (G.riding) return 'off';
   if (G.under) return 'up';
   if (pawTarget() || (G.shells && G.shells.state === 'pick')) return 'paw';
@@ -2622,9 +2852,9 @@ function actionNow() {
 function act() {
   if (screen !== 'level') return paw();
   const a = actionNow();
-  if (a === 'shoot') zap(); else if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
+  if (a === 'pour') pourAction(); else if (a === 'shoot') zap(); else if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
 }
-const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump', shoot: '💥 Zap' };
+const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump', shoot: '💥 Zap', pour: '🧪 Pour' };
 const ARROW_UP = ['..h..', '.hhh.', 'hhhhh', '.hhh.', '.hhh.'], ARROW_DOWN = [...ARROW_UP].reverse();
 const ACT_ICON = { dig: [ARROW_DOWN, '#b8773a'], dive: [ARROW_DOWN, '#3a8fd8'], up: [ARROW_UP, '#3a8fd8'], jump: [ARROW_UP, '#ffd23f'] };
 let shownAct = '';
@@ -2703,7 +2933,8 @@ function stepLevel(dt, t) {
   let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
   let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
   if (stick.on && Math.hypot(stick.x, stick.y) > .2) { dx = stick.x; dy = stick.y; }
-  if (G.flight) { stepFlight(dt, dx, dy); return; }   // the rocket ride to the moon fills the screen
+  if (G.flight) { stepFlight(dt, dx, dy); return; }
+  if (G.lab && G.lab.open) { stepBench(dt, dx, dy); return; }   // the rocket ride to the moon fills the screen
   if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
   const m = Math.hypot(dx, dy);
   G.shake = Math.max(0, (G.shake || 0) - dt); G.digT = Math.max(0, G.digT - dt); G.muddy = Math.max(0, G.muddy - dt);
@@ -3270,6 +3501,7 @@ function cornGround(v) {
 }
 function drawLevel(t) {
   if (G.flight) return drawFlight(t);
+  if (G.lab && G.lab.open) return drawBench(t);   // the beaker puzzle fills the screen
   const b = G.bread, cam = G.cam;
   cam.x = Math.max(0, Math.min(LW - VW, b.x - VW / 2)); cam.y = Math.max(0, Math.min(LH - VH, b.y - VH / 2));
   cx.save(); cx.translate(-Math.round(cam.x * T), -Math.round(cam.y * T));
@@ -3279,10 +3511,11 @@ function drawLevel(t) {
     const c = G.m[y][x], X = x * T, Y = y * T;
     if (G.world === 'ocean') drawSeaTile(c, x, y, X, Y, t);
     else if (G.world === 'aquarium' && c !== 'w' && y <= 17) drawAquaTile(c, x, y, X, Y);
+    else if (G.world === 'lab') drawLabTile(c, x, y, X, Y);
     else if (G.world === 'museum' && y <= 17) drawMuseTile(c, x, y, X, Y);
     else if (c === 'w' || c === 'd') {
       put(waterTile(vary(x, y, 4), (wet(x, y - 1) ? 0 : 1) | (wet(x + 1, y) ? 0 : 2) | (wet(x, y + 1) ? 0 : 4) | (wet(x - 1, y) ? 0 : 8)), X, Y);
-      if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, WATERC.light); px(X + 4 + o, Y + 6, 3, 1, WATERC.foam); }   // a ripple drifting by
+      if (vary(x, y, 6) === 0) px(X + 5, Y + 7 + (Math.floor(t / 900 + x) % 2), 5, 1, '#7cc6ee');   // now and then a soft ripple, bobbing (decided 15 Nov: the white ones looked like sparkles)
       if (c === 'd') { const isD = (i, j) => G.m[j]?.[i] === 'd'; put(plankTile((isD(x, y - 1) ? 0 : 1) | (isD(x + 1, y) ? 0 : 2) | (isD(x - 1, y) ? 0 : 8), G.m[y + 1]?.[x] === 'w'), X, Y); }
     } else if (indoors(x, y)) {              // inside the barn or the coop: plank floor, walls, stall rails, hay
       put(floorTile(vary(x, y, 3)), X, Y);
@@ -3353,6 +3586,7 @@ function drawLevel(t) {
   if (G.dino) drawMuseum(t);
   if (G.world === 'ocean') drawOcean(t);
   if (G.world === 'jungle') drawJungle(t);
+  else if (G.world === 'lab') drawLab(t);
   else drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
   (G.eggs || []).forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: EGG_COL[e.col] } }), e.x * T - 3, e.y * T - 3 - (Math.floor(t / 400 + e.x) % 2)); });
@@ -3369,6 +3603,7 @@ function drawLevel(t) {
       if (c.swim) { cx.restore(); px(c.x * T - 9, cy - 4, 6, 1, COL.l); px(c.x * T + 3, cy - 4, 6, 1, COL.l); }
       }
     } }
+  if (G.world === 'lab' && G.crumb.mode !== 'home') drawSlime(G.crumb, t);
   if (G.pig) {                               // the farm pig and her piglets, and the hens
     put(sprite(PIG, { flip: Math.cos(G.pig.a) < 0 }), G.pig.x * T - 7, G.pig.y * T - 7);
     G.piglets.forEach(l => put(sprite(PIGLET, { flip: l.x > G.pig.x }), l.x * T - 4, l.y * T - 3 + (Math.floor(t / 300 + l.t) % 2)));
@@ -3502,7 +3737,7 @@ function drawHints(b, t) {
     const next = G.song.state === 'listen' ? [G.frogs[G.song.seq[G.song.i]]] : G.frogs;
     cx.globalAlpha = .6; next.forEach(f => px(f.x * T - 12, f.y * T - 12, 24, 17, COL.h)); cx.globalAlpha = 1;
   }
-  if (G.world === 'aquarium' || G.world === 'museum' || G.world === 'ocean' || G.world === 'jungle') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
+  if (G.world === 'aquarium' || G.world === 'museum' || G.world === 'ocean' || G.world === 'jungle' || G.world === 'lab') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
   if (G.world !== 'farm') return;
   if (G.eggs && G.stage === 'eggs') {
     if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); flashTile(n[0], n[1], COL.y); }

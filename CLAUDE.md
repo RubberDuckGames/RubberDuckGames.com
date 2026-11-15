@@ -237,6 +237,34 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   can only be picked up under the water (`OCEAN.deep`). Pieces: shark costume,
   snorkel mask (lagoon floor), pirate hat (the sunken ship), conch shell (up
   the beach), gold paw; Crumb's sea turtle costume is on the sea floor.
+  Decided 15 Nov, the middle kid tester's asks: a sandcastle push puzzle on
+  the ocean's beach (`OCEAN.castle`, `stepCastle`, `castleTile`). Four sand
+  blocks (a big tower, a wall, the gate, a flag tower; tiles 1 to 4) are
+  scattered up the beach, and a faint outline in the sand shows each block's
+  spot. Bread pushes them like the hay (needs push from the barn); blocks
+  slide over sand only and never into the bottom row or the end columns, so
+  none can get stuck out of reach. The finished castle flies its flag, pays a
+  few treats, and wins Crumb's crab costume (not counted toward %). A bucket,
+  spade and starfish sit on the sand. The same day the home room got two toy
+  shelves left of the window and two trophy shelves right of it (the one
+  shelf ran across the window), and water ripples became a few soft bobbing
+  lines instead of white dashes.
+  Decided 15 Nov, the middle kid tester's idea: the science lab (`LAB`,
+  `WORLDS.lab`, `S.lab`), a trip of its own through a white door in the
+  museum hall that opens once the museum is done (like the time door; its
+  flag is left of the museum on the map). Crumb runs in, knocks the
+  experiments over and ends up covered in green slime. At the bench the
+  beakers are mixed up (`labDeal`: four colors, three of each, in four
+  beakers plus two empty; always solvable, at least five pours, nothing
+  sorted to start). The puzzle fills the screen: the pad picks a beaker, the
+  action button (Pour) lifts one and pours its top color onto the same color
+  or into an empty beaker; up starts over, down steps away. Once every
+  beaker is one color, the clear one is the cure; take it to Crumb and the
+  slime washes off, then back to the door. Lab mice are the baddies. Pieces:
+  scientist costume (a lab coat), safety goggles, atom pin, test tube toy,
+  gold paw; Crumb's slime costume is in a corner. Also decided 15 Nov: fewer
+  treats, scaled to the size of the place (16 in a full-size world, a few in
+  the lab; there were 31 everywhere).
   Decided 15 Nov: the time door and Dino Land (`JUNGLE`, `WORLDS.jungle`,
   `S.jungle`), from the 28 Oct plan. The time door stands in the museum's
   hall, asleep until the museum is done; then walking into it is a trip of
