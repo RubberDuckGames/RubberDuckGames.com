@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zombies of Tomorrow: round one</title>
+<style>
+  :root { --ink:#1b1a2e; --night:#141b38; --cream:#f6efdc; --mustard:#e8b33c; --teal:#3f9c96; --orange:#d9822b; --red:#c8423b; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--night); color:var(--cream); font-family: "Trebuchet MS", Verdana, sans-serif; }
+  #wrap { position:relative; width:min(100vw, 960px); margin:0 auto; padding-top:8px; }
+  canvas { display:block; width:100%; image-rendering:pixelated; image-rendering:crisp-edges; background:#000; border:3px solid var(--ink); }
+  #prompt { min-height:30px; margin-top:6px; font-size:18px; display:flex; justify-content:space-between; gap:12px; }
+  #prompt .home { color:var(--mustard); white-space:nowrap; }
+  #prompt .keys { opacity:.7; font-size:14px; text-align:right; }
+  .overlay { position:absolute; left:0; right:0; display:none; }
+  #talk { bottom:44px; margin:0 12px; background:var(--cream); color:var(--ink); border:4px solid var(--ink); padding:12px 14px; font-size:20px; line-height:1.4; }
+  #talk .who { font-weight:bold; color:var(--red); margin-bottom:4px; }
+  #talk .row { display:flex; justify-content:flex-end; margin-top:8px; }
+  button { font:inherit; font-size:18px; background:var(--mustard); color:var(--ink); border:3px solid var(--ink); padding:6px 16px; cursor:pointer; }
+  button.alt { background:var(--teal); color:var(--cream); }
+  #card { top:8px; bottom:0; background:var(--night); display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; font-size:22px; line-height:1.5; }
+  #card h1 { color:var(--mustard); font-size:34px; margin:0 0 8px; letter-spacing:2px; }
+  #card .small { font-size:16px; opacity:.8; }
+  #card .row { margin-top:18px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  #panel { top:8px; bottom:40px; margin:0 12px; background:var(--cream); color:var(--ink); border:4px solid var(--ink); padding:16px; overflow:auto; font-size:18px; line-height:1.45; }
+  #panel h2 { margin:0 0 10px; color:var(--teal); }
+  #panel .page { border-top:2px dashed #d6ccb6; padding:10px 0; }
+  #panel .page b { color:var(--red); }
+  #panel img { max-width:100%; image-rendering:pixelated; border:2px solid var(--ink); margin-top:6px; }
+  #panel .row { display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
+  #panel input { font:inherit; font-size:20px; padding:6px; border:3px solid var(--ink); width:100%; max-width:320px; }
+  .wires { display:grid; grid-template-columns: 1fr 1fr; gap:10px 40px; margin:12px 0; }
+  .wires button { width:100%; }
+  .wires button.picked { outline:4px solid var(--red); }
+  .wires button.done { opacity:.45; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="screen" width="640" height="400"></canvas>
+  <div id="prompt"><a class="home" href="../">&larr; All games</a><span id="hint"></span><span class="keys">Move: arrows or WASD · Use: E or Space · Zap: F · Guide book: G</span></div>
+  <div id="talk" class="overlay"><div class="who"></div><div class="text"></div><div class="row"><button id="next">Next</button></div></div>
+  <div id="panel" class="overlay"></div>
+  <div id="card" class="overlay"></div>
+</div>
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

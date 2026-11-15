@@ -466,6 +466,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   with whose turn it is and Play; finished or deleted games drop off. A game
   on this device now also saves after every move, shot, buy and drop-off,
   not only at the start of your turn.
+- `zombies-of-tomorrow/` is Zombies of Tomorrow, released here from the
+  private `RubberDuckGames/ZombiesOfTomorrow` repo by its `release.py`
+  (decided 15 Nov: the game's source, art scripts and story stay private, like
+  DwelLogs' App; only the playable files come here). Don't edit those files in
+  this repo; change them there and release again. `card.png` is the one file
+  made here, from `brand/capture.html`.
 - `db/` holds the database setup (Supabase project RubberDuckGames, created
   10 Nov; its URL and publishable key are in `conquest/index.html`, public by
   design). Decided 10 Nov: one shared set of tables for every game, not one
