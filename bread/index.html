@@ -3688,16 +3688,8 @@ function drawLevel(t) {
   const hy = VH * T - 11;
   px(2, hy, HP * 11 + 3, 9, LINE);
   for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, hy + 2);
-  // an arrow at the edge points to the goal if it's off screen: straight away on
-  // the way back to the car, otherwise after 20 seconds
-  const tgt = !G.done && stageTarget();
-  if (tgt && (G.stage === 'back' || G.lost > 20)) {
-    const gx = (tgt.x - cam.x) * T, gy = (tgt.y - cam.y) * T, W = VW * T, H = VH * T;
-    if (gx < 0 || gy < 0 || gx > W || gy > H) {
-      const a = Math.atan2(gy - H / 2, gx - W / 2), ax = Math.max(10, Math.min(W - 10, gx)), ay = Math.max(10, Math.min(H - 24, gy));   // stays above the health bar
-      drawArrow(ax, ay, a);
-    }
-  }
+  // Decided 15 Nov: no arrow at the screen's edge pointing to the goal any more
+  // (the kids don't need it); the ? hint still flashes the next thing.
 }
 // Decided 5 Nov, after a play-test with a player who skips the words: the ?
 // button (or H) makes the thing to go to light up and flash, while the help
