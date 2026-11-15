@@ -462,89 +462,23 @@ const COL = {
 };
 const LINE = COL.k;
 const spriteCache = new Map();
-// Decided 15 Nov: 16-bit, like Super Mario World: the same pixel size, but
-// softer. Every sprite gets a light row along its top edges and a dark row
-// along its bottom edges (3 shades of each color), and its outline is a dark
-// shade of the color next to it instead of plain black. New shades join the
-// palette, so snap() keeps them.
-const rgb = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
-const hex = c => '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
-const shadeCache = new Map();
-function tone2(h, kind) {                    // 'hi' a lighter shade, 'lo' a darker one, 'edge' the outline
-  const key = h + kind; if (shadeCache.has(key)) return shadeCache.get(key);
-  const [r, g, b] = rgb(h), L = rgb(LINE);
-  const c = kind === 'hi' ? [r + (255 - r) * .28, g + (255 - g) * .28, b + (255 - b) * .22]
-    : kind === 'lo' ? [r * .74 + 12 * .26, g * .72 + 8 * .28, b * .78 + 40 * .22]
-    : [r * .3 + L[0] * .7, g * .3 + L[1] * .7, b * .3 + L[2] * .7];
-  const out = hex(c); shadeCache.set(key, out);
-  if (!PALETTE.some(q => hex(q) === out)) { PALETTE.push(rgb(out)); snapCache.clear(); }
-  return out;
-}
-// Decided 15 Nov: one pixel size everywhere. Things that were drawn at 2x
-// (the dinosaur, the shells, the frogs, the goose, the barrels) are made
-// bigger with Scale2x / Scale3x instead, which rounds the corners off rather
-// than doubling every pixel, and are drawn at 1x like everything else.
-const upCache = new Map();
-function up(rows, n) {
-  if (n <= 1) return rows;
-  const key = n + rows.join('/'); if (upCache.has(key)) return upCache.get(key);
-  const w = Math.max(...rows.map(r => r.length)), h = rows.length, at = (x, y) => rows[y]?.[x] ?? '.';
-  let out;
-  if (n === 2 || n === 4) {
-    const g = [...Array(h * 2)].map(() => Array(w * 2).fill('.'));
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
-      g[y * 2][x * 2] = C === A && C !== D && A !== B ? A : P;
-      g[y * 2][x * 2 + 1] = A === B && A !== C && B !== D ? B : P;
-      g[y * 2 + 1][x * 2] = D === C && D !== B && C !== A ? C : P;
-      g[y * 2 + 1][x * 2 + 1] = B === D && B !== A && D !== C ? D : P;
-    }
-    out = g.map(r => r.join(''));
-    if (n === 4) out = up(out, 2);
-  } else {
-    const g = [...Array(h * 3)].map(() => Array(w * 3).fill('.'));
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const A = at(x - 1, y - 1), B = at(x, y - 1), C = at(x + 1, y - 1), D = at(x - 1, y), E = at(x, y), F = at(x + 1, y), G2 = at(x - 1, y + 1), H = at(x, y + 1), I = at(x + 1, y + 1);
-      const c = [
-        D === B && B !== F && D !== H ? D : E,
-        (D === B && B !== F && D !== H && E !== C) || (B === F && B !== D && F !== H && E !== A) ? B : E,
-        B === F && B !== D && F !== H ? F : E,
-        (D === B && B !== F && D !== H && E !== G2) || (D === H && D !== B && H !== F && E !== A) ? D : E,
-        E,
-        (B === F && B !== D && F !== H && E !== I) || (H === F && D !== H && B !== F && E !== C) ? F : E,
-        D === H && D !== B && H !== F ? D : E,
-        (D === H && D !== B && H !== F && E !== I) || (H === F && D !== H && B !== F && E !== G2) ? H : E,
-        H === F && D !== H && B !== F ? F : E];
-      c.forEach((ch, i) => { g[y * 3 + Math.floor(i / 3)][x * 3 + i % 3] = ch; });
-    }
-    out = g.map(r => r.join(''));
-  }
-  upCache.set(key, out);
-  return out;
-}
-function sprite(rows, { map = {}, flip = false, outline = true, shade = true, size = 1 } = {}) {
-  rows = up(rows, size);
-  const key = rows.join('/') + JSON.stringify(map) + flip + outline + shade;
+// Decided 15 Nov: the characters and animals keep their 8-bit look (a black
+// outline, no added shading, fat pixels when drawn bigger). A 16-bit pass on
+// them was tried the same day; the middle kid tester liked the old Crumb and
+// Bread better. Only the backgrounds are 16-bit (see the tiles below).
+function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
   if (spriteCache.has(key)) return spriteCache.get(key);
-  const w = Math.max(...rows.map(r => r.length)), h = rows.length;   // the outline goes in the sprite's own empty border, as before
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
   const grid = rows.map(r => [...r.padEnd(w, '.')]);
-  const colOf = ch => map[ch] || COL[ch];
-  const cell = grid.map(r => r.map(ch => ch === '.' ? null : colOf(ch)));
-  // shading: a light pixel where a color starts at the top, a dark one where it ends at the bottom
-  if (shade) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const ch = grid[y][x]; if (ch === '.' || ch === 'k' || ch === 'n') continue;
-    const above = grid[y - 1]?.[x], below = grid[y + 1]?.[x];
-    if (above !== ch && below === ch && grid[y + 2]?.[x] === ch) cell[y][x] = tone2(colOf(ch), 'hi');
-    else if (below !== ch && above === ch && grid[y - 2]?.[x] === ch) cell[y][x] = tone2(colOf(ch), 'lo');
-  }
-  if (outline) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    if (grid[y][x] !== '.') continue;
-    const nb = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([a, b]) => grid[y + b]?.[x + a]).find(ch => ch && ch !== '.');
-    if (nb) cell[y][x] = nb === 'k' || nb === 'n' ? COL.k : tone2(colOf(nb), 'edge');
+  if (outline) {
+    const src = grid.map(r => r.slice());
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
   }
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
-  cell.forEach((r, y) => r.forEach((col, x) => { if (!col) return; g.fillStyle = col; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
   spriteCache.set(key, c);
   return c;
 }
@@ -643,8 +577,8 @@ function wearMap(wear) {
 }
 function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
   const map = wearMap(wear);
-  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0, size: scale });   // bigger is Scale2x/3x, never fat pixels
-  put(img, x - img.width / 2, y - img.height);
+  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
 }
 const SQUIRREL = [
   ['.............', '..ttt........', '.ttttt.......', '.tt..tt...s..', '......tt.sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '......s..s...', '.............'],
@@ -820,8 +754,8 @@ function crumbMap(wear) {
 }
 // (x, y) is the ground under the middle of Crumb
 function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
-  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0, size: scale });
-  put(img, x - img.width / 2, y - img.height);
+  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
 }
 
 // ---------- Home ----------
@@ -1030,13 +964,17 @@ function roadPic() {
 }
 function drawMap(t) {
   const W = VW * T, H = VH * T;
-  px(0, 0, W, H, '#9bd88a');
-  for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) if ((x * 7 + y * 3) % 4 === 0) { px(x * T + 5, y * T + 8, 1, 2, '#79bd66'); px(x * T + 7, y * T + 7, 1, 3, '#79bd66'); }
+  for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) put(grassTile(vary(x + 40, y, 6)), x * T, y * T);   // the same painted grass as in the worlds
   put(roadPic(), 0, 0);
   // home: walls, a stepped roof, a door and a window
   px(25, 113, 44, 34, LINE); px(26, 114, 42, 32, '#fff1d6');
   for (let i = 0; i < 12; i++) { px(21 + i * 2, 113 - i * 2, 52 - i * 4, 2, LINE); px(23 + i * 2, 113 - i * 2, 48 - i * 4, 2, '#c0623b'); }
-  px(42, 127, 10, 19, LINE); px(43, 128, 8, 18, '#7a4a2a'); px(30, 121, 9, 9, LINE); px(31, 122, 7, 7, '#9fdcff');
+  for (let y = 118; y < 145; y += 4) px(26, y, 42, 1, '#ead9b8');                                   // siding
+  px(26, 114, 42, 2, '#d9c4a0');                                                                    // the shadow under the eaves
+  for (let i = 0; i < 12; i++) { px(23 + i * 2, 114 - i * 2, 48 - i * 4, 1, '#a8502f'); px(23 + i * 2, 113 - i * 2, 3, 1, '#e08a5e'); }   // shingle rows, lit on the left
+  px(42, 127, 10, 19, LINE); px(43, 128, 8, 18, '#7a4a2a'); px(43, 128, 1, 18, '#94603a'); px(45, 130, 4, 5, '#5e3319'); px(45, 137, 4, 5, '#5e3319'); px(49, 136, 1, 1, COL.y);   // the door, its panels and knob
+  px(30, 121, 9, 9, LINE); px(31, 122, 7, 7, '#9fdcff'); px(31, 122, 7, 2, '#c4ecff'); px(34, 122, 1, 7, '#fff1d6'); px(31, 125, 7, 1, '#fff1d6'); px(32, 123, 1, 1, '#ffffff');   // the window
+  px(29, 130, 11, 2, '#a8502f'); px(29, 130, 11, 1, '#c0623b');                                     // its sill
   // the pond
   put(sprite(blob(64, 36, 'W', 'V', 'l')), 197, 46);
   [[212, 56], [236, 64]].forEach(([dx, dy], i) => put(sprite(DUCK, { flip: Math.floor(t / 1600 + i) % 2 === 1 }), dx + Math.round(Math.sin(t / 900 + i) * 4), dy));
@@ -1046,7 +984,13 @@ function drawMap(t) {
   { const X = 236, Y = 116;
     px(X, Y + 6, 34, 24, LINE); px(X + 1, Y + 7, 32, 22, '#c0392b'); for (let i = 0; i < 9; i++) px(X - 2 + i * 2, Y + 6 - i, 38 - i * 4, 1, LINE);
     for (let i = 0; i < 8; i++) px(X + 1 + i * 2, Y + 6 - i, 32 - i * 4, 1, '#8e2a20');
-    px(X + 12, Y + 16, 10, 13, LINE); px(X + 13, Y + 17, 8, 12, '#fff1d6'); px(X + 13, Y + 17, 8, 1, LINE); px(X + 16, Y + 17, 1, 12, LINE);
+    for (let i = 3; i < 32; i += 4) { px(X + 1 + i, Y + 7, 1, 22, '#8e2a20'); px(X + i, Y + 7, 1, 22, '#d0493a'); }   // boards
+    for (let i = 0; i < 8; i++) px(X + 1 + i * 2, Y + 6 - i, 2, 1, '#c0392b');                                              // the roof's lit edge
+    px(X + 1, Y + 27, 32, 2, '#8e2a20');
+    px(X + 12, Y + 16, 10, 13, LINE); px(X + 13, Y + 17, 8, 12, '#a8302f');                                                   // the door with its white X
+    px(X + 13, Y + 17, 8, 1, '#fff1d6'); px(X + 13, Y + 28, 8, 1, '#fff1d6'); px(X + 13, Y + 17, 1, 12, '#fff1d6'); px(X + 20, Y + 17, 1, 12, '#fff1d6');
+    for (let i = 0; i < 6; i++) { px(X + 14 + i, Y + 18 + i * 2, 1, 2, '#fff1d6'); px(X + 19 - i, Y + 18 + i * 2, 1, 2, '#fff1d6'); }
+    px(X + 14, Y + 8, 6, 5, LINE); px(X + 15, Y + 9, 4, 3, '#e8c35a'); px(X + 15, Y + 9, 4, 1, '#f5dc8a');                   // the hayloft window
     for (let i = 0; i < 4; i++) px(X - 22 + i * 6, Y + 20, 2, 10, LINE);
     px(X - 22, Y + 23, 20, 1, LINE); px(X - 22, Y + 27, 20, 1, LINE);
     put(sprite(PIG, { flip: Math.floor(t / 2000) % 2 === 1 }), X - 20, Y + 19);
@@ -1056,8 +1000,9 @@ function drawMap(t) {
   // the aquarium: a blue building with a wave along the top and a big fish window
   { const X = 236, Y = 4;
     px(X, Y + 4, 44, 30, LINE); px(X + 1, Y + 5, 42, 28, '#5a7fb0');
-    for (let i = 0; i < 6; i++) { px(X + 1 + i * 7, Y + 4 - (i % 2) * 2, 7, 3, LINE); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 5, 2, COL.l); }   // the wavy roof
-    px(X + 4, Y + 10, 18, 12, LINE); px(X + 5, Y + 11, 16, 10, COL.W); put(sprite(FISH, { flip: Math.floor(t / 1400) % 2 === 1 }), X + 9 + Math.round(Math.sin(t / 700) * 3), Y + 14);
+    for (let k = 0; k < 6; k++) { px(X + 1, Y + 8 + k * 4, 42, 1, '#46689a'); for (let i = (k % 2) * 4; i < 42; i += 8) px(X + 1 + i, Y + 9 + k * 4, 1, 3, '#46689a'); }   // tiles on the wall
+    for (let i = 0; i < 6; i++) { px(X + 1 + i * 7, Y + 4 - (i % 2) * 2, 7, 3, LINE); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 5, 2, COL.l); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 2, 1, '#ffffff'); }   // the wavy roof
+    px(X + 4, Y + 10, 18, 12, LINE); px(X + 5, Y + 11, 16, 10, COL.W); px(X + 5, Y + 11, 16, 3, '#7fc8ee'); px(X + 5, Y + 19, 16, 2, '#e3c48e'); px(X + 6, Y + 12, 2, 1, '#ffffff'); put(sprite(FISH, { flip: Math.floor(t / 1400) % 2 === 1 }), X + 9 + Math.round(Math.sin(t / 700) * 3), Y + 14);
     px(X + 27, Y + 17, 12, 16, LINE); px(X + 28, Y + 18, 10, 15, '#2b3a5c'); px(X + 32, Y + 18, 1, 15, LINE);   // the doors
     if (!S.coop.beat) { px(X + 27, Y + 9, 12, 10, LINE); px(X + 28, Y + 10, 10, 8, COL.y); px(X + 29, Y + 5, 8, 1, LINE); px(X + 29, Y + 5, 1, 6, LINE); px(X + 36, Y + 5, 1, 6, LINE); }
     else pips(['aquarium'], X - 8, Y + 34);   // beside the doors' side, clear of the road to the museum
@@ -1067,7 +1012,8 @@ function drawMap(t) {
     {
       for (let i = 0; i < 12; i++) { px(X - 2 + i * 2, Y + 10 - i, 48 - i * 4, 1, LINE); px(X + i * 2, Y + 10 - i, 44 - i * 4, 1, '#efe3cf'); }   // the roof
       px(X - 2, Y + 10, 48, 4, LINE); px(X - 1, Y + 11, 46, 2, '#d9c7a8');
-      for (let i = 0; i < 5; i++) { px(X + 2 + i * 9, Y + 14, 6, 16, LINE); px(X + 3 + i * 9, Y + 14, 4, 16, '#fff6ea'); }   // columns
+      for (let i = 0; i < 9; i++) px(X + 6 + i * 2, Y + 7 - Math.min(i, 8 - i) * .6, 1, 1, '#d9c7a8');                             // a line along the roof's face
+      for (let i = 0; i < 5; i++) { px(X + 2 + i * 9, Y + 14, 6, 16, LINE); px(X + 3 + i * 9, Y + 14, 4, 16, '#fff6ea'); px(X + 3 + i * 9, Y + 14, 1, 16, '#ffffff'); px(X + 6 + i * 9, Y + 14, 1, 16, '#d9c7a8'); px(X + 2 + i * 9, Y + 14, 6, 2, '#d9c7a8'); }   // columns, lit on the left
       px(X - 4, Y + 30, 52, 4, LINE); px(X - 3, Y + 31, 50, 2, '#d9c7a8');
       put(sprite(DINOSAUR), X + 18, Y + 18);
       if (!S.aquarium.beat) { px(X + 16, Y + 16, 12, 10, LINE); px(X + 17, Y + 17, 10, 8, COL.y); px(X + 18, Y + 12, 8, 1, LINE); px(X + 18, Y + 12, 1, 6, LINE); px(X + 25, Y + 12, 1, 6, LINE); }
@@ -1776,28 +1722,15 @@ function sniff() {
 }
 function drawScent() {
   const now = performance.now();
-  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col }, size: 2 }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5); });
+  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col } }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5, 2); });
 }
 // the aquarium's own tiles: blue walls, pale tiled floor, tank glass, kelp pots,
 // the dark room's rocks and sandy floor, and its door
 function drawAquaTile(c, x, y, X, Y) {
   const dark = inDark(x + .5, y + .5), is = (ch, i, j) => G.m[j]?.[i] === ch;
-  if (c === 'Y') {
-    if (dark) { px(X, Y, T, T, '#3a3f52'); if ((x * 3 + y) % 3 === 0) px(X + 4, Y + 5, 5, 3, '#4c5268'); return; }   // a rock
-    px(X, Y, T, T, '#2b3a5c'); if (!is('Y', x, y - 1)) px(X, Y, T, 4, '#5a7fb0');
-    if (!is('Y', x, y - 1)) px(X, Y, T, 1, LINE); if (!is('Y', x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
-    if (!is('Y', x - 1, y)) px(X, Y, 1, T, LINE); if (!is('Y', x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
-    return;
-  }
-  if (dark) { px(X, Y, T, T, '#3b4f73'); if ((x * 5 + y * 3) % 4 === 0) px(X + 5, Y + 9, 2, 1, '#566c94'); }
-  else px(X, Y, T, T, (x + y) % 2 ? '#d6e2ee' : '#c8d6e6');
-  if (c === 'g') {                            // tank glass, with a shine here and there; the fish swim behind it
-    px(X, Y, T, T, COL.W);
-    if (!is('g', x, y - 1)) px(X, Y, T, 2, LINE);
-    if (!is('g', x, y + 1)) { px(X, Y + T - 4, T, 3, '#e3c48e'); px(X, Y + T - 1, T, 1, LINE); }   // sand along the bottom
-    if (!is('g', x - 1, y)) px(X, Y, 2, T, LINE); if (!is('g', x + 1, y)) px(X + T - 2, Y, 2, T, LINE);
-    if ((x + y) % 4 === 0) { px(X + 4, Y + 4, 1, 4, COL.l); px(X + 5, Y + 3, 1, 2, COL.l); }
-  }
+  if (c === 'Y') return put(dark ? rockTile('cave', edgeMask(x, y, (i, j) => is('Y', i, j)), vary(x, y, 3)) : wallTile('aqua', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
+  put(dark ? caveTile(vary(x, y, 3)) : squaresTile('aqua', 0), X, Y);
+  if (c === 'g') put(tankTile(edgeMask(x, y, (i, j) => is('g', i, j)), vary(x, y, 3)), X, Y);   // the fish swim behind the glass
   if (c === 'k') { px(X + 4, Y + 10, 8, 6, LINE); px(X + 5, Y + 11, 6, 4, '#b8773a'); }   // the pot; the kelp is drawn over things
   if (c === 'G') {
     if (G.gateOpen) { px(X, Y, 2, T, LINE); px(X + T - 2, Y, 2, T, LINE); }
@@ -1816,7 +1749,7 @@ function drawAquarium(t) {
   put(img, o.x * T - 7, o.y * T - 9 + (Math.floor(t / 500) % 2));
   if (!o.out) cx.restore();
   const s = G.shells;
-  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q }, size: 2 }), p[0] * T - 10, p[1] * T - 9 - up); });   // drawn double size, so they don't look like treats
+  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q } }), p[0] * T - 10, p[1] * T - 9 - up, 2); });   // drawn double size, so they don't look like treats
 }
 // Decided 10 Nov: the dark room is dark. From outside it's all black but the
 // glowing jellyfish; inside, Bread sees a little way round her. The dark is
@@ -1876,14 +1809,14 @@ function dive() {
 // under), the waves, rocks and the pier
 function drawSeaTile(c, x, y, X, Y, t) {
   const at = (i, j) => G.m[j]?.[i] ?? 'Y', under = G.under;
-  const sand = () => { px(X, Y, T, T, '#f0d9a0'); if ((x * 5 + y * 3) % 4 === 0) px(X + 4, Y + 9, 2, 1, '#d9bf85'); if ((x * 3 + y * 7) % 5 === 0) px(X + 11, Y + 3, 1, 1, '#d9bf85'); };
+  const sand = () => put(sandBeach(vary(x, y, 6)), X, Y);
   const sea = deep => {
     if (under && deep) {                      // the sea floor
-      px(X, Y, T, T, '#2f6c8f'); if ((x * 7 + y * 5) % 3 === 0) px(X + 3, Y + 11, 3, 1, '#3f86a8');
+      put(seabedTile(vary(x, y, 5)), X, Y);
       if ((x * 11 + y * 3) % 7 === 0) for (let i = 0; i < 2; i++) { const kx = X + 5 + i * 4 + (Math.floor(t / 700 + x + i) % 2); px(kx, Y + 4 + i * 2, 2, 12 - i * 2, i ? COL.G : COL.L); }   // seaweed
       return;
     }
-    px(X, Y, T, T, deep ? '#3a8fd8' : '#7fd0ef');
+    put(seaTile(deep, vary(x, y, 4)), X, Y);
     if ((x + y * 2) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, deep ? '#7fc4f0' : COL.h); }
   };
   if (c === 'S' || c === 'x' || c === 'o' || c === 'P') {
@@ -1907,19 +1840,12 @@ function drawSeaTile(c, x, y, X, Y, t) {
   }
   if (c === 'd') {                            // the pier's planks, on posts
     sea(true); if (under) { px(X + 2, Y, 3, T, '#5e3319'); px(X + 11, Y, 3, T, '#5e3319'); return; }
-    px(X, Y, T, T, '#b07a46'); for (let i = 3; i < T; i += 4) px(X, Y + i, T, 1, '#8d5c30');
-    px(X, Y, 1, T, LINE); px(X + T - 1, Y, 1, T, LINE); if (at(x, y - 1) !== 'd') px(X, Y, T, 1, LINE);
+    put(plankTile((at(x, y - 1) === 'd' ? 0 : 1) | 2 | 8, false), X, Y);
     return;
   }
   // rock: on sand or in the water, a gray boulder with a light top
   if ('SxoP'.includes(at(x, y - 1)) || 'SxoP'.includes(at(x, y + 1)) || y === LH - 1) sand(); else sea(true);
-  const top = at(x, y - 1) !== 'Y', bot = at(x, y + 1) !== 'Y', l = at(x - 1, y) !== 'Y', r = at(x + 1, y) !== 'Y';
-  px(X + (l ? 1 : 0), Y + (top ? 2 : 0), T - (l ? 1 : 0) - (r ? 1 : 0), T - (top ? 2 : 0) - (bot ? 1 : 0), '#7d8091');
-  if (top) { px(X + (l ? 2 : 0), Y + 3, T - (l ? 2 : 0) - (r ? 2 : 0), 3, '#a7aab8'); px(X + (l ? 1 : 0), Y + 2, T - (l ? 1 : 0) - (r ? 1 : 0), 1, LINE); }
-  if (bot) px(X + (l ? 1 : 0), Y + T - 1, T - (l ? 1 : 0) - (r ? 1 : 0), 1, LINE);
-  if (l) px(X, Y + (top ? 3 : 0), 1, T - (top ? 3 : 0) - (bot ? 1 : 0), LINE);
-  if (r) px(X + T - 1, Y + (top ? 3 : 0), 1, T - (top ? 3 : 0) - (bot ? 1 : 0), LINE);
-  if ((x * 7 + y * 3) % 4 === 0) px(X + 5, Y + 9, 3, 2, '#666979');
+  put(rockTile('sea', edgeMask(x, y, (i, j) => at(i, j) === 'Y'), vary(x, y, 3)), X, Y);
 }
 function drawOcean(t) {
   const b = G.bread, cam = G.cam, under = G.under;
@@ -2008,18 +1934,11 @@ function jump() {
 }
 function drawMuseTile(c, x, y, X, Y) {
   const sp = inSpace(x + .5, y + .5), is = (ch, i, j) => G.m[j]?.[i] === ch;
-  if (c === 'Y') {
-    px(X, Y, T, T, '#7a4a3a'); if (!is('Y', x, y - 1)) px(X, Y, T, 4, '#d9c7a8');
-    if (!is('Y', x, y - 1)) px(X, Y, T, 1, LINE); if (!is('Y', x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
-    if (!is('Y', x - 1, y)) px(X, Y, 1, T, LINE); if (!is('Y', x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
-    return;
-  }
+  if (c === 'Y') return put(wallTile('muse', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
   if (sp) { px(X, Y, T, T, '#1d2440'); if ((x * 7 + y * 13) % 5 === 0) px(X + (x * 5) % 13 + 1, Y + (y * 7) % 13 + 1, 1, 1, '#fff6ea'); }   // the space room: dark, with specks of stars
-  else px(X, Y, T, T, (x + y) % 2 ? '#efe3cf' : '#e4d4b8');                                                                         // marble floor
+  else put(squaresTile('muse', vary(x, y, 4)), X, Y);                                                                               // marble floor
   if (c === 'E' && !sp) {                     // the stone stand
-    px(X, Y, T, T, '#9a9387'); if (!is('E', x, y - 1)) px(X, Y, T, 5, '#c9c2b5');
-    if (!is('E', x, y - 1)) px(X, Y, T, 1, LINE); if (!is('E', x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
-    if (!is('E', x - 1, y)) px(X, Y, 1, T, LINE); if (!is('E', x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
+    put(wallTile('stone', edgeMask(x, y, (i, j) => is('E', i, j))), X, Y);
   }
   if (c === 'g') {                            // a glass case with a fossil or a gem in it
     px(X + 1, Y + 2, T - 2, T - 2, LINE); px(X + 2, Y + 3, T - 4, T - 7, '#d6eef5'); px(X + 2, Y + T - 4, T - 4, 3, '#8a5a3a');
@@ -2041,7 +1960,7 @@ function starLine([ax, ay], [bx, by], lit, t) {
 }
 function drawMuseum(t) {
   const d = G.dino, up = d.awake ? Math.round(Math.abs(Math.sin(d.t * 6)) * 3) : 0;
-  put(sprite(DINO_BONES, { flip: true, size: 2 }), 11.5 * T - 28, 6 * T + 8 - 30 - up);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
+  put(sprite(DINO_BONES, { flip: true }), 11.5 * T - 28, 6 * T + 8 - 30 - up, 2);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
   const s = G.stars;
   MUSE.edges.forEach(([a, c], k) => starLine(MUSE.stars[a], MUSE.stars[c], s.lit[k], t));
   MUSE.stars.forEach(([x, y], i) => put(sprite(STAR, { map: { h: s.done || MUSE.edges.some(([a, c], k) => s.lit[k] && (a === i || c === i)) ? COL.y : '#9fb4e0' } }), x * T - 2 - (i === s.cur ? 1 : 0), y * T - 2 - (i === s.cur ? 1 : 0), i === s.cur ? 1.4 : 1));
@@ -2385,7 +2304,7 @@ function hitGoose() {
   return true;
 }
 function drawGoose(t) {
-  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0, size: 2 }), k = 1;
+  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0 }), k = 1.5;
   put(img, g.x * T - img.width * k / 2, g.y * T - img.height * k + 2, k);
   if (g.stun > 0) text('!', g.x * T, g.y * T - img.height * k - 2);
   for (let i = 0; i < 3; i++) px(g.x * T - 7 + i * 5, g.y * T + 4, 4, 2, i < g.hp ? COL.r : COL.g);   // how many hits it has left
@@ -2930,6 +2849,141 @@ function reedsTile(f) {                        // three cattails: stems with a l
     });
   });
 }
+// the farm's own tiles: plank floors, red barn boards, hay, the ring's sand
+function floorTile(v) {
+  return paint('floor' + v, T, T, (set, fill, r) => {
+    for (let y = 0; y < T; y += 5) { fill(0, y, T, 4, '#c9925a'); fill(0, y, T, 1, '#d9a66e'); fill(0, y + 4, T, 1, '#8d5c30'); }
+    for (let y = 0; y < T; y += 5) { const jx = (Math.floor(r() * 12) + y * 3) % 14 + 1; fill(jx, y, 1, 4, '#8d5c30'); set(jx + 1, y, '#d9a66e'); }   // board ends
+    for (let i = 0; i < 4; i++) fill(Math.floor(r() * 12), Math.floor(r() * 3) * 5 + 2, 3, 1, '#b8814c');                            // grain
+    if (v === 0) { const x = 4 + Math.floor(r() * 8), y = Math.floor(r() * 3) * 5 + 1; set(x, y + 1, '#7a4a2a'); set(x + 1, y + 1, '#8d5c30'); }   // a knot
+  });
+}
+function boardsTile(mask, roof) {               // red barn boards, up and down, with a light top where the wall starts
+  return paint('boards' + mask + roof, T, T, (set, fill) => {
+    for (let x = 0; x < T; x += 4) { fill(x, 0, 4, T, '#a8302f'); fill(x, 0, 1, T, '#c0392b'); fill(x + 3, 0, 1, T, '#7a1f18'); }
+    for (const y of [5, 11]) for (let x = 1; x < T; x += 4) set(x + 1, y, '#5a1610');   // nail heads
+    const L = '#3a120c';
+    if (mask & 1) { fill(0, 0, T, roof ? 3 : 4, roof ? '#fff1d6' : '#c0392b'); fill(0, roof ? 3 : 4, T, 1, roof ? '#d8cbb0' : '#e05a48'); fill(0, 0, T, 1, L); }
+    if (mask & 4) { fill(0, T - 2, T, 1, '#6e1a14'); fill(0, T - 1, T, 1, L); }
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L);
+  });
+}
+function haleTile(tied) {                        // a hay bale: straw rows, lit top, shaded front
+  return paint('hay' + tied, T, T, (set, fill, r) => {
+    const O = '#6b4a14';
+    fill(0, 2, T, T - 2, O); fill(1, 3, T - 2, T - 4, '#e8c35a'); fill(1, 3, T - 2, 2, '#f5dc8a'); fill(1, T - 3, T - 2, 1, '#c9a03a');
+    for (let y = 6; y < T - 3; y += 3) for (let x = 1; x < T - 1; x++) if ((x + y) % 4) set(x, y, '#d4ad48');
+    for (let i = 0; i < 6; i++) set(1 + Math.floor(r() * 14), 4 + Math.floor(r() * 9), r() < .5 ? '#f5dc8a' : '#b8902e');
+    if (tied) for (const tx of [4, 11]) { fill(tx, 3, 1, T - 4, '#7a4a2a'); set(tx, 3, '#a8743f'); }
+  });
+}
+function sandTile(v) {
+  return paint('sand' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#e3c48e');
+    for (let i = 0; i < 5; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#cfae74');
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#f0d9a8');
+    if (v % 3 === 0) { const x = 3 + Math.floor(r() * 9), y = 3 + Math.floor(r() * 9); fill(x, y, 3, 1, '#cfae74'); fill(x, y + 2, 3, 1, '#cfae74'); set(x, y + 1, '#cfae74'); set(x + 2, y + 1, '#cfae74'); }   // a hoof print
+  });
+}
+function railTile() {                            // a stall rail, front on: two shaded boards on two posts
+  return paint('rail', T, T, (set, fill) => {
+    const L = '#4a2c18';
+    for (const y of [5, 11]) { fill(0, y, T, 1, L); fill(0, y + 1, T, 1, '#d9a066'); fill(0, y + 2, T, 1, '#b07a46'); fill(0, y + 3, T, 1, L); }
+    for (const sx of [1, 12]) { fill(sx, 3, 4, 13, L); fill(sx + 1, 4, 1, 11, '#d9a066'); fill(sx + 2, 4, 1, 11, '#8d5c30'); }
+  });
+}
+function loftTile() {                            // the hayloft, up high: loose hay on boards with a beam along the front
+  return paint('loft', T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#c9a03a');
+    for (let i = 0; i < 14; i++) { const x = Math.floor(r() * 14), y = Math.floor(r() * 10); fill(x, y, 3, 1, r() < .5 ? '#e8c35a' : '#f5dc8a'); }
+    fill(0, T - 5, T, 1, '#4a2c18'); fill(0, T - 4, T, 1, '#a8743f'); fill(0, T - 3, T, 2, '#7a4a2a'); fill(0, T - 1, T, 1, '#4a2c18');
+  });
+}
+// ---------- 16-bit tiles for the aquarium, the museum and the ocean ----------
+const edgeMask = (x, y, same) => (same(x, y - 1) ? 0 : 1) | (same(x + 1, y) ? 0 : 2) | (same(x, y + 1) ? 0 : 4) | (same(x - 1, y) ? 0 : 8);
+// a wall seen from above: bricks, with a lit cap where the wall's top shows
+function wallTile(kind, mask) {
+  const P = { aqua: { base: '#33466e', hi: '#3f5684', lo: '#26354f', mortar: '#1e2a42', cap: '#5a7fb0', capHi: '#8fb0d8', capLo: '#46689a' },
+              stone: { base: '#9a9387', hi: '#b3ada1', lo: '#7d776c', mortar: '#5e5950', cap: '#c9c2b5', capHi: '#e4ded2', capLo: '#a8a195' },
+              muse: { base: '#7a4a3a', hi: '#94604c', lo: '#5e3328', mortar: '#4a2820', cap: '#d9c7a8', capHi: '#efe3cf', capLo: '#b8a483' } }[kind];
+  return paint('wall' + kind + mask, T, T, (set, fill) => {
+    fill(0, 0, T, T, P.mortar);
+    for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) {   // bricks in a running bond
+      const bx = i * 8 + (row % 2) * 4, by = row * 4;
+      fill(bx, by, 7, 3, P.base); fill(bx, by, 7, 1, P.hi); fill(bx + 6, by, 1, 3, P.lo);
+    }
+    const L = '#14101a';
+    if (mask & 1) { fill(0, 0, T, 5, P.cap); fill(0, 1, T, 1, P.capHi); fill(0, 4, T, 1, P.capLo); fill(0, 0, T, 1, L); fill(0, 5, T, 1, L); }
+    if (mask & 4) fill(0, T - 1, T, 1, L);
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L);
+  });
+}
+// floors of square tiles: the aquarium's pale blue, the museum's marble with veins
+function squaresTile(kind, v) {
+  const P = { aqua: ['#dbe6f1', '#cbd9e8', '#b4c4d8', '#eef4fa'], muse: ['#efe3cf', '#e4d4b8', '#cdb994', '#fbf4e6'] }[kind];
+  return paint('squares' + kind + v, T, T, (set, fill, r) => {
+    for (const [ox, oy] of [[0, 0], [8, 0], [0, 8], [8, 8]]) {
+      fill(ox, oy, 8, 8, P[2]); fill(ox, oy, 7, 7, (ox + oy) % 16 ? P[1] : P[0]); set(ox + 1, oy + 1, P[3]); set(ox + 2, oy + 1, P[3]); set(ox + 1, oy + 2, P[3]);
+    }
+    if (kind === 'muse') for (let i = 0; i < 2; i++) { let x = Math.floor(r() * 14), y = Math.floor(r() * 14); for (let k = 0; k < 4; k++) { set(x, y, '#d6c4a2'); x += 1; y += r() < .5 ? 1 : 0; } }   // veins in the marble
+  });
+}
+function caveTile(v) {                          // the aquarium's dark room: a sandy floor
+  return paint('cave' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#3b4f73');
+    for (let i = 0; i < 5; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .5 ? '#566c94' : '#304262');
+  });
+}
+// a rock, from above: a lit top face, shaded sides, a dark outline where it ends
+function rockTile(kind, mask, v) {
+  const P = { cave: ['#4c5268', '#3a3f52', '#2c3040', '#666c84'], sea: ['#a7aab8', '#7d8091', '#666979', '#c4c7d2'] }[kind];
+  return paint('rock' + kind + mask + '/' + v, T, T, (set, fill, r) => {
+    const t = mask & 1 ? 2 : 0, b = mask & 4 ? 1 : 0, l = mask & 8 ? 1 : 0, rr = mask & 2 ? 1 : 0;
+    fill(l, t, T - l - rr, T - t - b, P[1]);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 12) + 1, y = Math.floor(r() * 10) + 3; fill(x, y, 3, 2, P[2]); set(x, y, P[0]); }   // cracks and bumps
+    if (mask & 1) { fill(l, 2, T - l - rr, 3, P[0]); fill(l + 1, 2, T - l - rr - 2, 1, P[3]); fill(0, 1, T, 1, '#1d1a24'); }
+    if (mask & 4) { fill(l, T - 3, T - l - rr, 2, P[2]); fill(0, T - 1, T, 1, '#1d1a24'); }
+    if (mask & 8) fill(0, t, 1, T - t, '#1d1a24'); if (mask & 2) fill(T - 1, t, 1, T - t, '#1d1a24');
+    if ((mask & 9) === 9) set(1, 2, '#1d1a24');
+    if ((mask & 3) === 3) set(T - 2, 2, '#1d1a24');
+  });
+}
+// a fish tank: water lighter at the top, sand along the bottom, a frame and a shine
+function tankTile(mask, v) {
+  return paint('tank' + mask + '/' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#5bb8e8'); if (mask & 1) fill(0, 0, T, 6, '#7fc8ee'); if (mask & 4) fill(0, 6, T, 10, '#4aa8dc');   // lighter near the top of the tank, darker near the bottom
+    for (let i = 0; i < 2; i++) { const x = Math.floor(r() * 13), y = Math.floor(r() * 9) + 3; set(x, y, '#d7f1ff'); set(x + 1, y - 2, '#bfe8ff'); }   // bubbles
+    if (mask & 4) { fill(0, T - 5, T, 4, '#e3c48e'); fill(0, T - 5, T, 1, '#f0d9a8'); set(3 + v * 3, T - 3, '#cfae74'); fill(0, T - 2, T, 1, '#cfae74'); }
+    const F = '#2b3a5c';
+    if (mask & 1) { fill(0, 0, T, 2, F); fill(0, 2, T, 1, '#d7f1ff'); }
+    if (mask & 4) fill(0, T - 1, T, 1, F);
+    if (mask & 8) { fill(0, 0, 2, T, F); fill(2, 3, 1, T - 6, '#bfe8ff'); }
+    if (mask & 2) fill(T - 2, 0, 2, T, F);
+    if (v === 1) { set(5, 5, '#ffffff'); set(6, 4, '#ffffff'); set(4, 6, '#ffffff'); }   // a shine on the glass
+  });
+}
+function sandBeach(v) {                         // the ocean's beach
+  return paint('beach' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#f0d9a0');
+    for (let i = 0; i < 6; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .6 ? '#d9bf85' : '#fbeccb');
+    if (v === 2) { const x = 3 + Math.floor(r() * 9), y = 4 + Math.floor(r() * 8); fill(x, y, 3, 1, '#ffffff'); set(x + 1, y - 1, '#f4a6a0'); }   // a little shell
+    if (v === 4) { for (let i = 0; i < 4; i++) set(3 + i * 2, 8 + (i % 2), '#d9bf85'); }   // ripples in the sand
+  });
+}
+function seaTile(deep, v) {                     // open water from up top: darker deep, lighter shallows, a few soft streaks
+  return paint('sea' + deep + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, deep ? '#3a8fd8' : '#7fd0ef');
+    for (let i = 0; i < 3; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 15); fill(x, y, 3 + Math.floor(r() * 3), 1, deep ? '#3483cc' : '#8fd8f2'); }
+    if (!deep) for (let i = 0; i < 2; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#c9b98a');   // sand showing through
+  });
+}
+function seabedTile(v) {                        // the sea floor, seen when Bread is under
+  return paint('seabed' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#2f6c8f');
+    for (let i = 0; i < 6; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .5 ? '#3f86a8' : '#285d7c');
+    if (v === 1 || v === 4) { const x = 3 + Math.floor(r() * 8); fill(x, 14, 4, 2, '#5a6878'); fill(x + 1, 13, 2, 1, '#788698'); }   // a pebble
+  });
+}
 function mudTile(v) {
   return paint('mud' + v, T, T, (set, fill, r) => {
     fill(0, 0, T, T, '#7a5a3a');
@@ -2960,39 +3014,31 @@ function drawLevel(t) {
       if ((x + y) % 3 === 0) { const o = Math.floor(t / 500 + x) % 4; px(X + 3 + o, Y + 7, 5, 1, WATERC.light); px(X + 4 + o, Y + 6, 3, 1, WATERC.foam); }   // a ripple drifting by
       if (c === 'd') { const isD = (i, j) => G.m[j]?.[i] === 'd'; put(plankTile((isD(x, y - 1) ? 0 : 1) | (isD(x + 1, y) ? 0 : 2) | (isD(x - 1, y) ? 0 : 8), G.m[y + 1]?.[x] === 'w'), X, Y); }
     } else if (indoors(x, y)) {              // inside the barn or the coop: plank floor, walls, stall rails, hay
-      px(X, Y, T, T, '#c9925a'); for (let i = 3; i < T; i += 5) px(X, Y + i, T, 1, '#a8743f');
-      if ((x * 3 + y) % 4 === 0) px(X + 6, Y, 1, 3, '#a8743f');
+      put(floorTile(vary(x, y, 3)), X, Y);
       const isK = (i, j) => G.m[j]?.[i] === 'K';
-      if (c === 'K') {
-        px(X, Y, T, T, '#8e2a20'); px(X, Y, T, 4, '#c0392b');
-        if (!isK(x, y - 1)) px(X, Y, T, 1, LINE);
-        if (!isK(x, y + 1)) px(X, Y + T - 1, T, 1, LINE);
-        if (!isK(x - 1, y)) px(X, Y, 1, T, LINE);
-        if (!isK(x + 1, y)) px(X + T - 1, Y, 1, T, LINE);
-      }
+      if (c === 'K') put(boardsTile((isK(x, y - 1) ? 0 : 1) | (isK(x + 1, y) ? 0 : 2) | (isK(x, y + 1) ? 0 : 4) | (isK(x - 1, y) ? 0 : 8), false), X, Y);
       if (c === 'R') {
         const rail = (i, j) => 'RK'.includes(G.m[j]?.[i] ?? '.');
         if ((rail(x, y - 1) || rail(x, y + 1)) && !rail(x - 1, y) && !rail(x + 1, y)) sideFence(X, Y, '#b07a46');
-        else { px(X, Y + 5, T, 1, LINE); px(X, Y + 6, T, 3, '#b07a46'); px(X, Y + 9, T, 1, LINE); px(X, Y + 11, T, 1, LINE); px(X, Y + 12, T, 2, '#8d5c30'); px(X, Y + 14, T, 1, LINE); for (const sx of [X + 1, X + 12]) { px(sx, Y + 3, 4, 13, LINE); px(sx + 1, Y + 4, 2, 11, '#b07a46'); } }
+        else put(railTile(), X, Y);
       }
       if (c === 'N') { const col = EGG_COL[FC.nests.find(n => n[0] === x && n[1] === y)?.[2]] || '#fffaf0', n = (G.nests || {})[x + ',' + y] || 0;   // a nest box, its egg color painted on the front
         px(X + 1, Y + 3, T - 2, T - 4, LINE); px(X + 2, Y + 4, T - 4, T - 6, '#8a4f2a'); px(X + 2, Y + 4, T - 4, 4, '#e8c35a');
         for (let i = 0; i < 2; i++) { const ex = X + 3 + i * 6, ey = Y + 8; if (i < n) { px(ex, ey - 1, 4, 5, LINE); px(ex + 1, ey, 2, 3, col); } else { px(ex, ey, 4, 4, LINE); px(ex + 1, ey + 1, 2, 2, '#5e3319'); } }
         px(X + T - 4, Y + 4, 3, 3, LINE); px(X + T - 3, Y + 5, 1, 1, col); }
       if (c === 'Q') { px(X, Y + 6, T, 3, LINE); px(X, Y + 7, T, 1, '#b07a46'); if (x % 2) { px(X + 6, Y + 9, 2, 7, LINE); } }   // the roost: a pole up high
-      if (c === 'L') { px(X, Y, T, T, '#b98a4e'); px(X, Y + T - 4, T, 4, '#7a4a2a'); px(X, Y + T - 5, T, 1, LINE); for (let i = 2; i < T; i += 5) px(X + i + (x % 2), Y + 3 + (x + i) % 5, 3, 1, '#e8c35a'); }   // the hayloft, up high
+      if (c === 'L') put(loftTile(), X, Y);   // the hayloft, up high
       if (c === 'A' || c === 'a') { const top = c === 'a' ? Y - 10 : Y + 1; px(X + 3, top, 2, Y + T - 1 - top, LINE); px(X + 11, top, 2, Y + T - 1 - top, LINE); for (let ry = top + 2; ry < Y + T - 1; ry += 4) px(X + 3, ry, 10, 2, '#b07a46'); px(X + 4, top, 1, Y + T - 1 - top, '#d9a066'); px(X + 12, top, 1, Y + T - 1 - top, '#d9a066'); }   // the ladder
-      if (c === 'h' || c === 'P') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }
-      if (c === 'P') { px(X + 4, Y + 3, 1, T - 4, '#7a4a2a'); px(X + 11, Y + 3, 1, T - 4, '#7a4a2a'); }   // a loose bale, tied with twine
+      if (c === 'h' || c === 'P') put(haleTile(c === 'P'), X, Y);   // hay; a loose bale is tied with twine
     } else if (c === 'C') {                  // corn rows on dirt; the tall stalks are drawn later, over things
       put(cornGround(vary(x, y, 3)), X, Y);
     } else if (c === 'm') {                  // mud
       put(mudTile(vary(x, y, 3)), X, Y);
       px(X + 9 + (Math.floor(t / 600 + x) % 2), Y + 5, 2, 1, '#a07c56');
     } else if (c === 's' || c === 'O') {     // the horse ring's sand, and its barrels
-      px(X, Y, T, T, '#e3c48e'); if ((x * 5 + y * 3) % 4 === 0) px(X + 5, Y + 9, 2, 1, '#cfae74');
+      put(sandTile(vary(x, y, 6)), X, Y);
       if (c === 'O') { const i = FR.barrels.findIndex(([bx, by]) => Math.floor(bx) === x && Math.floor(by) === y), done = G.race && G.race.done[i];
-        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {}, size: 2 }), X + 1, Y - 1); }   // drawn double size, so it reads next to the pony
+        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), X + 1, Y - 1, 2); }   // drawn double size, so it reads next to the pony
     } else if (c === 'p') {
       const pth = (i, j) => (G.m[j]?.[i] ?? 'p') === 'p';
       put(pathTile(vary(x, y, 6), (pth(x, y - 1) ? 0 : 1) | (pth(x + 1, y) ? 0 : 2) | (pth(x, y + 1) ? 0 : 4) | (pth(x - 1, y) ? 0 : 8)), X, Y);
@@ -3002,14 +3048,11 @@ function drawLevel(t) {
       else if (c === '#') put(fenceTile('white'), X, Y);   // white picket fence
       if (c === 'T') put(trunkTile(), X, Y);
       if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
-      if (c === 'o') { px(X + 3, Y + 7, 10, 6, LINE); px(X + 4, Y + 8, 8, 4, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); }   // a dug hole
-      if (c === 'h') { px(X, Y + 2, T, T - 2, LINE); px(X + 1, Y + 3, T - 2, T - 4, '#e8c35a'); for (let i = 5; i < T - 2; i += 4) px(X + 1, Y + i, T - 2, 1, '#c9a03a'); }   // a hay bale
+      if (c === 'o') { px(X + 3, Y + 7, 10, 6, '#4a2c18'); px(X + 4, Y + 8, 8, 4, '#2a1a10'); px(X + 4, Y + 11, 8, 1, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 1, Y + 11, 2, 1, '#b8773a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 2, 1, '#b8773a'); }   // a dug hole
+      if (c === 'h') put(haleTile(false), X, Y);   // a hay bale
       if (c === 'B') {                        // the red barn
-        px(X, Y, T, T, '#c0392b'); for (let i = 3; i < T; i += 5) px(X + i, Y, 1, T, '#8e2a20');
-        if (G.m[y - 1]?.[x] !== 'B') { px(X, Y, T, 3, '#fff1d6'); px(X, Y, T, 1, LINE); }
-        if (G.m[y + 1]?.[x] !== 'B') px(X, Y + T - 1, T, 1, LINE);
-        if (G.m[y][x - 1] !== 'B') px(X, Y, 1, T, LINE);
-        if (G.m[y][x + 1] !== 'B') px(X + T - 1, Y, 1, T, LINE);
+        const isB = (i, j) => G.m[j]?.[i] === 'B';
+        put(boardsTile((isB(x, y - 1) ? 0 : 1) | (isB(x + 1, y) ? 0 : 2) | (isB(x, y + 1) ? 0 : 4) | (isB(x - 1, y) ? 0 : 8), true), X, Y);
       }
       const fenceAt = (i, j) => 'FXuG'.includes(G.m[j]?.[i] ?? '.');
       if (c === 'F' && (fenceAt(x, y - 1) || fenceAt(x, y + 1)) && !fenceAt(x - 1, y) && !fenceAt(x + 1, y)) sideFence(X, Y, '#fffaf0');
@@ -3065,11 +3108,11 @@ function drawLevel(t) {
   if (G.frogs) {                             // the lily pads and the four frogs
     put(sprite(blob(24, 13, 'L', 'G', 'q')), 14.3 * T - 12, 7.6 * T - 3);   // Crumb's pad, in the middle
     { const c = G.crumb; if (c.mode === 'wait' && Math.hypot(c.x - 14.3, c.y - 7.6) < .3) drawCrumb(c.x * T, c.y * T + 5, c.face, t, false); }
-    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG, { size: 3 }), g.x * T - 19, g.y * T - 19 - up); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
+    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG), g.x * T - 14, g.y * T - 13 - up, 2.2); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
     G.frogs.forEach(f => {
       const X = f.x * T, Y = f.y * T, up = f.litT > 0 || f.hopT > 0 ? 3 : 0;
       put(sprite(blob(24, 13, 'L', 'G', 'q')), X - 12, Y - 3);
-      put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col }, size: 2 }), X - 13, Y - 14 - up);   // drawn bigger (Scale2x), so each color reads
+      put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col } }), X - 10, Y - 11 - up, 1.5);   // drawn bigger, so each color reads
       if (f.litT > 0) { px(X - 4, Y - 1 - up, 8, 5, LINE); px(X - 3, Y - up, 6, 3, COL.h); }   // the croak puffs its throat out
     });
     const s = G.song, done = s.state === 'won' ? 3 : s.len - 2;
