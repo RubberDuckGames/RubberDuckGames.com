@@ -364,6 +364,11 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (`G.replay`, moves, shots, losses and buys, camera following), then show
   the new turn. No refresh needed. No accounts, no names, no chat; anyone
   with the link can play.
+  Decided 14 Nov, from his report (no way back into a game): the start card
+  lists this device's online games (from its `conquest-online:<id>` keys),
+  with whose turn it is and Play; finished or deleted games drop off. A game
+  on this device now also saves after every move, shot, buy and drop-off,
+  not only at the start of your turn.
 - `db/` holds the database setup (Supabase project RubberDuckGames, created
   10 Nov; its URL and publishable key are in `conquest/index.html`, public by
   design). Decided 10 Nov: one shared set of tables for every game, not one

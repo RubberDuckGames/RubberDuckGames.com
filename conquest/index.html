@@ -191,6 +191,9 @@ const STR = {
   waitFor: 'Waiting for {team}…', waitBody: 'It’s {team}’s turn. The map updates when they finish.',
   yourTurnOnline: 'Your turn! {team} just finished.',
   gameGone: 'This game link doesn’t work. It may have a typo.',
+  yourOnline: 'Your online games', olPlay: 'Play', olYou: 'You are {team}',
+  olYourTurn: 'your turn (turn {n})', olWaiting: 'waiting for {team} (turn {n})', olOffline: 'couldn’t check it right now',
+  localSaved: 'This device has a game in progress (turn {n}). Tap Keep playing to go on with it.',
   needPlayer: 'Pick Player for at least one team.',
   team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue', team_orange: 'Orange',
   districts: 'Districts', district: 'District {n}', dEmpty: 'Empty',
@@ -936,7 +939,7 @@ function takeOff(cr, i) {
   const p = deckSpot(cr); if (!p) return;
   const o = cr.cargo.splice(i, 1)[0];
   o.x = o.px = p.x; o.y = o.py = p.y; o.landed = false; o.ang = cr.ang; G.units.push(o); rec({ k: 'b', u: { ...o } });
-  log(t('tookOff', { a: UNITS[o.type].name })); sfx('click');
+  log(t('tookOff', { a: UNITS[o.type].name })); sfx('click'); saveLocal();
 }
 // After a move: a unit that ends under your transport gets in, and a
 // transport that ends over one of your units picks it up.
@@ -964,7 +967,7 @@ function dropSpots(tr) {
 function dropOff(tr, i, p) {
   const o = tr.cargo.splice(i, 1)[0];
   o.x = o.px = p.x; o.y = o.py = p.y; o.moved = o.acted = true; G.units.push(o); rec({ k: 'b', u: { ...o } });
-  log(t('gotOut', { a: UNITS[o.type].name })); sfx('click');
+  log(t('gotOut', { a: UNITS[o.type].name })); sfx('click'); saveLocal();
 }
 function fire(a, b) {
   sour(a.side, b.side);
@@ -1093,7 +1096,13 @@ function tapTile(x, y) {
   // on a phone the panel is under the map: slide it up so the shop is in reach
   if (sel?.city || sel?.build) { const r = $('#info').getBoundingClientRect(); if (r.top > window.innerHeight * .6) $('#info').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
+// Decided 14 Nov: a game on this device saved only at the start of each of
+// your turns, so a turn in progress was lost if the page closed. It now also
+// saves after each move, shot, buy and drop-off (online games save at the end
+// of each turn, for the other players).
+function saveLocal() { if (G && !ONLINE && !busy) save(); }
 function afterAct(u) {
+  saveLocal();
   if (G.over) { sel = null; render(); return; }
   if (!G.units.includes(u)) { sel = null; render(); return; }
   if (!u.acted && targetsFrom(u, u.x, u.y).length) sel = { unit: u };
@@ -1145,7 +1154,7 @@ function buy(type) {
   G.money[me] = r1(G.money[me] - R.cost);
   const u = mkUnit(type, me, p.x, p.y); u.moved = u.acted = u.fresh = true;
   if (R.len) u.ang = shipFace(type, p.x, p.y);
-  G.units.push(u); rec({ k: 'b', u: { ...u } });
+  G.units.push(u); rec({ k: 'b', u: { ...u } }); saveLocal();
   log(t('bought', { unit: R.name.toLowerCase() })); sfx('buy');
   if (sel.build) sel = { unit: u };
   render();
@@ -1735,7 +1744,7 @@ function setDistrict(c, i, k) {
   if (!myTurn() || c.owner !== G.side) return;
   if (k === 'industrial' && c.d[i] !== 'industrial' && countD(c, 'industrial') >= MAX_INDUSTRY) return;
   c.d[i] = c.d[i] === k ? null : k;   // tapping the one it already is empties it
-  sfx('click'); render();
+  sfx('click'); saveLocal(); render();
 }
 function log(s) { $('#log').textContent = s; }
 
@@ -2031,15 +2040,44 @@ $('#card').addEventListener('keydown', e => {
   if (!$('#gpic')) return;
   if (e.key === 'ArrowRight') guideCard(guideAt + 1); else if (e.key === 'ArrowLeft') guideCard(guideAt - 1); else if (e.key === 'Escape') guideBack();
 });
+// Decided 14 Nov, from his report: there was no way back into an online game
+// without its link. Each device already remembers its team for every online
+// game it joined (`conquest-online:<id>`), so the start card lists those games
+// with whose turn it is, and Play opens one. Finished and deleted games drop
+// off the list.
+function onlineGames() {
+  const out = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('conquest-online:')) out.push({ id: k.slice(16), team: localStorage.getItem(k) }); } } catch (e) { }
+  return out;
+}
+async function fillOnlineList() {
+  const box = $('#olist'); if (!box) return;
+  const games = onlineGames(); if (!games.length) { box.hidden = true; return; }
+  const rows = await Promise.all(games.map(g => rpc('match_get', { p_id: g.id }).then(r => ({ ...g, row: r[0] || null })).catch(() => ({ ...g, row: undefined }))));
+  const live = rows.filter(g => g.row !== null);   // undefined = couldn't reach it right now; keep it
+  for (const g of rows) if (g.row === null || g.row?.state?.over) { try { localStorage.removeItem(seatKey(g.id)); } catch (e) { } }
+  const show = live.filter(g => !g.row?.state?.over).sort((a, b) => (b.row?.state?.turn || 0) - (a.row?.state?.turn || 0));
+  if (!$('#olist')) return;
+  if (!show.length) { box.hidden = true; return; }
+  box.innerHTML = `<h3>${t('yourOnline')}</h3>` + show.map(g => {
+    const st = g.row?.state, mine = st && st.side === g.team;
+    const line = !st ? t('olOffline') : mine ? t('olYourTurn', { n: st.turn }) : t('olWaiting', { team: tn(st.side), n: st.turn });
+    return `<div class="tm"><div class="grow"><p>${chip(g.team)}${t('olYou', { team: tn(g.team) })} · ${line}</p></div><a class="btn small" href="${linkFor(g.id)}">${t('olPlay')}</a></div>`;
+  }).join('');
+  box.hidden = false;
+}
 function titleCard() {
   let saved = read().game;
   if (saved && saved.v !== SAVE_V) saved = null;   // the two-team game from before 5 Nov
   cardShow(`<h1>${t('title')}</h1><p>${t('intro')}</p>
+    ${saved ? `<p>${t('localSaved', { n: saved.turn })}</p>` : ''}
+    <div id="olist" hidden></div>
     <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button>${saved ? `<button class="btn quiet" id="fresh">${t('newGame')}</button><button class="btn" id="go">${t('keepPlaying')}</button>` : `<button class="btn" id="go">${t('start')}</button>`}</div>`);
   $('#go').onclick = () => { if (saved) { cardHide(); resume(saved); } else setupCard(); };
   const f = $('#fresh');
   if (f) f.onclick = () => setupCard(true);
   $('#how').onclick = () => guideCard(0, titleCard);
+  fillOnlineList();
 }
 function resume(s) {
   G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
