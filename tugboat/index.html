@@ -22,13 +22,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(-
 .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
 .stagebox{position:relative}
 canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;touch-action:none}
-/* the docket: what to pick up, and which dock it goes to, in pictures */
-.docket{position:absolute;bottom:.3rem;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:.5rem;background:var(--panel);border:4px solid var(--ink);padding:.4rem .6rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.25)}
-.docket img{display:block;height:3rem;image-rendering:pixelated}
-.docket .to{width:1.6rem;height:1.6rem;fill:var(--ink)}
-.docket .dock{display:flex;align-items:center;gap:.3rem;padding:.25rem .45rem;color:#fff;font-family:"Press Start 2P",monospace;font-size:1.5rem;line-height:1}
-.docket .dock img{height:1.6rem}
-.docket.got .item{opacity:.35}
+/* the docket: what to pick up and which dock it goes to. Decided 15 Nov: the
+   card on screen confused him, so it's only read out to screen readers now; the
+   harbor shows it instead (the thing waits on its pier with a sparkle, and the
+   dock it goes to blinks a white ring) */
+.docket{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,40,60,.45);z-index:9;padding:1rem}
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;text-align:center;box-shadow:.4rem .4rem 0 rgba(0,0,0,.25)}
 .card h2{margin:0 0 .5rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
@@ -55,12 +53,9 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 .tri{width:1.2rem;height:1.2rem;fill:currentColor}
 .horn{width:6rem;height:6rem;border-radius:50%;background:#e04848;color:#fff;font-family:"Press Start 2P",monospace;font-size:.8rem;box-shadow:0 .35rem 0 #a8302f}
 .horn:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #a8302f}
-/* a phone held upright: the harbor sits at the top, the docket just under it
-   (on the harbor it covered half the docks), the pad and horn at the bottom */
+/* a phone held upright: the harbor sits at the top, the pad and horn at the bottom */
 @media (pointer:coarse) and (orientation:portrait){
   .wrap{align-items:flex-start;padding-top:3.6rem}
-  .docket{top:calc(100% + .8rem);bottom:auto}
-  .docket img{height:2.6rem}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -102,7 +97,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 // Tugboat Deliveries. Decided 29 Oct, designed by the youngest kid tester (almost
 // 3, knows the arrow keys and the space bar): drive a little tugboat around one
 // harbor that fits the screen, pick up animals and crates, and take them to
-// the dock on the docket. The docket is all pictures, the dock is a big number
+// the dock that blinks. The docks have a big number
 // with a color and a shape, because he can't read yet. Decided 2 Nov: no voice,
 // only chiptune sounds, like Bread; the pictures carry it. Nothing can go wrong: bumping things just boings, no timer, no losing.
 // 8-bit, drawn on a small canvas and scaled up with smoothing off, like Bread.
@@ -167,7 +162,7 @@ $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
 const COL = {
   k: '#1d1410', D: '#24242c', h: '#ffffff', r: '#e04848', R: '#a8302f', l: '#bfe8ff', g: '#8c8c96', y: '#ffd23f', Y: '#e0a800',
   b: '#ff8a1f', t: '#8a4f2a', s: '#b8773a', c: '#f2d8b8', P: '#f4a6a0', Q: '#d9837d', G: '#5aa772', q: '#3f8a5c', u: '#3a6fd8', m: '#9b5cd8',
-  W: '#5bb8e8', V: '#3a8fc0', o: '#e8913a', p: '#f7c6d8', e: '#ffe680', n: '#2b2b33', a: '#7fd36b',
+  f: '#f6dfa6', F: '#d39a4c', W: '#5bb8e8', V: '#3a8fc0', o: '#e8913a', p: '#f7c6d8', e: '#ffe680', n: '#2b2b33', a: '#7fd36b',
 };
 const LINE = COL.k, spriteCache = new Map();
 function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
@@ -205,7 +200,8 @@ const SPARKLE = [
   ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
 ];
 // passengers and cargo
-const crate = top => [top, 'tttttttttttt', 'tssstsssstst', 'tssstssssts t'.replace(' ', ''), 'tttttttttttt', 'tsstssstssst', 'tttttttttttt'];
+// Decided 15 Nov: crates are pale pine so they stand out on the brown docks
+const crate = top => [top, 'FFFFFFFFFFFF', 'FfffFffffFfF', 'FfffFffffFfF', 'FFFFFFFFFFFF', 'FffFfffFfffF', 'FFFFFFFFFFFF'];
 const ITEMS = [
   { key: 'cow', name: 'the cow', her: true, rows: ['..........hh', '.........hhD', 'hhhhhhhhhhhP', 'hDDhhhDhhhh.', 'hhhhDDhhhhh.', 'hhhhhhhhhh..', '.D.D...D.D..'] },
   { key: 'pig', name: 'the pig', her: true, rows: ['..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPnPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...'] },
