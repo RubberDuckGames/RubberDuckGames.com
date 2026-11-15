@@ -43,7 +43,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   The map is driven with the arrow keys (◀ ▶ buttons on touch): the car stops
   at each place and Enter goes in; clicking places on the map does nothing.
   Decided 28 Oct: fewer words. No names or check marks on the map; each place
-  shows five paw prints (gold found, dark not yet) or its trophy. The results
+  showed five paw prints (gold found, dark not yet) or its trophy. Decided 15
+  Nov: the paw prints cluttered the map and are gone; each place has one mark
+  beside it, a red flag once Crumb is found there and the trophy at 100%, and
+  the road is drawn pixel by pixel along its curves instead of in tile blocks. The results
   card shows the pieces as pictures, dark for not found. Messages are a few
   words, and only one line is on screen at a time.
   Touch screens get a round stick like Math Force's (decided 2 Nov, after
