@@ -349,8 +349,8 @@ const UNITS = {
   transportChopper: { name: 'Transport chopper', img: 'transport-chopper', hp: 4, dmg: 1,              rng: 3, spd: 4, cost: 3, hits: 'G',  air: 'heli',  holds: 4 },
   transportJet:  { name: 'Transport jet',         img: 'transport-jet',    hp: 4,   dmgA: 2,               rng: 3, spd: 3, cost: 4, hits: 'A',  air: 'plane', holds: 5, heals: 4 },
   // Decided 10 Nov: ships, his stats from 4 Nov and his sizes from 10 Nov
-  // (len squares long, wid wide). The 2-square one is taken to be the
-  // destroyer (to check with him). The carrier holds 6 of his basic units of
+  // (len squares long, wid wide). The 2-square one is the destroyer (he
+  // confirmed, 15 Nov). The carrier holds 6 of his basic units of
   // planes. The trade ships wait until we know their sizes.
   destroyer:     { name: 'Destroyer',             img: 'destroyer',        hp: 4,   dmg: 2,                rng: 4, spd: 2, cost: 4,  hits: 'G',  len: 2, wid: 1 },
   cruiser:       { name: 'Cruiser',               img: 'cruiser',          hp: 5,   dmg: 2.5, dmgA: 2.5,   rng: 4, spd: 2, cost: 6,  hits: 'GA', len: 3, wid: 1 },
@@ -542,7 +542,7 @@ const landOf = (x, y) => LAND[y * MW + x];
 // and every one after costs 1 money (changing a district counts as building
 // one; emptying it is free). Viruses make a city earn less and hurt the
 // units in it.
-// Filled in here, to check with him: a city with no quarantine has a small
+// The details, filled in here and OK'd by him on 15 Nov: a city with no quarantine has a small
 // chance each turn to catch a virus, and sick units carry it into the next
 // city they stand in. A sick city earns half. Your ground units in a sick
 // city get sick; a sick unit loses 0.5 health a turn for 3 turns but never
@@ -898,7 +898,7 @@ function income(side) {
 }
 // Decided 15 Nov, his answer: trade routes bring in money, but a virus can
 // come down a route from a nation that has one, so you can lock the route
-// down. Filled in here, to check with him: every two allies have a trade
+// down. The details, filled in here and OK'd by him on 15 Nov: every two allies have a trade
 // route, open until either of them locks it down (Teams). An open route pays
 // each of them 1 money a turn. While your ally has a sick city, each turn
 // there's a 1 in 4 chance the virus comes down the route into one of your

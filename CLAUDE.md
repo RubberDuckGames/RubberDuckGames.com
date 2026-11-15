@@ -438,17 +438,17 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   at any zoom (`setZoom`, `ZOOM`; `BW` by `BH` is the view at zoom 1). On a
   phone the map takes about 55% of the height so the shop shows under it,
   and tapping your city scrolls the shop into view.
-  Every city has four districts (`c.d`), set free on your turn in the city
+  Every city has four districts (`c.d`), set on your turn in the city
   panel: hospital (heals your ground units on or next to the city 1 a turn
-  per hospital, a guess), quarantine (keeps viruses out; viruses aren't in the
-  game yet), industrial (+0.5 money a turn, at most 2 a city). Later, 4
+  per hospital), quarantine (keeps viruses out), industrial (+0.5 money a turn, at most 2 a city). Later, 4
   industrial will make the city spawn robots (bad guys): not built until he
   draws them. Hospital heals 1 (his OK, 15 Nov); the "4" on industrial
   doesn't matter (15 Nov). Decided 15 Nov: a city's first district is free,
   then 1 money each; viruses halve a city's money and make units in it sick
   (−0.5 a turn for 3 turns, never below 0.5); hospitals cure, quarantine
   blocks; allies share a trade route (+1 a turn each) that a virus can come
-  down, so you can lock it down in Teams.
+  down, so you can lock it down in Teams. He OK'd the virus and trade
+  numbers (15 Nov).
   Decided 15 Nov: runways (his black bars, 15 of them, `RUNWAY_CITIES`) are
   2 land squares next to a city and belong to whoever holds it; your planes
   land and refuel there like in a city. Decided 15 Nov, next: a runway holds 6
@@ -457,7 +457,7 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   Saves are `v: 3`.
   Decided 10 Nov, his ask: ships, built like the field guns on an empty water
   square touching one of your units or cities, out of enemy fire (`SHIPS`).
-  His sizes: destroyer 2 long (a guess: he didn't name the 2-square one),
+  His sizes: destroyer 2 long (he confirmed, 15 Nov),
   cruiser 3, battleship 3 by 2, carrier 4 by 2 (`len`, `wid`). A ship covers
   all its squares (`cellsAt`; `x, y` is the bow), turns to face the way it
   moves, and range counts from its nearest square (`gap`). A shadow under a
