@@ -161,7 +161,7 @@ const STR = {
   g_fire_t: 'Fire', g_fire: 'Then tap a unit in a red box to fire at it.',
   g_marks_t: 'What each unit has left', g_marks: 'Filled square: it can still move. Empty square: it moved, and can still fire. Greyed out: it’s done. When you’re done, press End turn.',
   g_city_t: 'Cities and money', g_city: 'Every city you own pays you each turn: 1 money, or 3 for your home city. Tap your city to buy units there. On this level you start with {m} money.',
-  g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities to fill up, or it crashes.',
+  g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities or on one of your runways to fill up, or it crashes. A runway belongs to whoever holds the city next to it.',
   g_bomb_t: 'Bombers', g_bomb: 'Bombers can only bomb ground units from 1 square away.',
   g_build_t: 'Build guns', g_build: 'Tap an empty square next to one of your units to build a defense gun or AA gun there.',
   g_carry_t: 'Transports', g_carry: 'A transport chopper, transport jet or trade ship carries your ground units and guns. Walk onto a trade ship from the shore. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
@@ -283,8 +283,8 @@ const STR = {
   dmgSplit: '{a} to air, {g} to ground',
   fuel: 'Fuel', fuelOf: '{n} of {max}',
   hovers: 'Can hover in one place',
-  landed: 'Landed in its city. It fills up with fuel next turn. Anyone can hit it here.',
-  lowFuel: 'Low on fuel! Land in one of your cities soon or it will crash.',
+  landed: 'Landed. It fills up with fuel next turn. Anyone can hit it here.',
+  lowFuel: 'Low on fuel! Land in one of your cities or on your runway soon or it will crash.',
   reloading: 'Reloading. It can fire again next turn.',
   burning: 'On fire! It loses 1 health a turn for {n} more turns.',
   onFire: 'It is on fire!',
@@ -470,7 +470,32 @@ const TOWNS = [
   [4, 27], [1, 29], [10, 28], [9, 35], [3, 37], [8, 24], [15, 31],                    // yellow
   [47, 29], [52, 28], [37, 33], [41, 35], [49, 36], [44, 22], [37, 26],               // green
 ];
+// Decided 15 Nov, his answer: runways let planes land and refuel. He drew
+// them as black bars next to 15 of his cities; each runway is 2 squares on
+// land beside that city and belongs to whoever holds the city. Your planes
+// can land on your runways and fill up there, the same as in your cities.
+// (His key says a runway holds "6 BU", 6 basic units of planes; here it's
+// one plane a square, like everywhere else on the map.)
+const RUNWAY_CITIES = [[7, 8], [5, 13], [17, 5], [31, 3], [17, 13], [35, 12], [29, 23], [41, 4], [47, 11], [44, 22], [4, 27], [8, 24], [5, 33], [37, 33], [49, 36]];
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
+// each runway: the first 2 free land squares in a row next to its city
+// (side by side, then up and down), worked out once from the map
+const RUNWAYS = RUNWAY_CITIES.map(([cx, cy]) => {
+  const all = [...Object.values(CAPITALS), ...TOWNS], land = (x, y) => tileAt(x, y) === '.' && !all.some(([a, b]) => a === x && b === y);
+  for (const r of [1, 2]) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    const x = cx + dx, y = cy + dy;
+    if (land(x, y) && land(x + 1, y)) return { cx, cy, sq: [[x, y], [x + 1, y]] };
+    if (land(x, y) && land(x, y + 1)) return { cx, cy, sq: [[x, y], [x, y + 1]] };
+  }
+  return null;
+}).filter(Boolean);
+const runwayAt = (x, y) => RUNWAYS.find(r => r.sq.some(([a, b]) => a === x && b === y));
+// where a team's planes can land: its own city or its own runway
+function landsAt(side, x, y) {
+  if (cityAt(x, y)?.owner === side) return true;
+  const r = runwayAt(x, y);
+  return !!r && cityAt(r.cx, r.cy)?.owner === side;
+}
 const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 1;
 // Which piece of land each square is on (-1 for water and rock). The computer's
 // ground units only head for cities and units on their own island: on this
@@ -582,7 +607,7 @@ function landNear(x0, y0, n) {
 }
 function mkUnit(type, side, x, y) {
   const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: y < MH / 2 ? Math.PI : 0 };
-  if (UNITS[type].air === 'plane') { u.fuel = FUEL; u.landed = !!(cityAt(x, y)?.owner === side); }
+  if (UNITS[type].air === 'plane') { u.fuel = FUEL; u.landed = landsAt(side, x, y); }
   if (UNITS[type].holds) u.cargo = [];
   return u;
 }
@@ -933,6 +958,7 @@ function startTurn(side) {
   for (const u of G.units.filter(u => u.side === side)) {
     u.moved = false; u.acted = false; u.fresh = false;
     if (UNITS[u.type].air === 'plane') {
+      if (u.landed && !landsAt(side, u.x, u.y)) u.landed = false;   // its runway's city was taken
       if (u.landed) u.fuel = FUEL;
       else if (!u.flew) u.fuel -= CIRCLE;   // circling in place still burns fuel; only helicopters can hover
       u.flew = false;
@@ -985,7 +1011,7 @@ function moveUnit(u, x, y) {
   u.x = x; u.y = y; u.moved = true;
   rec({ k: 'm', id: u.id, x, y, ang: u.ang });
   const c = cityAt(x, y);
-  if (R.air === 'plane') u.landed = !!(c && c.owner === u.side);
+  if (R.air === 'plane') u.landed = landsAt(u.side, x, y);
   // only ground units take cities
   if (!R.air && c && c.owner !== u.side) {
     const was = c.owner; c.owner = u.side;
@@ -1395,11 +1421,12 @@ function cpuPlan(u) {
     // planes: never strand itself, and head home to land when the tank is low
     // a deck square of its own carrier with room counts as home, like a city
     const deck = plane && AIR_ROOM[u.type] && G.units.find(d => d.side === me && UNITS[d.type].deck && covers(d, o.x, o.y) && used(d) + AIR_ROOM[u.type] <= UNITS[d.type].holds);
-    const landing = plane && ((c && c.owner === me) || !!deck);
+    const landing = plane && (landsAt(me, o.x, o.y) || !!deck);
     if (plane) {
       const left = u.fuel - dist(u, o) - (o.stay && !u.landed ? CIRCLE : 0);
       const decks = G.units.filter(d => d.side === me && UNITS[d.type].deck).flatMap(d => cells(d).map(([x, y]) => ({ x, y })));
-      const home = Math.min(99, ...mine.map(m => dist(m, o)), ...decks.map(m => dist(m, o)));
+      const strips = RUNWAYS.filter(r => cityAt(r.cx, r.cy)?.owner === me).flatMap(r => r.sq.map(([x, y]) => ({ x, y })));
+      const home = Math.min(99, ...mine.map(m => dist(m, o)), ...decks.map(m => dist(m, o)), ...strips.map(m => dist(m, o)));
       if (landing) s += u.fuel < FUEL * .6 ? 8 : 0;
       else if (left < home) s -= 40;
       else if (left < home + 3) s -= 6;
@@ -1538,6 +1565,15 @@ function drawFlag(o, c = ctx) {
 // quarantine fence of yellow and black stripes, or a factory with a smoking
 // chimney. Each has its own shape, so colour isn't the only way to tell. A
 // capital has a gold edge.
+// a runway: dark tarmac across its 2 squares with a dashed white centre line
+// and the owner's colour at each end
+function drawRunway(r, c = ctx) {
+  const xs = r.sq.map(p => p[0]), ys = r.sq.map(p => p[1]), across = ys[0] === ys[1];
+  const X = Math.min(...xs) * TS, Y = Math.min(...ys) * TS, W = (Math.max(...xs) + 1) * TS - X, H = (Math.max(...ys) + 1) * TS - Y;
+  const own = cityAt(r.cx, r.cy)?.owner, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  if (across) { f('#1b1a15', X + 2, Y + 10, W - 4, H - 20); f('#3d3b34', X + 3, Y + 11, W - 6, H - 22); for (let i = 0; i < 6; i++) f('#e8dfc8', X + 10 + i * (W - 20) / 6, Y + H / 2 - 1, (W - 20) / 12, 3); if (own) { f(TEAM[own].bar, X + 4, Y + 12, 4, H - 24); f(TEAM[own].bar, X + W - 8, Y + 12, 4, H - 24); } }
+  else { f('#1b1a15', X + 10, Y + 2, W - 20, H - 4); f('#3d3b34', X + 11, Y + 3, W - 22, H - 6); for (let i = 0; i < 6; i++) f('#e8dfc8', X + W / 2 - 1, Y + 10 + i * (H - 20) / 6, 3, (H - 20) / 12); if (own) { f(TEAM[own].bar, X + 12, Y + 4, W - 24, 4); f(TEAM[own].bar, X + 12, Y + H - 8, W - 24, 4); } }
+}
 function drawCity(o, now = 0, c = ctx) {
   const X = o.x * TS, Y = o.y * TS, q = TS / 2, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   f('#1b1a15', X + 1, Y + 1, TS - 2, TS - 2); f('#57533c', X + 2, Y + 2, TS - 4, TS - 4);
@@ -1678,6 +1714,7 @@ function frame(now) {
   ctx.save(); ctx.scale(ZOOM, ZOOM); ctx.translate(-Math.round(cam.x * TS * ZOOM) / ZOOM, -Math.round(cam.y * TS * ZOOM) / ZOOM);   // from here on, squares are whole-map squares
   ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
   const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
+  for (const r of RUNWAYS) drawRunway(r);
   for (const c of G.cities) if (seen(c.x, c.y)) { drawCity(c, now); drawFlag(c); }
   const s = sel?.unit, mine = myTurn();
   if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show

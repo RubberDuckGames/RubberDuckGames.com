@@ -389,7 +389,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   (−0.5 a turn for 3 turns, never below 0.5); hospitals cure, quarantine
   blocks; allies share a trade route (+1 a turn each) that a virus can come
   down, so you can lock it down in Teams.
-  Runways on his map aren't in the game yet. Saves are `v: 3`.
+  Decided 15 Nov: runways (his black bars, 15 of them, `RUNWAY_CITIES`) are
+  2 land squares next to a city and belong to whoever holds it; your planes
+  land and refuel there like in a city.
+  Saves are `v: 3`.
   Decided 10 Nov, his ask: ships, built like the field guns on an empty water
   square touching one of your units or cities, out of enemy fire (`SHIPS`).
   His sizes: destroyer 2 long (a guess: he didn't name the 2-square one),
