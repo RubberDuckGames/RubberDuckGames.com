@@ -1168,8 +1168,44 @@ function fairGame(me, other) {
 // carrier when it can spare the money (its planes land on it to fill up and
 // take off again each turn). At most one ship for
 // every two cities it owns, plus one, so the sea doesn't fill up.
+// Decided 14 Nov, his next ask: the computer uses trade ships too. On his map
+// an army runs out of things to do once its own island is taken. Then the
+// computer builds a trade ship beside those units (armed if others have
+// planes), walks them aboard, sails toward cities it can take, and drops
+// them on that coast.
+const cityGoal = (me, c) => c.owner !== me && (!c.owner || fairGame(me, c.owner));
+// ground units with nothing left to take on their own island
+const stranded = me => G.units.filter(u => u.side === me && !UNITS[u.type].air && !UNITS[u.type].len && !UNITS[u.type].fixed
+  && !G.cities.some(c => cityGoal(me, c) && landOf(c.x, c.y) === landOf(u.x, u.y)));
+function cpuTrade(me) {
+  if (G.units.some(u => u.side === me && cargoShip(u))) return false;
+  const stuck = stranded(me); if (stuck.length < 2) return false;
+  const otherAir = G.units.some(u => !allied(u.side, me) && UNITS[u.type].air);
+  const k = otherAir && Math.random() < .5 ? 'armedTradeShip' : 'tradeShip';
+  if (G.money[me] < UNITS[k].cost) return false;
+  const spots = new Map();
+  for (const o of stuck) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = o.x + dx, y = o.y + dy;
+    if (inMap(x, y) && canBuildSea(x, y, me) && !underFire(x, y, me) && shipFace(k, x, y) !== undefined) spots.set(x + ',' + y, { x, y });
+  }
+  const list = [...spots.values()]; if (!list.length) return false;
+  const p = list[Math.random() * list.length | 0];
+  G.money[me] = r1(G.money[me] - UNITS[k].cost);
+  const u = mkUnit(k, me, p.x, p.y); u.ang = shipFace(k, p.x, p.y); u.moved = u.acted = u.fresh = true;
+  G.units.push(u); rec({ k: 'b', u: { ...u } });
+  return true;
+}
+// A loaded trade ship next to land with cities to take lets everyone off.
+function cpuUnload(me) {
+  for (const sh of G.units.filter(u => u.side === me && cargoShip(u) && u.cargo.length)) {
+    const spots = dropSpots(sh).filter(p => G.cities.some(c => cityGoal(me, c) && landOf(c.x, c.y) === landOf(p.x, p.y)));
+    while (sh.cargo.length && spots.length) dropOff(sh, 0, spots.shift());
+  }
+}
 function cpuShip(me) {
-  if (G.turn < lvl().air || Math.random() >= lvl().buy * .5) return;
+  if (G.turn < lvl().air) return;
+  if (cpuTrade(me)) return;
+  if (Math.random() >= lvl().buy * .5) return;
   const ships = G.units.filter(u => u.side === me && UNITS[u.type].len).length;
   if (ships >= Math.floor(G.cities.filter(c => c.owner === me).length / 2) + 1) return;
   const m = G.money[me];
@@ -1231,6 +1267,7 @@ async function cpuTurn(me) {
     const tg = bestTarget(u);
     if (tg) { fire(u, tg); render(); await sleep(480); }
   }
+  cpuUnload(me);
   // a plane that stayed over its own carrier lands on it
   for (const pl of G.units.filter(u => u.side === me && AIR_ROOM[u.type] && !u.landed)) {
     const cr = G.units.find(d => d.side === me && UNITS[d.type].deck && covers(d, pl.x, pl.y));
@@ -1250,7 +1287,11 @@ function cpuPlan(u) {
   const me = u.side, opts = [{ x: u.x, y: u.y, stay: true }, ...reach(u).values()];
   const R = UNITS[u.type], plane = R.air === 'plane';
   const land = R.air || R.len ? -1 : landOf(u.x, u.y), here = o => R.air || R.len || landOf(o.x, o.y) === land;   // ground units: only what's on their own island
-  const goals = R.len ? [] : G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)) && here(c));
+  // trade ships: loaded, head for cities to take; empty, head for the units waiting for a ride
+  const goals = cargoShip(u) ? (u.cargo.length ? G.cities.filter(c => cityGoal(me, c)) : stranded(me))
+    : R.len ? [] : G.cities.filter(c => c.owner !== me && (!c.owner || fairGame(me, c.owner)) && here(c));
+  // ground units with nothing to take on their island walk to a trade ship with room
+  const rides = !R.air && !R.len && !goals.length ? G.units.filter(sh => sh.side === me && cargoShip(sh) && canLoad(sh, u)).flatMap(sh => cells(sh).map(([x, y]) => ({ x, y }))) : [];
   const mine = G.cities.filter(c => c.owner === me);
   const prey = G.units.filter(o => fairGame(me, o.side) && (here(o) || (isAir(o) && canHit(R, o))));
   const threats = G.units.filter(o => !allied(o.side, me));
@@ -1265,8 +1306,9 @@ function cpuPlan(u) {
       else s -= 20;   // a neutral team's city: leave it
     }
     if (!R.air && c && c.owner === me && !R.fixed) s -= 2;   // step off its own cities so it can buy there; it banked 70+ money in a test game sitting on them
-    const hunt = R.air ? prey.filter(f => canHit(R, f)) : prey;
-    const nearGoal = Math.min(99, ...(R.air ? [] : goals.map(g => dist(g, o))), ...hunt.map(f => dist(f, o) + 2));
+    const hunt = R.air ? prey.filter(f => canHit(R, f)) : cargoShip(u) ? [] : prey;   // trade ships don't go looking for a fight
+    if (rides.length && tileAt(o.x, o.y) === 'w') s += 10;   // stepping aboard
+    const nearGoal = Math.min(99, ...(R.air ? [] : goals.map(g => dist(g, o))), ...rides.map(g => dist(g, o)), ...hunt.map(f => dist(f, o) + 2));
     s -= nearGoal * .6;
     // planes: never strand itself, and head home to land when the tank is low
     // a deck square of its own carrier with room counts as home, like a city
