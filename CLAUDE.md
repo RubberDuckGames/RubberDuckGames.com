@@ -146,9 +146,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   main street runs across the middle with a dashed line; the farm and the
   museum sit on it, home, the pond and the aquarium up short side streets,
   and the ocean down one to the beach along the bottom (`STOPS[].jx`, `.at`,
-  `MAIN_Y`). Left and right go to the next place along the main street, up
-  and down to the nearest place on that side; the car drives straight there
-  (`routeTo`, `along`).
+  `MAIN_Y`). Decided the same day, the middle kid tester's ask: you drive the
+  car yourself (`mapCar`, `stepMapCar`). The pad, stick, cross pad or a
+  finger held on the map steers it anywhere there's road (`roadMask`), and
+  along the beach sand; each place has a driveway with a parking spot, and
+  parked there the button says Go in (an arrow bobs over the car). Locked
+  places say where to find Crumb first.
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
   and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
