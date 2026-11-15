@@ -342,8 +342,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   deck square. Decided 14 Nov: the trade ship (holds 6, no guns, speed 3)
   and armed trade ship (holds 5, fires at air), both 2 long and 1 wide (his
   sizes); a unit on the shore walks aboard, and Drop off puts it on land
-  next to the ship. Trade routes (money from allies) and the computer
-  using trade ships aren't built yet.
+  next to the ship. Trade routes (money from allies) aren't built yet.
+  Decided 14 Nov: the computer uses trade ships (`cpuTrade`, `cpuUnload`).
+  Once two or more of its ground units have nothing left to take on their
+  island (`stranded`), it builds one trade ship beside them (armed if others
+  have planes); those units walk aboard, the loaded ship sails toward cities
+  it can take, lets everyone off on that coast, and goes back for more.
   Decided 14 Nov, his two asks: the computer teams build ships (`cpuShip`:
   one a turn at most, from the turn their aircraft start, mostly destroyers,
   at most one ship per two cities plus one; one carrier once a team has 24
