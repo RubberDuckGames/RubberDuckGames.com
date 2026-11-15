@@ -257,7 +257,7 @@ function newHarbor() {
     tug: { x: 10, y: 6.5, vx: 0, vy: 0, face: 1 }, job: null, wait: 0, carry: null, hop: null,
     boats: [{ x: -2, y: 4.6, dir: 1, v: .9, img: SAIL }, { x: VW + 2, y: 7.3, dir: -1, v: .6, img: FISHER }],
     sparkles: [], fx: [], smoke: [], bonk: 0, idle: 0,
-    party: isParty(), candles: 0, blow: 0,
+    party: isParty(), candles: 0, blow: 0, cakePending: false, cakeTake: false, paused: null, cakeHop: null, cakes: 0, cakeBack: 0,
   };
   for (let i = 0; i < 3; i++) addSparkle();
   newJob();
@@ -284,6 +284,15 @@ function newJob() {
 }
 function showDocket() {
   const j = G.job, d = $('#docket');
+  if (G.cakeTake) {
+    // the cake goes onto his own boat: cake, arrow, the tugboat
+    d.hidden = false;
+    $('#dItem').src = dataURL(PARTY_ITEMS[0].rows);
+    $('#dDock').style.background = '#f7c6d8'; $('#dNum').textContent = '';
+    $('#dShape').src = dataURL(TUG);
+    d.setAttribute('aria-label', 'Take the cake onto your boat.');
+    return;
+  }
   d.hidden = !j; if (!j) return;
   $('#dItem').src = dataURL(j.item.rows);
   const dock = j.got ? j.to : j.from;
@@ -342,10 +351,22 @@ function step(dt, t) {
       else delivered();
     }
   }
+  // after the candles blow out, he takes the cake: it waits until he isn't
+  // carrying anything, then the docket says cake onto the tugboat
+  if (G.cakePending && !G.hop && !(G.job && G.job.got)) {
+    G.cakePending = false; G.cakeTake = true; G.paused = G.job; G.job = null; showDocket(); sfx.hop();
+  }
+  if (G.cakeTake && !G.cakeHop && Math.hypot(CAKE_BERTH.x - b.x, CAKE_BERTH.y - b.y) < 1.5) { G.cakeHop = { t: 0 }; sfx.hop(); }
+  if (G.cakeHop && (G.cakeHop.t += dt / .7) >= 1) {
+    G.cakeHop = null; G.cakeTake = false; G.cakes = Math.min(3, G.cakes + 1); G.cakeBack = 2.5;
+    sfx.bday(); confetti(b.x, b.y - 1, 30);
+    G.job = G.paused; G.paused = null; if (G.job) showDocket(); else newJob();
+  }
+  if (G.cakeBack > 0 && (G.cakeBack -= dt) <= 0) { G.cakeBack = 0; sfx.sparkle(); burst(CAKE.x + .8, CAKE.y - .8, ['#f7c6d8', '#ffffff', '#ffd23f']); }
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += (f.g ?? 3) * dt, f.t < (f.life || 1)));
   // the shore cake: three candles lit, then a puff blows them out
   if (G.blow && (G.blow -= dt) <= 0) {
-    G.blow = 0; G.candles = 0; sfx.puff();
+    G.blow = 0; G.candles = 0; G.cakePending = true; sfx.puff();
     CAKE_CANDLES.forEach(c => { for (let i = 0; i < 3; i++) G.smoke.push({ x: CAKE.x + c / T, y: CAKE.y - .6 - i * .15, t: i * .1 }); });
     confetti(CAKE.x + .8, CAKE.y - 1, 40);
   }
@@ -370,7 +391,7 @@ function delivered() {
   } else { sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']); }
   G.left = { item: j.item, ...p, t: 0 };
   G.job = null; showDocket();
-  setTimeout(() => { if (G) { G.left = null; newJob(); } }, 2600);
+  setTimeout(() => { if (G) { G.left = null; if (G.cakeTake || G.cakeHop) G.paused = null; else newJob(); } }, 2600);
 }
 
 // ---------- The river ----------
@@ -531,12 +552,18 @@ function drawHarbor(t) {
   if (G.party) balloons(b.face > 0 ? bx + 3 : bx + tug.width - 4, by + 8, b.face, t);
   if (j && j.got && !G.hop) { const img = sprite(j.item.rows, { flip: b.face < 0 }); put(img, b.face > 0 ? bx + 1 : bx + tug.width - img.width - 1, by + 8 - img.height + 1); }
   put(tug, bx, by);
+  // the cakes he's taken ride on the bow, stacked up (three at most)
+  if (G.cakes) { const c = sprite(PARTY_ITEMS[0].rows, { flip: b.face < 0 }); for (let i = 0; i < G.cakes; i++) put(c, b.face > 0 ? bx + tug.width - c.width + 2 : bx - 2, by + 9 - c.height - i * 7); }
   // ripples behind when moving
   if (Math.hypot(b.vx, b.vy) > .5) { const o = Math.floor(t / 120) % 2; px(bx + (b.face > 0 ? -4 - o : tug.width + o), by + tug.height - 2, 4, 1, COL.l); }
   // hopping on or off: a little arc between the pier and the boat
   if (G.hop) {
     const h = G.hop, from = h.from === 'boat' ? { x: b.x, y: b.y - .3 } : h.from, to = h.to === 'boat' ? { x: b.x, y: b.y - .3 } : h.to;
     const k = h.t, x = from.x + (to.x - from.x) * k, y = from.y + (to.y - from.y) * k - Math.sin(k * Math.PI) * 1.2, img = sprite(j.item.rows);
+    put(img, x * T - img.width / 2, y * T - img.height);
+  }
+  if (G.cakeHop) {
+    const k = G.cakeHop.t, x = CAKE.x + .8 + (b.x - CAKE.x - .8) * k, y = CAKE.y + (b.y - .3 - CAKE.y) * k - Math.sin(k * Math.PI) * 1.5, img = sprite(PARTY_ITEMS[0].rows);
     put(img, x * T - img.width / 2, y * T - img.height);
   }
   G.fx.forEach(f => px(f.x * T, f.y * T, f.w || 2, 2, f.c));
@@ -553,7 +580,7 @@ function balloons(ax, ay, face, t) {
   });
 }
 // the party harbor: bunting along the top shore and the birthday cake on the grass
-const CAKE = { x: 11.6, y: 1.75 }, CAKE_CANDLES = [6, 13, 20];
+const CAKE = { x: 11.6, y: 1.75 }, CAKE_CANDLES = [6, 13, 20], CAKE_BERTH = { x: 12.4, y: 2.9 };
 function drawParty(t) {
   const W = VW * T, cols = ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#9b5cd8'];
   // the bunting: a sagging line between the signs with little flags hanging from it
@@ -565,8 +592,12 @@ function drawParty(t) {
       px(x, y, 5, 1, c); px(x + 1, y + 1, 3, 1, c); px(x + 2, y + 2, 1, 1, c);
     }
   });
-  // the cake: three layers on a plate, with a candle for each delivery
+  // the cake: three layers on a plate, with a candle for each delivery.
+  // Decided 14 Nov, his ask: after the candles blow out he takes the cake onto
+  // his boat (it rides on the bow), and a new one appears on the shore.
   const X = Math.round(CAKE.x * T), Y = Math.round(CAKE.y * T);   // Y is the bottom of the plate
+  if (G.cakeHop || G.cakeBack > 0) return;
+  if (G.cakeTake && Math.floor(t / 300) % 2) { px(X - 4, Y - 30, 34, 2, '#ffffff'); px(X - 4, Y + 2, 34, 2, '#ffffff'); px(X - 4, Y - 30, 2, 34, '#ffffff'); px(X + 28, Y - 30, 2, 34, '#ffffff'); }
   px(X - 1, Y - 2, 28, 3, LINE); px(X, Y - 1, 26, 1, '#ffffff');
   px(X + 1, Y - 15, 24, 13, LINE); px(X + 2, Y - 14, 22, 11, '#f2d8b8'); px(X + 2, Y - 9, 22, 2, '#e04848');
   px(X + 2, Y - 14, 22, 3, '#f7c6d8'); for (let i = 0; i < 22; i += 4) px(X + 3 + i, Y - 11, 2, 1, '#f7c6d8');
