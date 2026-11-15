@@ -396,6 +396,10 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   them; the old keys are left in place. Treasure Trail keeps its own players.
   Sound is one setting per game for the whole computer (`<game>-sound`).
 - Decided 5 Nov: the home page lists the games in order by name.
+- `shared/menu.js` (decided 14 Nov) puts a Menu button next to "All games" in
+  every game. It asks first, then reloads the game at its plain address, which
+  lands on the game's own start (PRESS START, the file picker, Conquest's start
+  card). On narrow screens "← All games" shows only the arrow so the bar fits.
 - Each game folder has a `card.png`, the picture on its home page card (the
   cards are arcade cabinets; the whole card is the link in, Play on the right).
   They are rendered from `brand/capture.html`; how is written at its top.
