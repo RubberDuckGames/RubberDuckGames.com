@@ -297,6 +297,9 @@ const STR = {
   buildSea: 'Open water', buildShip: 'Build a ship here. It fits in the water from this square.', sizeOf: '{l} by {w}',
   shipSize: 'Size', shipSizeOf: '{l} squares long, {w} wide',
   deckHow: 'Fly your planes onto it to land. They fill up with fuel each turn and ride along.',
+  rwTitle: 'Runway', rwFree: 'Nobody holds the city next to it yet.',
+  rwHow: 'Fly your planes onto it to land. It holds {n}: a jet takes 2, a bomber 4. They fill up with fuel each turn. Whoever takes the city next to it catches the planes parked here.',
+  parked: '{a} landed on the runway.',
   takeOffBtn: 'Take off', onDeck: '{a} landed on the carrier.', tookOff: '{a} took off.',
   g_ships_t: 'Ships', g_ships: 'Tap open water next to your units or cities to build a ship. Ships are 2 to 4 squares long. Planes can land on a carrier.',
   buildHere: 'Build a gun here, next to your unit:',
@@ -474,8 +477,11 @@ const TOWNS = [
 // them as black bars next to 15 of his cities; each runway is 2 squares on
 // land beside that city and belongs to whoever holds the city. Your planes
 // can land on your runways and fill up there, the same as in your cities.
-// (His key says a runway holds "6 BU", 6 basic units of planes; here it's
-// one plane a square, like everywhere else on the map.)
+// Decided 15 Nov, the next ask: a runway holds 6 basic units of planes, like
+// the carrier (his key says "6 BU"): a jet takes 2, a bomber 4. A plane that
+// lands on your runway parks there if there's room, fills up each turn, and
+// takes off from a free runway square. Take the city and the planes parked
+// on its runway are caught.
 const RUNWAY_CITIES = [[7, 8], [5, 13], [17, 5], [31, 3], [17, 13], [35, 12], [29, 23], [41, 4], [47, 11], [44, 22], [4, 27], [8, 24], [5, 33], [37, 33], [49, 36]];
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 // each runway: the first 2 free land squares in a row next to its city
@@ -490,6 +496,12 @@ const RUNWAYS = RUNWAY_CITIES.map(([cx, cy]) => {
   return null;
 }).filter(Boolean);
 const runwayAt = (x, y) => RUNWAYS.find(r => r.sq.some(([a, b]) => a === x && b === y));
+const RUNWAY_HOLDS = 6;
+const rwOwner = r => cityAt(r.cx, r.cy)?.owner;
+const parkedOn = r => { G.parked = G.parked || {}; const i = RUNWAYS.indexOf(r); return (G.parked[i] = G.parked[i] || []); };
+const rwUsed = r => parkedOn(r).reduce((n, o) => n + AIR_ROOM[o.type], 0);
+const canPark = (r, u) => !!r && !!AIR_ROOM[u.type] && rwOwner(r) === u.side && rwUsed(r) + AIR_ROOM[u.type] <= RUNWAY_HOLDS;
+const rwSpot = r => r.sq.map(([x, y]) => ({ x, y })).find(p => !unitAt(p.x, p.y, 'air'));
 // where a team's planes can land: its own city or its own runway
 function landsAt(side, x, y) {
   if (cityAt(x, y)?.owner === side) return true;
@@ -567,6 +579,8 @@ let fx = [];           // shots, booms and floating numbers
 let banner = null;     // { text, until }
 let cursor = { x: 5, y: 12 };
 let uid = 1;
+// the highest id in use: units on the map, inside transports and carriers, and parked on runways
+const maxId = () => Math.max(0, ...G.units.map(u => u.id), ...G.units.flatMap(u => (u.cargo || []).map(o => o.id)), ...Object.values(G.parked || {}).flat().map(o => o.id));
 
 function newGame(online = false) {
   const cities = [
@@ -680,7 +694,7 @@ async function joinOnline(id) {
   } catch (e) { cardShow(`<h2>${t('title')}</h2><p class="warn">${t('netFail')}</p><div class="row"><button class="btn" id="re">${t('tryAgain')}</button></div>`); $('#re').onclick = () => joinOnline(id); }
 }
 function loadOnline(state) {
-  G = state; uid = Math.max(0, ...G.units.map(u => u.id), ...G.units.flatMap(u => (u.cargo || []).map(o => o.id))) + 1;
+  G = state; uid = maxId() + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
   if (ONLINE.me) G.view = ONLINE.me;
 }
@@ -975,6 +989,7 @@ function startTurn(side) {
   if (!isHuman(side)) { cpuDistricts(side); for (const s of TEAMS.filter(s => s !== side && allied(side, s))) lockRoute(side, s, hasVirus(s)); }
   hospitals(side);
   for (const u of G.units.filter(u => u.side === side && UNITS[u.type].deck)) for (const o of u.cargo) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
+  for (const r of RUNWAYS.filter(r => rwOwner(r) === side)) for (const o of parkedOn(r)) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
   for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
   for (const u of G.units.filter(u => u.side === side)) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
@@ -1020,6 +1035,10 @@ function moveUnit(u, x, y) {
     const msgs = [was ? t('tookFrom', { a: tn(u.side), b: tn(was) }) : t('took', { a: tn(u.side) })];
     sfx(was && isHuman(was) && !isHuman(u.side) ? 'lose' : 'take');
     for (const p of G.units.filter(p => p.x === x && p.y === y && p.landed && p.side !== u.side)) msgs.push(remove(p, 'caught'));
+    for (const r of RUNWAYS.filter(r => r.cx === x && r.cy === y)) {   // and the planes parked on its runway
+      for (const p of parkedOn(r)) { p.x = r.sq[0][0]; p.y = r.sq[0][1]; msgs.push(remove(p, 'caught')); }
+      parkedOn(r).length = 0;
+    }
     log(msgs.join(' '));
   }
   const aa = aaReact(u);
@@ -1029,11 +1048,24 @@ function moveUnit(u, x, y) {
     const cr = G.units.find(o => UNITS[o.type].deck && covers(o, x, y));
     if (cr && canLoad(cr, u)) { rec({ k: 'x', id: u.id }); G.units = G.units.filter(o => o !== u); cr.cargo.push(u); u.moved = u.acted = true; u.fuel = FUEL; log(t('onDeck', { a: R.name })); sfx('click'); }
   }
+  const rw = R.air === 'plane' && G.units.includes(u) && runwayAt(x, y);   // onto your runway
+  if (rw && canPark(rw, u)) {
+    rec({ k: 'x', id: u.id }); G.units = G.units.filter(o => o !== u); parkedOn(rw).push(u);
+    u.moved = u.acted = true; u.fuel = FUEL; u.landed = true;
+    if (sel?.unit === u) sel = { runway: rw };
+    log(t('parked', { a: R.name })); sfx('click');
+  }
   checkEnd();
 }
 // A plane on a carrier takes off from a free square of the deck. It can fly
 // this turn unless it landed this turn.
 function deckSpot(cr) { return cells(cr).map(([x, y]) => ({ x, y })).find(p => inMap(p.x, p.y) && !unitAt(p.x, p.y, 'air')); }
+function takeOffRw(r, i) {
+  const p = rwSpot(r); if (!p) return;
+  const o = parkedOn(r).splice(i, 1)[0];
+  o.x = o.px = p.x; o.y = o.py = p.y; o.landed = true; G.units.push(o); rec({ k: 'b', u: { ...o } });
+  log(t('tookOff', { a: UNITS[o.type].name })); sfx('click'); saveLocal();
+}
 function takeOff(cr, i) {
   const p = deckSpot(cr); if (!p) return;
   const o = cr.cargo.splice(i, 1)[0];
@@ -1171,7 +1203,7 @@ function tapTile(x, y) {
   if (!myTurn()) return;
   const me = G.side;
   cursor = { x, y };
-  const here = unitsAt(x, y), c = cityAt(x, y);
+  const here = unitsAt(x, y), c = cityAt(x, y), rw = runwayAt(x, y);
   if (sel?.drop) {
     const d = sel.drop, p = dropSpots(d.tr).find(p => p.x === x && p.y === y);
     sel = { unit: d.tr };
@@ -1185,10 +1217,10 @@ function tapTile(x, y) {
   }
   // Tapping the same square again steps through what's there: the air unit,
   // then the ground unit, then the city (to buy).
-  const stack = [...here, ...(c ? [c] : [])];
-  const cur = sel ? stack.indexOf(sel.unit || sel.city) : -1;
+  const stack = [...here, ...(c ? [c] : []), ...(rw ? [rw] : [])];
+  const cur = sel ? stack.indexOf(sel.unit || sel.city || sel.runway) : -1;
   const next = cur === -1 ? stack[0] : stack[(cur + 1) % stack.length];
-  sel = !next ? null : next.hp !== undefined ? { unit: next } : { city: next };
+  sel = !next ? null : next.hp !== undefined ? { unit: next } : next.sq ? { runway: next } : { city: next };
   if (!sel && (canBuildNear(x, y) || canBuildSea(x, y))) sel = { build: { x, y, sea: tileAt(x, y) === 'w' } };
   if (sel?.unit?.side === me) sfx('click');
   render();
@@ -1365,6 +1397,7 @@ async function cpuTurn(me) {
   cpuShip(me);
   // planes on its carriers take off so they can fly this turn (they come back to land when low)
   for (const cr of G.units.filter(u => u.side === me && UNITS[u.type].deck)) while (cr.cargo.length && deckSpot(cr)) takeOff(cr, 0);
+  for (const r of RUNWAYS.filter(r => rwOwner(r) === me)) while (parkedOn(r).length && rwSpot(r)) takeOffRw(r, 0);
   render();
   for (const u of G.units.filter(u => u.side === me && !u.fresh)) {
     if (G.over || !G.units.includes(u)) continue;
@@ -1574,6 +1607,18 @@ function drawRunway(r, c = ctx) {
   if (across) { f('#1b1a15', X + 2, Y + 10, W - 4, H - 20); f('#3d3b34', X + 3, Y + 11, W - 6, H - 22); for (let i = 0; i < 6; i++) f('#e8dfc8', X + 10 + i * (W - 20) / 6, Y + H / 2 - 1, (W - 20) / 12, 3); if (own) { f(TEAM[own].bar, X + 4, Y + 12, 4, H - 24); f(TEAM[own].bar, X + W - 8, Y + 12, 4, H - 24); } }
   else { f('#1b1a15', X + 10, Y + 2, W - 20, H - 4); f('#3d3b34', X + 11, Y + 3, W - 22, H - 6); for (let i = 0; i < 6; i++) f('#e8dfc8', X + W / 2 - 1, Y + 10 + i * (H - 20) / 6, 3, (H - 20) / 12); if (own) { f(TEAM[own].bar, X + 12, Y + 4, W - 24, 4); f(TEAM[own].bar, X + 12, Y + H - 8, W - 24, 4); } }
 }
+// planes parked on a runway: small, side by side along it, with a count
+function drawParked(r, c = ctx) {
+  const list = G.parked?.[RUNWAYS.indexOf(r)] || []; if (!list.length) return;
+  const xs = r.sq.map(p => p[0]), ys = r.sq.map(p => p[1]), across = ys[0] === ys[1];
+  const X = Math.min(...xs) * TS, Y = Math.min(...ys) * TS;
+  list.slice(0, 3).forEach((o, i) => {
+    const sp = sprite(o.type, o.side); if (!sp) return;
+    const cx = across ? X + 18 + i * 30 : X + TS / 2, cy = across ? Y + TS / 2 : Y + 18 + i * 30;
+    c.save(); c.translate(cx, cy); c.rotate(across ? Math.PI / 2 : 0); c.drawImage(sp, -sp.width * .6, -sp.height * .6, sp.width * 1.2, sp.height * 1.2); c.restore();
+  });
+  c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + 2, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(list.length, X + 9, Y + 13);
+}
 function drawCity(o, now = 0, c = ctx) {
   const X = o.x * TS, Y = o.y * TS, q = TS / 2, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   f('#1b1a15', X + 1, Y + 1, TS - 2, TS - 2); f('#57533c', X + 2, Y + 2, TS - 4, TS - 4);
@@ -1714,14 +1759,15 @@ function frame(now) {
   ctx.save(); ctx.scale(ZOOM, ZOOM); ctx.translate(-Math.round(cam.x * TS * ZOOM) / ZOOM, -Math.round(cam.y * TS * ZOOM) / ZOOM);   // from here on, squares are whole-map squares
   ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
   const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
-  for (const r of RUNWAYS) drawRunway(r);
+  for (const r of RUNWAYS) { drawRunway(r); drawParked(r); }
   for (const c of G.cities) if (seen(c.x, c.y)) { drawCity(c, now); drawFlag(c); }
   const s = sel?.unit, mine = myTurn();
   if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show
     for (const r of reach(s).values()) { ctx.fillStyle = 'rgba(232,223,200,.22)'; ctx.fillRect(r.x * TS + 3, r.y * TS + 3, TS - 6, TS - 6); ctx.fillStyle = 'rgba(232,223,200,.7)'; ctx.fillRect(r.x * TS + TS / 2 - 2, r.y * TS + TS / 2 - 2, 4, 4); }
     for (const o of targetsFrom(s, s.x, s.y)) brackets(o.x, o.y, '#e0553f', 1, 12, 4);
   }
-  if (sel) { const p = sel.unit || sel.city || sel.build; brackets(p.x, p.y, '#e8c35a'); }
+  if (sel?.runway) for (const [x, y] of sel.runway.sq) brackets(x, y, '#e8c35a');
+  else if (sel) { const p = sel.unit || sel.city || sel.build; brackets(p.x, p.y, '#e8c35a'); }
   if (sel?.drop && mine) for (const p of dropSpots(sel.drop.tr)) { ctx.fillStyle = 'rgba(127,176,105,.35)'; ctx.fillRect(p.x * TS + 3, p.y * TS + 3, TS - 6, TS - 6); }   // where they can get out
   // units slide to where they are; ground first, then anything flying above
   const order = [...G.units].sort((a, b) => isAir(a) - isAir(b));
@@ -1806,6 +1852,14 @@ function panel() {
       ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${inside}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
     el.querySelectorAll('[data-off]').forEach(b => b.onclick = () => { takeOff(u, +b.dataset.off); sel = null; render(); });
     el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { sel = { unit: u, drop: { tr: u, i: +b.dataset.drop } }; render(); });
+    return;
+  }
+  if (sel.runway) {
+    const r = sel.runway, own = rwOwner(r), list = parkedOn(r), canGo = own === v && mine && rwSpot(r);
+    el.innerHTML = `<h2>${t('rwTitle')}${own ? ' · ' + whose(own) : ''}</h2><p>${own ? t('room', { n: fmt(rwUsed(r)), of: RUNWAY_HOLDS }) : t('rwFree')}</p>`
+      + (list.length ? `<div class="shop">` + list.map((o, i) => `<button class="buy" data-rw="${i}" ${canGo && !o.moved ? '' : 'disabled'}><img src="units/${UNITS[o.type].img}.png" alt=""><span>${UNITS[o.type].name}</span><b>${t('takeOffBtn')}</b></button>`).join('') + '</div>' : '')
+      + `<p>${t('rwHow', { n: RUNWAY_HOLDS })}</p>`;
+    el.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => { takeOffRw(r, +b.dataset.rw); render(); });
     return;
   }
   if (sel.build) {
@@ -2209,7 +2263,7 @@ function titleCard() {
   fillOnlineList();
 }
 function resume(s) {
-  G = s; uid = Math.max(0, ...G.units.map(u => u.id)) + 1;
+  G = s; uid = maxId() + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
   sel = null; log(t('pickHint')); render(); seeHome(G.side, true);
 }
