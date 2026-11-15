@@ -43,15 +43,16 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
 .btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
 .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
 .btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
-/* touch controls: a thumb pad and a big horn, only on touch screens */
+/* touch controls: a steering stick and a big horn, only on touch screens */
 .ctrl{display:none}
 @media (pointer:coarse){.ctrl{display:flex}}
 .ctrl{position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:center;padding:1rem;pointer-events:none}
 .ctrl>*{pointer-events:auto}
-.pad{display:grid;grid-template-columns:repeat(3,3.4rem);grid-template-rows:repeat(3,3.4rem);touch-action:none}
-.pad span{display:flex;align-items:center;justify-content:center;background:#1f2f45;color:#d9f1ff;border-radius:.3rem;box-shadow:0 .25rem 0 #0e1826}
-.pad span.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #0e1826}
-.pad [data-k=arrowup]{grid-area:1/2}.pad [data-k=arrowleft]{grid-area:2/1}.pad [data-k=arrowright]{grid-area:2/3}.pad [data-k=arrowdown]{grid-area:3/2}
+/* Decided 15 Nov: a round stick like Bread's and Math Force's instead of the
+   cross pad, so every game steers the same way on a phone. Push it the way the
+   boat should go, as far as you like; lifting the thumb stops the boat. */
+.stick{position:relative;width:9rem;height:9rem;border-radius:50%;background:#1f2f45;border:3px solid #0e1826;touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.8rem;height:3.8rem;margin:-1.9rem;border-radius:50%;background:#d9f1ff;box-shadow:0 .25rem 0 #8fb6cc;pointer-events:none}
 .tri{width:1.2rem;height:1.2rem;fill:currentColor}
 .horn{width:6rem;height:6rem;border-radius:50%;background:#e04848;color:#fff;font-family:"Press Start 2P",monospace;font-size:.8rem;box-shadow:0 .35rem 0 #a8302f}
 .horn:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #a8302f}
@@ -89,12 +90,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;tou
   </div>
 </div>
 <div class="ctrl" id="ctrl" hidden>
-  <div class="pad" id="pad" aria-label="Arrow pad">
-    <span data-k="arrowup"><svg class="tri" viewBox="0 0 10 10"><path d="M5 1.5 9 8.5H1z"/></svg></span>
-    <span data-k="arrowleft"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(-90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
-    <span data-k="arrowright"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(90deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
-    <span data-k="arrowdown"><svg class="tri" viewBox="0 0 10 10" style="transform:rotate(180deg)"><path d="M5 1.5 9 8.5H1z"/></svg></span>
-  </div>
+  <div class="stick" id="pad" aria-label="Steering stick"><i id="knob"></i></div>
   <button class="horn" id="hornBtn">Toot!</button>
 </div>
 
@@ -308,6 +304,7 @@ const keys = {};
 function step(dt, t) {
   const b = G.tug;
   let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
   const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; G.idle = 0; } else G.idle += dt;
   b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
   const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
@@ -439,6 +436,7 @@ function stepRiver(dt) {
     G.things.push({ kind: 'token', ch: G.run[G.got], x: VW + 1.5, y: riverY() }); G.spawn = Math.max(G.spawn, .8);
   }
   let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
   const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; }
   b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
   const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
@@ -690,15 +688,32 @@ function honk() {
   sfx.horn(); if (G) for (let i = 0; i < 4; i++) G.smoke.push({ x: G.tug.x, y: G.tug.y - 1.1 - i * .15, t: i * .05 });
 }
 $('#hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (screen === 'play') honk(); else pressStart(); });
-// the thumb pad: slide anywhere on it, like Bread's
+// the steering stick, like Bread's: the boat goes the way it's pushed
+const stick = { x: 0, y: 0, on: false, id: null };
 {
-  const pad = $('#pad'), dirs = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-  const set = (on = {}) => dirs.forEach(k => { keys[k] = !!on[k]; pad.querySelector(`[data-k=${k}]`).classList.toggle('on', !!on[k]); });
-  const aim = e => { const r = pad.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), dead = r.width * .12; set({ arrowleft: dx < -dead, arrowright: dx > dead, arrowup: dy < -dead, arrowdown: dy > dead }); };
-  let finger = null;
-  pad.addEventListener('pointerdown', e => { e.preventDefault(); finger = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (err) { } aim(e); });
-  pad.addEventListener('pointermove', e => { if (e.pointerId === finger) aim(e); });
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => pad.addEventListener(ev, e => { if (e.pointerId === finger) { finger = null; set(); } }));
+  const st = $('#pad'), knob = $('#knob');
+  const upd = e => {
+    const r = st.getBoundingClientRect(), max = r.width * .42;
+    let x = (e.clientX - r.left - r.width / 2) / max, y = (e.clientY - r.top - r.height / 2) / max; const l = Math.hypot(x, y);
+    if (l > 1) { x /= l; y /= l; }
+    stick.x = x; stick.y = y; knob.style.transform = `translate(${x * max * .7}px,${y * max * .7}px)`;
+  };
+  st.addEventListener('pointerdown', e => { e.preventDefault(); stick.id = e.pointerId; stick.on = true; try { st.setPointerCapture(e.pointerId); } catch (err) { } upd(e); });
+  st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
+  const end = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.on = false; stick.x = stick.y = 0; knob.style.transform = ''; };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => st.addEventListener(ev, end));
+}
+// A thumb on the stick and a thumb on the horn look like a pinch to iPhone
+// Safari, and quick toots look like a double tap, so the page zoomed mid play
+// in Bread and Rodeo. Decided 15 Nov: blocked the same way in every game, only
+// while playing.
+{
+  const stop = e => { if (screen === 'play' && e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
+  ['#pad', '#hornBtn'].forEach(q => $(q).addEventListener('touchstart', stop, { passive: false }));
+  let lastEnd = 0;
+  document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
 }
 
 // ---------- Screen size ----------

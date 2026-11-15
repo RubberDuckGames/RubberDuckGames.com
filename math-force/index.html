@@ -1392,10 +1392,21 @@ if (touchMode) {
   document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors. Use drills cracked walls, drops doors, and works the wire panel and terminal. Tip: turn your phone sideways for a bigger maze.';
   const st = $('#stick'), knob = $('#knob');
   const upd = e => { const r = st.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stick.x = x; stick.y = y; knob.style.transform = `translate(${x * 35}px,${y * 35}px)`; };
-  st.addEventListener('pointerdown', e => { stick.id = e.pointerId; st.setPointerCapture(e.pointerId); upd(e); });
+  st.addEventListener('pointerdown', e => { e.preventDefault(); stick.id = e.pointerId; try { st.setPointerCapture(e.pointerId); } catch (err) { } upd(e); });
   st.addEventListener('pointermove', e => { if (e.pointerId === stick.id) upd(e); });
-  const end = () => { stick.x = stick.y = 0; stick.id = null; knob.style.transform = ''; };
-  st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
+  const end = e => { if (e.pointerId !== stick.id) return; stick.x = stick.y = 0; stick.id = null; knob.style.transform = ''; };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => st.addEventListener(ev, end));
+  // A thumb on the stick and a thumb on Fire look like a pinch to iPhone Safari,
+  // and quick taps on Fire look like a double tap, so the page zoomed mid play
+  // in Bread and Rodeo. Decided 15 Nov: every game blocks it the same way while
+  // playing (the start screen and questions can still be zoomed to read).
+  const playing = () => document.body.classList.contains('playing') && $('#start').hidden;
+  const stop = e => { if (playing() && e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, stop, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) stop(e); }, { passive: false });
+  ['#stick', '#tFire', '#tWrench', '#tUse', '#tQuad'].forEach(q => $(q).addEventListener('touchstart', stop, { passive: false }));
+  let lastEnd = 0;
+  document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
 }
 
 // ---------- Start screen ----------
