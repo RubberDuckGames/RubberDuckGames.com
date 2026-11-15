@@ -2,13 +2,13 @@
 <!-- Renders the picture on each home page game card. Serve the repo root (python3 -m http.server), then for each game:
      Chrome --headless=new --hide-scrollbars --window-size=576,352 --virtual-time-budget=5000 --screenshot=bread/card.png "http://localhost:8000/brand/capture.html?g=bread"
      (Math Force and Treasure Trail at 800,500, saved to math-force/card.png and treasure-trail/card.png;
-     Tugboat Deliveries, Rodeo and Conquest at 640,384, saved to tugboat/card.png, rodeo/card.png and conquest/card.png).
+     Tugboat Deliveries, Rodeo, Conquest and Zombies of Tomorrow at 640,384, saved to tugboat/card.png, rodeo/card.png, conquest/card.png and zombies-of-tomorrow/card.png).
      Decided 28 Oct: each scene is set up by hand below; Math Force takes the floor gem out first, so the card shows nothing a player is meant to find. -->
 <style>html,body{margin:0;overflow:hidden;background:#000}iframe{border:0;position:absolute;inset:0;width:100%;height:100%}canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:2}</style>
 <iframe id="f"></iframe><canvas id="c" hidden></canvas>
 <script>
 const g = new URLSearchParams(location.search).get('g'), f = document.getElementById('f'), c = document.getElementById('c');
-f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/', tug: '/tugboat/', rodeo: '/rodeo/', cq: '/conquest/' }[g];
+f.src = { bread: '/bread/', mf: '/math-force/', tt: '/treasure-trail/', tug: '/tugboat/', rodeo: '/rodeo/', cq: '/conquest/', zot: '/zombies-of-tomorrow/' }[g];
 f.onload = () => {
   const w = f.contentWindow, d = w.document;
   if (g === 'bread') {
@@ -46,6 +46,16 @@ f.onload = () => {
       const cv = w.eval('cv'); c.width = 384; c.height = 230; c.hidden = false;
       const x = c.getContext('2d'); (function copy() { x.drawImage(cv, 72, 206, 384, 230, 0, 0, 384, 230); requestAnimationFrame(copy); })();
     }, 1200);
+  } else if (g === 'zot') {
+    // the mansion basement with the power on: A.R.P.F. awake, a sprout watching from the vent
+    setTimeout(() => {
+      w.eval(`cardEl.style.display = 'none'; loadLevel('basement'); S.flags.power = true; S.light = 1;
+        ents.find((e) => e.id === 'arpf').spr = 'arpfon';
+        ents.push(ent({ id: 'still', spr: 'sprout0', x: 9.4, y: 3.2 }));
+        P.x = 6.2; P.y = 3.4; P.a = -0.12; render();`);
+      const cv = w.eval('cv'); c.width = 640; c.height = 336; c.hidden = false;
+      const x = c.getContext('2d'); (function copy() { x.drawImage(cv, 0, 0, 640, 336, 0, 0, 640, 336); requestAnimationFrame(copy); })();
+    }, 900);
   } else if (g === 'tt') {
     w.eval(`if (typeof startVoyage === 'function') { save.current = 0; player().setup = true; showMap(); }`);
     const st = d.createElement('style'); st.textContent = '.pill,#hello{visibility:hidden!important}'; d.head.appendChild(st);
