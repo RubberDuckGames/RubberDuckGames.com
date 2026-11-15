@@ -210,7 +210,7 @@ canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 
     <canvas id="cv" data-hold></canvas>
     <div class="tops">
       <div class="info" id="info" hidden>
-        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="sniffHelp" hidden> · Sniff: <b>C</b></span><span id="jumpHelp" hidden> · Jump: <b>V</b></span><span id="diveHelp" hidden> · Dive: <b>B</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> <button class="pill" id="hayBtn" hidden>Put the hay back</button> · Help: <b>H</b></p>
+        <p><b id="infoGoal"></b> Walk: <b>arrows</b>, <b>WASD</b>, the stick or hold the mouse · Paw: <b>Space</b> (it also digs, jumps and dives where Bread can; the button shows which) · Bark: <b>Shift</b><span id="digHelp" hidden> · Dig: <b>Z</b></span><span id="sniffHelp" hidden> · Sniff: <b>C</b></span><span id="jumpHelp" hidden> · Jump: <b>V</b></span><span id="diveHelp" hidden> · Dive: <b>B</b></span><span id="pushHelp" hidden> · Push: walk into hay</span> <button class="pill" id="hayBtn" hidden>Put the hay back</button> · Help: <b>H</b></p>
         <button class="pill" id="infoClose" aria-label="Close help">✕</button>
       </div>
       <div class="goal" id="goal" hidden></div>
@@ -2403,7 +2403,7 @@ function stageTarget() {
 // Decided 28 Oct: digging, learned from the farm pig. It works next to soft
 // dirt (treats, the rubber chicken, the gold paw at the farm) and on the
 // fence where Crumb dug under. Back at the pond there's soft dirt waiting.
-function showDig() { $('#digBtn').hidden = !S.moves.dig; $('#digHelp').hidden = !S.moves.dig; $('#pushHelp').hidden = !S.moves.push; $('#sniffBtn').hidden = !S.moves.sniff; $('#sniffHelp').hidden = !S.moves.sniff; $('#jumpBtn').hidden = !S.moves.jump; $('#jumpHelp').hidden = !S.moves.jump; $('#diveBtn').hidden = !S.moves.dive; $('#diveHelp').hidden = !S.moves.dive; }
+function showDig() { $('#pushHelp').hidden = !S.moves.push; $('#sniffBtn').hidden = !S.moves.sniff; $('#sniffHelp').hidden = !S.moves.sniff; ['#digBtn', '#digHelp', '#jumpBtn', '#jumpHelp', '#diveBtn', '#diveHelp'].forEach(q => $(q).hidden = true); }   // dig, jump and dive are on the action button now
 function digSpot() {
   const b = G.bread; let best = null, bd = 1.5;
   for (let y = Math.floor(b.y) - 1; y <= Math.floor(b.y) + 1; y++) for (let x = Math.floor(b.x) - 1; x <= Math.floor(b.x) + 1; x++) {
@@ -2411,6 +2411,41 @@ function digSpot() {
     const d = Math.hypot(x + .5 - b.x, y + .5 - b.y); if (d < bd) { bd = d; best = [x, y]; }
   }
   return best;
+}
+// Decided 15 Nov, after Bread had six move buttons: one action button, like
+// the A button on a Nintendo controller. It does what fits where Bread is:
+// paw a baddie in reach, dig on soft dirt, dive in deep water (and come back
+// up), jump a rope she's facing, and otherwise paw. The button's label and a
+// little arrow over Bread show what it will do. Bark and Sniff keep buttons of
+// their own; Z, X and V still dig and jump on a keyboard.
+function ropeAhead() {
+  const b = G.bread, [dx, dy] = Math.abs(b.dx) >= Math.abs(b.dy) ? [Math.sign(b.dx) || b.face, 0] : [0, Math.sign(b.dy)];
+  return tileAt(b.x + dx * .8, b.y + dy * .8) === 'J' || tileAt(b.x + dx * 1.3, b.y + dy * 1.3) === 'J';
+}
+function actionNow() {
+  if (screen !== 'level' || !G || G.done) return 'paw';
+  const b = G.bread;
+  if (G.riding) return 'off';
+  if (G.under) return 'up';
+  if (pawTarget() || (G.shells && G.shells.state === 'pick')) return 'paw';
+  if (S.moves.dig && digSpot()) return 'dig';
+  if (S.moves.dive && b.swim && !hits(b.x, b.y, .3, UNDER_SOLID)) return 'dive';
+  if (S.moves.jump && !b.swim && ropeAhead()) return 'jump';
+  return 'paw';
+}
+function act() {
+  if (screen !== 'level') return paw();
+  const a = actionNow();
+  if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
+}
+const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump' };
+const ARROW_UP = ['..h..', '.hhh.', 'hhhhh', '.hhh.', '.hhh.'], ARROW_DOWN = [...ARROW_UP].reverse();
+const ACT_ICON = { dig: [ARROW_DOWN, '#b8773a'], dive: [ARROW_DOWN, '#3a8fd8'], up: [ARROW_UP, '#3a8fd8'], jump: [ARROW_UP, '#ffd23f'] };
+let shownAct = '';
+function showAct() {                           // the action button says what it will do
+  const a = screen === 'level' ? actionNow() : 'paw';
+  if (a !== shownAct) { shownAct = a; $('#pawBtn').textContent = ACT_LABEL[a]; }
+  return a;
 }
 function dig() {
   if (screen !== 'level' || !G || G.done || G.digT > 0) return;
@@ -2674,7 +2709,7 @@ function paw() {
   if (!last) { hitGoose(); return; }
   sfx.catch(); hudLevel();
 }
-$('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); paw(); });
+$('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); act(); });
 $('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
 $('#sniffBtn').addEventListener('pointerdown', e => { e.preventDefault(); sniff(); });
 $('#jumpBtn').addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
@@ -3067,6 +3102,8 @@ function drawLevel(t) {
     if (G.muddy && !b.swim) [[-7, -9], [-2, -6], [4, -10], [-5, -4], [2, -4]].forEach(([dx, dy], i) => { if (i < 2 + G.muddy) px(b.x * T + dx * b.face, by + dy, 2, 2, '#6b4a2a'); });   // muddy spots
     if (clip) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
   }
+  { const ic = !G.hold && !G.done && ACT_ICON[actionNow()];   // a little arrow over Bread: what the action button will do
+    if (ic) put(sprite(ic[0], { map: { h: ic[1] } }), b.x * T - 3, b.y * T - (b.swim && !G.under ? 22 : 30) - (Math.floor(t / 300) % 2)); }
   if (G.carry && !G.hold) put(sprite(EGG, { map: { e: EGG_COL[G.carry.col] } }), b.x * T + b.face * 11 - 3, b.y * T - 4);   // the egg in her mouth
   if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
   if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
@@ -3232,12 +3269,11 @@ addEventListener('keydown', e => {
   // was Paw, which was a stretch. The old letters still work.
   if (e.repeat) return;
   if (k === 'shift' || k === 'b' || (k === ' ' && screen !== 'level')) bark();
-  if ((k === ' ' || k === 'p' || k === 'enter') && screen === 'level') { e.preventDefault(); paw(); }
+  if ((k === ' ' || k === 'p' || k === 'enter') && screen === 'level') { e.preventDefault(); act(); }
   if (k === 'h' && screen === 'level') help();
   if ((k === 'z' || k === 'x') && screen === 'level') dig();
   if (k === 'c' && screen === 'level') sniff();
   if (k === 'v' && screen === 'level') jump();
-  if (k === 'b' && screen === 'level') dive();
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
@@ -3316,6 +3352,7 @@ function loop(t) {
     drawMap(t);
     if (ride.t >= 1) { const then = ride.then; ride = null; then(); }
   } else if (screen === 'level' && G) { if ($('#cover').hidden) stepLevel(dt, t); drawLevel(t); }
+  showAct();
   snap();
   out.imageSmoothingEnabled = false;
   out.drawImage(lo, 0, 0, cv.width, cv.height);
