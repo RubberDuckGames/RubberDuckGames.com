@@ -194,7 +194,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   are a cake or a present (`PARTY_ITEMS`; delivering one plays Happy Birthday),
   bunting along the top shore, and a cake on the shore that gets a candle per
   delivery; the third one plays the whole tune, and the candles blow out with
-  confetti and start again. It shows only in the party month
+  confetti and start again. Decided 14 Nov, his ask: then he takes the cake.
+  The docket shows the cake going onto the tugboat (`G.cakeTake`; the
+  delivery he was on waits in `G.paused`, and the cake waits until he isn't
+  carrying anything), the shore cake blinks, and driving up to it makes it hop
+  onto the bow, where it rides along (up to three stacked, `G.cakes`, for this
+  trip only); a new cake appears on the shore. It shows only in the party month
   (`S.partyMonth`), which a grown-up picks on the Boat name card; like the
   name, it stays on the device so the month isn't in this public repo.
   `?party` in the address shows it in any month.
