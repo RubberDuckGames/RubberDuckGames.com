@@ -303,7 +303,7 @@ function snap() {
 // Sound is one setting for the whole computer, so it has its own key and
 // isn't part of a file.
 const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
-const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, museum: {}, ocean: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff, jump, dive)
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, museum: {}, ocean: {}, jungle: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff, jump, dive)
 const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
 const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
 let me = null;   // the open file's number
@@ -352,6 +352,9 @@ const ITEMS = {
   shark: { slot: 'body', name: 'Shark costume', world: 'ocean' },
   snorkel: { slot: 'face', name: 'Snorkel mask', world: 'ocean' },
   pirateHat: { slot: 'hat', name: 'Pirate hat', world: 'ocean' },
+  cavePup: { slot: 'body', name: 'Cave pup costume', world: 'Dino Land' },
+  boneClip: { slot: 'hat', name: 'Bone hair clip', world: 'Dino Land' },
+  toothNecklace: { slot: 'neck', name: 'Tooth necklace', world: 'Dino Land' },
   bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
   shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
   party: { slot: 'hat', name: 'Party hat', cost: 40 },
@@ -368,6 +371,7 @@ const PARTS = {
   aquarium: [['beat', 'Octopus costume'], ['starfish', 'Starfish clip'], ['pearls', 'Pearl necklace'], ['toyFish', 'Toy fish'], ['gold', 'Gold paw print']],
   museum: [['beat', 'Dino costume'], ['rocketHat', 'Rocket hat'], ['medal', 'Museum medal'], ['toyRocket', 'Toy rocket'], ['gold', 'Gold paw print']],
   ocean: [['beat', 'Shark costume'], ['snorkel', 'Snorkel mask'], ['pirateHat', 'Pirate hat'], ['conch', 'Conch shell'], ['gold', 'Gold paw print']],
+  jungle: [['beat', 'Cave pup costume'], ['boneClip', 'Bone hair clip'], ['toothNecklace', 'Tooth necklace'], ['fossil', 'Fossil'], ['gold', 'Gold paw print']],
 };
 
 // ---------- Sounds ----------
@@ -543,6 +547,9 @@ const WEAR_PIX = {
   sharkTeeth: [17, 11, ['h.h.h']],
   snorkel: [13, 5, ['uuuuuuuu', '...ullu.', '...uuuu.']],
   pirateHat: [11, -3, ['...nnnn...', '..nnhnnn..', 'nnnnnnnnnn']],
+  leopard: [5, 8, ['.n...n...n.', '...n...n...', 'n.....n....']],   // spots on the cave pup costume
+  boneClip: [13, -2, ['h...h', 'hhhhh', 'h...h']],
+  toothNecklace: [11, 9, ['ttttt', 'h.h.h']],
 };
 function breadRows(frame, wear) {
   const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
@@ -555,6 +562,7 @@ function breadRows(frame, wear) {
   if (wear.body === 'octopus') { over(WEAR_PIX.octoSpots); over(WEAR_PIX.octoArms); }
   if (wear.body === 'dino') over(WEAR_PIX.dinoSpikes);
   if (wear.body === 'shark') { over(WEAR_PIX.sharkFin); over(WEAR_PIX.sharkTeeth); }
+  if (wear.body === 'cavePup') over(WEAR_PIX.leopard);
   if (wear.neck) over(WEAR_PIX[wear.neck]);
   if (wear.face) over(WEAR_PIX[wear.face]);
   if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
@@ -571,6 +579,7 @@ function wearMap(wear) {
   if (wear.body === 'chicken') Object.assign(map, { o: COL.h, d: COL.g, p: COL.r });
   if (wear.body === 'octopus') Object.assign(map, { o: COL.M, d: COL.N, p: COL.N });
   if (wear.body === 'dino') Object.assign(map, { o: COL.L, d: COL.G, p: COL.q });
+  if (wear.body === 'cavePup') Object.assign(map, { o: '#e8b35a', d: '#b07a2a', p: '#b07a2a' });
   if (wear.body === 'shark') Object.assign(map, { o: '#8fa3bd', d: '#5f7290', p: '#5f7290' });
   if (wear.feet === 'duckFeet') map.f = COL.b;
   return map;
@@ -694,8 +703,24 @@ const BIG_SHARK = ['...............gg...............', '..............ggg.......
 const FIN = ['...g', '..gg', '.ggg', 'gggg'];
 const SURFBOARD = ['..yyyyyyyyyyyy..', '.yyrrrrrrrrrrryy', '..yyyyyyyyyyyy..'];
 const ROCKET = ['..r..', '.rhr.', '.hlh.', '.hhh.', 'rhhhr', 'r.y.r', '..y..'];
+// Dino Land (decided 15 Nov): the long-neck dinosaur Crumb climbs, little
+// raptors for baddies, big ferns for the long-neck to eat, a fossil to dig up.
+const LONGNECK = (() => {
+  const legs = ['............GGG..GGG....GGG..GGG...L', '............LLL..LLL....LLL..LLL....', '............LLL..LLL....LLL..LLL....', '............LLL..LLL....LLL..LLL....', '............qqq..qqq....qqq..qqq....'];
+  const up = ['...LLLL.............................', '..LLnLLL............................', '..LLLLLLL...........................', '....LLLL............................', '.....LLL............................', '......LLL...........................', '.......LLL..........................', '........LLL.........................', '.........LLL........................', '..........LLL.......................', '...........LLL......................', '............LLLL....................',
+    '.............LLLLLLLLLLLL...........', '............LLLLLLLLLLLLLLLL........', '...........LLLLLLLLLLLLLLLLLLL......', '...........LLLLLLLLLLLLLLLLLLLLL....', '...........LGGLLLLLLLLLLLLLLLLLLLL..', '...........LGGGGGGGGGGGGGGGLLLLLLLLL', ...legs];
+  const down = [...Array(12).fill('.'.repeat(36)),
+    '.............LLLLLLLLLLLL...........', '..........LLLLLLLLLLLLLLLLLL........', '.LLLL..LLLLLLLLLLLLLLLLLLLLLL.......', 'LLnLLLLLLLLLLLLLLLLLLLLLLLLLLL......', 'LLLLLLL....LGGLLLLLLLLLLLLLLLLLLLL..', '.LLL.......LGGGGGGGGGGGGGGGLLLLLLLLL', ...legs];
+  return { up, down };
+})();
+const RAPTOR = [
+  ['.........LL.', '........LLnL', '........LLLLL', '...LLLLLLLL..', 'LLLLLLLLLL...', '....LLLLL.L..', '....L...L....', '...LL..LL....'],
+  ['.........LL.', '........LLnL', '........LLLLL', '...LLLLLLLL..', 'LLLLLLLLLL...', '....LLLLL.L..', '.....L.L.....', '....LL.LL....'],
+];
+const FERN = ['....L....', '..L.L.L..', '.L.LLL.L.', 'L.LL.LL.L', '..LLGLL..', 'L..LGL..L', '...GGG...'];
+const AMMONITE = ['..ggg..', '.g...g.', 'g..g..g', 'g.g.g.g', 'g..gg.g', '.g...g.', '..ggg..'];
 // toys for the shelf at home
-const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH }, toyRocket: { name: 'toy rocket', pic: ROCKET }, conch: { name: 'conch shell', pic: SHELL } };
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH }, toyRocket: { name: 'toy rocket', pic: ROCKET }, conch: { name: 'conch shell', pic: SHELL }, fossil: { name: 'fossil', pic: AMMONITE } };
 const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
 const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
 const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
@@ -731,6 +756,7 @@ const CRUMB_ITEMS = {
   mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
   chick: { slot: 'body', name: 'Chick costume', world: 'coop', map: { D: COL.e, s: COL.y, p: COL.e }, pix: [15, 4, ['YY', '.Y']] },
   foal: { slot: 'body', name: 'Foal costume', world: 'horse ring', map: { D: COL.t, s: COL.s, p: COL.t }, pix: [8, 1, ['n.', 'nn', 'nn', 'n.']] },
+  triceratops: { slot: 'body', name: 'Triceratops costume', world: 'Dino Land', map: { D: COL.L, s: COL.G, p: COL.G }, pix: [9, 0, ['h...', '.qq.', 'qqqq']] },
   astronaut: { slot: 'body', name: 'Astronaut costume', world: 'museum', map: { D: COL.h, s: COL.g, p: COL.g }, pix: [11, 3, ['lll', 'lll']] },
   turtle: { slot: 'body', name: 'Sea turtle costume', world: 'ocean', map: { D: COL.G, s: '#9be27a', p: '#9be27a' }, pix: [3, 5, ['..ttttt...', '.tqtttqt..', 'tttqqtttt.']] },
   clownfish: { slot: 'body', name: 'Clownfish costume', world: 'aquarium', map: { D: COL.b, s: COL.h, p: COL.b }, pix: [6, 4, ['.b..', 'bbb.', '.h..', '.h..', '.h..', '.h..']] },
@@ -812,7 +838,7 @@ function drawHome(t) {
 // it, so small things (the bow tie) still fill their tile. Things not found
 // yet are dark shapes.
 const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
-const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2], dino: DINOSAUR, rocketHat: WEAR_PIX.rocketHat[2], medal: WEAR_PIX.medal[2], shark: BIG_SHARK, snorkel: WEAR_PIX.snorkel[2], pirateHat: WEAR_PIX.pirateHat[2] };
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2], dino: DINOSAUR, rocketHat: WEAR_PIX.rocketHat[2], medal: WEAR_PIX.medal[2], shark: BIG_SHARK, snorkel: WEAR_PIX.snorkel[2], pirateHat: WEAR_PIX.pirateHat[2], cavePup: BIG_BONE, boneClip: WEAR_PIX.boneClip[2], toothNecklace: WEAR_PIX.toothNecklace[2] };
 const picCache = {};
 function pic(rows, dark, colors = {}) {
   const key = rows.join('/') + dark + JSON.stringify(colors);
@@ -1018,6 +1044,7 @@ function drawMap(t) {
       put(sprite(DINOSAUR), X + 18, Y + 18);
       if (!S.aquarium.beat) { px(X + 16, Y + 16, 12, 10, LINE); px(X + 17, Y + 17, 10, 8, COL.y); px(X + 18, Y + 12, 8, 1, LINE); px(X + 18, Y + 12, 1, 6, LINE); px(X + 25, Y + 12, 1, 6, LINE); }
       else pips(['museum'], X + 54, Y + 34);   // beside the steps
+      if (S.museum.beat) { drawTimeDoor(X + 66, Y + 33, t, true); pips(['jungle'], X + 80, Y + 34); }   // the time door to Dino Land, once the museum is done
     }
   }
   // the ocean: a strip of beach and sea along the bottom, with a shark fin
@@ -1402,6 +1429,7 @@ const MUSE = (() => {
     spots: { rocketHat: [33.5, 9.5], medal: [2.5, 14.5], toyRocket: [33.5, 15.5] },
     goldSpots: [[1.5, 16.5], [24.5, 1.5], [21.5, 2.5]],
     crumbSpots: { astronaut: [24.5, 9.5] },
+    timeDoor: [20.5, 5.2],   // in the hall; it wakes up once the museum is done
   };
 })();
 // The ocean (decided 15 Nov: the next stop after the museum, the plan's
@@ -1432,6 +1460,53 @@ const OCEAN = (() => {
     deep: ['snorkel', 'pirateHat', 'turtle'],
     goldSpots: [[1.5, 19.5], [33.5, 1.5], [33.5, 13.5]],
     crumbSpots: { turtle: [27.5, 10.5] },                                           // on the sea floor
+  };
+})();
+// Dino Land (decided 15 Nov: the time door, from the 28 Oct plan). Once the
+// museum is done, the time door in the dinosaur's hall glows; going through
+// it is a trip of its own. Crumb dashes ahead across the river and climbs a
+// long-neck dinosaur. The long-neck is hungry: find three big ferns (one in a
+// ring of fallen logs, a jump; one across the river; one at the end of a
+// leafy maze, a sniff) and feed it, and it lowers its head so Crumb can slide
+// down. Then back to the time door. There's a fossil pit to dig in, little
+// raptors for baddies, and a volcano smoking at the top. J is a fallen log
+// (jump it), E solid ground under the volcano and the long-neck.
+const JUNGLE = (() => {
+  const r = seeded(11), m = [];
+  for (let y = 0; y < 22; y++) { m.push([]); for (let x = 0; x < 36; x++) m[y].push(x === 0 || x === 35 || y === 0 || y === 21 ? 'T' : y === 8 || y === 9 ? 'w' : '.'); }
+  for (let y = 10; y <= 20; y++) for (const x of [17, 18]) m[y][x] = 'p';                                  // the path from the time door to the river
+  m[21][17] = m[21][18] = 'E';
+  for (let x = 22; x <= 28; x++) m[1][x] = 'E'; for (let x = 23; x <= 27; x++) m[2][x] = 'E';               // the volcano's foot
+  m[4][18] = m[4][19] = m[4][20] = 'E';                                                                   // the long-neck's feet
+  // the leafy maze in the north-west, carved from its way in
+  const X0 = 1, Y0 = 1, cw = 9, ch = 7;
+  for (let y = Y0; y < Y0 + ch; y++) for (let x = X0; x < X0 + cw; x++) m[y][x] = 'H';
+  const start = [9, 7], seen = new Set([start + '']), stack = [start]; m[7][9] = '.';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= X0 && a < X0 + cw && b >= Y0 && b < Y0 + ch && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = '.'; m[(y + ny) / 2][(x + nx) / 2] = '.'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  const far = [...seen].map(k => k.split(',').map(Number)).sort((a, b) => Math.hypot(b[0] - 9, b[1] - 7) - Math.hypot(a[0] - 9, a[1] - 7))[0];
+  // a ring of fallen logs in the south-east, with a fern inside
+  for (let x = 26; x <= 31; x++) { m[13][x] = 'J'; m[18][x] = 'J'; } for (let y = 14; y <= 17; y++) { m[y][26] = 'J'; m[y][31] = 'J'; }
+  // the fossil pit in the south-west: tar and mounds to dig
+  for (const [x, y] of [[4, 13], [5, 13], [4, 14], [9, 16], [10, 16], [9, 17]]) m[y][x] = 'm';
+  const mounds = [[3, 16], [6, 15], [8, 13], [7, 18], [11, 14]];
+  mounds.forEach(([x, y]) => m[y][x] = 'x');
+  // jungle trees and bushes, clear of the paths and places
+  const keep = (x, y) => (x >= 15 && x <= 21) || (y >= 7 && y <= 10) || (x >= 25 && x <= 32 && y >= 12) || (x <= 12 && y >= 11) || (x <= 10 && y <= 7) || (x >= 21 && x <= 29 && y <= 3) || (x >= 29 && y <= 4);
+  for (let i = 0; i < 40; i++) { const x = 1 + Math.floor(r() * 34), y = 1 + Math.floor(r() * 19); if (m[y][x] === '.' && !keep(x, y)) m[y][x] = i % 3 ? 'T' : 'b'; }
+  const mid = ([x, y]) => [x + .5, y + .5];
+  return {
+    m, start: [18, 18.4], car: [18, 20.4], run: [[18, 15], [18, 10], [18.6, 6.2]], crumbAt: [18.56, 2.9],
+    neck: [18.5, 4.6], slide: [[18.56, 2.9], [17.6, 3.4], [16.6, 4.6]],   // drawn twice as big, so Crumb sits high on its back
+    ferns: [[28.5, 15.5], [31.5, 2.5], mid(far)],
+    fossilMound: mounds[3], volcano: [25, 2],
+    spots: { boneClip: [33.5, 19.5], toothNecklace: [1.5, 9.5 + 2] },
+    goldSpots: mounds.filter((p, i) => i !== 3).slice(0, 2).map(mid).concat([[33.5, 6.5]]),
+    crumbSpots: { triceratops: [12.5, 2.5] },
   };
 })();
 const inSpace = (x, y) => { const [x0, y0, x1, y1] = MUSE.space; return G && G.world === 'museum' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
@@ -1551,6 +1626,23 @@ const WORLDS = {
       if (G.stage === 'waves') return { x: OCEAN.gap[0], y: OCEAN.gap[1] };
       if (G.stage === 'island') return G.crumb;
       if (G.stage === 'board') return { x: OCEAN.board[0], y: OCEAN.board[1] };
+    },
+  },
+  jungle: {
+    key: 'jungle', name: 'Dino Land', Name: 'Dino Land', map: JUNGLE, stop: 4, costume: 'cavePup', pic: BIG_BONE, baddies: 'Raptors caught', noFleas: true, soil: 2, open: '.p',
+    exit: { ask: 'Go back through the time door?', go: '🚪 Go through' },   // no car here: the trip ends at the time door
+    goals: { find: 'Find Crumb', ferns: 'Find three big ferns', feed: 'Feed the long-neck', down: 'Get Crumb', back: 'Take Crumb to the time door' },
+    setup() {
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6, '.', (x, y) => y > 10 && !(x <= 12 && y >= 11)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, raptor: true }); }
+      G.ferns = JUNGLE.ferns.map(([x, y]) => ({ x, y, got: false }));
+      G.neck = { fed: false, t: 0, slide: 0 };
+      stage('find', 'Crumb ran through the time door!');
+    },
+    step(b, dt) { stepJungle(b, dt); },
+    reached: () => G.neck.slide >= 1,
+    target() {
+      if (G.stage === 'ferns') return G.ferns.filter(f => !f.got).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
+      if (G.stage === 'feed') return { x: JUNGLE.neck[0] - 1.9, y: JUNGLE.neck[1] + .4 };
     },
   },
   aquarium: {
@@ -1875,6 +1967,60 @@ function drawOcean(t) {
   // the surfboard, once found, floats along beside Bread
   if (G.boardUp && G.crumb.mode === 'wait') put(sprite(SURFBOARD, { flip: b.face < 0 }), b.x * T - 8 - b.face * 10, b.y * T + 2);
 }
+// ---------- Dino Land ----------
+function stepJungle(b, dt) {
+  const n = G.neck; n.t += dt;
+  const [nx, ny] = JUNGLE.neck;
+  if (G.stage === 'find' && G.crumb.mode === 'wait' && Math.hypot(nx - b.x, ny + .6 - b.y) < 3.6) stage('ferns', 'Crumb is up on the long-neck! It looks hungry.');
+  G.ferns.forEach(f => {
+    if (f.got || Math.hypot(f.x - b.x, f.y - b.y) > .7) return;
+    f.got = true; burst(f.x, f.y, COL.L);
+    const left = G.ferns.filter(o => !o.got).length;
+    hold(FERN, left ? 'A big fern!' : 'Three big ferns!', () => { if (!left) stage('feed', 'Take them to the long-neck!'); });
+  });
+  if (G.stage === 'feed' && !n.fed && Math.hypot(nx - 1.9 - b.x, ny + .4 - b.y) < 2.6) {
+    n.fed = true; sfx.roar(); G.pops.push({ x: nx - 1.4, y: ny - .2, txt: 'Munch!', t: 0, c: LINE });
+    toast('The long-neck put its head down!');
+  }
+  if (n.fed && n.slide < 1) {                    // Crumb slides down the long-neck's neck
+    n.slide = Math.min(1, n.slide + dt / 1.6);
+    const P = JUNGLE.slide, k = n.slide * (P.length - 1), i = Math.min(P.length - 2, Math.floor(k)), f = k - i, c = G.crumb;
+    c.x = P[i][0] + (P[i + 1][0] - P[i][0]) * f; c.y = P[i][1] + (P[i + 1][1] - P[i][1]) * f; c.face = -1;
+    if (n.slide >= 1) { sfx.squeak(); stage('down', 'Wheee! Crumb slid down!'); }
+  }
+}
+// a fallen log: shaded bark, lying the way the logs run
+function logTile(vert) {
+  return paint('log' + vert, T, T, (set, fill, r) => {
+    const L = '#4a2c18';
+    if (!vert) { fill(0, 4, T, 10, L); fill(0, 5, T, 2, '#a8743f'); fill(0, 7, T, 5, '#8a5a34'); fill(0, 12, T, 1, '#6b4226'); for (let i = 0; i < 4; i++) fill(Math.floor(r() * 12), 8 + Math.floor(r() * 3), 3, 1, '#6b4226'); fill(0, 14, T, 1, GRASS.dark); }
+    else { fill(3, 0, 10, T, L); fill(4, 0, 2, T, '#a8743f'); fill(6, 0, 5, T, '#8a5a34'); fill(11, 0, 1, T, '#6b4226'); for (let i = 0; i < 4; i++) fill(7 + Math.floor(r() * 3), Math.floor(r() * 12), 1, 3, '#6b4226'); fill(13, 0, 1, T, GRASS.dark); }
+  });
+}
+// the time door: a stone arch with a swirl of color inside when it's awake
+function drawTimeDoor(cx0, groundY, t, on) {
+  const X = Math.round(cx0 - 11), Y = Math.round(groundY - 28);
+  px(X, Y, 22, 28, LINE); px(X + 1, Y + 1, 20, 27, '#7d8091'); px(X + 1, Y + 1, 20, 2, '#a7aab8'); px(X + 1, Y + 1, 2, 27, '#a7aab8');
+  for (let i = 0; i < 4; i++) px(X + 3 + i * 5, Y + 2, 1, 2, '#666979');
+  px(X + 4, Y + 5, 14, 23, LINE);
+  const C = on ? ['#7b4fa0', '#a07bc4', '#5ad1e0', '#e8a0bf'] : ['#2b2b33', '#3a3a44', '#2b2b33', '#3a3a44'];
+  for (let k = 0; k < 6; k++) px(X + 5 + k, Y + 6 + k, 12 - k * 2, 22 - k * 2, C[(k + (on ? Math.floor(t / 150) : 0)) % 4]);
+  if (on) { const s = Math.floor(t / 200) % 3; px(X + 7 + s * 3, Y + 9 + s * 4, 1, 1, '#ffffff'); px(X + 14 - s * 2, Y + 20 - s * 3, 1, 1, '#ffffff'); }
+}
+function drawJungle(t) {
+  // the volcano at the top, smoking
+  { const [vx, vy] = JUNGLE.volcano, X = vx * T + 8, Y = vy * T + 10;
+    for (let i = 0; i < 30; i++) { const w = 12 + i * 3.4; px(X - w / 2, Y - 30 + i, w, 1, i < 3 ? '#e04848' : i % 7 === 0 ? '#5e4a40' : '#7a6458'); px(X - w / 2, Y - 30 + i, 2, 1, '#4a3a30'); px(X + w / 2 - 2, Y - 30 + i, 2, 1, '#4a3a30'); }
+    px(X - 6, Y - 31, 12, 2, '#ffd23f'); px(X - 3, Y - 26, 2, 10, '#e04848'); px(X + 2, Y - 24, 2, 8, '#ff8a1f');   // lava at the top, running down
+    for (let k = 0; k < 3; k++) { const a = (t / 900 + k / 3) % 1; put(sprite(blob(10, 8, 'g', 'g', 'h')), X - 5 + Math.sin(a * 6 + k) * 4, Y - 36 - a * 28); } }
+  // the ferns still to find
+  G.ferns.forEach(f => { if (!f.got) put(sprite(FERN), f.x * T - 5, f.y * T - 6 + (Math.floor(t / 500 + f.x) % 2)); });
+  // the long-neck, Crumb up on its back until it's fed
+  { const [nx, ny] = JUNGLE.neck, n = G.neck, img = sprite(n.fed ? LONGNECK.down : LONGNECK.up);
+    put(img, nx * T - 36, ny * T - 46 + (Math.floor(t / 900) % 2 && !n.fed ? 2 : 0), 2); }   // twice as big: it's a giant
+  // the time door, where the trip started
+  drawTimeDoor(JUNGLE.car[0] * T, (JUNGLE.car[1] + .4) * T, t, true);
+}
 // ---------- The museum ----------
 function stepMuseum(b, dt) {
   const d = G.dino; d.t += dt;
@@ -1887,6 +2033,12 @@ function stepMuseum(b, dt) {
   }
   if (G.stage === 'rope' && inSpace(b.x, b.y)) stage('stars', 'Stars on the floor!');
   stepStars(b);
+  // the time door: asleep until the museum is done, then it takes Bread to Dino Land
+  const [tx, ty] = MUSE.timeDoor, near = Math.hypot(tx - b.x, ty + .3 - b.y) < .8;
+  if (near && !G.done && !G.hold) {
+    if (S.museum.beat) { G.done = true; sfx.sparkle(); burst(tx, ty - .8, COL.M); toast('Whoosh!'); setTimeout(() => startWorld('jungle'), 700); }
+    else if (!G.doorTip) { G.doorTip = true; toast('The time door is asleep.'); }
+  }
 }
 // Decided 14 Nov: the star puzzle. Stars on the space room floor, with faint
 // lines between some of them. Walking from a star to one it's joined to lights
@@ -1959,6 +2111,7 @@ function starLine([ax, ay], [bx, by], lit, t) {
   for (let k = 1; k < n; k++) { if (!lit && k % 3) continue; const x = (ax + (bx - ax) * k / n) * T, y = (ay + (by - ay) * k / n) * T; px(x - 1, y - 1, 2, 2, lit ? COL.y : '#5a6a9a'); }
 }
 function drawMuseum(t) {
+  drawTimeDoor(MUSE.timeDoor[0] * T, MUSE.timeDoor[1] * T, t, !!S.museum.beat);
   const d = G.dino, up = d.awake ? Math.round(Math.abs(Math.sin(d.t * 6)) * 3) : 0;
   put(sprite(DINO_BONES, { flip: true }), 11.5 * T - 28, 6 * T + 8 - 30 - up, 2);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
   const s = G.stars;
@@ -2378,6 +2531,7 @@ function dig() {
   const egg = (G.eggs || []).find(e => e.hide === 'dig' && Math.floor(e.x) === x && Math.floor(e.y) === y);
   if (egg) { egg.hide = null; toast('An egg!'); return; }
   const at = M => M && M[0] === x && M[1] === y;
+  if (at(W.map.fossilMound) && !S.jungle.fossil) { S.jungle.fossil = true; S.toys.push('fossil'); persist(); hold(AMMONITE, 'A fossil!'); return; }
   if (at(W.map.chickenMound) && !S.farm.chicken) { S.farm.chicken = true; S.toys.push('chicken'); persist(); hold(CHICKEN, 'A rubber chicken!'); return; }
   if (at(G.goldMound)) { G.treats.push({ x: x + .5, y: y + .5, v: 10 }); toast('Something shiny!'); return; }
   G.treats.push({ x: x + .2, y: y + .5, v: W.soil }, { x: x + .8, y: y + .5, v: W.soil }); toast('Treats!');
@@ -2400,7 +2554,7 @@ function hurt(o) {
 }
 function askHome() {
   G.asked = true; G.ask = true; stick.on = false; $('#toast').hidden = true;
-  $('#card').innerHTML = `<h2>Get in the car?</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">🚗 Get in</button></div>`;
+  $('#card').innerHTML = `<h2>${W.exit ? W.exit.ask : 'Get in the car?'}</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">${W.exit ? W.exit.go : '🚗 Get in'}</button></div>`;
   $('#cover').hidden = false; $('#homeGo').focus();
   $('#stayBtn').onclick = () => { $('#cover').hidden = true; G.ask = false; };
   $('#homeGo').onclick = () => {
@@ -2549,7 +2703,7 @@ function stepLevel(dt, t) {
     if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
   });
   // the car at the bottom
-  if (Math.abs(b.y - W.map.car[1]) < 1 && Math.abs(b.x - W.map.car[0]) < 2 && G.carHint <= 0 && !G.done) { G.carHint = 8; toast('The car. Go home any time.'); }
+  if (Math.abs(b.y - W.map.car[1]) < 1 && Math.abs(b.x - W.map.car[0]) < 2 && G.carHint <= 0 && !G.done && !W.exit) { G.carHint = 8; toast('The car. Go home any time.'); }
   G.carHint -= dt;
   G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
   G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
@@ -2669,6 +2823,7 @@ function drawTreat(x, y, v, t) {
 }
 function drawSquirrel(s, t) {
   const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
+  if (s.raptor) { put(sprite(RAPTOR[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 7); if (s.stun > 0) text('!', s.x * T, s.y * T - 10); return; }
   if (s.robot) { put(sprite(ROBOT[frame], { flip: f < 0 }), s.x * T - 5, s.y * T - 9); if (s.stun > 0) text('!', s.x * T, s.y * T - 12); return; }
   if (s.crab || s.jelly) {
     const img = sprite((s.crab ? CRAB : JELLY)[s.jelly ? Math.floor(s.t * 2) % 2 : frame]), lift = s.jelly ? 6 + Math.round(Math.sin(s.t * 3) * 2) : 0;
@@ -3047,6 +3202,7 @@ function drawLevel(t) {
       if (c === '#' && (x === 0 || x === LW - 1 || (G.m[y - 1]?.[x] === '#' && G.m[y][x - 1] !== '#' && G.m[y][x + 1] !== '#')) && y > 0 && y < LH - 1) sideFence(X, Y, '#fffaf0');
       else if (c === '#') put(fenceTile('white'), X, Y);   // white picket fence
       if (c === 'T') put(trunkTile(), X, Y);
+      if (c === 'J') put(logTile(G.m[y - 1]?.[x] === 'J' || G.m[y + 1]?.[x] === 'J'), X, Y);   // a fallen log, at Dino Land
       if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
       if (c === 'o') { px(X + 3, Y + 7, 10, 6, '#4a2c18'); px(X + 4, Y + 8, 8, 4, '#2a1a10'); px(X + 4, Y + 11, 8, 1, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 1, Y + 11, 2, 1, '#b8773a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 2, 1, '#b8773a'); }   // a dug hole
       if (c === 'h') put(haleTile(false), X, Y);   // a hay bale
@@ -3080,7 +3236,8 @@ function drawLevel(t) {
   if (G.octo) drawAquarium(t);
   if (G.dino) drawMuseum(t);
   if (G.world === 'ocean') drawOcean(t);
-  drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
+  if (G.world === 'jungle') drawJungle(t);
+  else drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
   G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
   (G.eggs || []).forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: EGG_COL[e.col] } }), e.x * T - 3, e.y * T - 3 - (Math.floor(t / 400 + e.x) % 2)); });
   if (G.piglet) put(sprite(PIGLET, { flip: Math.floor(t / 900) % 2 === 1 }), G.piglet.x * T - 4, G.piglet.y * T - 3 + (Math.floor(t / 300) % 2));
@@ -3229,7 +3386,7 @@ function drawHints(b, t) {
     const next = G.song.state === 'listen' ? [G.frogs[G.song.seq[G.song.i]]] : G.frogs;
     cx.globalAlpha = .6; next.forEach(f => px(f.x * T - 12, f.y * T - 12, 24, 17, COL.h)); cx.globalAlpha = 1;
   }
-  if (G.world === 'aquarium' || G.world === 'museum' || G.world === 'ocean') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
+  if (G.world === 'aquarium' || G.world === 'museum' || G.world === 'ocean' || G.world === 'jungle') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
   if (G.world !== 'farm') return;
   if (G.eggs && G.stage === 'eggs') {
     if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); flashTile(n[0], n[1], COL.y); }
