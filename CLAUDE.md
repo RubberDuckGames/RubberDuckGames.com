@@ -141,6 +141,14 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   goes by itself (or with a key or a tap) onto the map. The map uses the play
   controls: the pad (arrows, stick or cross pad) drives toward the place it
   points at (`mapDir`), and Paw, Space or Enter goes in.
+  Decided 15 Nov: the map is a little town instead of one winding road that
+  passed every place in turn (the ocean was the far end of a long loop). A
+  main street runs across the middle with a dashed line; the farm and the
+  museum sit on it, home, the pond and the aquarium up short side streets,
+  and the ocean down one to the beach along the bottom (`STOPS[].jx`, `.at`,
+  `MAIN_Y`). Left and right go to the next place along the main street, up
+  and down to the nearest place on that side; the car drives straight there
+  (`routeTo`, `along`).
   Decided 5 Nov, after a play-test with a tester who skips words: the ? button
   (or H) makes the next thing light up and flash, while the help bar is open
   and for 5 seconds after (`drawHints`, `HINT_MS`). It flashed by itself after
