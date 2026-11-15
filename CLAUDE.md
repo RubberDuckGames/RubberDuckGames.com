@@ -220,6 +220,19 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   can only be picked up under the water (`OCEAN.deep`). Pieces: shark costume,
   snorkel mask (lagoon floor), pirate hat (the sunken ship), conch shell (up
   the beach), gold paw; Crumb's sea turtle costume is on the sea floor.
+  Decided 15 Nov: the time door and Dino Land (`JUNGLE`, `WORLDS.jungle`,
+  `S.jungle`), from the 28 Oct plan. The time door stands in the museum's
+  hall, asleep until the museum is done; then walking into it is a trip of
+  its own (no new stop on the map: the door shows beside the museum, with
+  Dino Land's flag, and the trip ends back at the museum stop). There's no
+  car in Dino Land; the trip starts and ends at the time door (`W.exit`).
+  Crumb dashes across the river and climbs a giant long-neck dinosaur. Find
+  three big ferns (one in a ring of fallen logs, a jump; one across the river;
+  one at the end of a leafy maze), feed the long-neck, it lowers its head and
+  Crumb slides down, then back to the door. Raptors are the baddies, no fleas;
+  a fossil pit to dig in, a smoking volcano. No new move: it uses the ones
+  Bread has. Pieces: cave pup costume, bone hair clip, tooth necklace, fossil
+  (dug up in the pit), gold paw; Crumb's triceratops costume is by the maze.
 - `tugboat/index.html` is Tugboat Deliveries, a separate game designed by the
   youngest kid tester (Trello card #45; he's almost 3 and knows the arrow keys
   and the space bar). Decided 29 Oct: 8-bit like Bread, one harbor that fits
