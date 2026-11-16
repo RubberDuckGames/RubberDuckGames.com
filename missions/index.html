@@ -232,7 +232,8 @@ const C = {
 
 // ---- The map: his graph-paper drawing, about one of his squares to a tile ----
 // Red pen on his paper is roads, grey pencil is hills, boxes are buildings,
-// circled letters look like helipads (ASK what the letters and numbers mean).
+// circled letters look like helipads. 16 Nov, his letters on the boxes:
+// B = barracks, BT = tank barracks, A = artillery (not mapped onto the boxes yet).
 const W = 56, H = 37;
 const loop = (cx, cy, rx, ry) => { const p = []; for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2; p.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return p; };
 const ROADS = [
@@ -546,13 +547,22 @@ function stickMove(e) {
   stick.x = dx / R; stick.y = dy / R;
   knob.style.transform = `translate(${dx}px,${dy}px)`;
 }
-stickEl.addEventListener('pointerdown', e => { stick.id = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickMove(e); });
+stickEl.addEventListener('pointerdown', e => { stick.id = e.pointerId; try { stickEl.setPointerCapture(e.pointerId); } catch (_) {} stickMove(e); });
 stickEl.addEventListener('pointermove', e => { if (e.pointerId === stick.id) stickMove(e); });
 const stickEnd = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.x = stick.y = 0; knob.style.transform = ''; };
-stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) stickEl.addEventListener(ev, stickEnd);
 const bFire = document.getElementById('bFire'), bUse = document.getElementById('bUse');
-bFire.addEventListener('pointerdown', e => { fireHeld = true; bFire.classList.add('down'); bFire.setPointerCapture(e.pointerId); });
-for (const ev of ['pointerup', 'pointercancel']) bFire.addEventListener(ev, () => { fireHeld = false; bFire.classList.remove('down'); });
+let fireId = null;
+bFire.addEventListener('pointerdown', e => { fireHeld = true; fireId = e.pointerId; bFire.classList.add('down'); try { bFire.setPointerCapture(e.pointerId); } catch (_) {} });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) bFire.addEventListener(ev, () => { fireHeld = false; bFire.classList.remove('down'); });
+// Let go of the stick and Fire, so a finger still down when a card opens
+// (you went down mid-fight) can't keep hold of them under the card.
+function letGo() {
+  try { if (stick.id != null) stickEl.releasePointerCapture(stick.id); if (fireId != null) bFire.releasePointerCapture(fireId); } catch (e) {}
+  fireId = null;
+  stick.id = null; stick.x = stick.y = 0; knob.style.transform = '';
+  fireHeld = false; bFire.classList.remove('down'); keys.clear();
+}
 bUse.addEventListener('click', () => use());
 
 // ---- Play ----
@@ -839,7 +849,7 @@ const cover = document.getElementById('cover'), card = document.getElementById('
 const dirEl = document.getElementById('dir'), hudEl = document.getElementById('hud'), ctrlEl = document.getElementById('ctrl');
 function showCard(html, cls = '', tab = '') {
   card.className = 'card ' + cls; card.dataset.tab = tab; card.innerHTML = html;
-  cover.hidden = false; ctrlEl.classList.remove('live'); keys.clear(); fireHeld = false;
+  cover.hidden = false; ctrlEl.classList.remove('live'); letGo();
   const f = card.querySelector('.row .btn:last-child'); if (f) f.focus();
 }
 function hideCard() { cover.hidden = true; ctrlEl.classList.add('live'); cv.focus && cv.focus(); }
@@ -951,6 +961,7 @@ function startMission() {
 function lose(why) {
   if (phase !== 'play') return;
   phase = 'lost'; G.lostWhy = why;
+  letGo(); ctrlEl.classList.remove('live');
   const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'noBoom' ? t('lostNoBoom') : t('lostShot');
   setTimeout(() => {
     showHud(false);
@@ -972,11 +983,14 @@ function win() {
 buildMap(); paintGround(); MAPL.ground = ground; buildHq(); paintHq(); resize();
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
-  if (G && cover.hidden) step(dt);
-  if (G && (phase === 'flyin' || phase === 'flyout')) hud();
-  draw(now);
+  // ask for the next frame first: one bad frame must never freeze the game
   requestAnimationFrame(frame);
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  try {
+    if (G && cover.hidden) step(dt);
+    if (G && (phase === 'flyin' || phase === 'flyout')) hud();
+    draw(now);
+  } catch (e) { console.error(e); }
 }
 titleCard();
 requestAnimationFrame(frame);
