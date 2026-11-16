@@ -23,6 +23,8 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
 .dir{white-space:normal;text-align:center;max-width:22rem}
 .hud{position:fixed;z-index:7;right:max(.9rem,env(safe-area-inset-right));top:3.4rem;display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;pointer-events:none}
 .hud .pill{font-size:.65rem}
+.hud .pill.alarm{background:#b3261e;border-color:#5c120e;color:#fff}
+.hud .pill[hidden]{display:none}
 .cover{position:fixed;inset:0;z-index:9;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,26,14,.55);padding:1rem;overflow:auto}
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:34rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35);margin:auto}
 .card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.5}
@@ -90,6 +92,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
   <span class="pill" id="hHp"></span>
   <span class="pill" id="hAmmo"></span>
   <span class="pill" id="hBoom"></span>
+  <span class="pill alarm" id="hAlarm" hidden></span>
 </div>
 <div class="cover" id="cover"><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
 <div class="ctrl" id="ctrl">
@@ -156,6 +159,9 @@ const STATS = {
   tankBarracks: { hp: 400,  detect: 2 },
   bunker:       { hp: 5000, detect: 2 },
   artillery:    { hp: 800,  speed: 0, detect: 80 },
+  // 16 Nov: shoot a guard and don't take them down within about 30 seconds,
+  // and they sound the alarm. Every enemy in the base then heads to you.
+  alarm: { after: 30 },
 };
 // Numbers the game needs. Reload and carry are his (16 Nov); the rest are ours.
 const TUNE = {
@@ -164,6 +170,7 @@ const TUNE = {
   react: 0.4,       // seconds before a guard who spots you starts shooting
   forget: 4,        // seconds a guard keeps hunting after losing sight of you
   patrol: 0.5,      // guards walk their rounds at this share of their speed
+  alarmPace: 0.6,   // after the alarm, enemies head to you at this share of their speed ("slowly")
   view: 340,        // about how many tiles show on screen
 };
 
@@ -198,6 +205,8 @@ const STR = {
   dirClear: 'Get clear! {s}',
   dirBack: 'Back to the copter',
   dirFlyOut: 'Flying out…',
+  alarm: 'ALARM!',
+  alarmPill: 'Alarm! The base is coming',
   hp: 'HP {n}',
   ammo: 'Ammo {n}/{m}',
   reloading: 'Reloading',
@@ -567,6 +576,43 @@ function moveToward(u, tg, speed, dt) {
   }
   return false;
 }
+// Walking around hills and buildings: a step-count map out from the target's
+// tile, and the guard steps to whichever next tile is fewer steps away.
+let flow = null;
+function flowTo(tx, ty) {
+  const W = L.w, H = L.h, key = L === HQL ? 'hq' : 'm', at = ty * W + tx;
+  if (flow && flow.key === key && flow.at === at) return flow.d;
+  const d = new Int32Array(W * H).fill(-1), q = [at];
+  d[at] = 0;
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], x = c % W, y = (c / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, n = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || d[n] >= 0 || L.solid[n] > 0) continue;
+      d[n] = d[c] + 1; q.push(n);
+    }
+  }
+  flow = { key, at, d };
+  return d;
+}
+function chase(u, to, speed, dt) {
+  const W = L.w, d = flowTo(Math.floor(to.x), Math.floor(to.y));
+  const ux = Math.floor(u.x), uy = Math.floor(u.y), here = d[uy * W + ux];
+  if (here <= 1) return moveToward(u, to, speed, dt);
+  let best = here, bx = 0, by = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = ux + dx, ny = uy + dy;
+    if (nx < 0 || ny < 0 || nx >= W || ny >= L.h) continue;
+    // a diagonal step only when both side tiles are open, so no corner-cutting
+    if (dx && dy && (L.solid[uy * W + nx] > 0 || L.solid[ny * W + ux] > 0)) continue;
+    const v = d[ny * W + nx];
+    if (v >= 0 && v < best) { best = v; bx = nx; by = ny; }
+  }
+  if (best === here) return moveToward(u, to, speed, dt);
+  moveToward(u, { x: bx + .5, y: by + .5 }, speed, dt);
+  return false;
+}
 function reload(u) { if (u && !u.reload && u.ammo < u.gun.mag && u.hp > 0) u.reload = TUNE.reload; }
 function shoot(u, dt, foes) {
   u.cool -= dt;
@@ -595,6 +641,7 @@ function hurt(u, dmg, why) {
     if (u.state !== 'alert') { u.state = 'alert'; u.react = TUNE.react; }
     u.lastSeen = { x: G.player.x, y: G.player.y }; u.lost = 0;
     if (u.hp <= 0) { u.hp = 0; G.down++; }
+    else if (u.hurtT == null) u.hurtT = 0; // the count to the alarm starts
   }
 }
 function stepGuard(g, dt) {
@@ -604,17 +651,25 @@ function stepGuard(g, dt) {
   const sees = phase === 'play' && p.hp > 0 && d <= g.detect && los(g, p);
   if (sees) { if (g.state !== 'alert') { g.state = 'alert'; g.react = TUNE.react; } g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
   else if (g.state === 'alert') { g.lost += dt; if (g.lost > TUNE.forget) g.state = 'patrol'; }
+  if (g.hurtT != null && !G.alarm && phase === 'play') { g.hurtT += dt; if (g.hurtT >= STATS.alarm.after) soundAlarm(g); }
+  // after the alarm, everyone knows where you are and keeps coming
+  if (G.alarm && phase === 'play') { g.state = 'alert'; g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
   if (g.reload > 0) { g.reload -= dt; if (g.reload <= 0) { g.reload = 0; g.ammo = g.gun.mag; } }
   if (g.state === 'alert') {
     if (sees && d <= g.gun.range) {
       g.a = Math.atan2(p.y - g.y, p.x - g.x);
       g.react -= dt;
       if (g.react <= 0) shoot(g, dt, [p]);
-    } else moveToward(g, sees ? p : g.lastSeen, g.speed, dt);
+    } else chase(g, sees ? p : g.lastSeen, g.speed * (G.alarm && !sees ? TUNE.alarmPace : 1), dt);
   } else if (g.path) {
     const [px, py] = g.path[g.pi];
     if (moveToward(g, { x: px, y: py }, g.speed * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
   } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
+}
+function soundAlarm(g) {
+  G.alarm = { x: g.x, y: g.y, t: 0 };
+  shake = Math.max(shake, .3);
+  hud();
 }
 function use() {
   const p = G && G.player;
@@ -668,6 +723,7 @@ function step(dt) {
   for (const tr of G.tracers) tr.t -= dt; G.tracers = G.tracers.filter(tr => tr.t > 0);
   for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < 1.1);
   shake = Math.max(0, shake - dt);
+  if (G && G.alarm) G.alarm.t += dt;
   const c = G.copter, sp = STATS.copter.speed;
   if (phase === 'flyin') {
     const d = dist(c, LZ);
@@ -755,6 +811,9 @@ function draw(now) {
   const fs = Math.max(14, S_ * .6);
   ctx.font = `${fs}px "Press Start 2P", monospace`; ctx.lineWidth = fs / 4; ctx.strokeStyle = '#1a1a1a'; ctx.lineJoin = 'round';
   for (const k of G.booms) { const s = String(Math.ceil(k.t)); ctx.strokeText(s, sx(k.x), sy(k.y - 1.1)); ctx.fillStyle = '#fff'; ctx.fillText(s, sx(k.x), sy(k.y - 1.1)); }
+  // ALARM! over the guard who sounded it, and a ! over a hurt guard still counting
+  if (G.alarm && G.alarm.t < 2.5) { ctx.strokeText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); ctx.fillStyle = '#ff5a4a'; ctx.fillText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); }
+  if (!G.alarm) for (const u of G.guards) if (u.hurtT != null && u.hp > 0) { ctx.strokeText('!', sx(u.x), sy(u.y - 1)); ctx.fillStyle = '#ffd23f'; ctx.fillText('!', sx(u.x), sy(u.y - 1)); }
   for (const f of G.fx) if (f.t < .9) { ctx.strokeText(t('boom'), sx(f.x), sy(f.y)); ctx.fillStyle = '#ffd23f'; ctx.fillText(t('boom'), sx(f.x), sy(f.y)); }
   // a word over the soldier when Use does something here
   const p = G.player, n = phase === 'hq' ? nearHq(p) : phase === 'play' && G.targetDown && dist(p, LZ) < 2.6 ? 'copter' : null;
@@ -803,6 +862,9 @@ function hud() {
   document.getElementById('hHp').textContent = t('hp', { n: Math.ceil(p.hp) });
   document.getElementById('hAmmo').textContent = p.reload > 0 ? t('reloading') : t('ammo', { n: p.ammo, m: p.gun.mag });
   document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left });
+  const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq');
+  if (al.hidden === on) al.hidden = !on;
+  if (on) al.textContent = t('alarmPill');
 }
 
 function titleCard() {

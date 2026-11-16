@@ -346,9 +346,12 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   C4s; a reload takes 2 to 5 seconds; enemy gunships have about a tank's HP.
   The little star-helmet heads are probably the soldiers you play as (to
   confirm with him); the player is drawn that way already.
-  Not built yet, from him on 16 Nov: if you shoot a guard and don't finish
-  them within about 30 seconds they may sound the alarm, and every enemy in the
-  base slowly heads to you. Mission kinds he named: hit a target; defend the
+  The alarm, his rule from 16 Nov: shoot a guard and don't take them down
+  within about 30 seconds (`STATS.alarm.after`) and they sound it; a yellow !
+  shows over a hurt guard while the count runs, then ALARM! and a red pill.
+  Every enemy then heads to you at `TUNE.alarmPace` of their speed ("slowly"),
+  walking around hills and buildings (`flowTo`, `chase`: a step-count map out
+  from the target tile). Mission kinds he named: hit a target; defend the
   base (a base you fully hold; stop the enemy blowing up your buildings and
   shoot down their gunships and helicopters, sometimes a boss tank you beat
   by finding C4 around it and throwing it); rescue soldiers and get them to
