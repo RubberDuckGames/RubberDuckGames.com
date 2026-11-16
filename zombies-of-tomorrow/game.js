@@ -118,17 +118,17 @@ function homeEnts() {
     ent({ id: "bed", spr: "bed", x: 1.6, y: 4.6, label: "Go to bed", use: useBed }),
     ent({ id: "clock", spr: "clock", x: 2.7, y: 5.6, label: "Turn off the alarm", use: useClock }),
     ent({ id: "comic", spr: "deskcomic", x: 4.4, y: 1.4, label: "Look at the comic", use: () => {
-      say([["", "An old comic, soft as cloth. ORION GOES TO SPACE. A corgi in a fishbowl helmet flies a round silver rocket, and a friendly robot with a lid for a hat helps him steer."],
-           ["", "In the middle, a page has been torn out. Inside the cover, in faded colored pencil: For my little star. Look up. Love, Papa."]],
+      say([["", "An old comic, soft as cloth. ORION GOES TO SPACE. A corgi in a fishbowl helmet flies a round silver rocket, and a friendly robot with a lid for a hat helps him steer.", "art/orion-page-1.png"],
+           ["", "In the middle, a page has been torn out. Inside the cover, in faded colored pencil: For my little star. Look up. Love, Papa.", "art/look-inscription.png"]],
           () => addPage("The Orion comic", "Your great-grandfather Ivan Pert drew this for his daughter Rosie in 1958. The robot has a lid for a hat. One page, just before the star map, is missing.", "art/orion-page-1.png"));
     } }),
     ent({ id: "paper", spr: "deskpaper", x: 1.5, y: 1.4, label: "Read the newspaper clipping", use: () => {
-      say([["", "A yellow newspaper clipping, 1958: ANOTHER SCIENTIST LOST. Plane vanishes over the Bermuda Triangle. Ivan Pert, 38, an engineer, is the third scientist to go missing this year."]],
-          () => addPage("Missing scientists", "1958: Ivan Pert's plane vanished over the Bermuda Triangle. He was the third scientist to go missing that year. Why so many?"));
+      say([["", "A yellow newspaper clipping, 1958: ANOTHER SCIENTIST LOST. Plane vanishes over the Bermuda Triangle. Ivan Pert, 38, an engineer, is the third scientist to go missing this year.", "art/look-clipping.png"]],
+          () => addPage("Missing scientists", "1958: Ivan Pert's plane vanished over the Bermuda Triangle. He was the third scientist to go missing that year. Why so many?", "art/look-clipping.png"));
     } }),
     ent({ id: "photo", spr: "shelf", x: 5.5, y: 5.5, label: "Look at the photo", use: () => {
-      say([["", "A black and white photo of your great-grandfather, Ivan Pert, grinning in front of a huge silver rocket in the desert."], ["", "On the back, in the same handwriting as the comic: Bottling machine. Ha. Love, Papa."], ["", "Nobody in the family can explain the rocket."]],
-          () => addPage("Ivan Pert and the rocket", "A photo of Ivan Pert next to a rocket nobody can explain. Where was this taken? Who built it?"));
+      say([["", "A black and white photo of your great-grandfather, Ivan Pert, grinning in front of a huge silver rocket in the desert.", "art/look-photo.png"], ["", "On the back, in the same handwriting as the comic: Bottling machine. Ha. Love, Papa.", "art/look-photo-back.png"], ["", "Nobody in the family can explain the rocket.", "art/look-photo.png"]],
+          () => addPage("Ivan Pert and the rocket", "A photo of Ivan Pert next to a rocket nobody can explain. Where was this taken? Who built it?", "art/look-photo.png"));
     } }),
     ent({ id: "mirror", spr: "mirror", x: 5.6, y: 1.3, label: "Look in the mirror", use: useMirror }),
     ent({ id: "stove", spr: "stove", x: 12.4, y: 1.4 }),
@@ -226,16 +226,16 @@ function useBox() {
   if (flag("box")) { say([["", "The lock box is empty now. Everything is in your guide book."]]); return; }
   say([
     ["", "Inside the lock box, packed like it's 1958:"],
-    ["", "Old blueprints and star maps of stations nobody has ever heard of. Three great wheels, turning around a moon of Jupiter."],
-    ["", "A stack of typed letters from Ivan Pert, dated 1969 to 1987. The one on top ends: Wherever you are, Rosie, look up."],
-    ["", "A brass key with a little rocket on it. The tag says: EGO ESTATE."],
-    ["", "And pages about a fusion engine, with half the words blacked out: [REDACTED]."],
+    ["", "Old blueprints and star maps of stations nobody has ever heard of. Three great wheels, turning around a moon of Jupiter.", "art/look-blueprints.png"],
+    ["", "A stack of typed letters from Ivan Pert, dated 1969 to 1987. The one on top ends: Wherever you are, Rosie, look up.", "art/look-letters.png"],
+    ["", "A brass key with a little rocket on it. The tag says: EGO ESTATE.", "art/look-key.png"],
+    ["", "And pages about a fusion engine, with half the words blacked out: [REDACTED].", "art/look-redacted.png"],
   ], () => {
     set("box"); S.items.key = true; SFX.ok();
-    addPage("The blueprints", "Plans for three spinning stations around Europa, a moon of Jupiter, stamped COLONY OF TOMORROW, 1964. Every station has more to find than the plans show.");
-    addPage("Ivan's letters", "Letters from Ivan Pert, typed out by someone, dated 1969 to 1987, years after he died. The one on top ends: Wherever you are, Rosie, look up.");
-    addPage("The brass key", "A brass key with a rocket on it. Tag: EGO ESTATE.");
-    addPage("[REDACTED]", "Notes on a fusion engine. Half the words are blacked out. Somebody didn't want this read.");
+    addPage("The blueprints", "Plans for three spinning stations around Europa, a moon of Jupiter, stamped COLONY OF TOMORROW, 1964. Every station has more to find than the plans show.", "art/look-blueprints.png");
+    addPage("Ivan's letters", "Letters from Ivan Pert, typed out by someone, dated 1969 to 1987, years after he died. The one on top ends: Wherever you are, Rosie, look up.", "art/look-letters.png");
+    addPage("The brass key", "A brass key with a rocket on it. Tag: EGO ESTATE.", "art/look-key.png");
+    addPage("[REDACTED]", "Notes on a fusion engine. Half the words are blacked out. Somebody didn't want this read.", "art/look-redacted.png");
     hint("It's been a long day. Go to bed.");
   });
 }
@@ -304,6 +304,7 @@ function useTerminal() {
   const answer = { Red: "Rocket", Teal: "Moon", Mustard: "Star" };
   panel(`<h2>Rewire the silo door</h2>
     <p>A note taped to the screen, in Ivan Pert's tidy capitals:<br><b>RED TO THE ROCKET. TEAL TO THE MOON. MUSTARD TO THE STAR.</b></p>
+    <img class="note" src="art/look-note.png" alt="A yellow note taped to the screen: red to the rocket, teal to the moon, mustard to the star.">
     <p>Pick a wire, then the plug it goes to.</p>
     <div class="wires">${wires.map(([n, c]) => `<button data-w="${n}" style="background:${c};color:#1b1a2e">${n} wire</button>`).join("")
       .split("</button>").filter(Boolean).map((b, i) => b + `</button><button data-p="${plugs[i]}" class="alt">${plugs[i]} plug</button>`).join("")}</div>
@@ -344,12 +345,12 @@ function useBench() {
   if (!flag("wired")) { say([["", "Ivan Pert's old workbench. Tools, wire, a red toaster with no insides. The drawer is stuck shut."]]); return; }
   if (S.items.gun) { say([["", "The drawer is empty now."]]); return; }
   S.items.gun = true; SFX.ok(); set("armed"); document.getElementById("zapBtn").hidden = false;
-  say([["", "The drawer sticks, then flies open. Inside: a ray gun, red and silver, with IVAN'S, HANDS OFF scratched on the side."],
+  say([["", "The drawer sticks, then flies open. Inside: a ray gun, red and silver, with IVAN'S, HANDS OFF scratched on the side.", "art/look-raygun.png"],
        ["A.R.P.F.", TOUCHY ? "Press Zap to zap! Don't let it touch you!" : "Press F to zap! Don't let it touch you!"]],
       () => {
         ents.push(sprout(10.5, 1.5), sprout(10.5, 4.5));
         hint("Zap them with F. They pop into goo and stars.");
-        addPage("Ivan's ray gun", "Found in Ivan Pert's workbench drawer. Scratched on the side: IVAN'S, HANDS OFF.");
+        addPage("Ivan's ray gun", "Found in Ivan Pert's workbench drawer. Scratched on the side: IVAN'S, HANDS OFF.", "art/look-raygun.png");
       });
 }
 
@@ -371,8 +372,12 @@ function checkWin() {
 const talkEl = document.getElementById("talk"), panelEl = document.getElementById("panel"), cardEl = document.getElementById("card");
 let talkQ = null;
 function say(lines, done, onLine) { talkQ = { lines, i: 0, done, onLine }; showLine(); }
+// A line can carry a close-up (decided 15 Nov: looking at something shows it
+// on screen, not only in words). Lines without one show no picture.
 function showLine() {
-  const [who, text] = talkQ.lines[talkQ.i];
+  const [who, text, pic] = talkQ.lines[talkQ.i];
+  const img = talkEl.querySelector(".pic");
+  if (pic) { img.src = pic; img.alt = text; img.hidden = false; } else { img.hidden = true; img.removeAttribute("src"); }
   talkEl.querySelector(".who").textContent = who;
   talkEl.querySelector(".who").style.display = who ? "" : "none";
   talkEl.querySelector(".text").textContent = text;

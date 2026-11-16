@@ -16,6 +16,15 @@
   .overlay { position:absolute; left:0; right:0; display:none; }
   #talk { bottom:44px; margin:0 12px; background:var(--cream); color:var(--ink); border:4px solid var(--ink); padding:12px 14px; font-size:20px; line-height:1.4; }
   #talk .who { font-weight:bold; color:var(--red); margin-bottom:4px; }
+  #talk .pic { display:block; margin:0 auto 10px; max-width:100%; max-height:min(52vh, 380px); image-rendering:pixelated; border:3px solid var(--ink); }
+  #talk .pic[hidden] { display:none; }
+  /* a short window (a phone sideways, a small laptop) can't fit the game screen,
+     so the talk box and its close-up sit at the top of the window instead */
+  @media (max-height: 640px) {
+    #talk { position:fixed; top:.4rem; bottom:auto; max-height:calc(100vh - .8rem); overflow:auto; z-index:10; }
+    #talk .pic { max-height:calc(100vh - 12rem); }
+  }
+  #panel img.note { max-width:min(100%, 320px); display:block; }
   #talk .row { display:flex; justify-content:flex-end; margin-top:8px; }
   button { font:inherit; font-size:18px; background:var(--mustard); color:var(--ink); border:3px solid var(--ink); padding:6px 16px; cursor:pointer; }
   button.alt { background:var(--teal); color:var(--cream); }
@@ -41,7 +50,7 @@
 <div id="wrap">
   <canvas id="screen" width="640" height="400"></canvas>
   <div id="prompt"><a class="home" href="../">&larr; All games</a><span id="hint"></span><span class="keys">Move: arrows or WASD · Use: E or Space · Zap: F · Guide book: G</span></div>
-  <div id="talk" class="overlay"><div class="who"></div><div class="text"></div><div class="row"><button id="next">Next</button></div></div>
+  <div id="talk" class="overlay"><img class="pic" hidden alt=""><div class="who"></div><div class="text"></div><div class="row"><button id="next">Next</button></div></div>
   <div id="panel" class="overlay"></div>
   <div id="card" class="overlay"></div>
 </div>
