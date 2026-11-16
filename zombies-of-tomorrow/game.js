@@ -228,13 +228,13 @@ function useBox() {
     ["", "Inside the lock box, packed like it's 1958:"],
     ["", "Old blueprints and star maps of stations nobody has ever heard of. Three great wheels, turning around a moon of Jupiter.", "art/look-blueprints.png"],
     ["", "A stack of typed letters from Ivan Pert, dated 1969 to 1987. The one on top ends: Wherever you are, Rosie, look up.", "art/look-letters.png"],
-    ["", "A brass key with a little rocket on it. The tag says: EGO ESTATE.", "art/look-key.png"],
+    ["", "A brass key with a little rocket on it. The tag says: EGO HOUSE. FRONT GATE.", "art/look-key.png"],
     ["", "And pages about a fusion engine, with half the words blacked out: [REDACTED].", "art/look-redacted.png"],
   ], () => {
     set("box"); S.items.key = true; SFX.ok();
     addPage("The blueprints", "Plans for three spinning stations around Europa, a moon of Jupiter, stamped COLONY OF TOMORROW, 1964. Every station has more to find than the plans show.", "art/look-blueprints.png");
     addPage("Ivan's letters", "Letters from Ivan Pert, typed out by someone, dated 1969 to 1987, years after he died. The one on top ends: Wherever you are, Rosie, look up.", "art/look-letters.png");
-    addPage("The brass key", "A brass key with a rocket on it. Tag: EGO ESTATE.", "art/look-key.png");
+    addPage("The brass key", "A brass key with a rocket on it. Tag: EGO HOUSE. FRONT GATE.", "art/look-key.png");
     addPage("[REDACTED]", "Notes on a fusion engine. Half the words are blacked out. Somebody didn't want this read.", "art/look-redacted.png");
     hint("It's been a long day. Go to bed.");
   });
