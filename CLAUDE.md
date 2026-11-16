@@ -324,6 +324,48 @@ The branching, versioning and accessibility rules come from the parent `CLAUDE.m
   became a round stick like Bread's (push it the way the boat should go), and
   pinch and double-tap zoom are blocked while playing, as in Bread and Rodeo.
   Progress is in localStorage under `tugboat`.
+- `missions/index.html` is Mission Directive (working title), designed by the
+  oldest kid tester (Trello #51; his unit, weapon and building sheets and a
+  graph-paper map). Decided 15 Nov: single player. His flow: you get a mission
+  folder with a map and a directive, pick your weapons, fly in on the
+  helicopter (or defend the base), hit the target or complete the mission, and
+  fly out; vehicles aren't brought in, they're found inside the mission. Also
+  decided 15 Nov, his ask: the game starts at headquarters, seen from above
+  like the mission (`HQL`, `DESK`, `RACK`, `HQ_PAD`). You walk to the desk and
+  press Use to get the folder, to the weapons wall to pick a gun and an
+  explosive (the card shows the wall face on, his weapons on a pegboard), then
+  out the door to the copter. Two sides, blue NA (written NE on his weapons)
+  and red DE, each with his star emblem; you play NA. Every number of his is
+  in `STATS`; numbers the game needs that he didn't give (reload time, how
+  many explosives you carry, how fast guards react) are in `TUNE`, and `ASK`
+  marks ones still to get from him. Speeds are read as tiles a second and
+  ranges as tiles. His shapes are drawn in code in his colours (`drawTroop`,
+  `drawCopter`, `drawBuilding`, `drawGunIcon`). The mission map (`ROADS`,
+  `HILLS`, `PADS`, `BUILDINGS`, `GUARDS`) follows his drawing: red pen is road,
+  grey pencil is hills, circled letters are read as helipads; the folder draws
+  it back on graph paper. The first mission: blow up the DE barracks (his HP
+  400) with C4 or a strike (dropped where you stand, with a ring showing the
+  splash), get clear, and get back to the copter. Guns don't hurt buildings
+  yet. A guard who goes down tips over and fades. His answers, 16 Nov: the X
+  on the copter is its rotor blades; the plane can't be shot down; enemies use
+  the same vehicles with the red star in place of the blue; you carry two
+  C4s; a reload takes 2 to 5 seconds; enemy gunships have about a tank's HP.
+  The little star-helmet heads are probably the soldiers you play as (to
+  confirm with him); the player is drawn that way already.
+  The alarm, his rule from 16 Nov: shoot a guard and don't take them down
+  within about 30 seconds (`STATS.alarm.after`) and they sound it; a yellow !
+  shows over a hurt guard while the count runs, then ALARM! and a red pill.
+  Every enemy then heads to you at `TUNE.alarmPace` of their speed ("slowly"),
+  walking around hills and buildings (`flowTo`, `chase`: a step-count map out
+  from the target tile). Mission kinds he named: hit a target; defend the
+  base (a base you fully hold; stop the enemy blowing up your buildings and
+  shoot down their gunships and helicopters, sometimes a boss tank you beat
+  by finding C4 around it and throwing it); rescue soldiers and get them to
+  the extraction; and a one-time mission escorting the general to the bunker,
+  where he plants the blue star flag and a 45-second timer starts to run to
+  the extraction and get as many soldiers in as you can. He's sending
+  example missions and the story that joins them; they come next. Best time is in
+  localStorage under `mission-directive`.
 - `rodeo/index.html` is Rodeo (Trello #46). It
   opens on a title screen with a cowgirl racing across and PRESS START, then
   the choice of event. Decided 31 Oct, after the racers played it and loved it: pole

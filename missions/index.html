@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mission Directive · Rubber Duck Games</title>
+<meta name="description" content="Open the mission folder, pick your weapons, fly in, hit the target and fly out.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1f2418;--soft:#4a5040;--panel:#fbf7ea;--line:#8a7d55;--accent:#1f4fc9;--folder:#e6c77a;--folderDark:#b8963f;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:#2c3a22;color:var(--ink);height:100%;overflow:hidden;touch-action:manipulation}
+body{font-size:1.125rem;line-height:1.45}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible,input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem max(.9rem,env(safe-area-inset-right)) .6rem max(.9rem,env(safe-area-inset-left));pointer-events:none;flex-wrap:wrap}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 rgba(0,0,0,.35)}
+.dir{white-space:normal;text-align:center;max-width:22rem}
+.hud{position:fixed;z-index:7;right:max(.9rem,env(safe-area-inset-right));top:3.4rem;display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;pointer-events:none}
+.hud .pill{font-size:.65rem}
+.hud .pill.alarm{background:#b3261e;border-color:#5c120e;color:#fff}
+.hud .pill[hidden]{display:none}
+.cover{position:fixed;inset:0;z-index:9;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,26,14,.55);padding:1rem;overflow:auto}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:34rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35);margin:auto}
+.card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.5}
+.card h1{font-size:1.4rem;text-align:center}
+.card p{margin:.35rem 0}
+.card .soft{color:var(--soft);font-size:1rem}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
+.btn{background:var(--accent);color:#fff;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 #10204f}
+.btn.plain{background:#e7e1cf;color:var(--ink);box-shadow:.25rem .25rem 0 var(--line)}
+/* The mission folder: a manila folder with a tab, the map on graph paper the
+   way he drew it, and the directive typed under it. */
+.card.folder{background:var(--folder);border-color:#5a4613;position:relative;margin-top:2.2rem}
+.card.folder::before{content:attr(data-tab);position:absolute;left:-4px;top:-2.15rem;background:var(--folder);border:4px solid #5a4613;border-bottom:none;padding:.35rem 1rem;font-family:"Press Start 2P",monospace;font-size:.65rem;line-height:1.6}
+.paper{background:#fff;border:2px solid var(--folderDark);padding:.4rem;box-shadow:.2rem .2rem 0 rgba(0,0,0,.2)}
+.paper canvas{display:block;width:100%;height:auto}
+.typed{font-family:"Courier New",Courier,monospace;font-weight:700;font-size:1.05rem;background:#fff;border:2px solid var(--folderDark);padding:.6rem .8rem;margin-top:.7rem}
+.typed b{display:block;font-size:.85rem;letter-spacing:.08em}
+/* The weapons wall card: his weapons hanging on a pegboard, a gun and an
+   explosive to take down. */
+.card.board{max-width:44rem;background-color:#a07c50}
+.board{background-image:radial-gradient(#5c4128 16%,transparent 19%);background-size:1.3rem 1.3rem;border:.55rem solid #5c3d22;padding:.8rem 1rem 1rem;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
+.board h2,.board legend{background:#1f1f1f;color:#f5f0dc;padding:.3rem .7rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
+.board h2{display:inline-block;margin:0 0 .6rem}
+.board fieldset{border:none;margin:0;padding:0}
+.board legend{float:left;margin:0 0 .5rem;font-size:.6rem}
+.pegs{clear:both;display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;margin-bottom:.8rem}
+.peg{position:relative;cursor:pointer;display:block}
+.peg input{position:absolute;opacity:0;width:1px;height:1px}
+.hang{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.5rem .4rem;border:.25rem solid transparent;width:10rem}
+.hang canvas{width:3.6rem;height:9rem}
+.hang canvas.small{height:4.5rem;width:3.6rem}
+.peg input:checked+.hang{border-color:#f5c938;background:rgba(255,255,255,.18)}
+.peg input:focus-visible+.hang{outline:3px solid #fff;outline-offset:2px}
+.plate{background:#1f1f1f;color:#fff;padding:.35rem .5rem;text-align:center;font-size:.85rem;line-height:1.35;width:100%}
+.plate b{display:block;font-size:1rem}
+.on{display:none;background:#f5c938;color:#1f1f1f;font-weight:800;font-size:.85rem;padding:.1rem .5rem}
+.peg input:checked+.hang .on{display:block}
+.keys{font-size:.95rem;margin:.4rem 0 0}
+.board .keys{background:#1f1f1f;color:#f5f0dc;padding:.4rem .6rem}
+.stats{display:grid;grid-template-columns:auto auto;gap:.2rem 1rem;justify-content:start;margin:.6rem 0}
+/* touch: the stick on the left, Use and Fire on the right, only on touch screens */
+.ctrl{display:none;position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:flex-end;padding:1rem max(1rem,env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));pointer-events:none}
+@media (pointer:coarse){.ctrl.live{display:flex}}
+.ctrl>*{pointer-events:auto}
+.stick{position:relative;width:8rem;height:8rem;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.55);touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.5rem;height:3.5rem;margin:-1.75rem;border-radius:50%;background:#f4f1e4;opacity:.9}
+.acts{display:flex;gap:.8rem;align-items:flex-end}
+.round{border-radius:50%;font-family:"Press Start 2P",monospace;color:#fff;touch-action:none}
+.use{width:4.5rem;height:4.5rem;font-size:.6rem;background:#4b5b2a;box-shadow:0 .3rem 0 #26300f}
+.fire{width:6.5rem;height:6.5rem;font-size:.85rem;background:#b8322a;box-shadow:0 .35rem 0 #6a1712}
+.round.down{transform:translateY(.25rem);box-shadow:none}
+@media (max-width:30rem){.pill{font-size:.55rem;padding:.3rem .5rem}.hud{top:4.6rem}}
+</style>
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+</head>
+<body>
+<canvas id="cv" aria-label="The mission map"></canvas>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <span class="pill dir" id="dir" aria-live="polite" hidden></span>
+</div>
+<div class="hud" id="hud" hidden>
+  <span class="pill" id="hHp"></span>
+  <span class="pill" id="hAmmo"></span>
+  <span class="pill" id="hBoom"></span>
+  <span class="pill alarm" id="hAlarm" hidden></span>
+</div>
+<div class="cover" id="cover"><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
+<div class="ctrl" id="ctrl">
+  <div class="stick" id="stick" aria-hidden="true"><i id="knob"></i></div>
+  <div class="acts">
+    <button class="round use" id="bUse">Use</button>
+    <button class="round fire" id="bFire">Fire</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+// Mission Directive (working title), Trello #51. Designed by the oldest kid
+// tester, 15 Nov: he drew the units, weapons, vehicles and buildings with their
+// stats, and a map on graph paper. His flow: the game starts, you get a mission
+// folder with a map and a directive, you pick your weapons, you fly in on the
+// helicopter (or defend the base), hit the target or complete the mission, and
+// fly out. You don't bring vehicles in; you find them inside the mission.
+// Decided 15 Nov: single player, and (his ask) the game starts at
+// headquarters, seen from above: get the folder from the desk, pick weapons
+// off the wall, walk out to the copter. This first pass is the foundation: one
+// mission, one target, his blue NA side against his red DE side. He's sending
+// example missions and the story that joins them; those come next.
+
+// ---- His numbers, from his drawings (15 Nov). Tune them here. ----
+// ASK marks a number he hasn't given yet; the game uses the TUNE value until
+// he does. Speeds are read as tiles a second and ranges as tiles (ASK).
+const ASK = null;
+const STATS = {
+  troop: {
+    NA: { hp: 100, speed: 3, detect: 9 },
+    DE: { hp: 100, speed: 4, detect: 8 },
+  },
+  juggernaut: {
+    NA: { hp: 350, speed: 2, detect: 8 },
+    DE: { hp: 350, speed: 2, detect: 8 },
+  },
+  // "NE" on his weapon sheet is the NA side.
+  guns: {
+    NA: {
+      rifle:   { dmg: 5, mag: 20,  range: 8, rate: 2 },
+      minigun: { dmg: 4, mag: 150, range: 6, rate: 20 },
+      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 1.5 },
+    },
+    DE: {
+      rifle:   { dmg: 6, mag: 15,  range: 7, rate: 2 },
+      minigun: { dmg: 4, mag: 150, range: 6, rate: 20 },
+      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 1.5 },
+    },
+  },
+  // timer in seconds, splash in tiles
+  boom: {
+    nuke:   { timer: 45, dmg: 3500, splash: 40 },
+    strike: { timer: 10, dmg: 500,  splash: 8 },
+    c4:     { timer: 20, dmg: 600,  splash: 10 },
+  },
+  copter: { hp: 580, speed: 6, detect: 8, gun: { dmg: 4, mag: 100, range: 6, rate: 20 } },
+  // 16 Nov: the plane can't be shot down. Either side can fly one.
+  plane:  { hp: Infinity, speed: ASK, gatling: { dmg: 58, splash: 2 }, rocket: { dmg: 80, splash: 4 } },
+  // 16 Nov: enemy gunships have about a tank's HP.
+  gunship: { hp: 1000 },
+  tank:   { hp: 1000, speed: 1, detect: 10, cannon: { dmg: 100, splash: 2 }, rocket: { dmg: 80, splash: 4 } },
+  barracks:     { hp: 400,  detect: 2 },
+  tankBarracks: { hp: 400,  detect: 2 },
+  bunker:       { hp: 5000, detect: 2 },
+  artillery:    { hp: 800,  speed: 0, detect: 80 },
+  // 16 Nov: shoot a guard and don't take them down within about 30 seconds,
+  // and they sound the alarm. Every enemy in the base then heads to you.
+  alarm: { after: 30 },
+};
+// Numbers the game needs. Reload and carry are his (16 Nov); the rest are ours.
+const TUNE = {
+  reload: 2,        // seconds to change a mag; he says 2 to 5. Mags never run out (ASK)
+  carry: 2,         // explosives you carry in; he says two C4s
+  react: 0.4,       // seconds before a guard who spots you starts shooting
+  forget: 4,        // seconds a guard keeps hunting after losing sight of you
+  patrol: 0.5,      // guards walk their rounds at this share of their speed
+  alarmPace: 0.6,   // after the alarm, enemies head to you at this share of their speed ("slowly")
+  view: 340,        // about how many tiles show on screen
+};
+
+// ---- Words on screen ----
+const STR = {
+  title: 'Mission Directive',
+  titleSub: 'Start at headquarters. Get the mission folder, pick your weapons, fly in, hit the target and fly out.',
+  start: 'Start',
+  folderTab: 'Mission 1',
+  directiveHead: 'Directive',
+  directive: 'Fly in by helicopter. Blow up the DE barracks. Fly back out.',
+  mapAlt: 'The mission map: roads, hills and buildings. The landing zone is on the left, the DE barracks is on the right.',
+  mapLz: 'Land here',
+  mapTarget: 'Target',
+  close: 'Close',
+  pickTitle: 'Weapons wall',
+  gunLegend: 'Gun',
+  boomLegend: 'Explosive',
+  rifle: 'Rifle', minigun: 'Minigun', heavy: 'Heavy rifle', c4: 'C4', strike: 'Strike',
+  gunLine: 'Damage {dmg} · Mag {mag} · Range {range} · {rate} shots a second',
+  boomLine: 'Timer {timer} s · Damage {dmg} · Splash {splash} tiles · You carry {n}',
+  picked: 'Picked',
+  keysDesk: 'Move: arrows or WASD · Fire: Space · Use: E (drop your explosive) · Reload: R',
+  keysTouch: 'Move with the stick. Fire shoots. Use drops your explosive.',
+  dirDesk: 'Get the mission folder from the desk',
+  dirWall: 'Pick weapons at the wall, then get in the copter',
+  dirTakeOff: 'Taking off…',
+  useKey: 'Use (E)',
+  useTouch: 'Use',
+  dirFlyIn: 'Flying in…',
+  dirGo: 'Blow up the DE barracks',
+  dirClear: 'Get clear! {s}',
+  dirBack: 'Back to the copter',
+  dirFlyOut: 'Flying out…',
+  alarm: 'ALARM!',
+  alarmPill: 'Alarm! The base is coming',
+  hp: 'HP {n}',
+  ammo: 'Ammo {n}/{m}',
+  reloading: 'Reloading',
+  boomLeft: '{name} {n}',
+  wonTitle: 'Mission complete',
+  wonText: 'The DE barracks is down and you made it out.',
+  time: 'Time', down: 'Enemies down', best: 'Best time',
+  lostTitle: 'Mission failed',
+  lostShot: 'The DE guards got you. The medics carried you back to the copter.',
+  lostBlast: 'You were too close to the blast. Get at least {n} tiles away.',
+  lostNoBoom: 'You ran out of explosives and the barracks is still standing.',
+  tryAgain: 'Try again',
+  toHq: 'Back to HQ',
+  boom: 'BOOM',
+};
+const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, n) => v[n]);
+
+// ---- His colours ----
+const C = {
+  NA: '#2b5ce6', DE: '#e2483a', star: '#f5c938', grey: '#c0c0c0', dark: '#5c5c5c',
+  sky: '#5bc0f0', ink: '#1a1a1a', folder: '#e6c77a', grass: '#5f9a3e', road: '#c9b27c', rock: '#8c867c',
+};
+
+// ---- The map: his graph-paper drawing, about one of his squares to a tile ----
+// Red pen on his paper is roads, grey pencil is hills, boxes are buildings,
+// circled letters look like helipads (ASK what the letters and numbers mean).
+const W = 56, H = 37;
+const loop = (cx, cy, rx, ry) => { const p = []; for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2; p.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return p; };
+const ROADS = [
+  [[0, 4], [20, 4], [22, 3], [32, 3], [34, 4], [42, 5], [56, 5]],
+  [[30, 3], [30, 12], [29, 20]],
+  [[29, 20], [18, 24], [0, 25]],
+  [[29, 20], [31, 24], [31, 32], [35, 35], [44, 35.5], [50, 33], [52, 27], [51, 21]],
+  loop(14, 10, 11, 5.5),
+  loop(45, 11.5, 11, 5.5),
+];
+const HILLS = [
+  { x: 13, y: 9.5, rx: 8, ry: 3.2, s: 1 },
+  { x: 45, y: 11.5, rx: 8, ry: 3.3, s: 2 },
+  { x: 17, y: 32.5, rx: 13, ry: 4, s: 3 },
+  { x: 42, y: 26.5, rx: 6.5, ry: 4.5, s: 4 },
+];
+const PADS = [[5, 7], [22, 9], [53, 8], [3.5, 20.5], [41, 19]];
+const LZ = { x: 3.5, y: 20.5 };
+// x, y, w, h in tiles. The DE barracks is the target; the others stand in for
+// his numbered boxes until he says what they are.
+const BUILDINGS = [
+  { x: 8, y: 17, w: 11, h: 6 },
+  { x: 44, y: 1, w: 6, h: 3 },
+  { x: 35, y: 15.5, w: 4, h: 2 },
+  { x: 46, y: 17.5, w: 3, h: 4.5, kind: 'barracks', side: 'DE', target: true },
+  { x: 23, y: 26, w: 2, h: 2 },
+  { x: 0.5, y: 28, w: 2.5, h: 4 },
+  { x: 53.5, y: 26, w: 2, h: 4 },
+  { x: 53.5, y: 31, w: 2, h: 5 },
+];
+const GUARDS = [
+  { x: 43, y: 20.5 },
+  { x: 49.5, y: 23 },
+  { x: 30, y: 9, path: [[30, 9], [29.6, 18]] },
+];
+
+const solid = new Uint8Array(W * H);  // 1 hill, 2 building
+const road = new Uint8Array(W * H);
+function segDist(px, py, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l = dx * dx + dy * dy;
+  let u = l ? ((px - a[0]) * dx + (py - a[1]) * dy) / l : 0; u = Math.max(0, Math.min(1, u));
+  return Math.hypot(px - a[0] - u * dx, py - a[1] - u * dy);
+}
+function buildMap() {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const cx = x + .5, cy = y + .5, i = y * W + x;
+    for (const r of ROADS) for (let k = 1; k < r.length; k++) if (segDist(cx, cy, r[k - 1], r[k]) < 1.05) road[i] = 1;
+    if (road[i]) continue;
+    for (const h of HILLS) {
+      const dx = (cx - h.x) / h.rx, dy = (cy - h.y) / h.ry, a = Math.atan2(dy, dx);
+      const edge = 1 + .14 * Math.sin(3 * a + h.s) + .08 * Math.sin(5 * a + h.s * 2);
+      if (Math.hypot(dx, dy) < edge) solid[i] = 1;
+    }
+  }
+  for (const b of BUILDINGS) for (let y = Math.floor(b.y); y < Math.ceil(b.y + b.h); y++) for (let x = Math.floor(b.x); x < Math.ceil(b.x + b.w); x++) solid[y * W + x] = 2;
+  for (const [px, py] of PADS) for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) { const i = (Math.floor(py) + y) * W + Math.floor(px) + x; if (solid[i] === 1) solid[i] = 0; }
+}
+// The level you're standing in: headquarters or the mission map.
+const MAPL = { w: W, h: H, solid, ground: null };
+let L = MAPL;
+const isSolid = (x, y) => x < 0 || y < 0 || x >= L.w || y >= L.h || L.solid[Math.floor(y) * L.w + Math.floor(x)] > 0;
+
+// ---- Headquarters (decided 15 Nov, his ask) ----
+// The game starts here, seen from above like the mission. Walk to the desk to
+// get the mission folder, to the weapons wall to pick a gun and an explosive,
+// then out the door to the copter on its pad. 1 is wall, 2 is furniture.
+const HQL = { w: 24, h: 14, solid: new Uint8Array(24 * 14), ground: null };
+const DESK = { x: 3, y: 6, w: 4, h: 2 };
+const RACK = { x: 7, y: 1, w: 8, h: 1 };
+const HQ_PAD = { x: 20.5, y: 7 };
+const HQ_START = { x: 3.5, y: 10.5 };
+function buildHq() {
+  const s = HQL.solid, w = HQL.w;
+  for (let y = 0; y < HQL.h; y++) for (let x = 0; x < w; x++) {
+    const wall = (x <= 16 && (y === 0 || y === 13)) || ((x === 0 || x === 16) && y <= 13);
+    if (wall && !(x === 16 && (y === 6 || y === 7))) s[y * w + x] = 1;   // the door is the gap at 16, 6-7
+  }
+  for (const r of [DESK, RACK]) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) s[y * w + x] = 2;
+}
+function paintHq() {
+  const c = HQL.ground = document.createElement('canvas'); c.width = HQL.w * P; c.height = HQL.h * P;
+  const g = c.getContext('2d');
+  for (let y = 0; y < HQL.h; y++) for (let x = 0; x < HQL.w; x++) {
+    const r = rnd(y * 31 + x);
+    if (x > 16) { g.fillStyle = r < .5 ? '#5f9a3e' : '#5a9439'; g.fillRect(x * P, y * P, P, P); }
+    else { g.fillStyle = (x + y) % 2 ? '#9a9e90' : '#949889'; g.fillRect(x * P, y * P, P, P); }
+  }
+  // the NA star painted on the floor
+  g.save(); g.translate(9 * P, 8.5 * P); g.scale(P, P);
+  ell(g, 0, 0, 2.6, 1.7, C.NA, .06); star(g, 0, 0, 1.3); g.restore();
+  g.fillStyle = '#b9b9b4'; g.beginPath(); g.arc(HQ_PAD.x * P, HQ_PAD.y * P, 2.2 * P, 0, 7); g.fill();
+  g.strokeStyle = '#f4f4ee'; g.lineWidth = 4; g.beginPath(); g.arc(HQ_PAD.x * P, HQ_PAD.y * P, 1.9 * P, 0, 7); g.stroke();
+  g.fillStyle = '#f4f4ee'; g.font = `bold ${P * 1.6}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', HQ_PAD.x * P, HQ_PAD.y * P + 2);
+  for (let y = 0; y < HQL.h; y++) for (let x = 0; x < HQL.w; x++) if (HQL.solid[y * HQL.w + x] === 1) {
+    g.fillStyle = '#3e443a'; g.fillRect(x * P, y * P, P, P);
+    g.fillStyle = '#596152'; g.fillRect(x * P + 2, y * P + 2, P - 4, P - 8);
+  }
+}
+// the desk, the folder on it until you take it, and the weapons wall
+function drawHq(g) {
+  const d = DESK;
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(d.x + .15, d.y + .2, d.w, d.h);
+  rr(g, d.x, d.y, d.w, d.h, .08, '#8a5f36', .05);
+  rr(g, d.x + .15, d.y + .15, d.w - .3, d.h - .3, .05, '#9c6c3e', 0);
+  ell(g, d.x + 3.4, d.y + .55, .3, .3, '#f5e6a8');
+  if (!G.folder) {
+    g.save(); g.translate(d.x + 1.6, d.y + 1); g.rotate(-.12);
+    rr(g, -.7, -.55, .55, .2, .03, C.folder);
+    rr(g, -.8, -.45, 1.6, 1.05, .04, C.folder);
+    g.restore();
+  }
+  const r = RACK;
+  rr(g, r.x, r.y, r.w, r.h, 0, '#8a6b45', .05);
+  const items = ['rifle', 'minigun', 'heavy', 'c4', 'strike'];
+  items.forEach((k, i) => {
+    const x = r.x + .8 + i * 1.6, y = r.y + .5, gun = !['c4', 'strike'].includes(k);
+    if (pick.gun === k || pick.boom === k) { g.strokeStyle = C.star; g.lineWidth = .1; g.strokeRect(x - .65, y - .45, 1.3, .9); }
+    g.save(); g.translate(x, y); g.rotate(Math.PI / 2);
+    if (gun) g.scale(.2, .2); else g.scale(.7, .7);
+    drawGunIcon(g, k, 'NA'); g.restore();
+  });
+}
+function nearHq(p) {
+  if (rectDist(DESK, p) < 1) return 'desk';
+  if (rectDist(RACK, p) < 1) return 'rack';
+  if (dist(p, HQ_PAD) < 2.6) return 'copter';
+  return null;
+}
+const blocked = (x, y, r) => isSolid(x - r, y - r) || isSolid(x + r, y - r) || isSolid(x - r, y + r) || isSolid(x + r, y + r);
+function los(a, b) {
+  const d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(d / .25);
+  for (let i = 1; i < n; i++) if (isSolid(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false;
+  return true;
+}
+// how far a shot goes before it hits a hill or a wall
+function rayEnd(x, y, a, range) {
+  for (let d = .25; d <= range; d += .25) { const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d; if (isSolid(px, py)) return { x: px, y: py }; }
+  return { x: x + Math.cos(a) * range, y: y + Math.sin(a) * range };
+}
+
+// ---- The ground, painted once ----
+const P = 24, ground = document.createElement('canvas');
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function paintGround() {
+  ground.width = W * P; ground.height = H * P;
+  const g = ground.getContext('2d');
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, r = rnd(i);
+    g.fillStyle = r < .33 ? '#5f9a3e' : r < .66 ? '#5a9439' : '#64a043';
+    g.fillRect(x * P, y * P, P, P);
+    if (r > .7) { g.fillStyle = '#4c8130'; g.fillRect(x * P + r * 14, y * P + 6 + r * 8, 3, 6); g.fillRect(x * P + r * 14 + 4, y * P + 4 + r * 8, 3, 8); }
+  }
+  // Roads are painted along his lines, not tile by tile: filled in whole
+  // tiles they came out as staircases (15 Nov).
+  g.lineCap = g.lineJoin = 'round';
+  for (const [w, col] of [[2.2, '#9f8a58'], [1.9, '#c9b27c']]) {
+    g.lineWidth = w * P; g.strokeStyle = col;
+    for (const r of ROADS) { g.beginPath(); r.forEach(([x, y], i) => i ? g.lineTo(x * P, y * P) : g.moveTo(x * P, y * P)); g.stroke(); }
+  }
+  for (const [px, py] of PADS) {
+    g.fillStyle = '#b9b9b4'; g.beginPath(); g.arc(px * P, py * P, 1.4 * P, 0, 7); g.fill();
+    g.strokeStyle = '#f4f4ee'; g.lineWidth = 3; g.beginPath(); g.arc(px * P, py * P, 1.15 * P, 0, 7); g.stroke();
+    g.fillStyle = '#f4f4ee'; g.font = `bold ${P * 1.2}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', px * P, py * P + 2);
+  }
+  // hills: grey rock with bumps, a dark rim where they meet the ground
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (solid[y * W + x] === 1) {
+    const r = rnd(y * W + x + 9);
+    g.fillStyle = C.rock; g.fillRect(x * P, y * P, P, P);
+    g.fillStyle = '#a29c90'; g.beginPath(); g.arc(x * P + 6 + r * 10, y * P + 7 + r * 6, 5 + r * 3, 0, 7); g.fill();
+    g.fillStyle = '#76716a'; g.beginPath(); g.arc(x * P + 16 - r * 6, y * P + 17, 3 + r * 2, 0, 7); g.fill();
+  }
+  g.fillStyle = '#4f4a43';
+  const hill = (x, y) => x >= 0 && y >= 0 && x < W && y < H && solid[y * W + x] === 1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (hill(x, y)) {
+    if (!hill(x - 1, y)) g.fillRect(x * P, y * P, 3, P);
+    if (!hill(x + 1, y)) g.fillRect(x * P + P - 3, y * P, 3, P);
+    if (!hill(x, y - 1)) g.fillRect(x * P, y * P, P, 3);
+    if (!hill(x, y + 1)) g.fillRect(x * P, y * P + P - 3, P, 4);
+  }
+}
+
+// ---- His drawings, drawn in code. Each faces up (-y) and is about 1 tile. ----
+function star(g, x, y, r, col = C.star) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  g.closePath(); g.fillStyle = col; g.fill();
+}
+function rr(g, x, y, w, h, r, fill, line = .04) {
+  g.beginPath(); g.roundRect(x, y, w, h, r); g.fillStyle = fill; g.fill();
+  if (line) { g.lineWidth = line; g.strokeStyle = C.ink; g.stroke(); }
+}
+function ell(g, x, y, rx, ry, fill, line = .04) {
+  g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fillStyle = fill; g.fill();
+  if (line) { g.lineWidth = line; g.strokeStyle = C.ink; g.stroke(); }
+}
+// His troop: grey helmet with the team oval and a yellow star, grey shoulder
+// plates, a team-colour body (NA black, DE red) and the gun out front.
+function drawTroop(g, side) {
+  rr(g, -.4, -.12, .8, .42, .12, side === 'NA' ? '#1d1d1d' : C.DE);
+  rr(g, -.5, -.1, .22, .24, .04, C.grey);
+  rr(g, .28, -.1, .22, .24, .04, C.grey);
+  rr(g, -.06, -.72, .12, .6, .03, side === 'NA' ? '#9a9a9a' : C.star);
+  ell(g, 0, .02, .28, .27, C.grey);
+  ell(g, 0, .0, .21, .14, C[side]);
+  star(g, 0, .0, .12);
+}
+// His helicopter, from above: star on the nose, light-blue canopy, blue window,
+// engine pods, side guns, the long tail with two blue ovals, and the rotor.
+// The black X over his drawing is the rotor blades (decided 16 Nov).
+function drawCopter(g, rotor) {
+  rr(g, -.14, .3, .28, 1.9, .06, C.grey);
+  rr(g, -.55, 2.05, 1.1, .32, .14, C.grey);
+  ell(g, -.27, 2.21, .17, .1, C.NA); ell(g, .27, 2.21, .17, .1, C.NA);
+  rr(g, -.66, .05, .26, .8, .1, C.dark); rr(g, .4, .05, .26, .8, .1, C.dark);
+  g.save(); g.translate(-.62, -.35); g.rotate(-.6); rr(g, -.06, -.3, .12, .5, .03, '#9a9a9a'); g.restore();
+  g.save(); g.translate(.62, -.35); g.rotate(.6); rr(g, -.06, -.3, .12, .5, .03, '#9a9a9a'); g.restore();
+  rr(g, -.06, -1.55, .12, .35, .02, '#9a9a9a');
+  g.beginPath(); g.moveTo(-.5, .6); g.lineTo(-.5, -.8); g.quadraticCurveTo(-.5, -1.3, 0, -1.3); g.quadraticCurveTo(.5, -1.3, .5, -.8); g.lineTo(.5, .6); g.closePath();
+  g.fillStyle = C.grey; g.fill(); g.lineWidth = .04; g.strokeStyle = C.ink; g.stroke();
+  g.beginPath(); g.moveTo(-.46, -.7); g.quadraticCurveTo(0, -1.02, .46, -.7); g.lineTo(.46, -.6); g.quadraticCurveTo(0, -.86, -.46, -.6); g.closePath(); g.fillStyle = C.sky; g.fill(); g.stroke();
+  rr(g, -.24, -.5, .48, .95, .2, C.NA);
+  ell(g, 0, -1.05, .22, .12, C.NA); star(g, 0, -1.05, .1);
+  g.save(); g.translate(0, -.15); g.rotate(rotor); g.strokeStyle = C.ink; g.lineWidth = .09; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-1.7, -1.7 * .55); g.lineTo(1.7, 1.7 * .55); g.moveTo(-1.7, 1.7 * .55); g.lineTo(1.7, -1.7 * .55); g.stroke();
+  ell(g, 0, 0, .1, .1, C.dark, .03); g.restore();
+}
+// His barracks: a grey block with a square on the roof, a small hatch, and a
+// big door in the team colour (blue on his sheet; red for DE).
+function drawBuilding(g, b) {
+  const { x, y, w, h } = b;
+  if (b.hp !== undefined && b.hp <= 0) {
+    g.fillStyle = '#6a6a66'; g.fillRect(x, y, w, h);
+    for (let i = 0; i < 9; i++) { const r = rnd(i + x * 7); g.fillStyle = i % 2 ? '#55554f' : '#8d8d86'; g.fillRect(x + r * (w - .6), y + rnd(i + 3) * (h - .5), .6, .45); }
+    return;
+  }
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x + .2, y + .25, w, h);
+  rr(g, x, y, w, h, 0, C.grey, .06);
+  rr(g, x + w * .1, y + h * .08, w * .55, h * .27, 0, C.grey, .04);
+  rr(g, x + w * .05, y + h * .68, w * .18, h * .27, 0, C.grey, .04);
+  rr(g, x + w * .45, y + h * .58, w * .52, h * .38, 0, b.side ? C[b.side] : '#8a8a8a', .04);
+}
+// His C4: a grey block in four panels. His strike: a red circle.
+function drawBoomIcon(g, kind) {
+  if (kind === 'c4') {
+    rr(g, -.4, -.45, .8, .9, 0, '#2a2a2a', .04);
+    for (const [px, py] of [[-.33, -.38], [.03, -.38], [-.33, .03], [.03, .03]]) rr(g, px, py, .3, .35, 0, C.grey, .02);
+  } else ell(g, 0, 0, .42, .42, C.DE, 0);
+}
+// Small upright weapon pictures for the pick card, like his weapon sheet.
+function drawGunIcon(g, kind, side) {
+  const team = C[side];
+  if (kind === 'rifle') {
+    rr(g, -.08, -2, .16, 3.6, .03, C.grey); rr(g, -.12, -1, .24, 1.1, .03, team); rr(g, -.1, 1.3, .2, .6, .03, C.ink);
+  } else if (kind === 'heavy') {
+    rr(g, -.07, -2.3, .14, 4.2, .03, C.grey); rr(g, -.13, -1.3, .26, 1.6, .03, team); rr(g, -.12, 1.4, .24, .5, .03, C.ink);
+  } else if (kind === 'minigun') {
+    for (const dx of [-.3, -.1, .1, .3]) rr(g, dx - .06, -2, .12, 2, .02, C.grey);
+    rr(g, -.42, -1.95, .84, .2, .03, '#a8a8a8'); rr(g, -.42, -1.1, .84, .16, .03, '#a8a8a8');
+    rr(g, -.45, 0, .9, 1.2, .3, team); rr(g, .3, .2, .35, .9, .15, C.ink); rr(g, -.15, 1.05, .3, .5, .1, C.grey);
+  } else drawBoomIcon(g, kind);
+}
+
+// ---- Game state ----
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let S = { best: null };
+try { S = Object.assign(S, JSON.parse(localStorage.getItem('mission-directive') || '{}')); } catch (e) { }
+const save = () => { try { localStorage.setItem('mission-directive', JSON.stringify(S)); } catch (e) { } };
+let pick = { gun: 'rifle', boom: 'c4' };
+let G = null;   // the mission in play
+let phase = 'title';
+let cam = { x: 28, y: 18 }, shake = 0;
+
+function newMission() {
+  const side = 'NA', foe = 'DE';
+  const mk = (o, s) => ({ x: o.x, y: o.y, a: Math.PI / 2, side: s, hp: STATS.troop[s].hp, speed: STATS.troop[s].speed, detect: STATS.troop[s].detect,
+    gun: STATS.guns[s][o.gun || 'rifle'], ammo: STATS.guns[s][o.gun || 'rifle'].mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, downT: 0 });
+  G = {
+    side, foe, t: 0,
+    // beside the copter, not under its nose or rotor
+    player: Object.assign(mk({ x: LZ.x + .5, y: LZ.y + 2.2 }, side), { gun: STATS.guns[side][pick.gun], ammo: STATS.guns[side][pick.gun].mag, a: 0 }),
+    guards: GUARDS.map(o => mk(o, foe)),
+    buildings: BUILDINGS.map(b => Object.assign({}, b, b.kind === 'barracks' ? { hp: STATS.barracks.hp } : {})),
+    booms: [], fx: [], tracers: [],
+    left: TUNE.carry, down: 0, hit: 0, outside: true,
+    copter: { x: -14, y: 13, a: 0, alt: 1, rotor: 0 },
+    targetDown: false, lostWhy: null,
+  };
+  G.target = G.buildings.find(b => b.target);
+  G.copter.a = Math.atan2(LZ.y - G.copter.y, LZ.x - G.copter.x);
+}
+
+// ---- Input ----
+const keys = new Set();
+const stick = { x: 0, y: 0, id: null };
+let fireHeld = false;
+addEventListener('keydown', e => {
+  if (!cover.hidden) return;
+  const k = e.key.toLowerCase();
+  if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+  keys.add(k);
+  if ((k === 'e' || k === 'enter') && !e.repeat) use();
+  if (k === 'r') reload(G && G.player);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => { keys.clear(); fireHeld = false; });
+const stickEl = document.getElementById('stick'), knob = document.getElementById('knob');
+function stickMove(e) {
+  const r = stickEl.getBoundingClientRect(), R = r.width / 2;
+  let dx = e.clientX - r.left - R, dy = e.clientY - r.top - R; const d = Math.hypot(dx, dy);
+  if (d > R) { dx *= R / d; dy *= R / d; }
+  stick.x = dx / R; stick.y = dy / R;
+  knob.style.transform = `translate(${dx}px,${dy}px)`;
+}
+stickEl.addEventListener('pointerdown', e => { stick.id = e.pointerId; stickEl.setPointerCapture(e.pointerId); stickMove(e); });
+stickEl.addEventListener('pointermove', e => { if (e.pointerId === stick.id) stickMove(e); });
+const stickEnd = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.x = stick.y = 0; knob.style.transform = ''; };
+stickEl.addEventListener('pointerup', stickEnd); stickEl.addEventListener('pointercancel', stickEnd);
+const bFire = document.getElementById('bFire'), bUse = document.getElementById('bUse');
+bFire.addEventListener('pointerdown', e => { fireHeld = true; bFire.classList.add('down'); bFire.setPointerCapture(e.pointerId); });
+for (const ev of ['pointerup', 'pointercancel']) bFire.addEventListener(ev, () => { fireHeld = false; bFire.classList.remove('down'); });
+bUse.addEventListener('click', () => use());
+
+// ---- Play ----
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const rectDist = (b, p) => Math.hypot(Math.max(b.x - p.x, 0, p.x - b.x - b.w), Math.max(b.y - p.y, 0, p.y - b.y - b.h));
+function tryMove(u, mx, my) {
+  let moved = false;
+  if (!blocked(u.x + mx, u.y, .32)) { u.x += mx; moved = moved || mx !== 0; }
+  if (!blocked(u.x, u.y + my, .32)) { u.y += my; moved = moved || my !== 0; }
+  return moved;
+}
+function moveToward(u, tg, speed, dt) {
+  const dx = tg.x - u.x, dy = tg.y - u.y, d = Math.hypot(dx, dy);
+  if (d < .1) return true;
+  const s = Math.min(d, speed * dt), nx = dx / d, ny = dy / d;
+  u.a = Math.atan2(ny, nx);
+  if (!tryMove(u, nx * s, ny * s)) {
+    // stuck on a corner: step sideways for a moment
+    u.side2 = u.side2 || 1;
+    if (!tryMove(u, -ny * s * u.side2, nx * s * u.side2)) u.side2 *= -1;
+  }
+  return false;
+}
+// Walking around hills and buildings: a step-count map out from the target's
+// tile, and the guard steps to whichever next tile is fewer steps away.
+let flow = null;
+function flowTo(tx, ty) {
+  const W = L.w, H = L.h, key = L === HQL ? 'hq' : 'm', at = ty * W + tx;
+  if (flow && flow.key === key && flow.at === at) return flow.d;
+  const d = new Int32Array(W * H).fill(-1), q = [at];
+  d[at] = 0;
+  for (let i = 0; i < q.length; i++) {
+    const c = q[i], x = c % W, y = (c / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, n = ny * W + nx;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || d[n] >= 0 || L.solid[n] > 0) continue;
+      d[n] = d[c] + 1; q.push(n);
+    }
+  }
+  flow = { key, at, d };
+  return d;
+}
+function chase(u, to, speed, dt) {
+  const W = L.w, d = flowTo(Math.floor(to.x), Math.floor(to.y));
+  const ux = Math.floor(u.x), uy = Math.floor(u.y), here = d[uy * W + ux];
+  if (here <= 1) return moveToward(u, to, speed, dt);
+  let best = here, bx = 0, by = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = ux + dx, ny = uy + dy;
+    if (nx < 0 || ny < 0 || nx >= W || ny >= L.h) continue;
+    // a diagonal step only when both side tiles are open, so no corner-cutting
+    if (dx && dy && (L.solid[uy * W + nx] > 0 || L.solid[ny * W + ux] > 0)) continue;
+    const v = d[ny * W + nx];
+    if (v >= 0 && v < best) { best = v; bx = nx; by = ny; }
+  }
+  if (best === here) return moveToward(u, to, speed, dt);
+  moveToward(u, { x: bx + .5, y: by + .5 }, speed, dt);
+  return false;
+}
+function reload(u) { if (u && !u.reload && u.ammo < u.gun.mag && u.hp > 0) u.reload = TUNE.reload; }
+function shoot(u, dt, foes) {
+  u.cool -= dt;
+  if (u.reload > 0) { u.reload -= dt; if (u.reload <= 0) { u.reload = 0; u.ammo = u.gun.mag; } return; }
+  if (u.ammo <= 0) { reload(u); return; }
+  if (u.cool > 0) return;
+  // aim at the nearest foe in range you can see; otherwise shoot straight ahead
+  let tg = null, best = 1e9;
+  for (const f of foes) if (f.hp > 0 && !f.gone) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
+  u.cool = 1 / u.gun.rate; u.ammo--;
+  if (tg) {
+    u.a = Math.atan2(tg.y - u.y, tg.x - u.x);
+    G.tracers.push({ x1: u.x, y1: u.y, x2: tg.x, y2: tg.y, t: .07 });
+    hurt(tg, u.gun.dmg, 'shot');
+  } else {
+    const e = rayEnd(u.x, u.y, u.a, u.gun.range);
+    G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
+  }
+}
+function hurt(u, dmg, why) {
+  if (u.hp <= 0) return;
+  u.hp -= dmg; u.flash = .12;
+  if (u === G.player) {
+    if (u.hp <= 0) { u.hp = 0; lose(why === 'blast' ? 'blast' : 'shot'); }
+  } else {
+    if (u.state !== 'alert') { u.state = 'alert'; u.react = TUNE.react; }
+    u.lastSeen = { x: G.player.x, y: G.player.y }; u.lost = 0;
+    if (u.hp <= 0) { u.hp = 0; G.down++; }
+    else if (u.hurtT == null) u.hurtT = 0; // the count to the alarm starts
+  }
+}
+function stepGuard(g, dt) {
+  if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6) g.gone = true; return; }
+  if (g.flash) g.flash = Math.max(0, g.flash - dt);
+  const p = G.player, d = dist(g, p);
+  const sees = phase === 'play' && p.hp > 0 && d <= g.detect && los(g, p);
+  if (sees) { if (g.state !== 'alert') { g.state = 'alert'; g.react = TUNE.react; } g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
+  else if (g.state === 'alert') { g.lost += dt; if (g.lost > TUNE.forget) g.state = 'patrol'; }
+  if (g.hurtT != null && !G.alarm && phase === 'play') { g.hurtT += dt; if (g.hurtT >= STATS.alarm.after) soundAlarm(g); }
+  // after the alarm, everyone knows where you are and keeps coming
+  if (G.alarm && phase === 'play') { g.state = 'alert'; g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
+  if (g.reload > 0) { g.reload -= dt; if (g.reload <= 0) { g.reload = 0; g.ammo = g.gun.mag; } }
+  if (g.state === 'alert') {
+    if (sees && d <= g.gun.range) {
+      g.a = Math.atan2(p.y - g.y, p.x - g.x);
+      g.react -= dt;
+      if (g.react <= 0) shoot(g, dt, [p]);
+    } else chase(g, sees ? p : g.lastSeen, g.speed * (G.alarm && !sees ? TUNE.alarmPace : 1), dt);
+  } else if (g.path) {
+    const [px, py] = g.path[g.pi];
+    if (moveToward(g, { x: px, y: py }, g.speed * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
+  } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
+}
+function soundAlarm(g) {
+  G.alarm = { x: g.x, y: g.y, t: 0 };
+  shake = Math.max(shake, .3);
+  hud();
+}
+function use() {
+  const p = G && G.player;
+  if (phase === 'hq') {
+    const n = nearHq(p);
+    if (n === 'desk') folderCard();
+    else if (n === 'rack') wallCard();
+    else if (n === 'copter' && G.folder) leaveHq();
+    return;
+  }
+  if (phase !== 'play') return;
+  if (G.targetDown) { if (dist(p, LZ) < 2.6) board(); return; }
+  if (G.left <= 0) return;
+  const b = STATS.boom[pick.boom];
+  G.left--;
+  G.booms.push({ kind: pick.boom, x: p.x, y: p.y, t: b.timer, dmg: b.dmg, splash: b.splash });
+}
+function blast(k) {
+  const p = G.player;
+  G.fx.push({ x: k.x, y: k.y, r: k.splash, t: 0 });
+  shake = .6;
+  for (const g of G.guards) if (g.hp > 0 && dist(g, k) <= k.splash) hurt(g, k.dmg, 'blast');
+  for (const b of G.buildings) if (b.hp > 0 && rectDist(b, k) <= k.splash) { b.hp -= k.dmg; if (b.hp <= 0) b.hp = 0; }
+  if (G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
+  if (p.hp > 0 && dist(p, k) <= k.splash) { G.blastSplash = k.splash; hurt(p, k.dmg, 'blast'); }
+}
+function board() {
+  phase = 'flyout'; G.fly = 0; G.player.gone = true; G.copter.a = Math.atan2(13 - LZ.y, -14 - LZ.x);
+}
+function walk(p, dt) {
+  let mx = (keys.has('arrowright') || keys.has('d') ? 1 : 0) - (keys.has('arrowleft') || keys.has('a') ? 1 : 0) + stick.x;
+  let my = (keys.has('arrowdown') || keys.has('s') ? 1 : 0) - (keys.has('arrowup') || keys.has('w') ? 1 : 0) + stick.y;
+  const m = Math.hypot(mx, my);
+  if (m > .15) { mx /= Math.max(1, m); my /= Math.max(1, m); tryMove(p, mx * p.speed * dt, my * p.speed * dt); p.a = Math.atan2(my, mx); }
+}
+function leaveHq() { phase = 'hqout'; G.player.gone = true; G.copter.a = 0; hud(); }
+function stepHq(dt) {
+  const c = G.copter;
+  if (phase === 'hqout') {
+    c.rotor += dt * 26; c.alt = Math.min(1, c.alt + dt * 1.2);
+    if (c.alt >= 1) c.x += STATS.copter.speed * dt;
+    if (c.x > HQL.w + 4) startMission();
+    return;
+  }
+  walk(G.player, dt);
+  hud();
+}
+function step(dt) {
+  if (G.kind === 'hq') return stepHq(dt);
+  G.copter.rotor += dt * (G.copter.alt > 0 || phase === 'flyin' || phase === 'flyout' ? 26 : 10);
+  for (const tr of G.tracers) tr.t -= dt; G.tracers = G.tracers.filter(tr => tr.t > 0);
+  for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < 1.1);
+  shake = Math.max(0, shake - dt);
+  if (G && G.alarm) G.alarm.t += dt;
+  const c = G.copter, sp = STATS.copter.speed;
+  if (phase === 'flyin') {
+    const d = dist(c, LZ);
+    if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
+    else { c.alt = 0; phase = 'play'; G.t = 0; showHud(true); }
+    return;
+  }
+  if (phase === 'flyout') {
+    c.alt = Math.min(1, c.alt + dt * 1.2);
+    if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
+    if (c.x < -12) win();
+    return;
+  }
+  if (phase !== 'play') return;
+  G.t += dt;
+  const p = G.player;
+  if (p.flash) p.flash = Math.max(0, p.flash - dt);
+  walk(p, dt);
+  if (keys.has(' ') || fireHeld) shoot(p, dt, G.guards);
+  else { p.cool -= dt; if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.reload = 0; p.ammo = p.gun.mag; } } }
+  for (const g of G.guards) stepGuard(g, dt);
+  for (const k of G.booms) { k.t -= dt; if (k.t <= 0 && !k.done) { k.done = true; blast(k); } }
+  G.booms = G.booms.filter(k => !k.done);
+  if (phase !== 'play') return;
+  if (G.targetDown && dist(p, LZ) < 1.8) board();
+  else if (!G.targetDown && G.left <= 0 && !G.booms.length && !G.fx.length) lose('noBoom');
+  hud();
+}
+
+// ---- Drawing ----
+let S_ = 30, dpr = 1;
+function resize() {
+  dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
+  S_ = Math.sqrt(cv.width * cv.height / TUNE.view);
+}
+addEventListener('resize', resize);
+function draw(now) {
+  const cw = cv.width, ch = cv.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#2c3a22'; ctx.fillRect(0, 0, cw, ch);
+  // camera: the copter while flying, the soldier on foot, a slow pan on the title
+  let fx = 28, fy = 18;
+  if (!G) { fx = 28 + Math.sin(now / 9000) * 14; fy = 18 + Math.cos(now / 11000) * 7; }
+  else if (phase === 'flyin' || phase === 'flyout' || G.player.gone) { fx = G.copter.x; fy = G.copter.y; }
+  else if (G) { fx = G.player.x; fy = G.player.y; }
+  const vw = cw / S_, vh = ch / S_;
+  fx = vw >= L.w ? L.w / 2 : Math.max(vw / 2, Math.min(L.w - vw / 2, fx));
+  fy = vh >= L.h ? L.h / 2 : Math.max(vh / 2, Math.min(L.h - vh / 2, fy));
+  cam.x += (fx - cam.x) * .15; cam.y += (fy - cam.y) * .15;
+  if (!G || G.fresh || Math.abs(fx - cam.x) > 20) { cam.x = fx; cam.y = fy; }
+  if (G) G.fresh = false;
+  const sk = shake > 0 ? (Math.random() - .5) * shake * .6 : 0;
+  ctx.setTransform(S_, 0, 0, S_, cw / 2 - (cam.x + sk) * S_, ch / 2 - (cam.y + sk) * S_);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(L.ground, 0, 0, L.w, L.h);
+  const g = ctx;
+  const bs = G ? G.buildings : BUILDINGS;
+  for (const b of bs) drawBuilding(g, b);
+  if (!G) return;
+  if (G.kind === 'hq') drawHq(g);
+  // explosives waiting to go off, with the splash ring so you know how far to run
+  for (const k of G.booms) {
+    g.save(); g.translate(k.x, k.y); drawBoomIcon(g, k.kind); g.restore();
+    g.setLineDash([.4, .3]); g.lineWidth = .08; g.strokeStyle = 'rgba(226,72,58,.9)';
+    g.beginPath(); g.arc(k.x, k.y, k.splash, 0, 7); g.stroke(); g.setLineDash([]);
+  }
+  for (const u of G.guards) if (!u.gone) unit(g, u);
+  if (!G.player.gone && phase !== 'flyin') unit(g, G.player);
+  for (const tr of G.tracers) { g.strokeStyle = '#fff3a0'; g.lineWidth = .06; g.beginPath(); g.moveTo(tr.x1, tr.y1); g.lineTo(tr.x2, tr.y2); g.stroke(); }
+  // the copter, with its shadow on the ground
+  const c = G.copter, sc = 1 + c.alt * .25;
+  g.save(); g.translate(c.x + .5 + c.alt * 1.2, c.y + .5 + c.alt * 1.6); g.rotate(c.a + Math.PI / 2); g.scale(sc, sc);
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(0, .4, .7, 2, 0, 0, 7); g.fill(); g.restore();
+  g.save(); g.translate(c.x, c.y); g.rotate(c.a + Math.PI / 2); g.scale(sc, sc); drawCopter(g, c.rotor); g.restore();
+  for (const f of G.fx) {
+    const e = Math.min(1, f.t / .35), r = f.r * (.25 + .75 * e), a = 1 - f.t / 1.1;
+    g.fillStyle = `rgba(255,150,40,${.55 * a})`; g.beginPath(); g.arc(f.x, f.y, r, 0, 7); g.fill();
+    g.fillStyle = `rgba(255,232,120,${.8 * a})`; g.beginPath(); g.arc(f.x, f.y, r * .45, 0, 7); g.fill();
+  }
+  // screen-space words: countdowns over explosives, BOOM over blasts
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const sx = x => cw / 2 + (x - cam.x) * S_, sy = y => ch / 2 + (y - cam.y) * S_;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const fs = Math.max(14, S_ * .6);
+  ctx.font = `${fs}px "Press Start 2P", monospace`; ctx.lineWidth = fs / 4; ctx.strokeStyle = '#1a1a1a'; ctx.lineJoin = 'round';
+  for (const k of G.booms) { const s = String(Math.ceil(k.t)); ctx.strokeText(s, sx(k.x), sy(k.y - 1.1)); ctx.fillStyle = '#fff'; ctx.fillText(s, sx(k.x), sy(k.y - 1.1)); }
+  // ALARM! over the guard who sounded it, and a ! over a hurt guard still counting
+  if (G.alarm && G.alarm.t < 2.5) { ctx.strokeText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); ctx.fillStyle = '#ff5a4a'; ctx.fillText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); }
+  if (!G.alarm) for (const u of G.guards) if (u.hurtT != null && u.hp > 0) { ctx.strokeText('!', sx(u.x), sy(u.y - 1)); ctx.fillStyle = '#ffd23f'; ctx.fillText('!', sx(u.x), sy(u.y - 1)); }
+  for (const f of G.fx) if (f.t < .9) { ctx.strokeText(t('boom'), sx(f.x), sy(f.y)); ctx.fillStyle = '#ffd23f'; ctx.fillText(t('boom'), sx(f.x), sy(f.y)); }
+  // a word over the soldier when Use does something here
+  const p = G.player, n = phase === 'hq' ? nearHq(p) : phase === 'play' && G.targetDown && dist(p, LZ) < 2.6 ? 'copter' : null;
+  if (n && !(n === 'copter' && G.kind === 'hq' && !G.folder) && cover.hidden) {
+    const w = matchMedia('(pointer:coarse)').matches ? t('useTouch') : t('useKey'), hs = Math.max(12, S_ * .35);
+    ctx.font = `${hs}px "Press Start 2P", monospace`; ctx.lineWidth = hs / 3;
+    ctx.strokeText(w, sx(p.x), sy(p.y - 1)); ctx.fillStyle = '#fff'; ctx.fillText(w, sx(p.x), sy(p.y - 1));
+  }
+}
+function unit(g, u) {
+  g.save(); g.translate(u.x, u.y);
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(.08, .12, .45, .4, 0, 0, 7); g.fill();
+  g.rotate(u.a + Math.PI / 2);
+  // down, not hurt: a guard tips over and fades away (cartoony, no blood)
+  if (u.hp <= 0) { g.globalAlpha = Math.max(0, 1 - u.downT / 1.6); g.rotate(Math.min(1, u.downT * 3) * Math.PI / 2); g.scale(1, .7); }
+  drawTroop(g, u.side);
+  if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .5, 0, 7); g.fill(); }
+  g.restore();
+}
+
+// ---- Screens ----
+const cover = document.getElementById('cover'), card = document.getElementById('card');
+const dirEl = document.getElementById('dir'), hudEl = document.getElementById('hud'), ctrlEl = document.getElementById('ctrl');
+function showCard(html, cls = '', tab = '') {
+  card.className = 'card ' + cls; card.dataset.tab = tab; card.innerHTML = html;
+  cover.hidden = false; ctrlEl.classList.remove('live'); keys.clear(); fireHeld = false;
+  const f = card.querySelector('.row .btn:last-child'); if (f) f.focus();
+}
+function hideCard() { cover.hidden = true; ctrlEl.classList.add('live'); cv.focus && cv.focus(); }
+const btn = (id, label, plain) => `<button class="btn${plain ? ' plain' : ''}" id="${id}">${label}</button>`;
+const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+function showHud(v) { hudEl.hidden = !v; dirEl.hidden = !v; if (v) hud(); }
+function hud() {
+  if (!G) return;
+  const p = G.player;
+  let d;
+  hudEl.hidden = G.kind === 'hq' || dirEl.hidden;
+  if (G.kind === 'hq') d = phase === 'hqout' ? t('dirTakeOff') : G.folder ? t('dirWall') : t('dirDesk');
+  else if (phase === 'flyin') d = t('dirFlyIn');
+  else if (phase === 'flyout') d = t('dirFlyOut');
+  else if (G.targetDown) d = t('dirBack');
+  else if (G.booms.length) d = t('dirClear', { s: Math.ceil(Math.min(...G.booms.map(k => k.t))) });
+  else d = t('dirGo');
+  if (dirEl.textContent !== d) dirEl.textContent = d;
+  document.getElementById('hHp').textContent = t('hp', { n: Math.ceil(p.hp) });
+  document.getElementById('hAmmo').textContent = p.reload > 0 ? t('reloading') : t('ammo', { n: p.ammo, m: p.gun.mag });
+  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left });
+  const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq');
+  if (al.hidden === on) al.hidden = !on;
+  if (on) al.textContent = t('alarmPill');
+}
+
+function titleCard() {
+  phase = 'title'; G = null; L = MAPL; showHud(false);
+  const touch = matchMedia('(pointer:coarse)').matches;
+  showCard(`<h1 id="cardTitle">${t('title')}</h1><p class="soft" style="text-align:center">${t('titleSub')}</p><p class="keys">${touch ? t('keysTouch') : t('keysDesk')}</p><div class="row">${btn('go', t('start'))}</div>`);
+  on('go', enterHq);
+}
+function newHq() {
+  L = HQL;
+  const gun = STATS.guns.NA[pick.gun];
+  G = { kind: 'hq', fresh: true, folder: false, guards: [], buildings: [], booms: [], fx: [], tracers: [],
+    player: { x: HQ_START.x, y: HQ_START.y, a: -Math.PI / 2, side: 'NA', hp: STATS.troop.NA.hp, speed: STATS.troop.NA.speed, gun, ammo: gun.mag, cool: 0, reload: 0 },
+    copter: { x: HQ_PAD.x, y: HQ_PAD.y, a: -Math.PI / 2, alt: 0, rotor: .6 } };
+}
+function enterHq() { newHq(); phase = 'hq'; hideCard(); showHud(true); }
+// picked up from the desk at headquarters
+function folderCard() {
+  G.folder = true;
+  showCard(`<h2 id="cardTitle" style="position:absolute;left:-999rem">${t('folderTab')}</h2>
+    <div class="paper"><canvas id="mini" width="840" height="555" role="img" aria-label="${t('mapAlt')}"></canvas></div>
+    <div class="typed"><b>${t('directiveHead')}</b>${t('directive')}</div>
+    <div class="row">${btn('go', t('close'))}</div>`, 'folder', t('folderTab'));
+  drawMini(document.getElementById('mini'));
+  on('go', hideCard);
+}
+// The folder map is drawn the way he drew his: graph paper, red-pen roads,
+// grey-pencil hills, black boxes for buildings, circled H for helipads.
+function drawMini(c) {
+  const g = c.getContext('2d'), k = c.width / W;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  g.strokeStyle = '#d6d6d6'; g.lineWidth = 1;
+  for (let x = 0; x <= W; x++) { g.beginPath(); g.moveTo(x * k, 0); g.lineTo(x * k, c.height); g.stroke(); }
+  for (let y = 0; y <= H; y++) { g.beginPath(); g.moveTo(0, y * k); g.lineTo(c.width, y * k); g.stroke(); }
+  g.strokeStyle = '#7a7a7a'; g.lineWidth = 1.5;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (solid[y * W + x] === 1) {
+    g.beginPath(); g.moveTo(x * k + 2, y * k + k * .8); g.lineTo(x * k + k * .5, y * k + k * .2); g.lineTo(x * k + k - 2, y * k + k * .8); g.stroke();
+  }
+  g.strokeStyle = '#e0302a'; g.lineWidth = 3; g.lineJoin = 'round';
+  for (const r of ROADS) { g.beginPath(); r.forEach(([x, y], i) => i ? g.lineTo(x * k, y * k) : g.moveTo(x * k, y * k)); g.stroke(); }
+  g.strokeStyle = '#2a2a2a'; g.lineWidth = 3;
+  for (const b of BUILDINGS) { g.fillStyle = b.target ? '#f6c8c3' : '#fff'; g.fillRect(b.x * k, b.y * k, b.w * k, b.h * k); g.strokeRect(b.x * k, b.y * k, b.w * k, b.h * k); }
+  g.font = `bold ${k * 1.1}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const [x, y] of PADS) { g.fillStyle = '#fff'; g.beginPath(); g.arc(x * k, y * k, k * .9, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#2a2a2a'; g.fillText('H', x * k, y * k + 1); }
+  const tg = BUILDINGS.find(b => b.target), tx = (tg.x + tg.w / 2) * k, ty = (tg.y + tg.h / 2) * k;
+  g.strokeStyle = '#c0261f'; g.lineWidth = 5;
+  g.beginPath(); g.arc(tx, ty, k * 3.2, 0, 7); g.stroke();
+  g.beginPath(); g.moveTo(tx - k, ty - k); g.lineTo(tx + k, ty + k); g.moveTo(tx + k, ty - k); g.lineTo(tx - k, ty + k); g.stroke();
+  const label = (s, x, y, col) => { g.font = `bold ${k * 1.2}px Lexend, sans-serif`; g.lineWidth = 6; g.strokeStyle = '#fff'; g.strokeText(s, x, y); g.fillStyle = col; g.fillText(s, x, y); };
+  label(t('mapTarget'), tx, ty + k * 4.4, '#a8201a');
+  g.strokeStyle = '#1f7a2f'; g.lineWidth = 4; g.beginPath(); g.arc(LZ.x * k, LZ.y * k, k * 1.6, 0, 7); g.stroke();
+  g.textAlign = 'left'; label(t('mapLz'), LZ.x * k + k * 2, LZ.y * k - k * 2, '#17611f');
+}
+function iconCanvas(kind, side) {
+  const gun = !['c4', 'strike'].includes(kind), c = document.createElement('canvas');
+  c.width = 72; c.height = gun ? 180 : 90;
+  if (!gun) c.className = 'small';
+  const g = c.getContext('2d'); g.translate(36, c.height / 2);
+  if (gun) g.scale(32, 32); else g.scale(60, 60);
+  drawGunIcon(g, kind, side);
+  return c;
+}
+// The weapons wall at headquarters, seen face on: his weapons hang on a
+// pegboard with their numbers on a plate under each.
+function wallCard() {
+  const side = 'NA', touch = matchMedia('(pointer:coarse)').matches;
+  const peg = (group, kind, line) => `<label class="peg"><input type="radio" name="${group}" value="${kind}"${pick[group] === kind ? ' checked' : ''}><span class="hang"><i data-icon="${kind}" aria-hidden="true"></i><span class="plate"><b>${t(kind)}</b>${line}</span><span class="on">${t('picked')}</span></span></label>`;
+  const gl = k => t('gunLine', STATS.guns[side][k]), bl = k => t('boomLine', Object.assign({ n: TUNE.carry }, STATS.boom[k]));
+  showCard(`<h2 id="cardTitle">${t('pickTitle')}</h2>
+    <fieldset><legend>${t('gunLegend')}</legend><div class="pegs">${['rifle', 'minigun', 'heavy'].map(k => peg('gun', k, gl(k))).join('')}</div></fieldset>
+    <fieldset><legend>${t('boomLegend')}</legend><div class="pegs">${['c4', 'strike'].map(k => peg('boom', k, bl(k))).join('')}</div></fieldset>
+    <p class="keys">${touch ? t('keysTouch') : t('keysDesk')}</p>
+    <div class="row">${btn('go', t('close'))}</div>`, 'board');
+  for (const i of card.querySelectorAll('[data-icon]')) i.replaceWith(iconCanvas(i.dataset.icon, side));
+  for (const r of card.querySelectorAll('input')) r.addEventListener('change', () => {
+    pick[r.name] = r.value;
+    if (r.name === 'gun') { G.player.gun = STATS.guns.NA[pick.gun]; G.player.ammo = G.player.gun.mag; }
+  });
+  on('go', hideCard);
+}
+function startMission() {
+  newMission(); L = MAPL; G.fresh = true; phase = 'flyin'; hideCard(); showHud(true);
+}
+function lose(why) {
+  if (phase !== 'play') return;
+  phase = 'lost'; G.lostWhy = why;
+  const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'noBoom' ? t('lostNoBoom') : t('lostShot');
+  setTimeout(() => {
+    showHud(false);
+    showCard(`<h2 id="cardTitle">${t('lostTitle')}</h2><p>${msg}</p><div class="row">${btn('fold', t('toHq'), true)}${btn('go', t('tryAgain'))}</div>`);
+    on('fold', enterHq); on('go', startMission);
+  }, 900);
+}
+function win() {
+  phase = 'won'; showHud(false);
+  const time = G.t, newBest = S.best === null || time < S.best;
+  if (newBest) { S.best = time; save(); }
+  showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t('wonText')}</p>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b></div>
+    <div class="row">${btn('go', t('toHq'))}</div>`);
+  on('go', enterHq);
+}
+
+// ---- Run ----
+buildMap(); paintGround(); MAPL.ground = ground; buildHq(); paintHq(); resize();
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (G && cover.hidden) step(dt);
+  if (G && (phase === 'flyin' || phase === 'flyout')) hud();
+  draw(now);
+  requestAnimationFrame(frame);
+}
+titleCard();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
