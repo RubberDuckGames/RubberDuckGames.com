@@ -52,6 +52,10 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
 .board legend{float:left;margin:0 0 .5rem;font-size:.6rem}
 .pegs{clear:both;display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;margin-bottom:.8rem}
 .peg{position:relative;cursor:pointer;display:block}
+.peg.locked{cursor:default;opacity:.6}
+.money{text-align:right;font-family:"Press Start 2P",monospace;font-size:.8rem;margin:.2rem 0 .6rem}
+.row.buy{justify-content:flex-end;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
 .peg input{position:absolute;opacity:0;width:1px;height:1px}
 .hang{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.5rem .4rem;border:.25rem solid transparent;width:10rem}
 .hang canvas{width:3.6rem;height:9rem}
@@ -132,15 +136,21 @@ const STATS = {
   },
   // "NE" on his weapon sheet is the NA side.
   guns: {
+    // his second weapon sheet (16 Nov, late): rifles 4 shots a second, heavy
+    // rifles 3 and cost 15, and the pump action, which fires like a shotgun:
+    // 3 pellets of 20, one straight ahead and one to each side (he said 30 to
+    // 45 degrees; `spread` is ours, in between)
     NA: {
-      rifle:   { dmg: 5, mag: 20,  range: 8, rate: 2 },
+      rifle:   { dmg: 5, mag: 20,  range: 8, rate: 4 },
       minigun: { dmg: 4, mag: 150, range: 6, rate: 20 },
-      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 1.5 },
+      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 3, cost: 15 },
+      pump:    { dmg: 20, mag: 6,  range: 4, rate: 4, cost: 20, pellets: 3, spread: 35 },
     },
     DE: {
-      rifle:   { dmg: 6, mag: 15,  range: 7, rate: 2 },
+      rifle:   { dmg: 6, mag: 15,  range: 7, rate: 4 },
       minigun: { dmg: 4, mag: 150, range: 6, rate: 20 },
-      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 1.5 },
+      heavy:   { dmg: 8, mag: 15,  range: 6, rate: 3, cost: 15 },
+      pump:    { dmg: 20, mag: 6,  range: 4, rate: 4, cost: 20, pellets: 3, spread: 35 },
     },
   },
   // timer in seconds, splash in tiles
@@ -162,6 +172,8 @@ const STATS = {
   // 16 Nov: shoot a guard and don't take them down within about 30 seconds,
   // and they sound the alarm. Every enemy in the base then heads to you.
   alarm: { after: 30 },
+  // his rule: $5 for every mission you finish, spent on guns that cost money
+  money: { perMission: 5 },
 };
 // Numbers the game needs. Reload and carry are his (16 Nov); the rest are ours.
 const TUNE = {
@@ -173,7 +185,6 @@ const TUNE = {
   alarmPace: 0.6,   // after the alarm, enemies head to you at this share of their speed ("slowly")
   view: 340,        // about how many tiles show on screen
   youDamage: 2,     // 16 Nov, his ask: your guns do double his damage numbers
-  youRate: { rifle: 2, heavy: 2 },  // 16 Nov, his ask: your rifle and heavy rifle fire twice as fast
   sight: 40,        // degrees each side of where a guard faces that it can see (the yellow cone)
   close: 1.2,       // tiles: this close, a guard notices you even from behind
   lookAround: 0.7,  // radians a guard standing still turns its head each way
@@ -204,6 +215,11 @@ const STR = {
   gunLine: 'Damage {dmg} · Mag {mag} · Range {range} · {rate} shots a second',
   boomLine: 'Timer {timer} s · Damage {dmg} · Splash {splash} tiles · You carry {n}',
   picked: 'Picked',
+  pump: 'Pump action',
+  money: 'Money: ${n}',
+  cost: 'Costs ${n}',
+  buy: 'Buy {gun} for ${n}',
+  moneyWon: '+${n}',
   keysDesk: 'Move: arrows or WASD · Fire: Space · Use: E (drop your explosive) · Reload: R',
   keysTouch: 'Move with the stick. Fire shoots. Use drops your explosive.',
   dirDesk: 'Get the mission folder from the desk',
@@ -285,7 +301,7 @@ const BUILDINGS = [
 // face: where a standing group looks (radians; 0 east, PI west, PI/2 south).
 const GROUPS = [
   { x: 43, y: 20.5, face: Math.PI, n: 2 },
-  { x: 49.5, y: 23.2, face: Math.PI * .75, n: 3 },
+  { x: 49.5, y: 23.2, face: Math.PI * .75, n: 3, heavy: true, heavyGun: 'pump' },
   { x: 30, y: 9, n: 3, heavy: true, path: [[30, 9], [29.6, 18]] },
 ];
 const GAP = .9;  // tiles between soldiers in a group
@@ -298,7 +314,11 @@ function spawnGroups() {
       const k = (i - mid) * GAP;
       let x = o.x + sx * k, y = o.y + sy * k;
       if (isSolid(x, y)) { x = o.x; y = o.y; }
-      out.push({ x, y, face: o.face, group: gi, heavy: o.heavy && i === Math.round(mid),
+      const heavy = o.heavy && i === Math.round(mid);
+      // his rule (16 Nov, late): troopers carry rifles and sometimes heavy
+      // rifles; heavies carry miniguns or pump actions
+      const n = out.length, gun = heavy ? (o.heavyGun || 'minigun') : n % 4 === 3 ? 'heavy' : 'rifle';
+      out.push({ x, y, face: o.face, group: gi, heavy, gun,
         path: o.path && o.path.map(([px, py]) => [px + sx * k, py + sy * k]) });
     }
   });
@@ -382,13 +402,14 @@ function drawHq(g) {
   }
   const r = RACK;
   rr(g, r.x, r.y, r.w, r.h, 0, '#8a6b45', .05);
-  const items = ['rifle', 'minigun', 'heavy', 'c4', 'strike'];
+  const items = ['rifle', 'minigun', 'heavy', 'pump', 'c4', 'strike'];
   items.forEach((k, i) => {
-    const x = r.x + .8 + i * 1.6, y = r.y + .5, gun = !['c4', 'strike'].includes(k);
-    if (pick.gun === k || pick.boom === k) { g.strokeStyle = C.star; g.lineWidth = .1; g.strokeRect(x - .65, y - .45, 1.3, .9); }
+    const x = r.x + .7 + i * 1.32, y = r.y + .5, gun = !['c4', 'strike'].includes(k);
+    if (pick.gun === k || pick.boom === k) { g.strokeStyle = C.star; g.lineWidth = .1; g.strokeRect(x - .58, y - .45, 1.16, .9); }
+    if (gun && STATS.guns.NA[k].cost && !owns(k)) g.globalAlpha = .35;
     g.save(); g.translate(x, y); g.rotate(Math.PI / 2);
     if (gun) g.scale(.2, .2); else g.scale(.7, .7);
-    drawGunIcon(g, k, 'NA'); g.restore();
+    drawGunIcon(g, k, 'NA'); g.restore(); g.globalAlpha = 1;
   });
 }
 function nearHq(p) {
@@ -533,6 +554,9 @@ function drawGunIcon(g, kind, side) {
     rr(g, -.08, -2, .16, 3.6, .03, C.grey); rr(g, -.12, -1, .24, 1.1, .03, team); rr(g, -.1, 1.3, .2, .6, .03, C.ink);
   } else if (kind === 'heavy') {
     rr(g, -.07, -2.3, .14, 4.2, .03, C.grey); rr(g, -.13, -1.3, .26, 1.6, .03, team); rr(g, -.12, 1.4, .24, .5, .03, C.ink);
+  } else if (kind === 'pump') {
+    rr(g, -.07, -2.2, .14, 2.7, .03, C.grey); rr(g, -.17, -1.75, .34, .55, .04, C.ink);
+    rr(g, -.12, -.9, .24, 1.1, .03, team); rr(g, -.1, .2, .2, 1.3, .03, C.grey); rr(g, -.13, 1.45, .26, .35, .03, team);
   } else if (kind === 'minigun') {
     for (const dx of [-.3, -.1, .1, .3]) rr(g, dx - .06, -2, .12, 2, .02, C.grey);
     rr(g, -.42, -1.95, .84, .2, .03, '#a8a8a8'); rr(g, -.42, -1.1, .84, .16, .03, '#a8a8a8');
@@ -542,18 +566,20 @@ function drawGunIcon(g, kind, side) {
 
 // ---- Game state ----
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-let S = { best: null };
+let S = { best: null, money: 0, owned: {} };
 try { S = Object.assign(S, JSON.parse(localStorage.getItem('mission-directive') || '{}')); } catch (e) { }
 const save = () => { try { localStorage.setItem('mission-directive', JSON.stringify(S)); } catch (e) { } };
 let pick = { gun: 'rifle', boom: 'c4' };
+const owns = k => !STATS.guns.NA[k].cost || !!(S.owned && S.owned[k]);
 let G = null;   // the mission in play
 let phase = 'title';
 let cam = { x: 28, y: 18 }, shake = 0;
 
 function newMission() {
+  if (!owns(pick.gun)) pick.gun = 'rifle';
   const side = 'NA', foe = 'DE';
   const mk = (o, s) => {
-    const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.heavy ? 'minigun' : o.gun || 'rifle'];
+    const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.gun || 'rifle'];
     return { x: o.x, y: o.y, a: o.face ?? Math.PI / 2, side: s, heavy: !!o.heavy, group: o.group, hp: kind.hp, speed: kind.speed, detect: kind.detect,
       gun, ammo: gun.mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 };
   };
@@ -687,11 +713,29 @@ function shoot(u, dt, foes) {
   // aim at the nearest foe in range you can see; otherwise shoot straight ahead
   let tg = null, best = 1e9;
   for (const f of foes) if (f.hp > 0 && !f.gone) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
-  u.cool = 1 / (u.gun.rate * (u === G.player ? TUNE.youRate[gunOf(u.gun).kind] || 1 : 1)); u.ammo--;
+  u.cool = 1 / u.gun.rate; u.ammo--;
+  const dmg = u.gun.dmg * (u === G.player ? TUNE.youDamage : 1);
+  if (u.gun.pellets > 1) {
+    // a shotgun: pellets fan out from where it aims; each hits the nearest foe close to its line
+    const aim = tg ? Math.atan2(tg.y - u.y, tg.x - u.x) : u.a, sp = u.gun.spread * Math.PI / 180;
+    u.a = aim;
+    for (let i = 0; i < u.gun.pellets; i++) {
+      const a = aim + (u.gun.pellets === 1 ? 0 : (i / (u.gun.pellets - 1) - .5) * 2 * sp);
+      let hit = null, hd = 1e9;
+      for (const f of foes) if (f.hp > 0 && !f.gone) {
+        const d = dist(u, f), off = Math.abs(((Math.atan2(f.y - u.y, f.x - u.x) - a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
+        if (d <= u.gun.range && d < hd && Math.sin(off) * d < .45 && Math.cos(off) > 0 && los(u, f)) { hd = d; hit = f; }
+      }
+      const e = hit ? hit : rayEnd(u.x, u.y, a, u.gun.range);
+      G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
+      if (hit) hurt(hit, dmg, 'shot');
+    }
+    return;
+  }
   if (tg) {
     u.a = Math.atan2(tg.y - u.y, tg.x - u.x);
     G.tracers.push({ x1: u.x, y1: u.y, x2: tg.x, y2: tg.y, t: .07 });
-    hurt(tg, u.gun.dmg * (u === G.player ? TUNE.youDamage : 1), 'shot');
+    hurt(tg, dmg, 'shot');
   } else {
     const e = rayEnd(u.x, u.y, u.a, u.gun.range);
     G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
@@ -1084,12 +1128,17 @@ function iconCanvas(kind, side) {
 // The weapons wall at headquarters, seen face on: his weapons hang on a
 // pegboard with their numbers on a plate under each.
 function wallCard() {
+  if (!owns(pick.gun)) pick.gun = 'rifle';   // a gun not bought yet can't be the one you carry
   const side = 'NA', touch = matchMedia('(pointer:coarse)').matches;
-  const peg = (group, kind, line) => `<label class="peg"><input type="radio" name="${group}" value="${kind}"${pick[group] === kind ? ' checked' : ''}><span class="hang"><i data-icon="${kind}" aria-hidden="true"></i><span class="plate"><b>${t(kind)}</b>${line}</span><span class="on">${t('picked')}</span></span></label>`;
-  // the wall shows what your gun really does, with the doubling in TUNE
-  const gl = k => { const g = STATS.guns[side][k]; return t('gunLine', Object.assign({}, g, { dmg: g.dmg * TUNE.youDamage, rate: g.rate * (TUNE.youRate[k] || 1) })); }, bl = k => t('boomLine', Object.assign({ n: TUNE.carry }, STATS.boom[k]));
+  const locked = k => STATS.guns[side][k] && !owns(k);
+  const peg = (group, kind, line) => `<label class="peg${locked(kind) ? ' locked' : ''}"><input type="radio" name="${group}" value="${kind}"${pick[group] === kind ? ' checked' : ''}${locked(kind) ? ' disabled' : ''}><span class="hang"><i data-icon="${kind}" aria-hidden="true"></i><span class="plate"><b>${t(kind)}</b>${line}${locked(kind) ? `<br><b>${t('cost', { n: STATS.guns[side][kind].cost })}</b>` : ''}</span><span class="on">${t('picked')}</span></span></label>`;
+  // the wall shows what your gun really does (double damage is in TUNE)
+  const gl = k => { const g = STATS.guns[side][k]; return t('gunLine', Object.assign({}, g, { dmg: g.dmg * TUNE.youDamage })); }, bl = k => t('boomLine', Object.assign({ n: TUNE.carry }, STATS.boom[k]));
+  const forSale = ['heavy', 'pump'].filter(locked);
   showCard(`<h2 id="cardTitle">${t('pickTitle')}</h2>
-    <fieldset><legend>${t('gunLegend')}</legend><div class="pegs">${['rifle', 'minigun', 'heavy'].map(k => peg('gun', k, gl(k))).join('')}</div></fieldset>
+    <p class="money">${t('money', { n: S.money || 0 })}</p>
+    <fieldset><legend>${t('gunLegend')}</legend><div class="pegs">${['rifle', 'minigun', 'heavy', 'pump'].map(k => peg('gun', k, gl(k))).join('')}</div>
+    ${forSale.length ? `<div class="row buy">${forSale.map(k => `<button class="btn plain" data-buy="${k}"${(S.money || 0) < STATS.guns[side][k].cost ? ' disabled' : ''}>${t('buy', { gun: t(k), n: STATS.guns[side][k].cost })}</button>`).join('')}</div>` : ''}</fieldset>
     <fieldset><legend>${t('boomLegend')}</legend><div class="pegs">${['c4', 'strike'].map(k => peg('boom', k, bl(k))).join('')}</div></fieldset>
     <p class="keys">${touch ? t('keysTouch') : t('keysDesk')}</p>
     <div class="row">${btn('go', t('close'))}</div>`, 'board');
@@ -1097,6 +1146,12 @@ function wallCard() {
   for (const r of card.querySelectorAll('input')) r.addEventListener('change', () => {
     pick[r.name] = r.value;
     if (r.name === 'gun') { G.player.gun = STATS.guns.NA[pick.gun]; G.player.ammo = G.player.gun.mag; }
+  });
+  for (const b of card.querySelectorAll('[data-buy]')) b.addEventListener('click', () => {
+    const k = b.dataset.buy, cost = STATS.guns.NA[k].cost;
+    if ((S.money || 0) < cost) return;
+    S.money -= cost; S.owned = Object.assign({}, S.owned, { [k]: true }); save();
+    wallCard();
   });
   on('go', hideCard);
 }
@@ -1117,9 +1172,10 @@ function lose(why) {
 function win() {
   phase = 'won'; showHud(false);
   const time = G.t, newBest = S.best === null || time < S.best;
-  if (newBest) { S.best = time; save(); }
+  if (newBest) S.best = time;
+  S.money = (S.money || 0) + STATS.money.perMission; save();
   showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t('wonText')}</p>
-    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b></div>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission })}</b></div>
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
 }
