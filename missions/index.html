@@ -173,6 +173,7 @@ const TUNE = {
   alarmPace: 0.6,   // after the alarm, enemies head to you at this share of their speed ("slowly")
   view: 340,        // about how many tiles show on screen
   youDamage: 2,     // 16 Nov, his ask: your guns do double his damage numbers
+  youRate: { rifle: 2, heavy: 2 },  // 16 Nov, his ask: your rifle and heavy rifle fire twice as fast
   sight: 40,        // degrees each side of where a guard faces that it can see (the yellow cone)
   close: 1.2,       // tiles: this close, a guard notices you even from behind
   lookAround: 0.7,  // radians a guard standing still turns its head each way
@@ -686,7 +687,7 @@ function shoot(u, dt, foes) {
   // aim at the nearest foe in range you can see; otherwise shoot straight ahead
   let tg = null, best = 1e9;
   for (const f of foes) if (f.hp > 0 && !f.gone) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
-  u.cool = 1 / u.gun.rate; u.ammo--;
+  u.cool = 1 / (u.gun.rate * (u === G.player ? TUNE.youRate[gunOf(u.gun).kind] || 1 : 1)); u.ammo--;
   if (tg) {
     u.a = Math.atan2(tg.y - u.y, tg.x - u.x);
     G.tracers.push({ x1: u.x, y1: u.y, x2: tg.x, y2: tg.y, t: .07 });
@@ -1085,7 +1086,8 @@ function iconCanvas(kind, side) {
 function wallCard() {
   const side = 'NA', touch = matchMedia('(pointer:coarse)').matches;
   const peg = (group, kind, line) => `<label class="peg"><input type="radio" name="${group}" value="${kind}"${pick[group] === kind ? ' checked' : ''}><span class="hang"><i data-icon="${kind}" aria-hidden="true"></i><span class="plate"><b>${t(kind)}</b>${line}</span><span class="on">${t('picked')}</span></span></label>`;
-  const gl = k => t('gunLine', STATS.guns[side][k]), bl = k => t('boomLine', Object.assign({ n: TUNE.carry }, STATS.boom[k]));
+  // the wall shows what your gun really does, with the doubling in TUNE
+  const gl = k => { const g = STATS.guns[side][k]; return t('gunLine', Object.assign({}, g, { dmg: g.dmg * TUNE.youDamage, rate: g.rate * (TUNE.youRate[k] || 1) })); }, bl = k => t('boomLine', Object.assign({ n: TUNE.carry }, STATS.boom[k]));
   showCard(`<h2 id="cardTitle">${t('pickTitle')}</h2>
     <fieldset><legend>${t('gunLegend')}</legend><div class="pegs">${['rifle', 'minigun', 'heavy'].map(k => peg('gun', k, gl(k))).join('')}</div></fieldset>
     <fieldset><legend>${t('boomLegend')}</legend><div class="pegs">${['c4', 'strike'].map(k => peg('boom', k, bl(k))).join('')}</div></fieldset>
