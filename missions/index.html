@@ -70,6 +70,10 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
 .board .keys{background:#1f1f1f;color:#f5f0dc;padding:.4rem .6rem}
 .stats{display:grid;grid-template-columns:auto auto;gap:.2rem 1rem;justify-content:start;margin:.6rem 0}
 /* touch: the stick on the left, Use and Fire on the right, only on touch screens */
+.talk{position:fixed;z-index:8;left:50%;transform:translateX(-50%);top:4.4rem;display:flex;align-items:center;gap:.7rem;max-width:min(36rem,92vw);background:#fbf7ea;color:var(--ink);border:3px solid #1f2418;padding:.5rem .8rem;box-shadow:.25rem .25rem 0 rgba(0,0,0,.35)}
+.talk canvas{width:3.6rem;height:3.6rem;flex:none;background:#cfe3f5;border:2px solid #1f2418}
+.talk p{margin:0;font-size:1rem;line-height:1.35}
+.talk[hidden]{display:none}
 .ctrl{display:none;position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:flex-end;padding:1rem max(1rem,env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));pointer-events:none}
 @media (pointer:coarse){.ctrl.live{display:flex}}
 .ctrl>*{pointer-events:auto}
@@ -98,6 +102,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
   <span class="pill" id="hBoom"></span>
   <span class="pill alarm" id="hAlarm" hidden></span>
 </div>
+<div class="talk" id="talk" hidden role="status"><canvas id="talkFace" width="96" height="96" aria-hidden="true"></canvas><p id="talkText"></p></div>
 <div class="cover" id="cover"><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
 <div class="ctrl" id="ctrl">
   <div class="stick" id="stick" aria-hidden="true"><i id="knob"></i></div>
@@ -194,6 +199,11 @@ const TUNE = {
   throwAt: 6,       // tiles: an explosive lands on the nearest enemy you can see this close
   throwAhead: 3,    // tiles: otherwise it lands this far ahead of you (short of a wall)
   pickUp: 1.1,      // tiles: how close you stand to a dropped gun to take it
+  pilotLeaves: 2,   // his number: on the nuke mission the pilot leaves with this many seconds left
+  nestHp: 400,      // a trench gun's HP (ours; ask him)
+  hack: 3,          // seconds standing at an artillery gun to hack it
+  bonus: 1,         // $ for each extra building blown up and each side objective (ours; ask him)
+  barrelHp: 20, barrelBlast: { dmg: 150, splash: 3 },  // oil barrels (ours)
 };
 
 // ---- Words on screen ----
@@ -201,10 +211,12 @@ const STR = {
   title: 'Mission Directive',
   titleSub: 'Start at headquarters. Get the mission folder, pick your weapons, fly in, hit the target and fly out.',
   start: 'Start',
-  folderTab: 'Mission 1',
+  folderTab: 'Mission {n}',
   directiveHead: 'Directive',
-  directive: 'Fly in by helicopter. Blow up the DE barracks. Fly back out.',
-  mapAlt: 'The mission map: roads, hills and buildings. The landing zone is on the left, the DE barracks is on the right.',
+  directive_barracks: 'Fly in by helicopter. Blow up the DE barracks circled on the map. Fly back out.',
+  directive_bunker: 'Fly in by helicopter. Take the nuke to the DE bunker and plant it. The pilot waits, but only until the last two seconds. Get out before it blows.',
+  directiveSide: 'Extra: blow up other buildings, hack an artillery gun, blow up the oil barrels.',
+  mapAlt: 'The mission map: the trench along the top, roads, hills and buildings with their letters. The target is circled.',
   mapLz: 'Land here',
   mapTarget: 'Target',
   close: 'Close',
@@ -229,6 +241,18 @@ const STR = {
   useTouch: 'Use',
   dirFlyIn: 'Flying in…',
   dirGo: 'Blow up the DE barracks',
+  dirGo_bunker: 'Plant the nuke at the DE bunker',
+  dirNuke: 'Nuke planted! Get to the copter: {s}',
+  plantKey: 'Plant nuke (E)', plantTouch: 'Plant nuke',
+  hackKey: 'Hack (E)', hackTouch: 'Hack',
+  hacked: 'HACKED',
+  nuke: 'Nuke',
+  pilotWait: 'I\'ll wait right here, commandos. Plant that nuke and get back fast!',
+  pilotLeave: 'Sorry, got to leave. Too dangerous for me!',
+  pilotBack: 'On my way back to the landing zone!',
+  extras: 'Extras',
+  lostNuke: 'The nuke went off before you got out.',
+  lostLeft: 'The copter had to leave without you.',
   dirClear: 'Get clear! {s}',
   dirBack: 'Back to the copter',
   dirFlyOut: 'Flying out…',
@@ -244,6 +268,7 @@ const STR = {
   boomLeft: '{name} {n}',
   wonTitle: 'Mission complete',
   wonText: 'The DE barracks is down and you made it out.',
+  wonText_bunker: 'The bunker is gone and you made it out.',
   time: 'Time', down: 'Enemies down', best: 'Best time',
   lostTitle: 'Mission failed',
   lostShot: 'The DE guards got you. The medics carried you back to the copter.',
@@ -262,47 +287,62 @@ const C = {
 };
 
 // ---- The map: his graph-paper drawing, about one of his squares to a tile ----
-// Red pen on his paper is roads, grey pencil is hills, boxes are buildings,
-// circled letters look like helipads. 16 Nov, his letters on the boxes:
-// B = barracks, BT = tank barracks, A = artillery (not mapped onto the boxes yet).
+// Read again from his clearer map (17 Nov). Red pen is road, grey pencil is
+// hills, the double line along the top is the trench (with a gap in the
+// middle where the road comes up, and a gun post on its right), boxes are
+// buildings and circles are helipads and artillery. His letters: B barracks,
+// BT tank barracks, A artillery, BK bunker. Some letters were too blurry to
+// read, so the folder map writes a letter on every building for him to check.
 const W = 56, H = 37;
 const loop = (cx, cy, rx, ry) => { const p = []; for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2; p.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return p; };
 const ROADS = [
-  [[0, 4], [20, 4], [22, 3], [32, 3], [34, 4], [42, 5], [56, 5]],
-  [[30, 3], [30, 12], [29, 20]],
+  [[30.5, 5], [30, 12], [29, 20]],
   [[29, 20], [18, 24], [0, 25]],
   [[29, 20], [31, 24], [31, 32], [35, 35], [44, 35.5], [50, 33], [52, 27], [51, 21]],
-  loop(14, 10, 11, 5.5),
+  loop(14, 10.5, 11, 5),
   loop(45, 11.5, 11, 5.5),
 ];
 const HILLS = [
-  { x: 13, y: 9.5, rx: 8, ry: 3.2, s: 1 },
+  { x: 13, y: 10, rx: 8, ry: 3, s: 1 },
   { x: 45, y: 11.5, rx: 8, ry: 3.3, s: 2 },
   { x: 17, y: 32.5, rx: 13, ry: 4, s: 3 },
   { x: 42, y: 26.5, rx: 6.5, ry: 4.5, s: 4 },
 ];
-const PADS = [[5, 7], [22, 9], [53, 8], [3.5, 20.5], [41, 19]];
-const LZ = { x: 3.5, y: 20.5 };
-// x, y, w, h in tiles. The DE barracks is the target; the others stand in for
-// his numbered boxes until he says what they are.
+// the trench: floor rows and the gap in its south wall where the road comes up
+const TRENCH = { top: 2, bottom: 4, gap: [29, 32] };
+const PADS = [[5, 7.4], [22, 9.8], [41.6, 19.4]];
+const LZ = { x: 22, y: 9.8 };
+// x, y, w, h in tiles; letter is his label for it
 const BUILDINGS = [
-  { x: 8, y: 17, w: 11, h: 6 },
-  { x: 44, y: 1, w: 6, h: 3 },
-  { x: 35, y: 15.5, w: 4, h: 2 },
-  { x: 46, y: 17.5, w: 3, h: 4.5, kind: 'barracks', side: 'DE', target: true },
-  { x: 23, y: 26, w: 2, h: 2 },
-  { x: 0.5, y: 28, w: 2.5, h: 4 },
-  { x: 53.5, y: 26, w: 2, h: 4 },
-  { x: 53.5, y: 31, w: 2, h: 5 },
+  { x: 7, y: 16.8, w: 11.5, h: 6.2, kind: 'bunker', letter: 'BK' },
+  { x: 34.5, y: 14.3, w: 4.5, h: 2.1, kind: 'barracks', letter: 'B' },
+  { x: 34.5, y: 17, w: 4.5, h: 2.8, kind: 'barracks', letter: 'B' },
+  { x: 46, y: 18.6, w: 3.6, h: 2.4, kind: 'barracks', letter: 'B' },
+  { x: 22.4, y: 24.8, w: 2.8, h: 2.2, kind: 'barracks', letter: 'B' },
+  { x: 0.6, y: 27.8, w: 2.6, h: 3.8, kind: 'barracks', letter: 'B' },
+  { x: 53.2, y: 25.4, w: 2.5, h: 4.4, kind: 'tankBarracks', letter: 'BT' },
+  { x: 53.2, y: 30.8, w: 2.5, h: 5, kind: 'tankBarracks', letter: 'BT' },
+  { x: 51.3, y: 6.2, w: 2.4, h: 2.4, kind: 'artillery', letter: 'A' },
+  { x: 0.7, y: 18.7, w: 2.4, h: 2.4, kind: 'artillery', letter: 'A' },
 ];
+// guns on sandbags in the trench (his "trench with guns"); they turn but don't walk
+const NESTS = [{ x: 20, y: 3.4 }, { x: 46.5, y: 3.4 }];
+// oil barrels, a side objective (his ask): shoot them and they blow up
+const BARRELS = [[50.4, 22.8], [51.2, 23.4], [50.5, 24.1], [49.8, 23.5]];
 // Enemies come in groups of 2 to 4 (16 Nov, his rule), standing side by side
 // or walking a patrol path together. heavy: true puts a heavy (shoulder
 // plates, minigun, his juggernaut numbers) in the middle of the group.
 // face: where a standing group looks (radians; 0 east, PI west, PI/2 south).
+// The trench has more enemies than anywhere else (his rule).
 const GROUPS = [
-  { x: 43, y: 20.5, face: Math.PI, n: 2 },
-  { x: 49.5, y: 23.2, face: Math.PI * .75, n: 3, heavy: true, heavyGun: 'pump' },
-  { x: 30, y: 9, n: 3, heavy: true, path: [[30, 9], [29.6, 18]] },
+  { x: 10, y: 3.4, face: Math.PI / 2, n: 4 },
+  { x: 37, y: 3.4, face: Math.PI / 2, n: 3, heavy: true },
+  { x: 40.5, y: 16.6, face: Math.PI, n: 3, heavy: true, heavyGun: 'pump' },
+  { x: 30, y: 8, n: 3, path: [[30, 8], [29.5, 17]] },
+  { x: 12.5, y: 24.3, face: Math.PI / 2, n: 2 },
+  { x: 20, y: 19.8, face: 0, n: 2 },
+  { x: 51, y: 28, face: Math.PI, n: 2 },
+  { x: 5, y: 26.4, face: 0, n: 2 },
 ];
 const GAP = .9;  // tiles between soldiers in a group
 function spawnGroups() {
@@ -343,6 +383,12 @@ function buildMap() {
       if (Math.hypot(dx, dy) < edge) solid[i] = 1;
     }
   }
+  // trench: floor rows open, sandbag rows above and below it (3: blocks walking, not seeing)
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < TRENCH.top; y++) solid[y * W + x] = 3;
+    for (let y = TRENCH.top; y <= TRENCH.bottom; y++) solid[y * W + x] = 0;
+    if (x < TRENCH.gap[0] || x > TRENCH.gap[1]) solid[(TRENCH.bottom + 1) * W + x] = 3;
+  }
   for (const b of BUILDINGS) for (let y = Math.floor(b.y); y < Math.ceil(b.y + b.h); y++) for (let x = Math.floor(b.x); x < Math.ceil(b.x + b.w); x++) solid[y * W + x] = 2;
   for (const [px, py] of PADS) for (let y = -1; y <= 1; y++) for (let x = -1; x <= 1; x++) { const i = (Math.floor(py) + y) * W + Math.floor(px) + x; if (solid[i] === 1) solid[i] = 0; }
 }
@@ -350,6 +396,8 @@ function buildMap() {
 const MAPL = { w: W, h: H, solid, ground: null };
 let L = MAPL;
 const isSolid = (x, y) => x < 0 || y < 0 || x >= L.w || y >= L.h || L.solid[Math.floor(y) * L.w + Math.floor(x)] > 0;
+// sandbags stop you walking but you can see and shoot over them
+const blocksSight = (x, y) => x < 0 || y < 0 || x >= L.w || y >= L.h || (L.solid[Math.floor(y) * L.w + Math.floor(x)] || 3) !== 3;
 
 // ---- Headquarters (decided 15 Nov, his ask) ----
 // The game starts here, seen from above like the mission. Walk to the desk to
@@ -421,12 +469,12 @@ function nearHq(p) {
 const blocked = (x, y, r) => isSolid(x - r, y - r) || isSolid(x + r, y - r) || isSolid(x - r, y + r) || isSolid(x + r, y + r);
 function los(a, b) {
   const d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(d / .25);
-  for (let i = 1; i < n; i++) if (isSolid(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false;
+  for (let i = 1; i < n; i++) if (blocksSight(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false;
   return true;
 }
 // how far a shot goes before it hits a hill or a wall
 function rayEnd(x, y, a, range) {
-  for (let d = .25; d <= range; d += .25) { const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d; if (isSolid(px, py)) return { x: px, y: py }; }
+  for (let d = .25; d <= range; d += .25) { const px = x + Math.cos(a) * d, py = y + Math.sin(a) * d; if (blocksSight(px, py)) return { x: px, y: py }; }
   return { x: x + Math.cos(a) * range, y: y + Math.sin(a) * range };
 }
 
@@ -454,6 +502,22 @@ function paintGround() {
     g.strokeStyle = '#f4f4ee'; g.lineWidth = 3; g.beginPath(); g.arc(px * P, py * P, 1.15 * P, 0, 7); g.stroke();
     g.fillStyle = '#f4f4ee'; g.font = `bold ${P * 1.2}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', px * P, py * P + 2);
   }
+  // the trench: a dug floor with planks, sandbag walls along both sides
+  g.fillStyle = '#6b5436'; g.fillRect(0, TRENCH.top * P, W * P, (TRENCH.bottom - TRENCH.top + 1) * P);
+  g.fillStyle = '#7d6440';
+  for (let x = 0; x < W; x += 2) g.fillRect(x * P + 3, (TRENCH.top + 1.2) * P, P * 1.6, P * .5);
+  const bags = (y, gap) => {
+    for (let x = 0; x < W; x++) {
+      if (gap && x >= TRENCH.gap[0] && x <= TRENCH.gap[1]) continue;
+      for (let k = 0; k < 2; k++) for (let r = 0; r < 2; r++) {
+        g.fillStyle = (x + k + r) % 2 ? '#b59a63' : '#a68b55';
+        g.beginPath(); g.ellipse(x * P + (k + .5 + r * .5) * P / 2, y * P + (r + .5) * P / 2, P / 4.2, P / 5, 0, 0, 7); g.fill();
+        g.strokeStyle = '#6e5a35'; g.lineWidth = 1; g.stroke();
+      }
+    }
+  };
+  g.fillStyle = '#4f6b34'; g.fillRect(0, 0, W * P, (TRENCH.top - 1) * P);
+  bags(TRENCH.top - 1, false); bags(TRENCH.bottom + 1, true);
   // hills: grey rock with bumps, a dark rim where they meet the ground
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (solid[y * W + x] === 1) {
     const r = rnd(y * W + x + 9);
@@ -528,17 +592,59 @@ function drawCopter(g, rotor) {
 // His barracks: a grey block with a square on the roof, a small hatch, and a
 // big door in the team colour (blue on his sheet; red for DE).
 function drawBuilding(g, b) {
-  const { x, y, w, h } = b;
+  const { x, y, w, h } = b, team = C[b.side || 'DE'];
   if (b.hp !== undefined && b.hp <= 0) {
     g.fillStyle = '#6a6a66'; g.fillRect(x, y, w, h);
-    for (let i = 0; i < 9; i++) { const r = rnd(i + x * 7); g.fillStyle = i % 2 ? '#55554f' : '#8d8d86'; g.fillRect(x + r * (w - .6), y + rnd(i + 3) * (h - .5), .6, .45); }
+    for (let i = 0; i < 9 + w * h; i++) { const r = rnd(i + x * 7); g.fillStyle = i % 2 ? '#55554f' : '#8d8d86'; g.fillRect(x + r * (w - .6), y + rnd(i + 3 + y) * (h - .5), .6, .45); }
+    g.fillStyle = 'rgba(40,40,40,.5)'; g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w * .35, h * .35, 0, 0, 7); g.fill();
     return;
   }
   g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x + .2, y + .25, w, h);
-  rr(g, x, y, w, h, 0, C.grey, .06);
-  rr(g, x + w * .1, y + h * .08, w * .55, h * .27, 0, C.grey, .04);
-  rr(g, x + w * .05, y + h * .68, w * .18, h * .27, 0, C.grey, .04);
-  rr(g, x + w * .45, y + h * .58, w * .52, h * .38, 0, b.side ? C[b.side] : '#8a8a8a', .04);
+  if (b.kind === 'bunker') {
+    // thick concrete, sandbags along the front, firing slits, a blast door, his star
+    rr(g, x, y, w, h, .6, '#9b9a92', .08);
+    rr(g, x + .4, y + .4, w - .8, h - .8, .4, '#b3b2a9', .04);
+    for (let i = 0; i < 4; i++) rr(g, x + 1 + i * (w - 2) / 4, y + .55, (w - 2) / 4 - .5, .25, .05, '#2a2a2a', 0);
+    rr(g, x + w / 2 - 1, y + h - .9, 2, .9, .1, '#5c5c55', .05);
+    for (let i = 0; i < 5; i++) { g.fillStyle = '#b59a63'; g.beginPath(); g.ellipse(x + 1 + i * .55, y + h + .2, .3, .2, 0, 0, 7); g.fill(); }
+    ell(g, x + w / 2, y + h / 2 - .2, .9, .9, team, .05); star(g, x + w / 2, y + h / 2 - .2, .6);
+  } else if (b.kind === 'tankBarracks') {
+    // a garage: grey roof, big striped door on the side that faces the road
+    rr(g, x, y, w, h, .1, '#8f8f88', .06);
+    rr(g, x + .2, y + .2, w - .4, h - .4, .05, '#a5a59e', .03);
+    const dw = w * .8;
+    rr(g, x - .05, y + h * .25, .5, h * .5, 0, '#2a2a2a', .03);
+    for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#f5c938' : '#2a2a2a'; g.fillRect(x + .05, y + h * .25 + i * h * .125, .35, h * .125); }
+    rr(g, x + w / 2 - .3, y + .5, .6, .3, .05, team, .02);
+    void dw;
+  } else if (b.kind === 'artillery') {
+    // a big gun on a ring of sandbags
+    const cx = x + w / 2, cy = y + h / 2;
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.fillStyle = i % 2 ? '#b59a63' : '#a68b55'; g.beginPath(); g.ellipse(cx + Math.cos(a) * w * .42, cy + Math.sin(a) * h * .42, .3, .22, a, 0, 7); g.fill(); }
+    ell(g, cx, cy, .55, .55, b.hacked ? C.NA : '#6b6b63', .05);
+    g.save(); g.translate(cx, cy); g.rotate(b.aim || -Math.PI / 2 - .6);
+    rr(g, -.12, -1.5, .24, 1.5, .04, '#4a4a44', .04); g.restore();
+    star(g, cx, cy, .3, b.hacked ? C.star : C.star);
+  } else {
+    // barracks: a long roof with a ridge, team stripe, door and windows
+    const long = w >= h;
+    rr(g, x, y, w, h, .08, '#7a7f6a', .06);
+    g.strokeStyle = '#5c604f'; g.lineWidth = .08; g.beginPath();
+    if (long) { g.moveTo(x + .2, y + h / 2); g.lineTo(x + w - .2, y + h / 2); } else { g.moveTo(x + w / 2, y + .2); g.lineTo(x + w / 2, y + h - .2); }
+    g.stroke();
+    if (long) rr(g, x, y + h - .35, w, .35, 0, team, .03); else rr(g, x, y, .35, h, 0, team, .03);
+    star(g, x + w * (long ? .2 : .65), y + h * (long ? .3 : .2), .3);
+  }
+  if (b.target && !G?.targetDown) { g.strokeStyle = 'rgba(226,72,58,.8)'; g.lineWidth = .12; g.setLineDash([.5, .3]); g.strokeRect(x - .3, y - .3, w + .6, h + .6); g.setLineDash([]); }
+}
+// A trench gun: a minigun on a ring of sandbags.
+function drawNest(g, u) {
+  for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; g.fillStyle = i % 2 ? '#b59a63' : '#a68b55'; g.beginPath(); g.ellipse(Math.cos(a) * .55, Math.sin(a) * .55, .26, .2, a, 0, 7); g.fill(); }
+  g.save(); g.rotate(u.a + Math.PI / 2); g.scale(.3, .3); drawGunIcon(g, 'minigun', 'DE'); g.restore();
+}
+function drawBarrel(g, b) {
+  ell(g, b.x, b.y, .32, .32, '#c0392b', .05); ell(g, b.x, b.y, .2, .2, '#e15b4b', .03);
+  g.fillStyle = C.star; g.fillRect(b.x - .32, b.y - .05, .64, .1);
 }
 // His C4: a grey block in four panels. His strike: a red circle.
 function drawBoomIcon(g, kind) {
@@ -570,6 +676,20 @@ let S = { best: null, money: 0, owned: {} };
 try { S = Object.assign(S, JSON.parse(localStorage.getItem('mission-directive') || '{}')); } catch (e) { }
 const save = () => { try { localStorage.setItem('mission-directive', JSON.stringify(S)); } catch (e) { } };
 let pick = { gun: 'rifle', boom: 'c4' };
+// 17 Nov, his rules: any barracks can be the target; the bunker takes the
+// nuke, which that mission gives you; never the same mission 3 times running.
+let next = null;
+function chooseMission() {
+  const recent = S.recent || [], kinds = ['barracks', 'bunker'];
+  const ok = kinds.filter(k => !(recent.length >= 2 && recent[recent.length - 1] === k && recent[recent.length - 2] === k));
+  const kind = ok[Math.floor(Math.random() * ok.length)];
+  let target = BUILDINGS.findIndex(b => b.kind === 'bunker');
+  if (kind === 'barracks') {
+    const all = BUILDINGS.map((b, i) => b.kind === 'barracks' ? i : -1).filter(i => i >= 0 && i !== S.lastTarget);
+    target = all[Math.floor(Math.random() * all.length)];
+  }
+  next = { kind, target };
+}
 const owns = k => !STATS.guns.NA[k].cost || !!(S.owned && S.owned[k]);
 let G = null;   // the mission in play
 let phase = 'title';
@@ -577,6 +697,7 @@ let cam = { x: 28, y: 18 }, shake = 0;
 
 function newMission() {
   if (!owns(pick.gun)) pick.gun = 'rifle';
+  if (!next) chooseMission();
   const side = 'NA', foe = 'DE';
   const mk = (o, s) => {
     const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.gun || 'rifle'];
@@ -586,14 +707,18 @@ function newMission() {
   G = {
     side, foe, t: 0,
     // beside the copter, not under its nose or rotor
-    player: Object.assign(mk({ x: LZ.x + .5, y: LZ.y + 2.2 }, side), { gun: STATS.guns[side][pick.gun], ammo: STATS.guns[side][pick.gun].mag, a: 0 }),
+    player: Object.assign(mk({ x: LZ.x + 1.8, y: LZ.y + 1 }, side), { gun: STATS.guns[side][pick.gun], ammo: STATS.guns[side][pick.gun].mag, a: 0 }),
     guards: (() => {
       const gs = spawnGroups().map(o => mk(o, foe));
       for (const g of gs) g.pace = Math.min(...gs.filter(m => m.group === g.group).map(m => m.speed));
+      // trench guns: they turn and shoot but never walk
+      for (const n of NESTS) gs.push(Object.assign(mk({ x: n.x, y: n.y, face: Math.PI / 2, gun: 'minigun' }, foe), { nest: true, hp: TUNE.nestHp, speed: 0, pace: 0 }));
       return gs;
     })(),
     drops: [],
-    buildings: BUILDINGS.map(b => Object.assign({}, b, b.kind === 'barracks' ? { hp: STATS.barracks.hp } : {})),
+    buildings: BUILDINGS.map((b, i) => Object.assign({}, b, { side: 'DE', hp: STATS[b.kind].hp, target: i === next.target })),
+    mission: next, nuke: next.kind === 'bunker' ? 1 : 0, hack: null, extras: 0,
+    barrels: BARRELS.map(([x, y]) => ({ x, y, hp: TUNE.barrelHp, barrel: true })),
     booms: [], fx: [], tracers: [],
     left: TUNE.carry, down: 0, hit: 0, outside: true,
     copter: { x: -14, y: 13, a: 0, alt: 1, rotor: 0, mode: 'in', wait: 0, back: 0, cool: 0 },
@@ -713,6 +838,7 @@ function shoot(u, dt, foes) {
   // aim at the nearest foe in range you can see; otherwise shoot straight ahead
   let tg = null, best = 1e9;
   for (const f of foes) if (f.hp > 0 && !f.gone) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
+  if (!tg && u === G.player && G.barrels) for (const f of G.barrels) if (f.hp > 0) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
   u.cool = 1 / u.gun.rate; u.ammo--;
   const dmg = u.gun.dmg * (u === G.player ? TUNE.youDamage : 1);
   if (u.gun.pellets > 1) {
@@ -743,18 +869,23 @@ function shoot(u, dt, foes) {
 }
 function hurt(u, dmg, why) {
   if (u.hp <= 0) return;
+  if (u.barrel) {
+    u.hp -= dmg;
+    if (u.hp <= 0) { u.hp = 0; blast({ x: u.x, y: u.y, kind: 'barrel', dmg: TUNE.barrelBlast.dmg, splash: TUNE.barrelBlast.splash }); if (!G.barrelsDone && G.barrels.every(b => b.hp <= 0)) { G.barrelsDone = true; G.extras += TUNE.bonus; } }
+    return;
+  }
   u.hp -= dmg; u.flash = .12;
   if (u === G.player) {
-    if (u.hp <= 0) { u.hp = 0; lose(why === 'blast' ? 'blast' : 'shot'); }
+    if (u.hp <= 0) { u.hp = 0; lose(why === 'shot' ? 'shot' : why); }
   } else {
     if (u.state !== 'alert') { u.state = 'alert'; u.react = TUNE.react; }
     u.lastSeen = { x: G.player.x, y: G.player.y }; u.lost = 0;
-    if (u.hp <= 0) { u.hp = 0; G.down++; G.drops.push({ x: u.x, y: u.y, gun: u.gun, a: u.a + .8 }); }
+    if (u.hp <= 0) { u.hp = 0; G.down++; if (!u.nest) G.drops.push({ x: u.x, y: u.y, gun: u.gun, a: u.a + .8 }); }
     else if (u.hurtT == null) u.hurtT = 0; // the count to the alarm starts
   }
 }
 function stepGuard(g, dt) {
-  if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6) g.gone = true; return; }
+  if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6 && !g.nest) g.gone = true; return; }
   if (g.flash) g.flash = Math.max(0, g.flash - dt);
   const p = G.player, d = dist(g, p);
   // a guard sees inside its yellow cone (or right next to it), not behind it
@@ -788,6 +919,21 @@ function stepGuard(g, dt) {
     g.a = g.face + Math.sin(g.look / TUNE.lookTime * 2 * Math.PI) * TUNE.lookAround;
   }
 }
+// The ally pilot, from his drawing: grey helmet, blue oval and yellow star, a
+// light blue visor, and a face.
+let talkTimer = 0;
+function talk(text) {
+  const el = document.getElementById('talk'), c = document.getElementById('talkFace'), g = c.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 96, 96); g.setTransform(40, 0, 0, 40, 48, 52);
+  ell(g, 0, .25, .78, .72, '#f0c49a', .05);              // face
+  ell(g, 0, -.25, .95, .62, C.grey, .05);                // helmet
+  ell(g, 0, -.45, .55, .3, C.NA, .04); star(g, 0, -.45, .22);
+  rr(g, -.55, -.02, 1.1, .3, .15, '#8fd0f5', .04);       // visor
+  g.strokeStyle = C.ink; g.lineWidth = .06; g.beginPath(); g.arc(0, .55, .25, .2, Math.PI - .2); g.stroke();
+  document.getElementById('talkText').textContent = text;
+  el.hidden = false;
+  clearTimeout(talkTimer); talkTimer = setTimeout(() => { el.hidden = true; }, 5000);
+}
 function soundAlarm(g) {
   G.alarm = { x: g.x, y: g.y, t: 0 };
   shake = Math.max(shake, .3);
@@ -805,7 +951,15 @@ function use() {
   if (phase !== 'play') return;
   const dr = nearDrop(p);
   if (dr) return takeGun(dr);
-  if (G.targetDown) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
+  const here = nearThing(p);
+  if (here === 'plant') {
+    const b = STATS.boom.nuke; G.nuke = 0;
+    G.booms.push({ kind: 'nuke', x: p.x, y: p.y, t: b.timer, dmg: b.dmg, splash: b.splash });
+    G.nukeSet = G.booms[G.booms.length - 1];
+    return;
+  }
+  if (here && here.kind === 'artillery') { G.hack = { b: here, t: 0 }; return; }
+  if (G.targetDown || G.nukeSet) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
   if (G.left <= 0) return;
   // 16 Nov, his ask: explosives are for groups of enemies too, so it lands on
   // the nearest one you can see, or a few tiles ahead
@@ -829,14 +983,36 @@ function takeGun(d) {
   p.gun = d.gun; p.ammo = d.gun.mag; p.reload = 0; p.cool = 0;
 }
 const copterReady = () => G.copter.mode === 'landed';
+// what Use would do where you stand: plant the nuke at the bunker, or hack an artillery gun
+function nearThing(p) {
+  if (G.nuke && G.target.kind === 'bunker' && G.target.hp > 0 && rectDist(G.target, p) < 1.4) return 'plant';
+  for (const b of G.buildings) if (b.kind === 'artillery' && b.hp > 0 && !b.hacked && rectDist(b, p) < 1.4) return b;
+  return null;
+}
+function stepHack(dt) {
+  const h = G.hack, p = G.player;
+  if (!h) return;
+  if (h.b.hp <= 0 || rectDist(h.b, p) > 1.8) { G.hack = null; return; }
+  h.t += dt;
+  if (h.t >= TUNE.hack) { h.b.hacked = true; G.extras += TUNE.bonus; G.fx.push({ x: h.b.x + h.b.w / 2, y: h.b.y, r: 0, t: 0, word: t('hacked') }); G.hack = null; }
+}
+function tickBooms(dt) {
+  for (const k of G.booms) { k.t -= dt; if (k.t <= 0 && !k.done) { k.done = true; blast(k); } }
+  G.booms = G.booms.filter(k => !k.done);
+}
 function blast(k) {
   const p = G.player;
-  G.fx.push({ x: k.x, y: k.y, r: k.splash, t: 0 });
-  shake = .6;
+  G.fx.push({ x: k.x, y: k.y, r: k.splash, t: 0, nuke: k.kind === 'nuke' });
+  shake = k.kind === 'nuke' ? 1.6 : .6;
   for (const g of G.guards) if (g.hp > 0 && dist(g, k) <= k.splash) hurt(g, k.dmg, 'blast');
-  for (const b of G.buildings) if (b.hp > 0 && rectDist(b, k) <= k.splash) { b.hp -= k.dmg; if (b.hp <= 0) b.hp = 0; }
+  for (const b of G.barrels) if (b.hp > 0 && dist(b, k) <= k.splash) hurt(b, k.dmg, 'blast');
+  for (const b of G.buildings) if (b.hp > 0 && rectDist(b, k) <= k.splash) {
+    // the nuke takes the bunker down (his numbers: nuke 3500, bunker 5000; ask him)
+    b.hp -= k.kind === 'nuke' && b.kind === 'bunker' ? b.hp : k.dmg;
+    if (b.hp <= 0) { b.hp = 0; if (!b.target && k.kind !== 'nuke') G.extras += TUNE.bonus; }
+  }
   if (G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
-  if (p.hp > 0 && dist(p, k) <= k.splash) { G.blastSplash = k.splash; hurt(p, k.dmg, 'blast'); }
+  if (p.hp > 0 && !p.gone && dist(p, k) <= k.splash) { G.blastSplash = k.splash; hurt(p, k.dmg, k.kind === 'nuke' ? 'nuke' : 'blast'); }
 }
 // 16 Nov, his rules: the copter leaves once you're out, and takes about 10
 // seconds to fly back in once the target is down (or you're out of
@@ -844,7 +1020,14 @@ function blast(k) {
 const outOfBooms = () => !G.targetDown && G.left <= 0 && !G.booms.length;
 function stepCopter(dt) {
   const c = G.copter, sp = STATS.copter.speed, p = G.player, need = G.targetDown || outOfBooms();
-  if (c.mode === 'landed') {
+  // the nuke mission: the copter waits the whole time, until the last seconds
+  if (G.mission.kind === 'bunker' && c.mode === 'landed') {
+    if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;
+    if (G.nukeSet && G.nukeSet.t <= TUNE.pilotLeaves) { c.mode = 'gone'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); talk(t('pilotLeave')); }
+  } else if (c.mode === 'gone') {
+    c.alt = Math.min(1, c.alt + dt * 1.2);
+    if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
+  } else if (c.mode === 'landed') {
     if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;   // more explosives
     if (!need && dist(p, LZ) > 1.2) { c.wait -= dt; if (c.wait <= 0) { c.mode = 'leaving'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); } }
   } else if (c.mode === 'leaving') {
@@ -853,7 +1036,7 @@ function stepCopter(dt) {
     if (c.x < -12) { c.mode = 'away'; c.back = TUNE.copterBack; }
     if (need && c.alt < 1) { c.mode = 'coming'; }
   } else if (c.mode === 'away') {
-    if (need) { c.back -= dt; if (c.back <= 0) { c.mode = 'coming'; c.x = -14; c.y = 13; c.alt = 1; } }
+    if (need) { c.back -= dt; if (c.back <= 0) { c.mode = 'coming'; c.x = -14; c.y = 13; c.alt = 1; talk(t('pilotBack')); } }
   } else if (c.mode === 'coming') {
     const d = dist(c, LZ);
     c.a = Math.atan2(LZ.y - c.y, LZ.x - c.x);
@@ -861,7 +1044,7 @@ function stepCopter(dt) {
     else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; }
   }
   // side guns: whoever is closest in range, whether it's flying or sitting
-  if (c.mode !== 'away') {
+  if (c.mode !== 'away' && c.mode !== 'gone') {
     const gun = STATS.copter.gun;
     c.cool -= dt;
     if (c.cool <= 0) {
@@ -896,20 +1079,22 @@ function step(dt) {
   if (G.kind === 'hq') return stepHq(dt);
   G.copter.rotor += dt * (G.copter.alt > 0 || phase === 'flyin' || phase === 'flyout' ? 26 : 10);
   for (const tr of G.tracers) tr.t -= dt; G.tracers = G.tracers.filter(tr => tr.t > 0);
-  for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < 1.1);
+  for (const f of G.fx) f.t += dt; G.fx = G.fx.filter(f => f.t < (f.nuke ? 3.2 : 1.1));
   shake = Math.max(0, shake - dt);
   if (G && G.alarm) G.alarm.t += dt;
   const c = G.copter, sp = STATS.copter.speed;
   if (phase === 'flyin') {
     const d = dist(c, LZ);
     if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
-    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; phase = 'play'; G.t = 0; showHud(true); }
+    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; phase = 'play'; G.t = 0; showHud(true); if (G.mission.kind === 'bunker') talk(t('pilotWait')); }
     return;
   }
   if (phase === 'flyout') {
     c.alt = Math.min(1, c.alt + dt * 1.2);
     if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
-    if (c.x < -12) win();
+    // the nuke still counts down while you fly away, and you see it go
+    tickBooms(dt);
+    if (c.x < -12 && !G.booms.length && !G.fx.some(f => f.nuke)) win();
     return;
   }
   if (phase !== 'play') return;
@@ -920,11 +1105,12 @@ function step(dt) {
   if (keys.has(' ') || fireHeld) shoot(p, dt, G.guards);
   else { p.cool -= dt; if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.reload = 0; p.ammo = p.gun.mag; } } }
   for (const g of G.guards) stepGuard(g, dt);
-  for (const k of G.booms) { k.t -= dt; if (k.t <= 0 && !k.done) { k.done = true; blast(k); } }
-  G.booms = G.booms.filter(k => !k.done);
+  tickBooms(dt);
   if (phase !== 'play') return;
+  stepHack(dt);
   stepCopter(dt);
-  if (G.targetDown && copterReady() && dist(p, LZ) < 1.8) board();
+  if (G.copter.mode === 'gone' && !G.booms.length) lose('left');
+  if ((G.targetDown || G.nukeSet) && copterReady() && dist(p, LZ) < 1.8) board();
   hud();
 }
 
@@ -944,6 +1130,7 @@ function draw(now) {
   // camera: the copter while flying, the soldier on foot, a slow pan on the title
   let fx = 28, fy = 18;
   if (!G) { fx = 28 + Math.sin(now / 9000) * 14; fy = 18 + Math.cos(now / 11000) * 7; }
+  else if (G.kind !== 'hq' && phase === 'flyout' && G.mission && G.mission.kind === 'bunker' && (G.booms.length || G.fx.some(f => f.nuke))) { fx = G.target.x + G.target.w / 2; fy = G.target.y + G.target.h / 2; }
   else if (phase === 'flyin' || phase === 'flyout' || G.player.gone) { fx = G.copter.x; fy = G.copter.y; }
   else if (G) { fx = G.player.x; fy = G.player.y; }
   // a canvas with no size yet (hidden tab, phone turning) would make the camera
@@ -978,6 +1165,12 @@ function draw(now) {
     for (let i = 0; i <= 16; i++) { const e = rayEnd(u.x, u.y, u.a - h + 2 * h * i / 16, u.detect); g.lineTo(e.x, e.y); }
     g.closePath(); g.fillStyle = u.state === 'alert' ? 'rgba(255,190,40,.28)' : 'rgba(255,230,80,.2)'; g.fill();
   }
+  if (G.barrels) for (const b of G.barrels) if (b.hp > 0) drawBarrel(g, b);
+  if (G.hack) {
+    const b = G.hack.b, w = 2;
+    g.fillStyle = '#1a1a1a'; g.fillRect(b.x + b.w / 2 - w / 2, b.y - .7, w, .3);
+    g.fillStyle = C.NA; g.fillRect(b.x + b.w / 2 - w / 2, b.y - .7, w * G.hack.t / TUNE.hack, .3);
+  }
   if (G.drops) for (const d of G.drops) {
     const gi = gunOf(d.gun);
     g.save(); g.translate(d.x, d.y); g.rotate(d.a || 0); g.scale(.25, .25); drawGunIcon(g, gi.kind, gi.side); g.restore();
@@ -990,7 +1183,17 @@ function draw(now) {
   g.save(); g.translate(c.x + .5 + c.alt * 1.2, c.y + .5 + c.alt * 1.6); g.rotate(c.a + Math.PI / 2); g.scale(sc, sc);
   g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(0, .4, .7, 2, 0, 0, 7); g.fill(); g.restore();
   g.save(); g.translate(c.x, c.y); g.rotate(c.a + Math.PI / 2); g.scale(sc, sc); drawCopter(g, c.rotor); g.restore();
-  for (const f of G.fx) {
+  for (const f of G.fx) if (f.nuke) {
+    // the nuke: a fireball that grows and fades, a shockwave ring out to its splash
+    const e = Math.min(1, f.t / .8), a = Math.max(0, 1 - Math.max(0, f.t - 1.6) / 1.6);
+    const grd = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, 3 + 9 * e);
+    grd.addColorStop(0, `rgba(255,255,240,${a})`); grd.addColorStop(.35, `rgba(255,220,90,${a})`); grd.addColorStop(.7, `rgba(255,120,30,${.85 * a})`); grd.addColorStop(1, 'rgba(160,40,20,0)');
+    g.fillStyle = grd; g.beginPath(); g.arc(f.x, f.y, 3 + 9 * e, 0, 7); g.fill();
+    for (let i = 0; i < 8; i++) { const an = i / 8 * Math.PI * 2 + f.t; g.fillStyle = `rgba(90,80,70,${.45 * a})`; g.beginPath(); g.arc(f.x + Math.cos(an) * (4 + 5 * e), f.y + Math.sin(an) * (4 + 5 * e), 1.5 + 2 * e, 0, 7); g.fill(); }
+    const rw = f.r * Math.min(1, f.t / 1.4);
+    g.strokeStyle = `rgba(255,255,255,${Math.max(0, 1 - f.t / 1.4)})`; g.lineWidth = .6; g.beginPath(); g.arc(f.x, f.y, rw, 0, 7); g.stroke();
+  }
+  for (const f of G.fx) if (!f.nuke && !f.word) {
     const e = Math.min(1, f.t / .35), r = f.r * (.25 + .75 * e), a = 1 - f.t / 1.1;
     g.fillStyle = `rgba(255,150,40,${.55 * a})`; g.beginPath(); g.arc(f.x, f.y, r, 0, 7); g.fill();
     g.fillStyle = `rgba(255,232,120,${.8 * a})`; g.beginPath(); g.arc(f.x, f.y, r * .45, 0, 7); g.fill();
@@ -1005,18 +1208,28 @@ function draw(now) {
   // ALARM! over the guard who sounded it, and a ! over a hurt guard still counting
   if (G.alarm && G.alarm.t < 2.5) { ctx.strokeText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); ctx.fillStyle = '#ff5a4a'; ctx.fillText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); }
   if (!G.alarm) for (const u of G.guards) if (u.hurtT != null && u.hp > 0) { ctx.strokeText('!', sx(u.x), sy(u.y - 1)); ctx.fillStyle = '#ffd23f'; ctx.fillText('!', sx(u.x), sy(u.y - 1)); }
-  for (const f of G.fx) if (f.t < .9) { ctx.strokeText(t('boom'), sx(f.x), sy(f.y)); ctx.fillStyle = '#ffd23f'; ctx.fillText(t('boom'), sx(f.x), sy(f.y)); }
+  for (const f of G.fx) if (f.t < .9) { const w = f.word || t('boom'); ctx.strokeText(w, sx(f.x), sy(f.y)); ctx.fillStyle = f.word ? '#9cc4ff' : '#ffd23f'; ctx.fillText(w, sx(f.x), sy(f.y)); }
+  // a white flash right as the nuke goes off
+  for (const f of G.fx) if (f.nuke && f.t < .6) { ctx.fillStyle = `rgba(255,255,255,${.9 * (1 - f.t / .6)})`; ctx.fillRect(0, 0, cw, ch); }
   // a word over the soldier when Use does something here
   const p = G.player, dr = phase === 'play' && G.drops ? nearDrop(p) : null;
-  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : phase === 'play' && G.targetDown && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
+  const th = phase === 'play' && G.kind !== 'hq' ? nearThing(p) : null;
+  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : th === 'plant' ? 'plant' : th ? 'hack' : phase === 'play' && (G.targetDown || G.nukeSet) && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
   if (n && !(n === 'copter' && G.kind === 'hq' && !G.folder) && cover.hidden) {
     const touch = matchMedia('(pointer:coarse)').matches, hs = Math.max(12, S_ * .35);
-    const w = n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : touch ? t('useTouch') : t('useKey');
+    const w = n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : n === 'plant' ? t(touch ? 'plantTouch' : 'plantKey') : n === 'hack' ? t(touch ? 'hackTouch' : 'hackKey') : touch ? t('useTouch') : t('useKey');
     ctx.font = `${hs}px "Press Start 2P", monospace`; ctx.lineWidth = hs / 3;
     ctx.strokeText(w, sx(p.x), sy(p.y - 1)); ctx.fillStyle = '#fff'; ctx.fillText(w, sx(p.x), sy(p.y - 1));
   }
 }
 function unit(g, u) {
+  if (u.nest) {
+    g.save(); g.translate(u.x, u.y);
+    if (u.hp <= 0) g.globalAlpha = Math.max(.3, 1 - u.downT / 1.6);
+    drawNest(g, u);
+    if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .6, 0, 7); g.fill(); }
+    g.restore(); return;
+  }
   g.save(); g.translate(u.x, u.y);
   g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(.08, .12, .45, .4, 0, 0, 7); g.fill();
   g.rotate(u.a + Math.PI / 2);
@@ -1052,14 +1265,15 @@ function hud() {
   if (G.kind === 'hq') d = phase === 'hqout' ? t('dirTakeOff') : G.folder ? t('dirWall') : t('dirDesk');
   else if (phase === 'flyin') d = t('dirFlyIn');
   else if (phase === 'flyout') d = t('dirFlyOut');
+  else if (G.nukeSet && !G.targetDown) d = t('dirNuke', { s: Math.max(0, Math.ceil(G.nukeSet.t)) });
   else if (G.targetDown) d = copterReady() ? t('dirBack') : t('dirCopterComing', { s: copterEta() });
   else if (outOfBooms()) d = copterReady() ? t('dirRestock', { name: t(pick.boom) }) : t('dirRestockComing', { name: t(pick.boom), s: copterEta() });
   else if (G.booms.length) d = t('dirClear', { s: Math.ceil(Math.min(...G.booms.map(k => k.t))) });
-  else d = t('dirGo');
+  else d = G.mission && G.mission.kind === 'bunker' ? t('dirGo_bunker') : t('dirGo');
   if (dirEl.textContent !== d) dirEl.textContent = d;
   document.getElementById('hHp').textContent = t('hp', { n: Math.ceil(p.hp) });
   document.getElementById('hAmmo').textContent = p.reload > 0 ? t('reloading') : t('ammo', { n: p.ammo, m: p.gun.mag });
-  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left });
+  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left }) + (G.mission && G.mission.kind === 'bunker' ? ' · ' + t('boomLeft', { name: t('nuke'), n: G.nuke }) : '');
   const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq');
   if (al.hidden === on) al.hidden = !on;
   if (on) al.textContent = t('alarmPill');
@@ -1082,10 +1296,12 @@ function enterHq() { newHq(); phase = 'hq'; hideCard(); showHud(true); }
 // picked up from the desk at headquarters
 function folderCard() {
   G.folder = true;
-  showCard(`<h2 id="cardTitle" style="position:absolute;left:-999rem">${t('folderTab')}</h2>
+  if (!next) chooseMission();
+  const tab = t('folderTab', { n: (S.count || 0) + 1 });
+  showCard(`<h2 id="cardTitle" style="position:absolute;left:-999rem">${tab}</h2>
     <div class="paper"><canvas id="mini" width="840" height="555" role="img" aria-label="${t('mapAlt')}"></canvas></div>
-    <div class="typed"><b>${t('directiveHead')}</b>${t('directive')}</div>
-    <div class="row">${btn('go', t('close'))}</div>`, 'folder', t('folderTab'));
+    <div class="typed"><b>${t('directiveHead')}</b>${t('directive_' + next.kind)}<br>${t('directiveSide')}</div>
+    <div class="row">${btn('go', t('close'))}</div>`, 'folder', tab);
   drawMini(document.getElementById('mini'));
   on('go', hideCard);
 }
@@ -1103,11 +1319,26 @@ function drawMini(c) {
   }
   g.strokeStyle = '#e0302a'; g.lineWidth = 3; g.lineJoin = 'round';
   for (const r of ROADS) { g.beginPath(); r.forEach(([x, y], i) => i ? g.lineTo(x * k, y * k) : g.moveTo(x * k, y * k)); g.stroke(); }
+  // the trench: two grey lines with his orange line between, a gap where the road comes up
+  g.lineWidth = 3;
+  for (const [y, col] of [[TRENCH.top - .1, '#555'], [TRENCH.top + 1.5, '#e8823a'], [TRENCH.bottom + 1.1, '#555']]) {
+    g.strokeStyle = col; g.beginPath();
+    if (y > TRENCH.bottom) { g.moveTo(0, y * k); g.lineTo(TRENCH.gap[0] * k, y * k); g.moveTo((TRENCH.gap[1] + 1) * k, y * k); g.lineTo(W * k, y * k); }
+    else { g.moveTo(0, y * k); g.lineTo(W * k, y * k); }
+    g.stroke();
+  }
+  const tgt = BUILDINGS[next ? next.target : 0];
   g.strokeStyle = '#2a2a2a'; g.lineWidth = 3;
-  for (const b of BUILDINGS) { g.fillStyle = b.target ? '#f6c8c3' : '#fff'; g.fillRect(b.x * k, b.y * k, b.w * k, b.h * k); g.strokeRect(b.x * k, b.y * k, b.w * k, b.h * k); }
+  for (const b of BUILDINGS) {
+    g.fillStyle = b === tgt ? '#f6c8c3' : '#fff';
+    if (b.kind === 'artillery') { g.beginPath(); g.arc((b.x + b.w / 2) * k, (b.y + b.h / 2) * k, b.w / 2 * k, 0, 7); g.fill(); g.stroke(); }
+    else { g.fillRect(b.x * k, b.y * k, b.w * k, b.h * k); g.strokeRect(b.x * k, b.y * k, b.w * k, b.h * k); }
+  }
+  g.font = `bold ${k * .95}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#2a2a2a';
+  for (const b of BUILDINGS) g.fillText(b.letter, (b.x + b.w / 2) * k, (b.y + b.h / 2) * k + 1);
   g.font = `bold ${k * 1.1}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [x, y] of PADS) { g.fillStyle = '#fff'; g.beginPath(); g.arc(x * k, y * k, k * .9, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#2a2a2a'; g.fillText('H', x * k, y * k + 1); }
-  const tg = BUILDINGS.find(b => b.target), tx = (tg.x + tg.w / 2) * k, ty = (tg.y + tg.h / 2) * k;
+  const tg = tgt, tx = (tg.x + tg.w / 2) * k, ty = (tg.y + tg.h / 2) * k;
   g.strokeStyle = '#c0261f'; g.lineWidth = 5;
   g.beginPath(); g.arc(tx, ty, k * 3.2, 0, 7); g.stroke();
   g.beginPath(); g.moveTo(tx - k, ty - k); g.lineTo(tx + k, ty + k); g.moveTo(tx + k, ty - k); g.lineTo(tx - k, ty + k); g.stroke();
@@ -1162,7 +1393,7 @@ function lose(why) {
   if (phase !== 'play') return;
   phase = 'lost'; G.lostWhy = why;
   letGo(); ctrlEl.classList.remove('live');
-  const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'noBoom' ? t('lostNoBoom') : t('lostShot');
+  const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'nuke' ? t('lostNuke') : why === 'left' ? t('lostLeft') : why === 'noBoom' ? t('lostNoBoom') : t('lostShot');
   setTimeout(() => {
     showHud(false);
     showCard(`<h2 id="cardTitle">${t('lostTitle')}</h2><p>${msg}</p><div class="row">${btn('fold', t('toHq'), true)}${btn('go', t('tryAgain'))}</div>`);
@@ -1173,9 +1404,13 @@ function win() {
   phase = 'won'; showHud(false);
   const time = G.t, newBest = S.best === null || time < S.best;
   if (newBest) S.best = time;
-  S.money = (S.money || 0) + STATS.money.perMission; save();
-  showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t('wonText')}</p>
-    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission })}</b></div>
+  const kind = G.mission.kind;
+  S.money = (S.money || 0) + STATS.money.perMission + G.extras;
+  S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat(kind).slice(-4);
+  if (kind === 'barracks') S.lastTarget = G.mission.target;
+  save(); next = null;
+  showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t(kind === 'bunker' ? 'wonText_bunker' : 'wonText')}</p>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b><span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission + G.extras })}</b></div>
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
 }
