@@ -177,6 +177,11 @@ const TUNE = {
   close: 1.2,       // tiles: this close, a guard notices you even from behind
   lookAround: 0.7,  // radians a guard standing still turns its head each way
   lookTime: 7,      // seconds for one look left and right
+  copterBack: 10,   // 16 Nov, his number: seconds for the copter to fly back in on a normal mission
+  copterWait: 1.5,  // seconds the copter sits after you get out, before it leaves
+  throwAt: 6,       // tiles: an explosive lands on the nearest enemy you can see this close
+  throwAhead: 3,    // tiles: otherwise it lands this far ahead of you (short of a wall)
+  pickUp: 1.1,      // tiles: how close you stand to a dropped gun to take it
 };
 
 // ---- Words on screen ----
@@ -210,6 +215,10 @@ const STR = {
   dirClear: 'Get clear! {s}',
   dirBack: 'Back to the copter',
   dirFlyOut: 'Flying out…',
+  dirCopterComing: 'The copter is on its way: {s}',
+  dirRestock: 'Get more {name} at the copter',
+  dirRestockComing: 'Out of {name}. The copter brings more: {s}',
+  takeKey: 'Take {gun} (E)', takeTouch: 'Take {gun}',
   alarm: 'ALARM!',
   alarmPill: 'Alarm! The base is coming',
   hp: 'HP {n}',
@@ -269,12 +278,31 @@ const BUILDINGS = [
   { x: 53.5, y: 26, w: 2, h: 4 },
   { x: 53.5, y: 31, w: 2, h: 5 },
 ];
-// face: where a standing guard looks (radians; 0 east, PI west, PI/2 south)
-const GUARDS = [
-  { x: 43, y: 20.5, face: Math.PI },
-  { x: 49.5, y: 23, face: Math.PI * .75 },
-  { x: 30, y: 9, path: [[30, 9], [29.6, 18]] },
+// Enemies come in groups of 2 to 4 (16 Nov, his rule), standing side by side
+// or walking a patrol path together. heavy: true puts a heavy (shoulder
+// plates, minigun, his juggernaut numbers) in the middle of the group.
+// face: where a standing group looks (radians; 0 east, PI west, PI/2 south).
+const GROUPS = [
+  { x: 43, y: 20.5, face: Math.PI, n: 2 },
+  { x: 49.5, y: 23.2, face: Math.PI * .75, n: 3 },
+  { x: 30, y: 9, n: 3, heavy: true, path: [[30, 9], [29.6, 18]] },
 ];
+const GAP = .9;  // tiles between soldiers in a group
+function spawnGroups() {
+  const out = [];
+  GROUPS.forEach((o, gi) => {
+    const d = o.path ? Math.atan2(o.path[1][1] - o.path[0][1], o.path[1][0] - o.path[0][0]) : o.face;
+    const sx = -Math.sin(d), sy = Math.cos(d), mid = (o.n - 1) / 2;
+    for (let i = 0; i < o.n; i++) {
+      const k = (i - mid) * GAP;
+      let x = o.x + sx * k, y = o.y + sy * k;
+      if (isSolid(x, y)) { x = o.x; y = o.y; }
+      out.push({ x, y, face: o.face, group: gi, heavy: o.heavy && i === Math.round(mid),
+        path: o.path && o.path.map(([px, py]) => [px + sx * k, py + sy * k]) });
+    }
+  });
+  return out;
+}
 
 const solid = new Uint8Array(W * H);  // 1 hill, 2 building
 const road = new Uint8Array(W * H);
@@ -439,12 +467,17 @@ function ell(g, x, y, rx, ry, fill, line = .04) {
 // plates (plates mean heavy infantry, the juggernaut), a grey helmet with the
 // team stripe and his star, and the gun it carries resting on its left
 // shoulder, drawn from the weapons wall icons so a minigun looks like one.
-const gunKind = (side, gun) => Object.keys(STATS.guns[side]).find(k => STATS.guns[side][k] === gun) || 'rifle';
-function drawTroop(g, side, gun) {
-  const team = C[side];
+function gunOf(gun) {
+  for (const sd of ['NA', 'DE']) for (const k in STATS.guns[sd]) if (STATS.guns[sd][k] === gun) return { side: sd, kind: k };
+  return { side: 'NA', kind: 'rifle' };
+}
+// 16 Nov, his rule: shoulder plates mean a heavy; a trooper has none
+function drawTroop(g, side, gun, heavy) {
+  const team = C[side], gi = gunOf(gun);
   rr(g, -.44, -.16, .88, .44, .2, team);
+  if (heavy) for (const x of [-.62, .34]) { rr(g, x, -.2, .28, .36, .06, C.grey); rr(g, x + .04, -.17, .2, .06, .02, C.star, 0); }
   ell(g, .2, -.2, .09, .09, C.glove);
-  g.save(); g.translate(-.34, -.42); g.scale(.25, .25); drawGunIcon(g, gunKind(side, gun), side); g.restore();
+  g.save(); g.translate(heavy ? -.46 : -.34, -.42); g.scale(.25, .25); drawGunIcon(g, gi.kind, gi.side); g.restore();
   ell(g, -.3, -.16, .09, .09, C.glove);
   ell(g, 0, .02, .26, .26, C.grey);
   rr(g, -.26, -.04, .52, .12, .02, team, .02);
@@ -518,17 +551,25 @@ let cam = { x: 28, y: 18 }, shake = 0;
 
 function newMission() {
   const side = 'NA', foe = 'DE';
-  const mk = (o, s) => ({ x: o.x, y: o.y, a: Math.PI / 2, side: s, hp: STATS.troop[s].hp, speed: STATS.troop[s].speed, detect: STATS.troop[s].detect,
-    gun: STATS.guns[s][o.gun || 'rifle'], ammo: STATS.guns[s][o.gun || 'rifle'].mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 });
+  const mk = (o, s) => {
+    const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.heavy ? 'minigun' : o.gun || 'rifle'];
+    return { x: o.x, y: o.y, a: o.face ?? Math.PI / 2, side: s, heavy: !!o.heavy, group: o.group, hp: kind.hp, speed: kind.speed, detect: kind.detect,
+      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 };
+  };
   G = {
     side, foe, t: 0,
     // beside the copter, not under its nose or rotor
     player: Object.assign(mk({ x: LZ.x + .5, y: LZ.y + 2.2 }, side), { gun: STATS.guns[side][pick.gun], ammo: STATS.guns[side][pick.gun].mag, a: 0 }),
-    guards: GUARDS.map(o => mk(o, foe)),
+    guards: (() => {
+      const gs = spawnGroups().map(o => mk(o, foe));
+      for (const g of gs) g.pace = Math.min(...gs.filter(m => m.group === g.group).map(m => m.speed));
+      return gs;
+    })(),
+    drops: [],
     buildings: BUILDINGS.map(b => Object.assign({}, b, b.kind === 'barracks' ? { hp: STATS.barracks.hp } : {})),
     booms: [], fx: [], tracers: [],
     left: TUNE.carry, down: 0, hit: 0, outside: true,
-    copter: { x: -14, y: 13, a: 0, alt: 1, rotor: 0 },
+    copter: { x: -14, y: 13, a: 0, alt: 1, rotor: 0, mode: 'in', wait: 0, back: 0, cool: 0 },
     targetDown: false, lostWhy: null,
   };
   G.target = G.buildings.find(b => b.target);
@@ -598,10 +639,13 @@ function moveToward(u, tg, speed, dt) {
 }
 // Walking around hills and buildings: a step-count map out from the target's
 // tile, and the guard steps to whichever next tile is fewer steps away.
-let flow = null;
+// One map per target tile, kept while it's in use (many guards chasing
+// different spots would otherwise rebuild it every frame).
+const flows = new Map();
 function flowTo(tx, ty) {
-  const W = L.w, H = L.h, key = L === HQL ? 'hq' : 'm', at = ty * W + tx;
-  if (flow && flow.key === key && flow.at === at) return flow.d;
+  const W = L.w, H = L.h, key = (L === HQL ? 'hq' : 'm') + ':' + (ty * W + tx), at = ty * W + tx;
+  if (flows.has(key)) return flows.get(key);
+  if (flows.size > 24) flows.clear();
   const d = new Int32Array(W * H).fill(-1), q = [at];
   d[at] = 0;
   for (let i = 0; i < q.length; i++) {
@@ -612,7 +656,7 @@ function flowTo(tx, ty) {
       d[n] = d[c] + 1; q.push(n);
     }
   }
-  flow = { key, at, d };
+  flows.set(key, d);
   return d;
 }
 function chase(u, to, speed, dt) {
@@ -660,7 +704,7 @@ function hurt(u, dmg, why) {
   } else {
     if (u.state !== 'alert') { u.state = 'alert'; u.react = TUNE.react; }
     u.lastSeen = { x: G.player.x, y: G.player.y }; u.lost = 0;
-    if (u.hp <= 0) { u.hp = 0; G.down++; }
+    if (u.hp <= 0) { u.hp = 0; G.down++; G.drops.push({ x: u.x, y: u.y, gun: u.gun, a: u.a + .8 }); }
     else if (u.hurtT == null) u.hurtT = 0; // the count to the alarm starts
   }
 }
@@ -671,7 +715,13 @@ function stepGuard(g, dt) {
   // a guard sees inside its yellow cone (or right next to it), not behind it
   const off = Math.abs(((Math.atan2(p.y - g.y, p.x - g.x) - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
   const sees = phase === 'play' && p.hp > 0 && d <= g.detect && (d <= TUNE.close || off <= TUNE.sight * Math.PI / 180) && los(g, p);
-  if (sees) { if (g.state !== 'alert') { g.state = 'alert'; g.react = TUNE.react; } g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
+  if (sees) {
+    // a group goes on alert together
+    for (const m of G.guards) if (m.hp > 0 && (m === g || (m.group === g.group && m.group != null))) {
+      if (m.state !== 'alert') { m.state = 'alert'; m.react = TUNE.react; }
+      m.lastSeen = { x: p.x, y: p.y }; m.lost = 0;
+    }
+  }
   else if (g.state === 'alert') { g.lost += dt; if (g.lost > TUNE.forget) g.state = 'patrol'; }
   if (g.hurtT != null && !G.alarm && phase === 'play') { g.hurtT += dt; if (g.hurtT >= STATS.alarm.after) soundAlarm(g); }
   // after the alarm, everyone knows where you are and keeps coming
@@ -685,7 +735,7 @@ function stepGuard(g, dt) {
     } else chase(g, sees ? p : g.lastSeen, g.speed * (G.alarm && !sees ? TUNE.alarmPace : 1), dt);
   } else if (g.path) {
     const [px, py] = g.path[g.pi];
-    if (moveToward(g, { x: px, y: py }, g.speed * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
+    if (moveToward(g, { x: px, y: py }, (g.pace || g.speed) * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
   } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
   else {
     // standing guard: looks slowly left and right
@@ -708,12 +758,32 @@ function use() {
     return;
   }
   if (phase !== 'play') return;
-  if (G.targetDown) { if (dist(p, LZ) < 2.6) board(); return; }
+  const dr = nearDrop(p);
+  if (dr) return takeGun(dr);
+  if (G.targetDown) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
   if (G.left <= 0) return;
+  // 16 Nov, his ask: explosives are for groups of enemies too, so it lands on
+  // the nearest one you can see, or a few tiles ahead
+  let to = null, best = TUNE.throwAt;
+  for (const g of G.guards) if (g.hp > 0) { const d = dist(p, g); if (d < best && los(p, g)) { best = d; to = { x: g.x, y: g.y }; } }
+  if (!to) to = rayEnd(p.x, p.y, p.a, TUNE.throwAhead);
   const b = STATS.boom[pick.boom];
   G.left--;
-  G.booms.push({ kind: pick.boom, x: p.x, y: p.y, t: b.timer, dmg: b.dmg, splash: b.splash });
+  G.booms.push({ kind: pick.boom, x: to.x, y: to.y, t: b.timer, dmg: b.dmg, splash: b.splash });
 }
+// guns enemies drop when they go down; Use swaps yours for it
+function nearDrop(p) {
+  let best = null, bd = TUNE.pickUp;
+  for (const d of G.drops) { const k = dist(p, d); if (k < bd) { bd = k; best = d; } }
+  return best;
+}
+function takeGun(d) {
+  const p = G.player;
+  G.drops.splice(G.drops.indexOf(d), 1);
+  G.drops.push({ x: p.x, y: p.y, gun: p.gun, a: p.a });
+  p.gun = d.gun; p.ammo = d.gun.mag; p.reload = 0; p.cool = 0;
+}
+const copterReady = () => G.copter.mode === 'landed';
 function blast(k) {
   const p = G.player;
   G.fx.push({ x: k.x, y: k.y, r: k.splash, t: 0 });
@@ -722,6 +792,39 @@ function blast(k) {
   for (const b of G.buildings) if (b.hp > 0 && rectDist(b, k) <= k.splash) { b.hp -= k.dmg; if (b.hp <= 0) b.hp = 0; }
   if (G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
   if (p.hp > 0 && dist(p, k) <= k.splash) { G.blastSplash = k.splash; hurt(p, k.dmg, 'blast'); }
+}
+// 16 Nov, his rules: the copter leaves once you're out, and takes about 10
+// seconds to fly back in once the target is down (or you're out of
+// explosives, to bring more). Its side guns fire at enemies near it.
+const outOfBooms = () => !G.targetDown && G.left <= 0 && !G.booms.length;
+function stepCopter(dt) {
+  const c = G.copter, sp = STATS.copter.speed, p = G.player, need = G.targetDown || outOfBooms();
+  if (c.mode === 'landed') {
+    if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;   // more explosives
+    if (!need && dist(p, LZ) > 1.2) { c.wait -= dt; if (c.wait <= 0) { c.mode = 'leaving'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); } }
+  } else if (c.mode === 'leaving') {
+    c.alt = Math.min(1, c.alt + dt * 1.2);
+    if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
+    if (c.x < -12) { c.mode = 'away'; c.back = TUNE.copterBack; }
+    if (need && c.alt < 1) { c.mode = 'coming'; }
+  } else if (c.mode === 'away') {
+    if (need) { c.back -= dt; if (c.back <= 0) { c.mode = 'coming'; c.x = -14; c.y = 13; c.alt = 1; } }
+  } else if (c.mode === 'coming') {
+    const d = dist(c, LZ);
+    c.a = Math.atan2(LZ.y - c.y, LZ.x - c.x);
+    if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
+    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; }
+  }
+  // side guns: whoever is closest in range, whether it's flying or sitting
+  if (c.mode !== 'away') {
+    const gun = STATS.copter.gun;
+    c.cool -= dt;
+    if (c.cool <= 0) {
+      let tg = null, best = gun.range;
+      for (const g of G.guards) if (g.hp > 0) { const d = dist(c, g); if (d < best && (c.alt > .3 || los(c, g))) { best = d; tg = g; } }
+      if (tg) { c.cool = 1 / gun.rate; G.tracers.push({ x1: c.x, y1: c.y, x2: tg.x, y2: tg.y, t: .07 }); hurt(tg, gun.dmg, 'shot'); }
+    }
+  }
 }
 function board() {
   phase = 'flyout'; G.fly = 0; G.player.gone = true; G.copter.a = Math.atan2(13 - LZ.y, -14 - LZ.x);
@@ -755,7 +858,7 @@ function step(dt) {
   if (phase === 'flyin') {
     const d = dist(c, LZ);
     if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
-    else { c.alt = 0; phase = 'play'; G.t = 0; showHud(true); }
+    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; phase = 'play'; G.t = 0; showHud(true); }
     return;
   }
   if (phase === 'flyout') {
@@ -775,15 +878,16 @@ function step(dt) {
   for (const k of G.booms) { k.t -= dt; if (k.t <= 0 && !k.done) { k.done = true; blast(k); } }
   G.booms = G.booms.filter(k => !k.done);
   if (phase !== 'play') return;
-  if (G.targetDown && dist(p, LZ) < 1.8) board();
-  else if (!G.targetDown && G.left <= 0 && !G.booms.length && !G.fx.length) lose('noBoom');
+  stepCopter(dt);
+  if (G.targetDown && copterReady() && dist(p, LZ) < 1.8) board();
   hud();
 }
 
 // ---- Drawing ----
 let S_ = 30, dpr = 1;
 function resize() {
-  dpr = Math.min(2, devicePixelRatio || 1);
+  // 16 Nov, his ask for smoother play: phones draw at 1.5x, not their full 3x
+  dpr = Math.min(matchMedia('(pointer:coarse)').matches ? 1.5 : 2, devicePixelRatio || 1);
   cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr);
   S_ = Math.sqrt(cv.width * cv.height / TUNE.view);
 }
@@ -829,6 +933,10 @@ function draw(now) {
     for (let i = 0; i <= 16; i++) { const e = rayEnd(u.x, u.y, u.a - h + 2 * h * i / 16, u.detect); g.lineTo(e.x, e.y); }
     g.closePath(); g.fillStyle = u.state === 'alert' ? 'rgba(255,190,40,.28)' : 'rgba(255,230,80,.2)'; g.fill();
   }
+  if (G.drops) for (const d of G.drops) {
+    const gi = gunOf(d.gun);
+    g.save(); g.translate(d.x, d.y); g.rotate(d.a || 0); g.scale(.25, .25); drawGunIcon(g, gi.kind, gi.side); g.restore();
+  }
   for (const u of G.guards) if (!u.gone) unit(g, u);
   if (!G.player.gone && phase !== 'flyin') unit(g, G.player);
   for (const tr of G.tracers) { g.strokeStyle = '#fff3a0'; g.lineWidth = .06; g.beginPath(); g.moveTo(tr.x1, tr.y1); g.lineTo(tr.x2, tr.y2); g.stroke(); }
@@ -854,9 +962,11 @@ function draw(now) {
   if (!G.alarm) for (const u of G.guards) if (u.hurtT != null && u.hp > 0) { ctx.strokeText('!', sx(u.x), sy(u.y - 1)); ctx.fillStyle = '#ffd23f'; ctx.fillText('!', sx(u.x), sy(u.y - 1)); }
   for (const f of G.fx) if (f.t < .9) { ctx.strokeText(t('boom'), sx(f.x), sy(f.y)); ctx.fillStyle = '#ffd23f'; ctx.fillText(t('boom'), sx(f.x), sy(f.y)); }
   // a word over the soldier when Use does something here
-  const p = G.player, n = phase === 'hq' ? nearHq(p) : phase === 'play' && G.targetDown && dist(p, LZ) < 2.6 ? 'copter' : null;
+  const p = G.player, dr = phase === 'play' && G.drops ? nearDrop(p) : null;
+  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : phase === 'play' && G.targetDown && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
   if (n && !(n === 'copter' && G.kind === 'hq' && !G.folder) && cover.hidden) {
-    const w = matchMedia('(pointer:coarse)').matches ? t('useTouch') : t('useKey'), hs = Math.max(12, S_ * .35);
+    const touch = matchMedia('(pointer:coarse)').matches, hs = Math.max(12, S_ * .35);
+    const w = n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : touch ? t('useTouch') : t('useKey');
     ctx.font = `${hs}px "Press Start 2P", monospace`; ctx.lineWidth = hs / 3;
     ctx.strokeText(w, sx(p.x), sy(p.y - 1)); ctx.fillStyle = '#fff'; ctx.fillText(w, sx(p.x), sy(p.y - 1));
   }
@@ -867,7 +977,7 @@ function unit(g, u) {
   g.rotate(u.a + Math.PI / 2);
   // down, not hurt: a guard tips over and fades away (cartoony, no blood)
   if (u.hp <= 0) { g.globalAlpha = Math.max(0, 1 - u.downT / 1.6); g.rotate(Math.min(1, u.downT * 3) * Math.PI / 2); g.scale(1, .7); }
-  drawTroop(g, u.side, u.gun);
+  drawTroop(g, u.side, u.gun, u.heavy);
   if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .5, 0, 7); g.fill(); }
   g.restore();
 }
@@ -885,6 +995,10 @@ const btn = (id, label, plain) => `<button class="btn${plain ? ' plain' : ''}" i
 const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 function showHud(v) { hudEl.hidden = !v; dirEl.hidden = !v; if (v) hud(); }
+function copterEta() {
+  const c = G.copter;
+  return Math.max(1, Math.ceil((c.mode === 'away' ? c.back : 0) + (c.mode === 'leaving' ? TUNE.copterBack : 0) + dist(c.mode === 'away' ? { x: -14, y: 13 } : c, LZ) / STATS.copter.speed));
+}
 function hud() {
   if (!G) return;
   const p = G.player;
@@ -893,7 +1007,8 @@ function hud() {
   if (G.kind === 'hq') d = phase === 'hqout' ? t('dirTakeOff') : G.folder ? t('dirWall') : t('dirDesk');
   else if (phase === 'flyin') d = t('dirFlyIn');
   else if (phase === 'flyout') d = t('dirFlyOut');
-  else if (G.targetDown) d = t('dirBack');
+  else if (G.targetDown) d = copterReady() ? t('dirBack') : t('dirCopterComing', { s: copterEta() });
+  else if (outOfBooms()) d = copterReady() ? t('dirRestock', { name: t(pick.boom) }) : t('dirRestockComing', { name: t(pick.boom), s: copterEta() });
   else if (G.booms.length) d = t('dirClear', { s: Math.ceil(Math.min(...G.booms.map(k => k.t))) });
   else d = t('dirGo');
   if (dirEl.textContent !== d) dirEl.textContent = d;
