@@ -172,6 +172,11 @@ const TUNE = {
   patrol: 0.5,      // guards walk their rounds at this share of their speed
   alarmPace: 0.6,   // after the alarm, enemies head to you at this share of their speed ("slowly")
   view: 340,        // about how many tiles show on screen
+  youDamage: 2,     // 16 Nov, his ask: your guns do double his damage numbers
+  sight: 40,        // degrees each side of where a guard faces that it can see (the yellow cone)
+  close: 1.2,       // tiles: this close, a guard notices you even from behind
+  lookAround: 0.7,  // radians a guard standing still turns its head each way
+  lookTime: 7,      // seconds for one look left and right
 };
 
 // ---- Words on screen ----
@@ -227,7 +232,7 @@ const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, n) => v[n]);
 // ---- His colours ----
 const C = {
   NA: '#2b5ce6', DE: '#e2483a', star: '#f5c938', grey: '#c0c0c0', dark: '#5c5c5c',
-  sky: '#5bc0f0', ink: '#1a1a1a', folder: '#e6c77a', grass: '#5f9a3e', road: '#c9b27c', rock: '#8c867c',
+  sky: '#5bc0f0', ink: '#1a1a1a', glove: '#3a3a36', folder: '#e6c77a', grass: '#5f9a3e', road: '#c9b27c', rock: '#8c867c',
 };
 
 // ---- The map: his graph-paper drawing, about one of his squares to a tile ----
@@ -264,9 +269,10 @@ const BUILDINGS = [
   { x: 53.5, y: 26, w: 2, h: 4 },
   { x: 53.5, y: 31, w: 2, h: 5 },
 ];
+// face: where a standing guard looks (radians; 0 east, PI west, PI/2 south)
 const GUARDS = [
-  { x: 43, y: 20.5 },
-  { x: 49.5, y: 23 },
+  { x: 43, y: 20.5, face: Math.PI },
+  { x: 49.5, y: 23, face: Math.PI * .75 },
   { x: 30, y: 9, path: [[30, 9], [29.6, 18]] },
 ];
 
@@ -429,16 +435,20 @@ function ell(g, x, y, rx, ry, fill, line = .04) {
   g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fillStyle = fill; g.fill();
   if (line) { g.lineWidth = line; g.strokeStyle = C.ink; g.stroke(); }
 }
-// His troop: grey helmet with the team oval and a yellow star, grey shoulder
-// plates, a team-colour body (NA black, DE red) and the gun out front.
-function drawTroop(g, side) {
-  rr(g, -.4, -.12, .8, .42, .12, side === 'NA' ? '#1d1d1d' : C.DE);
-  rr(g, -.5, -.1, .22, .24, .04, C.grey);
-  rr(g, .28, -.1, .22, .24, .04, C.grey);
-  rr(g, -.06, -.72, .12, .6, .03, side === 'NA' ? '#9a9a9a' : C.star);
-  ell(g, 0, .02, .28, .27, C.grey);
-  ell(g, 0, .0, .21, .14, C[side]);
-  star(g, 0, .0, .12);
+// His troop, look A (picked 16 Nov): a team-colour body with no shoulder
+// plates (plates mean heavy infantry, the juggernaut), a grey helmet with the
+// team stripe and his star, and the gun it carries resting on its left
+// shoulder, drawn from the weapons wall icons so a minigun looks like one.
+const gunKind = (side, gun) => Object.keys(STATS.guns[side]).find(k => STATS.guns[side][k] === gun) || 'rifle';
+function drawTroop(g, side, gun) {
+  const team = C[side];
+  rr(g, -.44, -.16, .88, .44, .2, team);
+  ell(g, .2, -.2, .09, .09, C.glove);
+  g.save(); g.translate(-.34, -.42); g.scale(.25, .25); drawGunIcon(g, gunKind(side, gun), side); g.restore();
+  ell(g, -.3, -.16, .09, .09, C.glove);
+  ell(g, 0, .02, .26, .26, C.grey);
+  rr(g, -.26, -.04, .52, .12, .02, team, .02);
+  star(g, 0, .02, .11);
 }
 // His helicopter, from above: star on the nose, light-blue canopy, blue window,
 // engine pods, side guns, the long tail with two blue ovals, and the rotor.
@@ -509,7 +519,7 @@ let cam = { x: 28, y: 18 }, shake = 0;
 function newMission() {
   const side = 'NA', foe = 'DE';
   const mk = (o, s) => ({ x: o.x, y: o.y, a: Math.PI / 2, side: s, hp: STATS.troop[s].hp, speed: STATS.troop[s].speed, detect: STATS.troop[s].detect,
-    gun: STATS.guns[s][o.gun || 'rifle'], ammo: STATS.guns[s][o.gun || 'rifle'].mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, downT: 0 });
+    gun: STATS.guns[s][o.gun || 'rifle'], ammo: STATS.guns[s][o.gun || 'rifle'].mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 });
   G = {
     side, foe, t: 0,
     // beside the copter, not under its nose or rotor
@@ -636,7 +646,7 @@ function shoot(u, dt, foes) {
   if (tg) {
     u.a = Math.atan2(tg.y - u.y, tg.x - u.x);
     G.tracers.push({ x1: u.x, y1: u.y, x2: tg.x, y2: tg.y, t: .07 });
-    hurt(tg, u.gun.dmg, 'shot');
+    hurt(tg, u.gun.dmg * (u === G.player ? TUNE.youDamage : 1), 'shot');
   } else {
     const e = rayEnd(u.x, u.y, u.a, u.gun.range);
     G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
@@ -658,7 +668,9 @@ function stepGuard(g, dt) {
   if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6) g.gone = true; return; }
   if (g.flash) g.flash = Math.max(0, g.flash - dt);
   const p = G.player, d = dist(g, p);
-  const sees = phase === 'play' && p.hp > 0 && d <= g.detect && los(g, p);
+  // a guard sees inside its yellow cone (or right next to it), not behind it
+  const off = Math.abs(((Math.atan2(p.y - g.y, p.x - g.x) - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
+  const sees = phase === 'play' && p.hp > 0 && d <= g.detect && (d <= TUNE.close || off <= TUNE.sight * Math.PI / 180) && los(g, p);
   if (sees) { if (g.state !== 'alert') { g.state = 'alert'; g.react = TUNE.react; } g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
   else if (g.state === 'alert') { g.lost += dt; if (g.lost > TUNE.forget) g.state = 'patrol'; }
   if (g.hurtT != null && !G.alarm && phase === 'play') { g.hurtT += dt; if (g.hurtT >= STATS.alarm.after) soundAlarm(g); }
@@ -675,6 +687,11 @@ function stepGuard(g, dt) {
     const [px, py] = g.path[g.pi];
     if (moveToward(g, { x: px, y: py }, g.speed * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
   } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
+  else {
+    // standing guard: looks slowly left and right
+    g.look = (g.look || 0) + dt;
+    g.a = g.face + Math.sin(g.look / TUNE.lookTime * 2 * Math.PI) * TUNE.lookAround;
+  }
 }
 function soundAlarm(g) {
   G.alarm = { x: g.x, y: g.y, t: 0 };
@@ -780,6 +797,10 @@ function draw(now) {
   if (!G) { fx = 28 + Math.sin(now / 9000) * 14; fy = 18 + Math.cos(now / 11000) * 7; }
   else if (phase === 'flyin' || phase === 'flyout' || G.player.gone) { fx = G.copter.x; fy = G.copter.y; }
   else if (G) { fx = G.player.x; fy = G.player.y; }
+  // a canvas with no size yet (hidden tab, phone turning) would make the camera
+  // NaN for good, and the screen would stay blank
+  if (!(S_ > 0) || !cw || !ch) return;
+  if (!Number.isFinite(cam.x) || !Number.isFinite(cam.y)) { cam.x = fx; cam.y = fy; }
   const vw = cw / S_, vh = ch / S_;
   fx = vw >= L.w ? L.w / 2 : Math.max(vw / 2, Math.min(L.w - vw / 2, fx));
   fy = vh >= L.h ? L.h / 2 : Math.max(vh / 2, Math.min(L.h - vh / 2, fy));
@@ -800,6 +821,13 @@ function draw(now) {
     g.save(); g.translate(k.x, k.y); drawBoomIcon(g, k.kind); g.restore();
     g.setLineDash([.4, .3]); g.lineWidth = .08; g.strokeStyle = 'rgba(226,72,58,.9)';
     g.beginPath(); g.arc(k.x, k.y, k.splash, 0, 7); g.stroke(); g.setLineDash([]);
+  }
+  // where each guard can see: a see-through yellow cone that stops at walls
+  if (phase === 'play') for (const u of G.guards) if (u.hp > 0) {
+    const h = TUNE.sight * Math.PI / 180;
+    g.beginPath(); g.moveTo(u.x, u.y);
+    for (let i = 0; i <= 16; i++) { const e = rayEnd(u.x, u.y, u.a - h + 2 * h * i / 16, u.detect); g.lineTo(e.x, e.y); }
+    g.closePath(); g.fillStyle = u.state === 'alert' ? 'rgba(255,190,40,.28)' : 'rgba(255,230,80,.2)'; g.fill();
   }
   for (const u of G.guards) if (!u.gone) unit(g, u);
   if (!G.player.gone && phase !== 'flyin') unit(g, G.player);
@@ -839,7 +867,7 @@ function unit(g, u) {
   g.rotate(u.a + Math.PI / 2);
   // down, not hurt: a guard tips over and fades away (cartoony, no blood)
   if (u.hp <= 0) { g.globalAlpha = Math.max(0, 1 - u.downT / 1.6); g.rotate(Math.min(1, u.downT * 3) * Math.PI / 2); g.scale(1, .7); }
-  drawTroop(g, u.side);
+  drawTroop(g, u.side, u.gun);
   if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .5, 0, 7); g.fill(); }
   g.restore();
 }
