@@ -349,8 +349,10 @@ const GROUPS = [
   { x: 35.7, y: 3.3, face: Math.PI / 2, n: 3 },
   { x: 41.2, y: 3.3, n: 4, heavy: true, heavyGun: 'pump', path: [[41.2, 3.3], [54, 3.3], [41.2, 3.3], [18, 3.3]] },
   { x: 32.2, y: 26.4, n: 4, heavy: true, path: MAIN_ROUTE.slice(3).concat(MAIN_ROUTE.slice(1, -1).reverse(), MAIN_ROUTE.slice(0, 3)) },
-  { x: 23.3, y: 6.7, face: Math.PI / 2, n: 2 },
-  { x: 27.7, y: 7.5, face: Math.PI / 2, n: 2 },
+  // these two stand near the landing pad, so they face the trench (north):
+  // facing the pad they shot you before you were out of the copter (18 Nov)
+  { x: 23.3, y: 6.7, face: -Math.PI / 2, n: 2 },
+  { x: 27.7, y: 7.5, face: -Math.PI / 2, n: 2 },
   { x: 6.7, y: 15.6, face: -Math.PI / 2, n: 2 },
   { x: 33, y: 15.6, n: 3, path: [[33, 15.6], [33, 10.5], [38, 7], [43, 7.2], [38, 7], [33, 10.5]] },
   { x: 43.4, y: 17.6, face: Math.PI, n: 2 },
@@ -1086,16 +1088,18 @@ function stepCopter(dt) {
     if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
     else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; }
   }
-  // side guns. In the air: whoever is closest in range. Decided 18 Nov, his
-  // rule after he got spawn camped at the landing pad: on the ground it
-  // shoots only guards who can see you, out to its detect range (his 8);
-  // a guard who hasn't seen you is left alone, so you can sneak away.
+  // side guns. Decided 18 Nov, his rule after he got spawn camped at the
+  // landing pad: while you're on the ground it shoots only guards who can see
+  // you, out to its detect range (his 8); a guard who hasn't seen you is left
+  // alone, so you can sneak away. At first that held only while it sat on the
+  // pad, and its parting shots on take-off woke the guards next to the pad.
+  // With you aboard (flying in or out) it shoots whoever is closest.
   if (c.mode !== 'away' && c.mode !== 'gone') {
     const gun = STATS.copter.gun;
     c.cool -= dt;
     if (c.cool <= 0) {
       let tg = null, best = gun.range;
-      if (c.alt <= .3) tg = coverTarget(c);
+      if (phase === 'play') tg = coverTarget(c);
       else for (const g of G.guards) if (g.hp > 0) { const d = dist(c, g); if (d < best) { best = d; tg = g; } }
       if (tg) { c.cool = 1 / gun.rate; G.tracers.push({ x1: c.x, y1: c.y, x2: tg.x, y2: tg.y, t: .07 }); hurt(tg, gun.dmg, 'shot'); }
     }
@@ -1103,7 +1107,7 @@ function stepCopter(dt) {
 }
 function coverTarget(c) {
   let tg = null, best = STATS.copter.detect;
-  if (phase === 'play') for (const g of G.guards) if (g.hp > 0 && g.sees) { const d = dist(c, g); if (d < best && los(c, g)) { best = d; tg = g; } }
+  if (phase === 'play') for (const g of G.guards) if (g.hp > 0 && g.sees) { const d = dist(c, g); if (d < best && (c.alt > .3 || los(c, g))) { best = d; tg = g; } }
   return tg;
 }
 function board() {
