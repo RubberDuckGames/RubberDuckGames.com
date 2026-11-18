@@ -920,6 +920,7 @@ function stepGuard(g, dt) {
   // a guard sees inside its yellow cone (or right next to it), not behind it
   const off = Math.abs(((Math.atan2(p.y - g.y, p.x - g.x) - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
   const sees = phase === 'play' && p.hp > 0 && d <= g.detect && (d <= TUNE.close || off <= TUNE.sight * Math.PI / 180) && los(g, p);
+  g.sees = sees;   // the landed copter covers you from guards who can see you
   if (sees) {
     // a group goes on alert together
     for (const m of G.guards) if (m.hp > 0 && (m === g || (m.group === g.group && m.group != null))) {
@@ -1070,7 +1071,8 @@ function stepCopter(dt) {
     if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
   } else if (c.mode === 'landed') {
     if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;   // more explosives
-    if (!need && dist(p, LZ) > 1.2) { c.wait -= dt; if (c.wait <= 0) { c.mode = 'leaving'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); } }
+    // it doesn't take off while a guard near it can see you
+    if (!need && dist(p, LZ) > 1.2 && !coverTarget(c)) { c.wait -= dt; if (c.wait <= 0) { c.mode = 'leaving'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); } }
   } else if (c.mode === 'leaving') {
     c.alt = Math.min(1, c.alt + dt * 1.2);
     if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
@@ -1084,16 +1086,25 @@ function stepCopter(dt) {
     if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
     else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; }
   }
-  // side guns: whoever is closest in range, whether it's flying or sitting
+  // side guns. In the air: whoever is closest in range. Decided 18 Nov, his
+  // rule after he got spawn camped at the landing pad: on the ground it
+  // shoots only guards who can see you, out to its detect range (his 8);
+  // a guard who hasn't seen you is left alone, so you can sneak away.
   if (c.mode !== 'away' && c.mode !== 'gone') {
     const gun = STATS.copter.gun;
     c.cool -= dt;
     if (c.cool <= 0) {
       let tg = null, best = gun.range;
-      for (const g of G.guards) if (g.hp > 0) { const d = dist(c, g); if (d < best && (c.alt > .3 || los(c, g))) { best = d; tg = g; } }
+      if (c.alt <= .3) tg = coverTarget(c);
+      else for (const g of G.guards) if (g.hp > 0) { const d = dist(c, g); if (d < best) { best = d; tg = g; } }
       if (tg) { c.cool = 1 / gun.rate; G.tracers.push({ x1: c.x, y1: c.y, x2: tg.x, y2: tg.y, t: .07 }); hurt(tg, gun.dmg, 'shot'); }
     }
   }
+}
+function coverTarget(c) {
+  let tg = null, best = STATS.copter.detect;
+  if (phase === 'play') for (const g of G.guards) if (g.hp > 0 && g.sees) { const d = dist(c, g); if (d < best && los(c, g)) { best = d; tg = g; } }
+  return tg;
 }
 function board() {
   phase = 'flyout'; G.fly = 0; G.player.gone = true; G.copter.a = Math.atan2(13 - LZ.y, -14 - LZ.x);
