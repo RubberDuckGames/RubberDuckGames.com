@@ -201,6 +201,7 @@ const TUNE = {
   pickUp: 1.1,      // tiles: how close you stand to a dropped gun to take it
   pilotLeaves: 2,   // his number: on the nuke mission the pilot leaves with this many seconds left
   nestHp: 400,      // a trench gun's HP (ours; ask him)
+  labHp: 400,       // the lab's HP (ours; ask him)
   hack: 3,          // seconds standing at an artillery gun to hack it
   bonus: 1,         // $ for each extra building blown up and each side objective (ours; ask him)
   barrelHp: 20, barrelBlast: { dmg: 150, splash: 3 },  // oil barrels (ours)
@@ -287,12 +288,16 @@ const C = {
 };
 
 // ---- The map: his graph-paper drawing, about one of his squares to a tile ----
-// Read again from his clearer map (17 Nov). Red pen is road, grey pencil is
+// Read again from his clearer map (17 Nov). Red pencil is road, grey pencil is
 // hills, the double line along the top is the trench (with a gap in the
 // middle where the road comes up, and a gun post on its right), boxes are
-// buildings and circles are helipads and artillery. His letters: B barracks,
-// BT tank barracks, A artillery, BK bunker. Some letters were too blurry to
-// read, so the folder map writes a letter on every building for him to check.
+// buildings and circles with an H are helipads. His letters: B barracks,
+// TB tank barracks (BT on his first list), A artillery, BK bunker, LAB lab.
+// Decided 18 Nov, his test: the big box on the left says LAB (it had been
+// read as the bunker); the bunker is the BK box on the right; the circle on
+// the left is a helipad, not artillery; the artillery is bigger. The small red
+// pen marks are where enemies start and the thin red pen lines are patrols.
+// The folder map writes a letter on every building for him to check.
 const W = 56, H = 37;
 const loop = (cx, cy, rx, ry) => { const p = []; for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2; p.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return p; };
 const ROADS = [
@@ -310,39 +315,50 @@ const HILLS = [
 ];
 // the trench: floor rows and the gap in its south wall where the road comes up
 const TRENCH = { top: 2, bottom: 4, gap: [29, 32] };
-const PADS = [[5, 7.4], [22, 9.8], [41.6, 19.4]];
+const PADS = [[5, 7.4], [22, 9.8], [41.6, 19.4], [3.5, 19.7], [52.6, 7.6]];
 const LZ = { x: 22, y: 9.8 };
 // x, y, w, h in tiles; letter is his label for it
 const BUILDINGS = [
-  { x: 7, y: 16.8, w: 11.5, h: 6.2, kind: 'bunker', letter: 'BK' },
+  { x: 45.4, y: 17.3, w: 5, h: 4.5, kind: 'bunker', letter: 'BK' },
+  { x: 7, y: 16.8, w: 11.5, h: 6.2, kind: 'lab', letter: 'LAB' },
   { x: 34.5, y: 14.3, w: 4.5, h: 2.1, kind: 'barracks', letter: 'B' },
-  { x: 34.5, y: 17, w: 4.5, h: 2.8, kind: 'barracks', letter: 'B' },
-  { x: 46, y: 18.6, w: 3.6, h: 2.4, kind: 'barracks', letter: 'B' },
   { x: 22.4, y: 24.8, w: 2.8, h: 2.2, kind: 'barracks', letter: 'B' },
-  { x: 0.6, y: 27.8, w: 2.6, h: 3.8, kind: 'barracks', letter: 'B' },
-  { x: 53.2, y: 25.4, w: 2.5, h: 4.4, kind: 'tankBarracks', letter: 'BT' },
-  { x: 53.2, y: 30.8, w: 2.5, h: 5, kind: 'tankBarracks', letter: 'BT' },
-  { x: 51.3, y: 6.2, w: 2.4, h: 2.4, kind: 'artillery', letter: 'A' },
-  { x: 0.7, y: 18.7, w: 2.4, h: 2.4, kind: 'artillery', letter: 'A' },
+  { x: 53.2, y: 25.4, w: 2.5, h: 4.4, kind: 'barracks', letter: 'B' },
+  { x: 53.2, y: 30.8, w: 2.5, h: 5, kind: 'barracks', letter: 'B' },
+  { x: 34.5, y: 17, w: 4.5, h: 2.8, kind: 'tankBarracks', letter: 'TB' },
+  { x: 0.6, y: 27.8, w: 2.6, h: 3.8, kind: 'tankBarracks', letter: 'TB' },
+  { x: 45.4, y: 5.8, w: 4.2, h: 3.4, kind: 'artillery', letter: 'A' },
+  { x: 0.4, y: 6, w: 3.6, h: 3.4, kind: 'artillery', letter: 'A' },
 ];
 // guns on sandbags in the trench (his "trench with guns"); they turn but don't walk
 const NESTS = [{ x: 20, y: 3.4 }, { x: 46.5, y: 3.4 }];
-// oil barrels, a side objective (his ask): shoot them and they blow up
-const BARRELS = [[50.4, 22.8], [51.2, 23.4], [50.5, 24.1], [49.8, 23.5]];
+// oil barrels by the lab, a side objective (his ask): shoot them and they blow up
+const BARRELS = [[19.3, 17.6], [20.1, 18.1], [19.4, 18.7], [20.2, 19.3]];
 // Enemies come in groups of 2 to 4 (16 Nov, his rule), standing side by side
 // or walking a patrol path together. heavy: true puts a heavy (shoulder
 // plates, minigun, his juggernaut numbers) in the middle of the group.
 // face: where a standing group looks (radians; 0 east, PI west, PI/2 south).
 // The trench has more enemies than anywhere else (his rule).
+// Decided 18 Nov: each group starts on one of his red pen marks. His two red
+// stars are read as the big groups (4 with a heavy): one walks the trench end
+// to end, the main group walks the roads through the middle of the base and
+// round the south (his "walks all over the base"). A patrol walks its path in
+// order and loops, so a path that comes back the same way lists the way back.
+const MAIN_ROUTE = [[30.5, 6], [30.6, 12], [29.4, 19.5], [31, 24], [31, 32], [35, 35], [44, 35.4], [50, 33], [52, 27], [51.6, 22.8]];
 const GROUPS = [
-  { x: 10, y: 3.4, face: Math.PI / 2, n: 4 },
-  { x: 37, y: 3.4, face: Math.PI / 2, n: 3, heavy: true },
-  { x: 40.5, y: 16.6, face: Math.PI, n: 3, heavy: true, heavyGun: 'pump' },
-  { x: 30, y: 8, n: 3, path: [[30, 8], [29.5, 17]] },
-  { x: 12.5, y: 24.3, face: Math.PI / 2, n: 2 },
-  { x: 20, y: 19.8, face: 0, n: 2 },
-  { x: 51, y: 28, face: Math.PI, n: 2 },
-  { x: 5, y: 26.4, face: 0, n: 2 },
+  { x: 35.7, y: 3.3, face: Math.PI / 2, n: 3 },
+  { x: 41.2, y: 3.3, n: 4, heavy: true, heavyGun: 'pump', path: [[41.2, 3.3], [54, 3.3], [41.2, 3.3], [18, 3.3]] },
+  { x: 32.2, y: 26.4, n: 4, heavy: true, path: MAIN_ROUTE.slice(3).concat(MAIN_ROUTE.slice(1, -1).reverse(), MAIN_ROUTE.slice(0, 3)) },
+  { x: 23.3, y: 6.7, face: Math.PI / 2, n: 2 },
+  { x: 27.7, y: 7.5, face: Math.PI / 2, n: 2 },
+  { x: 6.7, y: 15.6, face: -Math.PI / 2, n: 2 },
+  { x: 33, y: 15.6, n: 3, path: [[33, 15.6], [33, 10.5], [38, 7], [43, 7.2], [38, 7], [33, 10.5]] },
+  { x: 43.4, y: 17.6, face: Math.PI, n: 2 },
+  { x: 47.3, y: 23.5, face: Math.PI / 2, n: 2 },
+  { x: 51.6, y: 28.9, face: Math.PI, n: 2 },
+  { x: 33.9, y: 29.5, face: 0, n: 2 },
+  { x: 29.6, y: 29.5, face: Math.PI, n: 2 },
+  { x: 22.1, y: 36.4, face: -Math.PI / 2, n: 2 },
 ];
 const GAP = .9;  // tiles between soldiers in a group
 function spawnGroups() {
@@ -352,14 +368,14 @@ function spawnGroups() {
     const sx = -Math.sin(d), sy = Math.cos(d), mid = (o.n - 1) / 2;
     for (let i = 0; i < o.n; i++) {
       const k = (i - mid) * GAP;
-      let x = o.x + sx * k, y = o.y + sy * k;
+      // a standing group stands side by side; a patrol walks in single file
+      let x = o.path ? o.x - Math.cos(d) * i * GAP : o.x + sx * k, y = o.path ? o.y - Math.sin(d) * i * GAP : o.y + sy * k;
       if (isSolid(x, y)) { x = o.x; y = o.y; }
       const heavy = o.heavy && i === Math.round(mid);
       // his rule (16 Nov, late): troopers carry rifles and sometimes heavy
       // rifles; heavies carry miniguns or pump actions
       const n = out.length, gun = heavy ? (o.heavyGun || 'minigun') : n % 4 === 3 ? 'heavy' : 'rifle';
-      out.push({ x, y, face: o.face, group: gi, heavy, gun,
-        path: o.path && o.path.map(([px, py]) => [px + sx * k, py + sy * k]) });
+      out.push({ x, y, face: o.face, group: gi, heavy, gun, order: i, path: o.path });
     }
   });
   return out;
@@ -617,14 +633,27 @@ function drawBuilding(g, b) {
     for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#f5c938' : '#2a2a2a'; g.fillRect(x + .05, y + h * .25 + i * h * .125, .35, h * .125); }
     rr(g, x + w / 2 - .3, y + .5, .6, .3, .05, team, .02);
     void dw;
+  } else if (b.kind === 'lab') {
+    // a white lab: flat roof, green-lit skylights, vents, a flask sign
+    rr(g, x, y, w, h, .15, '#c9cdc6', .07);
+    rr(g, x + .3, y + .3, w - .6, h - .6, .1, '#dde0da', .03);
+    for (let i = 0; i < 3; i++) rr(g, x + .9 + i * (w - 1.8) / 3, y + h * .55, (w - 1.8) / 3 - .6, h * .22, .08, '#7fe08a', .04);
+    for (let i = 0; i < 2; i++) ell(g, x + w - 1 - i * .9, y + .9, .3, .3, '#8a8f88', .04);
+    rr(g, x, y + h - .35, w, .35, 0, team, .03);
+    const fx = x + 1.2, fy = y + 1.1;
+    g.fillStyle = '#7fe08a'; g.strokeStyle = C.ink; g.lineWidth = .05;
+    g.beginPath(); g.moveTo(fx - .15, fy - .45); g.lineTo(fx + .15, fy - .45); g.lineTo(fx + .15, fy - .1); g.lineTo(fx + .45, fy + .45); g.lineTo(fx - .45, fy + .45); g.lineTo(fx - .15, fy - .1); g.closePath(); g.fill(); g.stroke();
   } else if (b.kind === 'artillery') {
     // a big gun on a ring of sandbags
     const cx = x + w / 2, cy = y + h / 2;
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.fillStyle = i % 2 ? '#b59a63' : '#a68b55'; g.beginPath(); g.ellipse(cx + Math.cos(a) * w * .42, cy + Math.sin(a) * h * .42, .3, .22, a, 0, 7); g.fill(); }
-    ell(g, cx, cy, .55, .55, b.hacked ? C.NA : '#6b6b63', .05);
+    // decided 18 Nov, his ask: bigger, so the gun grows with the emplacement
+    const z = Math.min(w, h) / 2.4;
+    ell(g, cx, cy, .55 * z, .55 * z, b.hacked ? C.NA : '#6b6b63', .05);
     g.save(); g.translate(cx, cy); g.rotate(b.aim || -Math.PI / 2 - .6);
-    rr(g, -.12, -1.5, .24, 1.5, .04, '#4a4a44', .04); g.restore();
-    star(g, cx, cy, .3, b.hacked ? C.star : C.star);
+    rr(g, -.15 * z, -.55 * z, .3 * z, .5 * z, .04, '#5a5a53', .04);
+    rr(g, -.12 * z, -1.6 * z, .24 * z, 1.6 * z, .04, '#4a4a44', .04); g.restore();
+    star(g, cx, cy, .3 * z);
   } else {
     // barracks: a long roof with a ridge, team stripe, door and windows
     const long = w >= h;
@@ -702,7 +731,7 @@ function newMission() {
   const mk = (o, s) => {
     const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.gun || 'rifle'];
     return { x: o.x, y: o.y, a: o.face ?? Math.PI / 2, side: s, heavy: !!o.heavy, group: o.group, hp: kind.hp, speed: kind.speed, detect: kind.detect,
-      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'patrol', path: o.path, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 };
+      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'patrol', path: o.path, order: o.order, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 };
   };
   G = {
     side, foe, t: 0,
@@ -716,7 +745,7 @@ function newMission() {
       return gs;
     })(),
     drops: [],
-    buildings: BUILDINGS.map((b, i) => Object.assign({}, b, { side: 'DE', hp: STATS[b.kind].hp, target: i === next.target })),
+    buildings: BUILDINGS.map((b, i) => Object.assign({}, b, { side: 'DE', hp: b.kind === 'lab' ? TUNE.labHp : STATS[b.kind].hp, target: i === next.target })),
     mission: next, nuke: next.kind === 'bunker' ? 1 : 0, hack: null, extras: 0,
     barrels: BARRELS.map(([x, y]) => ({ x, y, hp: TUNE.barrelHp, barrel: true })),
     booms: [], fx: [], tracers: [],
@@ -910,8 +939,20 @@ function stepGuard(g, dt) {
       if (g.react <= 0) shoot(g, dt, [p]);
     } else chase(g, sees ? p : g.lastSeen, g.speed * (G.alarm && !sees ? TUNE.alarmPace : 1), dt);
   } else if (g.path) {
-    const [px, py] = g.path[g.pi];
-    if (moveToward(g, { x: px, y: py }, (g.pace || g.speed) * TUNE.patrol, dt)) g.pi = (g.pi + 1) % g.path.length;
+    // Decided 18 Nov: a patrol walks in single file behind its leader. Each
+    // one used to walk its own copy of the path moved sideways, and on a long
+    // path through the base those copies ran into hills and the group split
+    // up and got stuck. The leader walks round hills to each point (chase).
+    let ahead = null;
+    for (const m of G.guards) if (m.group === g.group && m.hp > 0 && m.order < g.order && (!ahead || m.order > ahead.order)) ahead = m;
+    const pace = (g.pace || g.speed) * TUNE.patrol;
+    if (ahead && ahead.state !== 'alert') {
+      if (dist(g, ahead) > GAP * 1.1) moveToward(g, ahead, pace * 1.15, dt); else g.a = ahead.a;
+      g.pi = ahead.pi;
+    } else {
+      const [px, py] = g.path[g.pi];
+      if (dist(g, { x: px, y: py }) < .6 || chase(g, { x: px, y: py }, pace, dt) === true) g.pi = (g.pi + 1) % g.path.length;
+    }
   } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
   else {
     // standing guard: looks slowly left and right
