@@ -297,14 +297,24 @@ function showDocket() {
 
 // ---------- Playing ----------
 const keys = {};
+// Steering, for the arrow keys and the stick. Decided 17 Nov: the boat used to
+// speed up slowly and drift on after letting go, which felt mushy on the
+// phone stick next to Bread. Now it turns to the way it's pushed within a
+// moment and stops a moment after letting go, like Bread, with just a short
+// glide so it still feels like a boat. Returns the speed.
+function steer(b, ax, ay, dt) {
+  const m = Math.hypot(ax, ay), max = 3.6;
+  if (m) { ax /= m; ay /= m; }
+  const k = Math.min(1, (m ? 10 : 7) * dt);
+  b.vx += (ax * max - b.vx) * k; b.vy += (ay * max - b.vy) * k;
+  return Math.hypot(b.vx, b.vy);
+}
 function step(dt, t) {
   const b = G.tug;
   let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
   if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
-  const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; G.idle = 0; } else G.idle += dt;
-  b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
-  const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
-  const drag = Math.max(0, 1 - 2.4 * dt); b.vx *= drag; b.vy *= drag;
+  if (Math.hypot(ax, ay)) G.idle = 0; else G.idle += dt;
+  const sp = steer(b, ax, ay, dt);
   if (Math.abs(b.vx) > .2) b.face = b.vx > 0 ? 1 : -1;
   // move, bouncing gently off land, piers, buoys and boats
   G.bonk -= dt;
@@ -433,10 +443,7 @@ function stepRiver(dt) {
   }
   let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
   if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
-  const m = Math.hypot(ax, ay); if (m) { ax /= m; ay /= m; }
-  b.vx += ax * 9 * dt; b.vy += ay * 9 * dt;
-  const sp = Math.hypot(b.vx, b.vy), max = 3.6; if (sp > max) { b.vx *= max / sp; b.vy *= max / sp; }
-  const drag = Math.max(0, 1 - 2.4 * dt); b.vx *= drag; b.vy *= drag;
+  const sp = steer(b, ax, ay, dt);
   b.x = Math.max(1.5, Math.min(12, b.x + b.vx * dt));
   const ny = b.y + b.vy * dt;
   if (ny < RIVER.top + .3 || ny > RIVER.bot - .1) { b.vy *= -.4; G.bonk -= 0; bonk(); } else b.y = ny;
