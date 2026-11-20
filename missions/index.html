@@ -21,6 +21,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
 .bar .grow{flex:1}
 .pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 rgba(0,0,0,.35)}
 .dir{white-space:normal;text-align:center;max-width:22rem}
+.pill.retreat{background:#b3261e;border-color:#5c120e;color:#fff;cursor:pointer}
 .hud{position:fixed;z-index:7;right:max(.9rem,env(safe-area-inset-right));top:3.4rem;display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;pointer-events:none}
 .hud .pill{font-size:.65rem}
 .hud .pill.alarm{background:#b3261e;border-color:#5c120e;color:#fff}
@@ -95,6 +96,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
   <a class="pill" href="../">← All games</a>
   <span class="grow"></span>
   <span class="pill dir" id="dir" aria-live="polite" hidden></span>
+  <button class="pill retreat" id="bRetreat" hidden>Retreat</button>
 </div>
 <div class="hud" id="hud" hidden>
   <span class="pill" id="hHp"></span>
@@ -205,6 +207,13 @@ const TUNE = {
   hack: 3,          // seconds standing at an artillery gun to hack it
   bonus: 1,         // $ for each extra building blown up and each side objective (ours; ask him)
   barrelHp: 20, barrelBlast: { dmg: 150, splash: 3 },  // oil barrels (ours)
+  // the hold-the-trench mission (19 Nov, his idea; these numbers are ours, ask him)
+  holdTime: 300,    // seconds to hold; he said "10 minutes or so five minutes"
+  waveEvery: 30,    // seconds between enemy waves
+  firstWave: 6,     // seconds before the first wave
+  perSoldier: 1,    // $ for each of our soldiers you get out alive
+  cover: 0.5,       // on the hold mission, shots from outside the trench do this share of damage to anyone in it (the sandbags)
+  heal: 8, healAfter: 3,  // on the hold mission you and our soldiers heal this many HP a second, this many seconds after the last hit
 };
 
 // ---- Words on screen ----
@@ -216,7 +225,23 @@ const STR = {
   directiveHead: 'Directive',
   directive_barracks: 'Fly in by helicopter. Blow up the DE barracks circled on the map. Fly back out.',
   directive_bunker: 'Fly in by helicopter. Take the nuke to the DE bunker and plant it. The pilot waits, but only until the last two seconds. Get out before it blows.',
+  directive_hold: 'Our soldiers are trapped in the trench. Fly in and hold it for {t} until the copter comes back for everyone. You can order a retreat, but the more soldiers who get out, the better.',
   directiveSide: 'Extra: blow up other buildings, hack an artillery gun, blow up the oil barrels.',
+  mapHold: 'Hold',
+  dirHold: 'Hold the trench: {s}',
+  dirAllAboard: 'Everyone to the copter: {n} of {m} aboard',
+  retreat: 'Retreat',
+  retreatKey: 'Retreat (Q)',
+  retreatTitle: 'Retreat?',
+  retreatText: 'Everyone runs to the copter and you fly out before the time is up. The more soldiers who get out, the better.',
+  keepHolding: 'Keep holding',
+  soldiers: 'Soldiers {n}',
+  pilotRetreat: 'Retreat! Coming in to pick everyone up!',
+  pilotHeld: 'You held the trench! Coming in to pick everyone up!',
+  wonHeld: 'You held the trench and got {n} of {m} soldiers out.',
+  retreatedTitle: 'Retreated',
+  wonRetreat: 'You pulled out early with {n} of {m} soldiers.',
+  saved: 'Soldiers out',
   mapAlt: 'The mission map: the trench along the top, roads, hills and buildings with their letters. The target is circled.',
   mapLz: 'Land here',
   mapTarget: 'Target',
@@ -233,7 +258,7 @@ const STR = {
   cost: 'Costs ${n}',
   buy: 'Buy {gun} for ${n}',
   moneyWon: '+${n}',
-  keysDesk: 'Move: arrows or WASD · Fire: Space · Use: E (drop your explosive) · Reload: R',
+  keysDesk: 'Move: arrows or WASD · Fire: Space · Use: E (drop your explosive) · Reload: R · Retreat: Q',
   keysTouch: 'Move with the stick. Fire shoots. Use drops your explosive.',
   dirDesk: 'Get the mission folder from the desk',
   dirWall: 'Pick weapons at the wall, then get in the copter',
@@ -671,7 +696,7 @@ function drawBuilding(g, b) {
 // A trench gun: a minigun on a ring of sandbags.
 function drawNest(g, u) {
   for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; g.fillStyle = i % 2 ? '#b59a63' : '#a68b55'; g.beginPath(); g.ellipse(Math.cos(a) * .55, Math.sin(a) * .55, .26, .2, a, 0, 7); g.fill(); }
-  g.save(); g.rotate(u.a + Math.PI / 2); g.scale(.3, .3); drawGunIcon(g, 'minigun', 'DE'); g.restore();
+  g.save(); g.rotate(u.a + Math.PI / 2); g.scale(.3, .3); drawGunIcon(g, 'minigun', u.side); g.restore();
 }
 function drawBarrel(g, b) {
   ell(g, b.x, b.y, .32, .32, '#c0392b', .05); ell(g, b.x, b.y, .2, .2, '#e15b4b', .03);
@@ -731,10 +756,12 @@ let pick = { gun: 'rifle', boom: 'c4' };
 // nuke, which that mission gives you; never the same mission 3 times running.
 let next = null;
 function chooseMission() {
-  const recent = S.recent || [], kinds = ['barracks', 'bunker'];
+  const recent = S.recent || [], kinds = ['barracks', 'bunker', 'hold'];
   const ok = kinds.filter(k => !(recent.length >= 2 && recent[recent.length - 1] === k && recent[recent.length - 2] === k));
-  const kind = ok[Math.floor(Math.random() * ok.length)];
+  // a new kind of mission comes first, so he gets to try it
+  const kind = !S.triedHold ? 'hold' : ok[Math.floor(Math.random() * ok.length)];
   let target = BUILDINGS.findIndex(b => b.kind === 'bunker');
+  if (kind === 'hold') target = -1;
   if (kind === 'barracks') {
     const all = BUILDINGS.map((b, i) => b.kind === 'barracks' ? i : -1).filter(i => i >= 0 && i !== S.lastTarget);
     target = all[Math.floor(Math.random() * all.length)];
@@ -752,7 +779,7 @@ function newMission() {
   const side = 'NA', foe = 'DE';
   const mk = (o, s) => {
     const kind = o.heavy ? STATS.juggernaut[s] : STATS.troop[s], gun = STATS.guns[s][o.gun || 'rifle'];
-    return { x: o.x, y: o.y, a: o.face ?? Math.PI / 2, side: s, heavy: !!o.heavy, group: o.group, hp: kind.hp, speed: kind.speed, detect: kind.detect,
+    return { x: o.x, y: o.y, a: o.face ?? Math.PI / 2, side: s, heavy: !!o.heavy, group: o.group, hp: kind.hp, max: kind.hp, hitT: 0, speed: kind.speed, detect: kind.detect,
       gun, ammo: gun.mag, cool: 0, reload: 0, state: 'patrol', path: o.path, order: o.order, pi: 1, home: { x: o.x, y: o.y }, face: o.face ?? Math.PI / 2, downT: 0 };
   };
   G = {
@@ -760,12 +787,24 @@ function newMission() {
     // beside the copter, not under its nose or rotor
     player: Object.assign(mk({ x: LZ.x + 1.8, y: LZ.y + 1 }, side), { gun: STATS.guns[side][pick.gun], ammo: STATS.guns[side][pick.gun].mag, a: 0 }),
     guards: (() => {
+      // the hold mission: the base doesn't stand guard, it attacks in waves (stepWaves)
+      if (next.kind === 'hold') return [];
       const gs = spawnGroups().map(o => mk(o, foe));
       for (const g of gs) g.pace = Math.min(...gs.filter(m => m.group === g.group).map(m => m.speed));
       // trench guns: they turn and shoot but never walk
       for (const n of NESTS) gs.push(Object.assign(mk({ x: n.x, y: n.y, face: Math.PI / 2, gun: 'minigun' }, foe), { nest: true, hp: TUNE.nestHp, speed: 0, pace: 0 }));
       return gs;
     })(),
+    // 19 Nov, his hold-the-trench idea: our soldiers are trapped in the trench,
+    // standing where the trench groups stand on the other missions, and the
+    // two trench guns are ours. They stay put and shoot what they can see.
+    allies: (() => {
+      if (next.kind !== 'hold') return [];
+      const as = spawnGroups().filter(o => o.y < TRENCH.bottom + 1).map(o => Object.assign(mk(Object.assign({}, o, { path: null, face: Math.PI / 2 }), side), { ally: true }));
+      for (const n of NESTS) as.push(Object.assign(mk({ x: n.x, y: n.y, face: Math.PI / 2, gun: 'minigun' }, side), { ally: true, nest: true, hp: TUNE.nestHp, speed: 0 }));
+      return as;
+    })(),
+    hold: TUNE.holdTime, wave: TUNE.firstWave, waves: 0, retreat: false, held: false, saved: 0,
     drops: [],
     buildings: BUILDINGS.map((b, i) => Object.assign({}, b, { side: 'DE', hp: b.kind === 'lab' ? TUNE.labHp : STATS[b.kind].hp, target: i === next.target })),
     mission: next, nuke: next.kind === 'bunker' ? 1 : 0, hack: null, extras: 0,
@@ -775,7 +814,8 @@ function newMission() {
     copter: { x: -14, y: 13, a: 0, alt: 1, rotor: 0, mode: 'in', wait: 0, back: 0, cool: 0 },
     targetDown: false, lostWhy: null,
   };
-  G.target = G.buildings.find(b => b.target);
+  G.target = G.buildings.find(b => b.target) || null;
+  if (next.kind === 'hold') G.alarm = { x: 0, y: 0, t: 99 };   // the whole base already knows
   G.copter.a = Math.atan2(LZ.y - G.copter.y, LZ.x - G.copter.x);
 }
 
@@ -790,6 +830,7 @@ addEventListener('keydown', e => {
   keys.add(k);
   if ((k === 'e' || k === 'enter') && !e.repeat) use();
   if (k === 'r') reload(G && G.player);
+  if (k === 'q' && !e.repeat) askRetreat();
 });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => { keys.clear(); fireHeld = false; });
@@ -818,6 +859,7 @@ function letGo() {
   fireHeld = false; bFire.classList.remove('down'); keys.clear();
 }
 bUse.addEventListener('click', () => use());
+document.getElementById('bRetreat').addEventListener('click', askRetreat);
 
 // ---- Play ----
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -905,27 +947,30 @@ function shoot(u, dt, foes) {
       }
       const e = hit ? hit : rayEnd(u.x, u.y, a, u.gun.range);
       G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
-      if (hit) hurt(hit, dmg, 'shot');
+      if (hit) hurt(hit, dmg, 'shot', u);
     }
     return;
   }
   if (tg) {
     u.a = Math.atan2(tg.y - u.y, tg.x - u.x);
     G.tracers.push({ x1: u.x, y1: u.y, x2: tg.x, y2: tg.y, t: .07 });
-    hurt(tg, dmg, 'shot');
+    hurt(tg, dmg, 'shot', u);
   } else {
     const e = rayEnd(u.x, u.y, u.a, u.gun.range);
     G.tracers.push({ x1: u.x, y1: u.y, x2: e.x, y2: e.y, t: .07 });
   }
 }
-function hurt(u, dmg, why) {
+const inTrench = u => u.y >= TRENCH.top && u.y < TRENCH.bottom + 1;
+function hurt(u, dmg, why, from) {
   if (u.hp <= 0) return;
+  if (from && G.mission && G.mission.kind === 'hold' && inTrench(u) && !inTrench(from)) dmg *= TUNE.cover;
   if (u.barrel) {
     u.hp -= dmg;
     if (u.hp <= 0) { u.hp = 0; blast({ x: u.x, y: u.y, kind: 'barrel', dmg: TUNE.barrelBlast.dmg, splash: TUNE.barrelBlast.splash }); if (!G.barrelsDone && G.barrels.every(b => b.hp <= 0)) { G.barrelsDone = true; G.extras += TUNE.bonus; } }
     return;
   }
-  u.hp -= dmg; u.flash = .12;
+  u.hp -= dmg; u.flash = .12; u.hitT = 0;
+  if (u.ally) { if (u.hp <= 0) u.hp = 0; return; }
   if (u === G.player) {
     if (u.hp <= 0) { u.hp = 0; lose(why === 'shot' ? 'shot' : why); }
   } else {
@@ -938,11 +983,16 @@ function hurt(u, dmg, why) {
 function stepGuard(g, dt) {
   if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6 && !g.nest) g.gone = true; return; }
   if (g.flash) g.flash = Math.max(0, g.flash - dt);
-  const p = G.player, d = dist(g, p);
   // a guard sees inside its yellow cone (or right next to it), not behind it
-  const off = Math.abs(((Math.atan2(p.y - g.y, p.x - g.x) - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
-  const sees = phase === 'play' && p.hp > 0 && d <= g.detect && (d <= TUNE.close || off <= TUNE.sight * Math.PI / 180) && los(g, p);
-  g.sees = sees;   // the landed copter covers you from guards who can see you
+  const canSee = u => {
+    if (phase !== 'play' || u.hp <= 0 || u.gone) return false;
+    const d = dist(g, u), off = Math.abs(((Math.atan2(u.y - g.y, u.x - g.x) - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
+    return d <= g.detect && (d <= TUNE.close || off <= TUNE.sight * Math.PI / 180) && los(g, u);
+  };
+  // who it's after: you, or on the hold mission the nearest of our soldiers it can see
+  let p = G.player, sees = canSee(p), d = dist(g, p);
+  for (const a of G.allies) if (canSee(a) && (!sees || dist(g, a) < d)) { p = a; sees = true; d = dist(g, a); }
+  g.sees = sees;   // the landed copter covers you (and our soldiers) from guards who can see you
   if (sees) {
     // a group goes on alert together
     for (const m of G.guards) if (m.hp > 0 && (m === g || (m.group === g.group && m.group != null))) {
@@ -953,7 +1003,12 @@ function stepGuard(g, dt) {
   else if (g.state === 'alert') { g.lost += dt; if (g.lost > TUNE.forget) g.state = 'patrol'; }
   if (g.hurtT != null && !G.alarm && phase === 'play') { g.hurtT += dt; if (g.hurtT >= STATS.alarm.after) soundAlarm(g); }
   // after the alarm, everyone knows where you are and keeps coming
-  if (G.alarm && phase === 'play') { g.state = 'alert'; g.lastSeen = { x: p.x, y: p.y }; g.lost = 0; }
+  if (G.alarm && phase === 'play') {
+    g.state = 'alert'; g.lost = 0;
+    let to = G.player.gone ? null : G.player;
+    for (const a of G.allies) if (a.hp > 0 && !a.gone && (!to || dist(g, a) < dist(g, to))) to = a;
+    if (to) g.lastSeen = { x: to.x, y: to.y };
+  }
   if (g.reload > 0) { g.reload -= dt; if (g.reload <= 0) { g.reload = 0; g.ammo = g.gun.mag; } }
   if (g.state === 'alert') {
     if (sees && d <= g.gun.range) {
@@ -983,6 +1038,57 @@ function stepGuard(g, dt) {
     g.a = g.face + Math.sin(g.look / TUNE.lookTime * 2 * Math.PI) * TUNE.lookAround;
   }
 }
+// Our soldiers on the hold mission. They hold their spot in the trench and
+// shoot the nearest enemy they can see; after the retreat order (or once the
+// time is up) they run to the copter, shooting on the way, and get in.
+function stepAlly(a, dt) {
+  if (a.hp <= 0) { a.downT += dt; if (a.downT > 1.6 && !a.nest) a.gone = true; return; }
+  if (a.gone) return;
+  if (a.flash) a.flash = Math.max(0, a.flash - dt);
+  if (a.reload > 0) { a.reload -= dt; if (a.reload <= 0) { a.reload = 0; a.ammo = a.gun.mag; } }
+  let tg = null, best = a.gun.range;
+  for (const g of G.guards) if (g.hp > 0 && !g.gone) { const d = dist(a, g); if (d <= best && los(a, g)) { best = d; tg = g; } }
+  if (tg) shoot(a, dt, [tg]); else a.cool -= dt;
+  // they stay behind the sandbags until the copter is nearly down: running out
+  // to the pad while it was still away lost soldiers on the way
+  if (G.retreat && !a.nest && (copterReady() || G.copter.mode === 'coming')) {
+    if (copterReady() && dist(a, LZ) < 1.6) { a.gone = true; a.aboard = true; G.saved++; return; }
+    chase(a, LZ, a.speed, dt);
+  } else if (!tg && dist(a, a.home) > .3) moveToward(a, a.home, a.speed, dt);
+  else if (!tg) a.a = a.face;
+}
+// The enemy waves: a group walks in from the south or the sides every
+// TUNE.waveEvery seconds, a little bigger every fourth wave, with a heavy in
+// the middle of every other wave from the sixth on. They head for the nearest of us (the alarm).
+const WAVE_FROM = [[31, 33], [44, 35.4], [52, 27], [1.5, 25]];
+function stepWaves(dt) {
+  G.wave -= dt;
+  if (G.wave > 0 || G.retreat) return;
+  G.wave = TUNE.waveEvery;
+  const [sx, sy] = WAVE_FROM[G.waves % WAVE_FROM.length], n = Math.min(4, 2 + Math.floor(G.waves / 4)), gi = 100 + G.waves;
+  for (let i = 0; i < n; i++) {
+    const heavy = G.waves >= 5 && G.waves % 2 === 1 && i === Math.floor(n / 2), kind = heavy ? STATS.juggernaut.DE : STATS.troop.DE;
+    const gun = STATS.guns.DE[heavy ? (G.waves % 4 === 1 ? 'pump' : 'minigun') : i === 3 ? 'heavy' : 'rifle'];
+    let x = sx + (i - (n - 1) / 2) * GAP, y = sy;
+    if (isSolid(x, y)) { x = sx; y = sy; }
+    G.guards.push({ x, y, a: -Math.PI / 2, side: 'DE', heavy, group: gi, hp: kind.hp, speed: kind.speed, detect: kind.detect, pace: STATS.troop.DE.speed,
+      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'alert', react: TUNE.react, lost: 0, lastSeen: { x: sx, y: sy }, home: { x, y }, face: -Math.PI / 2, downT: 0 });
+  }
+  G.waves++;
+}
+// the retreat order, or the time running out: the copter comes for everyone
+function callRetreat(held) {
+  if (G.retreat) return;
+  G.retreat = true; G.held = held;
+  talk(t(held ? 'pilotHeld' : 'pilotRetreat'));
+  hud();
+}
+function askRetreat() {
+  if (phase !== 'play' || !G || G.mission.kind !== 'hold' || G.retreat) return;
+  showCard(`<h2 id="cardTitle">${t('retreatTitle')}</h2><p>${t('retreatText')}</p><div class="row">${btn('stay', t('keepHolding'), true)}${btn('go', t('retreat'))}</div>`);
+  on('stay', hideCard); on('go', () => { hideCard(); callRetreat(false); });
+}
+const soldiersLeft = () => G.allies.filter(a => !a.nest && a.hp > 0 && !a.aboard).length;
 // The ally pilot, from his drawing: grey helmet, blue oval and yellow star, a
 // light blue visor, and a face.
 let talkTimer = 0;
@@ -1023,7 +1129,7 @@ function use() {
     return;
   }
   if (here && here.kind === 'artillery') { G.hack = { b: here, t: 0 }; return; }
-  if (G.targetDown || G.nukeSet) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
+  if (G.targetDown || G.nukeSet || G.retreat) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
   if (G.left <= 0) return;
   // 16 Nov, his ask: explosives are for groups of enemies too, so it lands on
   // the nearest one you can see, or a few tiles ahead
@@ -1075,7 +1181,7 @@ function blast(k) {
     b.hp -= k.kind === 'nuke' && b.kind === 'bunker' ? b.hp : k.dmg;
     if (b.hp <= 0) { b.hp = 0; if (!b.target && k.kind !== 'nuke') G.extras += TUNE.bonus; }
   }
-  if (G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
+  if (G.target && G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
   if (p.hp > 0 && !p.gone && dist(p, k) <= k.splash) { G.blastSplash = k.splash; hurt(p, k.dmg, k.kind === 'nuke' ? 'nuke' : 'blast'); }
 }
 // 16 Nov, his rules: the copter leaves once you're out, and takes about 10
@@ -1083,7 +1189,7 @@ function blast(k) {
 // explosives, to bring more). Its side guns fire at enemies near it.
 const outOfBooms = () => !G.targetDown && G.left <= 0 && !G.booms.length;
 function stepCopter(dt) {
-  const c = G.copter, sp = STATS.copter.speed, p = G.player, need = G.targetDown || outOfBooms();
+  const c = G.copter, sp = STATS.copter.speed, p = G.player, need = G.targetDown || G.retreat || outOfBooms();
   // the nuke mission: the copter waits the whole time, until the last seconds
   if (G.mission.kind === 'bunker' && c.mode === 'landed') {
     if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;
@@ -1181,12 +1287,21 @@ function step(dt) {
   if (keys.has(' ') || fireHeld) shoot(p, dt, G.guards);
   else { p.cool -= dt; if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.reload = 0; p.ammo = p.gun.mag; } } }
   for (const g of G.guards) stepGuard(g, dt);
+  for (const a of G.allies) stepAlly(a, dt);
+  if (G.mission.kind === 'hold') {
+    // five minutes is a long fight on 100 HP, so here you patch up between waves
+    for (const u of [p, ...G.allies]) if (u.hp > 0 && !u.nest && u.max) { u.hitT += dt; if (u.hitT > TUNE.healAfter) u.hp = Math.min(u.max, u.hp + TUNE.heal * dt); }
+    stepWaves(dt);
+    if (!G.retreat) { G.hold -= dt; if (G.hold <= 0) { G.hold = 0; callRetreat(true); } }
+  }
   tickBooms(dt);
   if (phase !== 'play') return;
   stepHack(dt);
   stepCopter(dt);
   if (G.copter.mode === 'gone' && !G.booms.length) lose('left');
   if ((G.targetDown || G.nukeSet) && copterReady() && dist(p, LZ) < 1.8) board();
+  // on the hold mission you get in by yourself once everyone else is aboard; Use leaves the rest
+  if (G.retreat && copterReady() && dist(p, LZ) < 1.8 && !soldiersLeft()) board();
   hud();
 }
 
@@ -1252,6 +1367,7 @@ function draw(now) {
     g.save(); g.translate(d.x, d.y); g.rotate(d.a || 0); g.scale(.25, .25); drawGunIcon(g, gi.kind, gi.side); g.restore();
   }
   for (const u of G.guards) if (!u.gone) unit(g, u);
+  if (G.allies) for (const u of G.allies) if (!u.gone) unit(g, u);
   if (!G.player.gone && phase !== 'flyin') unit(g, G.player);
   for (const tr of G.tracers) { g.strokeStyle = '#fff3a0'; g.lineWidth = .06; g.beginPath(); g.moveTo(tr.x1, tr.y1); g.lineTo(tr.x2, tr.y2); g.stroke(); }
   // the copter, with its shadow on the ground
@@ -1290,7 +1406,7 @@ function draw(now) {
   // a word over the soldier when Use does something here
   const p = G.player, dr = phase === 'play' && G.drops ? nearDrop(p) : null;
   const th = phase === 'play' && G.kind !== 'hq' ? nearThing(p) : null;
-  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : th === 'plant' ? 'plant' : th ? 'hack' : phase === 'play' && (G.targetDown || G.nukeSet) && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
+  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : th === 'plant' ? 'plant' : th ? 'hack' : phase === 'play' && (G.targetDown || G.nukeSet || G.retreat) && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
   if (n && !(n === 'copter' && G.kind === 'hq' && !G.folder) && cover.hidden) {
     const touch = matchMedia('(pointer:coarse)').matches, hs = Math.max(12, S_ * .35);
     const w = n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : n === 'plant' ? t(touch ? 'plantTouch' : 'plantKey') : n === 'hack' ? t(touch ? 'hackTouch' : 'hackKey') : touch ? t('useTouch') : t('useKey');
@@ -1328,7 +1444,7 @@ function hideCard() { cover.hidden = true; ctrlEl.classList.add('live'); cv.focu
 const btn = (id, label, plain) => `<button class="btn${plain ? ' plain' : ''}" id="${id}">${label}</button>`;
 const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-function showHud(v) { hudEl.hidden = !v; dirEl.hidden = !v; if (v) hud(); }
+function showHud(v) { hudEl.hidden = !v; dirEl.hidden = !v; if (!v) document.getElementById('bRetreat').hidden = true; if (v) hud(); }
 function copterEta() {
   const c = G.copter;
   return Math.max(1, Math.ceil((c.mode === 'away' ? c.back : 0) + (c.mode === 'leaving' ? TUNE.copterBack : 0) + dist(c.mode === 'away' ? { x: -14, y: 13 } : c, LZ) / STATS.copter.speed));
@@ -1341,6 +1457,10 @@ function hud() {
   if (G.kind === 'hq') d = phase === 'hqout' ? t('dirTakeOff') : G.folder ? t('dirWall') : t('dirDesk');
   else if (phase === 'flyin') d = t('dirFlyIn');
   else if (phase === 'flyout') d = t('dirFlyOut');
+  else if (G.mission.kind === 'hold') {
+    const m = G.allies.filter(a => !a.nest).length;
+    d = !G.retreat ? t('dirHold', { s: fmt(Math.ceil(G.hold)) }) : copterReady() ? t('dirAllAboard', { n: G.saved, m }) : t('dirCopterComing', { s: copterEta() });
+  }
   else if (G.nukeSet && !G.targetDown) d = t('dirNuke', { s: Math.max(0, Math.ceil(G.nukeSet.t)) });
   else if (G.targetDown) d = copterReady() ? t('dirBack') : t('dirCopterComing', { s: copterEta() });
   else if (outOfBooms()) d = copterReady() ? t('dirRestock', { name: t(pick.boom) }) : t('dirRestockComing', { name: t(pick.boom), s: copterEta() });
@@ -1349,8 +1469,10 @@ function hud() {
   if (dirEl.textContent !== d) dirEl.textContent = d;
   document.getElementById('hHp').textContent = t('hp', { n: Math.ceil(p.hp) });
   document.getElementById('hAmmo').textContent = p.reload > 0 ? t('reloading') : t('ammo', { n: p.ammo, m: p.gun.mag });
-  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left }) + (G.mission && G.mission.kind === 'bunker' ? ' · ' + t('boomLeft', { name: t('nuke'), n: G.nuke }) : '');
-  const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq');
+  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left }) + (G.mission && G.mission.kind === 'bunker' ? ' · ' + t('boomLeft', { name: t('nuke'), n: G.nuke }) : '') + (G.mission && G.mission.kind === 'hold' ? ' · ' + t('soldiers', { n: soldiersLeft() + G.saved }) : '');
+  const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq' && G.mission.kind !== 'hold');
+  const rb = document.getElementById('bRetreat'), rOn = G.kind !== 'hq' && phase === 'play' && G.mission.kind === 'hold' && !G.retreat;
+  if (rb.hidden === rOn) rb.hidden = !rOn;
   if (al.hidden === on) al.hidden = !on;
   if (on) al.textContent = t('alarmPill');
 }
@@ -1376,7 +1498,7 @@ function folderCard() {
   const tab = t('folderTab', { n: (S.count || 0) + 1 });
   showCard(`<h2 id="cardTitle" style="position:absolute;left:-999rem">${tab}</h2>
     <div class="paper"><canvas id="mini" width="840" height="555" role="img" aria-label="${t('mapAlt')}"></canvas></div>
-    <div class="typed"><b>${t('directiveHead')}</b>${t('directive_' + next.kind)}<br>${t('directiveSide')}</div>
+    <div class="typed"><b>${t('directiveHead')}</b>${t('directive_' + next.kind, { t: fmt(TUNE.holdTime) })}<br>${t('directiveSide')}</div>
     <div class="row">${btn('go', t('close'))}</div>`, 'folder', tab);
   drawMini(document.getElementById('mini'));
   on('go', hideCard);
@@ -1403,7 +1525,7 @@ function drawMini(c) {
     else { g.moveTo(0, y * k); g.lineTo(W * k, y * k); }
     g.stroke();
   }
-  const tgt = BUILDINGS[next ? next.target : 0];
+  const tgt = BUILDINGS[next ? next.target : 0] || null;
   g.strokeStyle = '#2a2a2a'; g.lineWidth = 3;
   for (const b of BUILDINGS) {
     g.fillStyle = b === tgt ? '#f6c8c3' : '#fff';
@@ -1414,12 +1536,18 @@ function drawMini(c) {
   for (const b of BUILDINGS) g.fillText(b.letter, (b.x + b.w / 2) * k, (b.y + b.h / 2) * k + 1);
   g.font = `bold ${k * 1.1}px Lexend, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [x, y] of PADS) { g.fillStyle = '#fff'; g.beginPath(); g.arc(x * k, y * k, k * .9, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#2a2a2a'; g.fillText('H', x * k, y * k + 1); }
-  const tg = tgt, tx = (tg.x + tg.w / 2) * k, ty = (tg.y + tg.h / 2) * k;
-  g.strokeStyle = '#c0261f'; g.lineWidth = 5;
-  g.beginPath(); g.arc(tx, ty, k * 3.2, 0, 7); g.stroke();
-  g.beginPath(); g.moveTo(tx - k, ty - k); g.lineTo(tx + k, ty + k); g.moveTo(tx + k, ty - k); g.lineTo(tx - k, ty + k); g.stroke();
   const label = (s, x, y, col) => { g.font = `bold ${k * 1.2}px Lexend, sans-serif`; g.lineWidth = 6; g.strokeStyle = '#fff'; g.strokeText(s, x, y); g.fillStyle = col; g.fillText(s, x, y); };
-  label(t('mapTarget'), tx, ty + k * 4.4, '#a8201a');
+  g.strokeStyle = '#c0261f'; g.lineWidth = 5;
+  if (tgt) {
+    const tx = (tgt.x + tgt.w / 2) * k, ty = (tgt.y + tgt.h / 2) * k;
+    g.beginPath(); g.arc(tx, ty, k * 3.2, 0, 7); g.stroke();
+    g.beginPath(); g.moveTo(tx - k, ty - k); g.lineTo(tx + k, ty + k); g.moveTo(tx + k, ty - k); g.lineTo(tx - k, ty + k); g.stroke();
+    label(t('mapTarget'), tx, ty + k * 4.4, '#a8201a');
+  } else {
+    // the hold mission: a box round the part of the trench our soldiers hold
+    g.strokeRect(17 * k, (TRENCH.top - .6) * k, 33 * k, (TRENCH.bottom - TRENCH.top + 2.2) * k);
+    label(t('mapHold'), 33.5 * k, (TRENCH.bottom + 3) * k, '#a8201a');
+  }
   g.strokeStyle = '#1f7a2f'; g.lineWidth = 4; g.beginPath(); g.arc(LZ.x * k, LZ.y * k, k * 1.6, 0, 7); g.stroke();
   g.textAlign = 'left'; label(t('mapLz'), LZ.x * k + k * 2, LZ.y * k - k * 2, '#17611f');
 }
@@ -1478,15 +1606,30 @@ function lose(why) {
 }
 function win() {
   phase = 'won'; showHud(false);
+  const kind = G.mission.kind;
+  if (kind === 'hold') return winHold();
   const time = G.t, newBest = S.best === null || time < S.best;
   if (newBest) S.best = time;
-  const kind = G.mission.kind;
   S.money = (S.money || 0) + STATS.money.perMission + G.extras;
   S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat(kind).slice(-4);
   if (kind === 'barracks') S.lastTarget = G.mission.target;
   save(); next = null;
   showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t(kind === 'bunker' ? 'wonText_bunker' : 'wonText')}</p>
     <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b><span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission + G.extras })}</b></div>
+    <div class="row">${btn('go', t('toHq'))}</div>`);
+  on('go', enterHq);
+}
+
+// The hold mission's end. His rule: a retreat isn't a failed mission, and the
+// more soldiers you get out the better. Holding the whole time pays his $5;
+// each soldier out pays TUNE.perSoldier (ours; ask him).
+function winHold() {
+  const m = G.allies.filter(a => !a.nest).length, pay = (G.held ? STATS.money.perMission : 0) + G.saved * TUNE.perSoldier + G.extras;
+  S.money = (S.money || 0) + pay; S.triedHold = true;
+  S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat('hold').slice(-4);
+  save(); next = null;
+  showCard(`<h2 id="cardTitle">${t(G.held ? 'wonTitle' : 'retreatedTitle')}</h2><p>${t(G.held ? 'wonHeld' : 'wonRetreat', { n: G.saved, m })}</p>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(G.t)}</b><span>${t('saved')}</span><b>${G.saved} / ${m}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: pay })}</b></div>
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
 }
