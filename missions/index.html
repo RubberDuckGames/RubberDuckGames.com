@@ -179,6 +179,8 @@ const STATS = {
   // 16 Nov: shoot a guard and don't take them down within about 30 seconds,
   // and they sound the alarm. Every enemy in the base then heads to you.
   alarm: { after: 30 },
+  // his escort mission: the general plants the blue star flag and you have 45 seconds
+  flag: { timer: 45 },
   // his rule: $5 for every mission you finish, spent on guns that cost money
   money: { perMission: 5 },
 };
@@ -215,6 +217,9 @@ const TUNE = {
   perSoldier: 1,    // $ for each of our soldiers you get out alive (his OK, 20 Nov)
   cover: 0.5,       // on the hold mission, shots from outside the trench do this share of damage to anyone in it (the sandbags)
   heal: 8, healAfter: 3,
+  escortAfter: 3,   // the escort mission comes once you've done this many missions (ours)
+  escortSquad: 4,   // our soldiers flying in with the general (ours)
+  generalHp: 200,   // the general's HP (ours; ask him)
   // 20 Nov, his ask: enemies felt dead, like robots. They have characters now
   // (`CHARACTERS`), talk, hear you, run away and give up. These are ours.
   speedVary: 0.15,  // each enemy walks up to this much faster or slower than his number
@@ -260,6 +265,14 @@ const STR = {
   retreatedTitle: 'Retreated',
   wonRetreat: 'You pulled out early with {n} of {m} soldiers.',
   saved: 'Soldiers out',
+  directive_escort: 'One time only. Fly in with the general and his soldiers. Take him to the DE bunker so he can plant the blue star flag, then you have {s} seconds to get everyone back to the copter.',
+  dirEscort: 'Take the general to the DE bunker',
+  dirFlag: 'Flag\'s up! Everyone to the copter: {s}',
+  pilotEscort: 'Bring the general back safe, commandos. I\'ll be right here.',
+  pilotFlag: 'The flag is up! You have {s} seconds, everyone back to the copter!',
+  lostGeneral: 'The general went down.',
+  generalOut: 'General',
+  wonEscort: 'The blue star flag is up on the DE bunker, and the general made it out with {n} of {m} soldiers.',
   prisonerKey: 'Take prisoner (E)', prisonerTouch: 'Take prisoner',
   prisoners: 'Prisoners',
   newGun: 'New gun: {gun}',
@@ -820,7 +833,8 @@ function chooseMission() {
   const recent = S.recent || [], kinds = ['barracks', 'bunker', 'hold'];
   const ok = kinds.filter(k => !(recent.length >= 2 && recent[recent.length - 1] === k && recent[recent.length - 2] === k));
   // a new kind of mission comes first, so he gets to try it
-  const kind = !S.triedHold ? 'hold' : ok[Math.floor(Math.random() * ok.length)];
+  // the escort is his one-time story mission: it comes once you've done a few, until it's done
+  const kind = !S.triedHold ? 'hold' : (S.count || 0) >= TUNE.escortAfter && !S.escortDone ? 'escort' : ok[Math.floor(Math.random() * ok.length)];
   let target = BUILDINGS.findIndex(b => b.kind === 'bunker');
   if (kind === 'hold') target = -1;
   if (kind === 'barracks') {
@@ -861,6 +875,12 @@ function newMission() {
     // standing where the trench groups stand on the other missions, and the
     // two trench guns are ours. They stay put and shoot what they can see.
     allies: (() => {
+      // the escort: the general (a gold helmet, `drawGeneral`) and his squad, around you at the pad
+      if (next.kind === 'escort') {
+        const as = [Object.assign(mk({ x: LZ.x + 1, y: LZ.y + 2 }, side), { ally: true, general: true, hp: TUNE.generalHp, max: TUNE.generalHp })];
+        for (let i = 0; i < TUNE.escortSquad; i++) as.push(Object.assign(mk({ x: LZ.x - 1 + i * .9, y: LZ.y + 3.2, gun: i === 2 ? 'heavy' : 'rifle' }, side), { ally: true }));
+        return as;
+      }
       if (next.kind !== 'hold') return [];
       const as = spawnGroups().filter(o => o.y < TRENCH.bottom + 1).map(o => Object.assign(mk(Object.assign({}, o, { path: null, face: Math.PI / 2 }), side), { ally: true }));
       for (const n of NESTS) as.push(Object.assign(mk({ x: n.x, y: n.y, face: Math.PI / 2, gun: 'minigun' }, side), { ally: true, nest: true, hp: TUNE.nestHp, speed: 0 }));
@@ -1227,8 +1247,15 @@ function stepAlly(a, dt) {
   // they stay behind the sandbags until the copter is nearly down: running out
   // to the pad while it was still away lost soldiers on the way
   if (G.retreat && !a.nest && (copterReady() || G.copter.mode === 'coming')) {
-    if (copterReady() && dist(a, LZ) < 1.6) { a.gone = true; a.aboard = true; G.saved++; return; }
+    if (copterReady() && dist(a, LZ) < 1.6) { a.gone = true; a.aboard = true; if (a.general) G.generalOut = true; else G.saved++; return; }
     chase(a, LZ, a.speed, dt);
+  } else if (G.mission.kind === 'escort') {
+    // the general follows you, his soldiers follow him; he plants the flag at the bunker
+    const gen = G.allies.find(m => m.general), lead = a.general || !gen || gen.hp <= 0 ? G.player : gen;
+    const bk = BUILDINGS.find(b => b.kind === 'bunker');
+    if (a.general && !G.flag && rectDist(bk, a) < 2.6) { plantFlag(a); return; }   // 2.6: he walks a step behind you
+    const gapTo = a.general ? 1.4 : 1.2 + (G.allies.indexOf(a) % 3) * .5;
+    if (dist(a, lead) > gapTo) chase(a, lead, a.speed * (dist(a, lead) > 4 ? 1.15 : 1), dt);
   } else if (!tg && dist(a, a.home) > .3) moveToward(a, a.home, a.speed, dt);
   else if (!tg) a.a = a.face;
 }
@@ -1263,6 +1290,15 @@ function askRetreat() {
   if (phase !== 'play' || !G || G.mission.kind !== 'hold' || G.retreat) return;
   showCard(`<h2 id="cardTitle">${t('retreatTitle')}</h2><p>${t('retreatText')}</p><div class="row">${btn('stay', t('keepHolding'), true)}${btn('go', t('retreat'))}</div>`);
   on('stay', hideCard); on('go', () => { hideCard(); callRetreat(false); });
+}
+// his escort mission: the general plants the blue star flag on the bunker,
+// the base goes on alarm, and his 45 seconds start
+function plantFlag(gen) {
+  const bk = BUILDINGS.find(b => b.kind === 'bunker');
+  G.flag = { x: Math.max(bk.x, Math.min(bk.x + bk.w, gen.x)), y: Math.max(bk.y, Math.min(bk.y + bk.h, gen.y)), t: STATS.flag.timer };
+  G.retreat = true;
+  if (!G.alarm) soundAlarm(gen);
+  talk(t('pilotFlag', { s: STATS.flag.timer }));
 }
 const soldiersLeft = () => G.allies.filter(a => !a.nest && a.hp > 0 && !a.aboard).length;
 // The ally pilot, from his drawing: grey helmet, blue oval and yellow star, a
@@ -1307,7 +1343,7 @@ function use() {
     return;
   }
   if (here && here.kind === 'artillery') { G.hack = { b: here, t: 0 }; return; }
-  if (G.targetDown || G.nukeSet || G.retreat) { if (copterReady() && dist(p, LZ) < 2.6) board(); return; }
+  if (G.targetDown || G.nukeSet || G.retreat) { if (copterReady() && dist(p, LZ) < 2.6 && (G.mission.kind !== 'escort' || G.generalOut)) board(); return; }
   if (G.left <= 0) return;
   // 16 Nov, his ask: explosives are for groups of enemies too, so it lands on
   // the nearest one you can see, or a few tiles ahead
@@ -1371,9 +1407,10 @@ const outOfBooms = () => !G.targetDown && G.left <= 0 && !G.booms.length;
 function stepCopter(dt) {
   const c = G.copter, sp = STATS.copter.speed, p = G.player, need = G.targetDown || G.retreat || outOfBooms();
   // the nuke mission: the copter waits the whole time, until the last seconds
-  if (G.mission.kind === 'bunker' && c.mode === 'landed') {
+  if ((G.mission.kind === 'bunker' || G.mission.kind === 'escort') && c.mode === 'landed') {
     if (!G.targetDown && G.left < TUNE.carry && dist(p, LZ) < 1.8) G.left = TUNE.carry;
-    if (G.nukeSet && G.nukeSet.t <= TUNE.pilotLeaves) { c.mode = 'gone'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); talk(t('pilotLeave')); }
+    const clock = G.nukeSet || G.flag;
+    if (clock && clock.t <= TUNE.pilotLeaves) { c.mode = 'gone'; c.a = Math.atan2(13 - LZ.y, -14 - LZ.x); talk(t('pilotLeave')); }
   } else if (c.mode === 'gone') {
     c.alt = Math.min(1, c.alt + dt * 1.2);
     if (c.alt >= 1) { c.x += Math.cos(c.a) * sp * dt; c.y += Math.sin(c.a) * sp * dt; }
@@ -1449,7 +1486,7 @@ function step(dt) {
   if (phase === 'flyin') {
     const d = dist(c, LZ);
     if (d > .05) { const s = Math.min(d, sp * dt); c.x += (LZ.x - c.x) / d * s; c.y += (LZ.y - c.y) / d * s; c.alt = Math.min(1, d / 4); }
-    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; phase = 'play'; G.t = 0; showHud(true); if (G.mission.kind === 'bunker') talk(t('pilotWait')); }
+    else { c.alt = 0; c.mode = 'landed'; c.wait = TUNE.copterWait; phase = 'play'; G.t = 0; showHud(true); if (G.mission.kind === 'bunker') talk(t('pilotWait')); if (G.mission.kind === 'escort') talk(t('pilotEscort')); }
     return;
   }
   if (phase === 'flyout') {
@@ -1469,6 +1506,8 @@ function step(dt) {
   else { p.cool -= dt; if (p.reload > 0) { p.reload -= dt; if (p.reload <= 0) { p.reload = 0; p.ammo = p.gun.mag; } } }
   for (const g of G.guards) stepGuard(g, dt);
   for (const a of G.allies) stepAlly(a, dt);
+  if (G.flag) G.flag.t = Math.max(0, G.flag.t - dt);
+  if (G.mission.kind === 'escort' && G.allies.some(a => a.general && a.hp <= 0)) { lose('general'); return; }
   if (G.mission.kind === 'hold') {
     // five minutes is a long fight on 100 HP, so here you patch up between waves
     for (const u of [p, ...G.allies]) if (u.hp > 0 && !u.nest && u.max) { u.hitT += dt; if (u.hitT > TUNE.healAfter) u.hp = Math.min(u.max, u.hp + TUNE.heal * dt); }
@@ -1538,6 +1577,14 @@ function draw(now) {
     g.closePath(); g.fillStyle = u.state === 'alert' ? 'rgba(255,190,40,.28)' : 'rgba(255,230,80,.2)'; g.fill();
   }
   if (G.barrels) for (const b of G.barrels) if (b.hp > 0) drawBarrel(g, b);
+  // the blue star flag the general planted on the bunker
+  if (G.flag) {
+    const f = G.flag, wv = Math.sin(performance.now() / 180) * .08;
+    g.fillStyle = C.ink; g.fillRect(f.x - .05, f.y - 2, .1, 2.1);
+    g.beginPath(); g.moveTo(f.x + .05, f.y - 2); g.lineTo(f.x + 1.5, f.y - 1.95 + wv); g.lineTo(f.x + 1.5, f.y - 1.05 + wv); g.lineTo(f.x + .05, f.y - 1.1); g.closePath();
+    g.fillStyle = C.NA; g.fill(); g.strokeStyle = C.ink; g.lineWidth = .05; g.stroke();
+    star(g, f.x + .78, f.y - 1.52 + wv / 2, .26);
+  }
   if (G.hack) {
     const b = G.hack.b, w = 2;
     g.fillStyle = '#1a1a1a'; g.fillRect(b.x + b.w / 2 - w / 2, b.y - .7, w, .3);
@@ -1625,6 +1672,7 @@ function unit(g, u) {
   // down, not hurt: a guard tips over and fades away (cartoony, no blood)
   if (u.hp <= 0) { g.globalAlpha = Math.max(0, 1 - u.downT / 1.6); g.rotate(Math.min(1, u.downT * 3) * Math.PI / 2); g.scale(1, .7); }
   if (u.state === 'surrender') drawHandsUp(g, u.side); else drawTroop(g, u.side, u.gun, u.heavy);
+  if (u.general) { ell(g, 0, .02, .27, .27, C.star); star(g, 0, .02, .15, C.NA); }
   if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .5, 0, 7); g.fill(); }
   g.restore();
 }
@@ -1658,6 +1706,10 @@ function hud() {
     const m = G.allies.filter(a => !a.nest).length;
     d = !G.retreat ? t('dirHold', { s: fmt(Math.ceil(G.hold)) }) : copterReady() ? t('dirAllAboard', { n: G.saved, m }) : t('dirCopterComing', { s: copterEta() });
   }
+  else if (G.mission.kind === 'escort') {
+    const m = G.allies.filter(a => !a.general).length;
+    d = !G.flag ? t('dirEscort') : t('dirFlag', { s: Math.ceil(G.flag.t) }) + ' · ' + t('dirAllAboard', { n: G.saved + (G.generalOut ? 1 : 0), m: m + 1 }).split(': ')[1];
+  }
   else if (G.nukeSet && !G.targetDown) d = t('dirNuke', { s: Math.max(0, Math.ceil(G.nukeSet.t)) });
   else if (G.targetDown) d = copterReady() ? t('dirBack') : t('dirCopterComing', { s: copterEta() });
   else if (outOfBooms()) d = copterReady() ? t('dirRestock', { name: t(pick.boom) }) : t('dirRestockComing', { name: t(pick.boom), s: copterEta() });
@@ -1666,7 +1718,7 @@ function hud() {
   if (dirEl.textContent !== d) dirEl.textContent = d;
   document.getElementById('hHp').textContent = t('hp', { n: Math.ceil(p.hp) });
   document.getElementById('hAmmo').textContent = p.reload > 0 ? t('reloading') : t('ammo', { n: p.ammo, m: p.gun.mag });
-  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left }) + (G.mission && G.mission.kind === 'bunker' ? ' · ' + t('boomLeft', { name: t('nuke'), n: G.nuke }) : '') + (G.mission && G.mission.kind === 'hold' ? ' · ' + t('soldiers', { n: soldiersLeft() + G.saved }) : '');
+  document.getElementById('hBoom').textContent = t('boomLeft', { name: t(pick.boom), n: G.left }) + (G.mission && G.mission.kind === 'bunker' ? ' · ' + t('boomLeft', { name: t('nuke'), n: G.nuke }) : '') + (G.mission && (G.mission.kind === 'hold' || G.mission.kind === 'escort') ? ' · ' + t('soldiers', { n: soldiersLeft() + G.saved + (G.generalOut ? 1 : 0) }) : '');
   const al = document.getElementById('hAlarm'), on = !!(G.alarm && G.kind !== 'hq' && G.mission.kind !== 'hold');
   const rb = document.getElementById('bRetreat'), rOn = G.kind !== 'hq' && phase === 'play' && G.mission.kind === 'hold' && !G.retreat;
   if (rb.hidden === rOn) rb.hidden = !rOn;
@@ -1695,7 +1747,7 @@ function folderCard() {
   const tab = t('folderTab', { n: (S.count || 0) + 1 });
   showCard(`<h2 id="cardTitle" style="position:absolute;left:-999rem">${tab}</h2>
     <div class="paper"><canvas id="mini" width="840" height="555" role="img" aria-label="${t('mapAlt')}"></canvas></div>
-    <div class="typed"><b>${t('directiveHead')}</b>${t('directive_' + next.kind, { t: fmt(TUNE.holdTime) })}<br>${t('directiveSide')}</div>
+    <div class="typed"><b>${t('directiveHead')}</b>${t('directive_' + next.kind, { t: fmt(TUNE.holdTime), s: STATS.flag.timer })}<br>${t('directiveSide')}</div>
     <div class="row">${btn('go', t('close'))}</div>`, 'folder', tab);
   drawMini(document.getElementById('mini'));
   on('go', hideCard);
@@ -1794,7 +1846,7 @@ function lose(why) {
   if (phase !== 'play') return;
   phase = 'lost'; G.lostWhy = why;
   letGo(); ctrlEl.classList.remove('live');
-  const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'nuke' ? t('lostNuke') : why === 'left' ? t('lostLeft') : why === 'noBoom' ? t('lostNoBoom') : t('lostShot');
+  const msg = why === 'blast' ? t('lostBlast', { n: G.blastSplash }) : why === 'nuke' ? t('lostNuke') : why === 'left' ? t('lostLeft') : why === 'noBoom' ? t('lostNoBoom') : why === 'general' ? t('lostGeneral') : t('lostShot');
   setTimeout(() => {
     showHud(false);
     showCard(`<h2 id="cardTitle">${t('lostTitle')}</h2><p>${msg}</p><div class="row">${btn('fold', t('toHq'), true)}${btn('go', t('tryAgain'))}</div>`);
@@ -1804,7 +1856,7 @@ function lose(why) {
 function win() {
   phase = 'won'; showHud(false);
   const kind = G.mission.kind;
-  if (kind === 'hold') return winHold();
+  if (kind === 'hold' || kind === 'escort') return winHold();
   const time = G.t, newBest = S.best === null || time < S.best;
   if (newBest) S.best = time;
   S.money = (S.money || 0) + STATS.money.perMission + G.extras;
@@ -1830,12 +1882,13 @@ function takeNewGuns() {
 }
 const prisonerRows = () => G.prisoners ? `<span>${t('prisoners')}</span><b>${G.prisoners}</b>` : '';
 function winHold() {
-  const m = G.allies.filter(a => !a.nest).length, pay = (G.held ? STATS.money.perMission : 0) + G.saved * TUNE.perSoldier + G.extras;
-  S.money = (S.money || 0) + pay; S.triedHold = true;
+  const esc = G.mission.kind === 'escort';
+  const m = G.allies.filter(a => !a.nest && !a.general).length, pay = (G.held || esc ? STATS.money.perMission : 0) + G.saved * TUNE.perSoldier + G.extras;
+  S.money = (S.money || 0) + pay; if (esc) S.escortDone = true; else S.triedHold = true;
   const got = takeNewGuns();
-  S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat('hold').slice(-4);
+  S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat(G.mission.kind).slice(-4);
   save(); next = null;
-  showCard(`<h2 id="cardTitle">${t(G.held ? 'wonTitle' : 'retreatedTitle')}</h2><p>${t(G.held ? 'wonHeld' : 'wonRetreat', { n: G.saved, m })}</p>
+  showCard(`<h2 id="cardTitle">${t(G.held || esc ? 'wonTitle' : 'retreatedTitle')}</h2><p>${t(esc ? 'wonEscort' : G.held ? 'wonHeld' : 'wonRetreat', { n: G.saved, m })}</p>
     <div class="stats"><span>${t('time')}</span><b>${fmt(G.t)}</b><span>${t('saved')}</span><b>${G.saved} / ${m}</b><span>${t('down')}</span><b>${G.down}</b>${prisonerRows()}<span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: pay })}</b></div>${got}
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
