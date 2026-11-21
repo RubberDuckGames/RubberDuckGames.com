@@ -24,7 +24,7 @@ input[type=range]{width:8.5rem;accent-color:var(--accent);margin:.2rem 0 0}
 .btn{background:var(--accent);color:#fff;padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--accentDark)}
 .btn.plain{background:#e3ece7;color:var(--ink);box-shadow:.25rem .25rem 0 var(--line)}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
-.info{position:absolute;left:.5rem;bottom:.5rem;max-width:min(22rem,calc(100% - 1rem));background:var(--panel);border:3px solid var(--ink);padding:.7rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3)}
+.info{position:absolute;left:.5rem;bottom:.5rem;max-width:min(22rem,calc(100% - 4.5rem));background:var(--panel);border:3px solid var(--ink);padding:.7rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3)}
 .info h2{margin:0 0 .3rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
 .info .top{display:flex;gap:.7rem;align-items:flex-start}
 #infoPic{width:4rem;height:4rem;flex:none;background:var(--slide);border:2px solid var(--line);image-rendering:pixelated}
@@ -76,3 +76,14 @@ dialog p{margin:.35rem 0}
 .acts [aria-pressed="true"]::before{content:"✓ "}
 /* On a phone the builder scrolls; its buttons stay in view at the bottom. */
 .row.stick{position:sticky;bottom:-1.1rem;margin:0 -1.1rem -1.1rem;padding:.7rem 1.1rem;background:var(--panel);border-top:2px solid var(--line)}
+/* Zoom buttons, bottom right of the world (actions on the right) */
+.zoom{position:absolute;right:.5rem;bottom:.5rem;display:flex;flex-direction:column;gap:.45rem}
+.zoom .pill{min-width:2.75rem;min-height:2.75rem;font-size:1rem;padding:0;cursor:pointer}
+/* On a phone the info card is shorter (numbers in two columns, no picture),
+   so more of a zoomed-in world shows above it */
+@media (max-width:30rem){
+  #infoPic{display:none}
+  .info dl{grid-template-columns:auto auto auto auto;gap:0 .5rem;font-size:.8rem}
+  .info .row{margin-top:.5rem}
+  .info .btn{padding:.55rem .7rem;font-size:.6rem}
+}

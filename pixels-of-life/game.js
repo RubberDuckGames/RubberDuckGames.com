@@ -142,6 +142,7 @@ const settings = { food: WORLD.food, change: WORLD.change, speed: WORLD.speed, b
 // rows are for the home page card picture, whose headless window reported a
 // shorter screen than it took the picture of.
 function newWorld(cols, rows) {
+  zoom = 1; fitted = false;
   const r = $('#stage').getBoundingClientRect();
   const T = r.width < 700 ? 8 : 10;
   W = cols || Math.max(30, Math.floor(r.width / T)); H = rows || Math.max(20, Math.floor(r.height / T));
@@ -316,19 +317,44 @@ function step() {
 
 // ---------------------------------------------------------------------------
 // Drawing
-let T = 8, ox = 0, oy = 0;
+// Zoom (his ask, 21 Nov: to see the cells up close). baseT is the square size
+// that fits the whole world on screen; zoom multiplies it (1 to ZOOM_MAX), and
+// the view (ox, oy) is kept inside the world. Zoomed in, the picked creature is
+// followed until the view is dragged.
+let T = 8, baseT = 8, ox = 0, oy = 0, zoom = 1, follow = false, fitted = false;
+const ZOOM_MAX = 8;
+function clampView() {
+  const ww = T * W, wh = T * H;
+  ox = Math.round(ww <= cv.width ? (cv.width - ww) / 2 : Math.min(0, Math.max(cv.width - ww, ox)));
+  oy = Math.round(wh <= cv.height ? (cv.height - wh) / 2 : Math.min(0, Math.max(cv.height - wh, oy)));
+}
+const viewCentre = () => [(cv.width / 2 - ox) / T, (cv.height / 2 - oy) / T];
+function centreOn(wx, wy) { ox = cv.width / 2 - wx * T; oy = cv.height / 2 - wy * T; clampView(); }
+function setZoom(z, px = cv.width / 2, py = cv.height / 2) {
+  const wx = (px - ox) / T, wy = (py - oy) / T;
+  zoom = Math.min(ZOOM_MAX, Math.max(1, z));
+  T = Math.max(1, Math.round(baseT * zoom));
+  ox = px - wx * T; oy = py - wy * T; clampView();
+  cv.style.cursor = placing ? 'crosshair' : zoom > 1 ? 'grab' : '';
+}
 function fit() {
+  const keep = fitted ? viewCentre() : [W / 2, H / 2];
   const dpr = window.devicePixelRatio || 1, r = cv.getBoundingClientRect();
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-  T = Math.max(1, Math.floor(Math.min(cv.width / W, cv.height / H)));
-  ox = Math.floor((cv.width - T * W) / 2); oy = Math.floor((cv.height - T * H) / 2);
+  baseT = Math.max(1, Math.floor(Math.min(cv.width / W, cv.height / H)));
+  T = Math.max(1, Math.round(baseT * zoom));
+  centreOn(keep[0], keep[1]); fitted = true;
 }
 function draw() {
   g.fillStyle = '#bcd8cf'; g.fillRect(0, 0, cv.width, cv.height);
   g.fillStyle = '#eef6f2'; g.fillRect(ox, oy, T * W, T * H);
-  for (let k = 0; k < W * H; k++) {
-    if (food[k]) drawCell(g, 'food', ox + (k % W) * T, oy + ((k / W) | 0) * T, T);
-    else if (poison[k]) drawCell(g, 'poison', ox + (k % W) * T, oy + ((k / W) | 0) * T, T);
+  // only the squares on screen, since zoomed in most of the world isn't
+  const x0 = Math.max(0, Math.floor(-ox / T)), x1 = Math.min(W - 1, Math.ceil((cv.width - ox) / T));
+  const y0 = Math.max(0, Math.floor(-oy / T)), y1 = Math.min(H - 1, Math.ceil((cv.height - oy) / T));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const k = y * W + x;
+    if (food[k]) drawCell(g, 'food', ox + x * T, oy + y * T, T);
+    else if (poison[k]) drawCell(g, 'poison', ox + x * T, oy + y * T, T);
   }
   for (const c of creatures) for (const p of c.cells) drawCell(g, p.t, ox + (c.x + p.x) * T, oy + (c.y + p.y) * T, T);
   if (sel && !sel.dead) {
@@ -367,7 +393,7 @@ function showStats() {
 // ---------------------------------------------------------------------------
 // The info card for one creature
 function select(c) {
-  sel = c; $('#info').hidden = !c;
+  sel = c; follow = !!c; $('#info').hidden = !c;
   if (c) { drawShape($('#infoPic'), c.cells); showInfo(); }
 }
 function showInfo() {
@@ -433,7 +459,7 @@ function setPlacing(kind) {
   $('#poisonBtn').setAttribute('aria-pressed', kind === 'poison');
   $('#creatureBtn').setAttribute('aria-pressed', kind === 'creature');
   $('#removeBtn').setAttribute('aria-pressed', kind === 'remove');
-  cv.style.cursor = kind ? 'crosshair' : '';
+  cv.style.cursor = kind ? 'crosshair' : zoom > 1 ? 'grab' : '';
 }
 $('#foodBtn').onclick = () => setPlacing(placing === 'food' ? null : 'food');
 $('#poisonBtn').onclick = () => setPlacing(placing === 'poison' ? null : 'poison');
@@ -455,23 +481,62 @@ function dropCreature(x, y) {
 }
 // A quick drag skips squares between pointer events, so fill in the line.
 let lastTile = null;
+// Pointers: with a tool on, one finger paints; with none, a tap picks a
+// creature and a drag moves the view. Two fingers pinch to zoom, and the mouse
+// wheel zooms too, both around the point under them.
+const pts = new Map();
+let pinch = null, press = null;
+const devPt = (x, y) => { const r = cv.getBoundingClientRect(), dpr = cv.width / r.width; return [(x - r.left) * dpr, (y - r.top) * dpr]; };
+const spread = () => { const [a, b] = [...pts.values()]; return [Math.hypot(a.x - b.x, a.y - b.y), (a.x + b.x) / 2, (a.y + b.y) / 2]; };
 cv.addEventListener('pointermove', e => {
-  if (!painting) return;
-  const [x, y] = tileAt(e), [lx, ly] = lastTile, n = Math.max(Math.abs(x - lx), Math.abs(y - ly));
-  for (let i = 1; i <= n; i++) drop(Math.round(lx + (x - lx) * i / n), Math.round(ly + (y - ly) * i / n));
-  lastTile = [x, y];
+  if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pts.size >= 2) {
+    const [d, mx, my] = spread();
+    setZoom(pinch.z * d / pinch.d, ...devPt(mx, my)); follow = false;
+    return;
+  }
+  if (painting) {
+    const [x, y] = tileAt(e), [lx, ly] = lastTile, n = Math.max(Math.abs(x - lx), Math.abs(y - ly));
+    for (let i = 1; i <= n; i++) drop(Math.round(lx + (x - lx) * i / n), Math.round(ly + (y - ly) * i / n));
+    lastTile = [x, y];
+    return;
+  }
+  if (press) {
+    const dx = e.clientX - press.x, dy = e.clientY - press.y;
+    if (!press.moved && Math.hypot(dx, dy) < 6) return;
+    press.moved = true; follow = false;
+    const dpr = cv.width / cv.getBoundingClientRect().width;
+    ox = press.ox + dx * dpr; oy = press.oy + dy * dpr; clampView();
+  }
 });
-const stopPaint = () => { painting = false; };
-cv.addEventListener('pointerup', stopPaint);
-cv.addEventListener('pointercancel', stopPaint);
+const letGo = e => {
+  pts.delete(e.pointerId);
+  if (pinch && pts.size < 2) pinch = null;
+  painting = false;
+  if (press && !press.moved && e.type === 'pointerup') pickAt(...tileAt(e));
+  press = null;
+};
+cv.addEventListener('pointerup', letGo);
+cv.addEventListener('pointercancel', letGo);
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  setZoom(zoom * (e.deltaY < 0 ? 1.25 : 0.8), ...devPt(e.clientX, e.clientY)); follow = false;
+}, { passive: false });
 cv.addEventListener('pointerdown', e => {
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  cv.setPointerCapture(e.pointerId);
+  if (pts.size === 2) { painting = false; press = null; pinch = { d: spread()[0] || 1, z: zoom }; return; }
+  if (pts.size > 2) return;
   const [x, y] = tileAt(e);
   if (placing === 'creature') { dropCreature(x, y); return; }
   if (placing) {
-    painting = true; cv.setPointerCapture(e.pointerId);
+    painting = true;
     erasing = placing === 'poison' && x >= 0 && y >= 0 && x < W && y < H && !!poison[y * W + x];
     drop(x, y); lastTile = [x, y]; return;
   }
+  press = { x: e.clientX, y: e.clientY, ox, oy, moved: false };
+});
+function pickAt(x, y) {
   let hit = null;
   // a tap near a creature counts too, since cells are small on a phone
   for (let d = 0; d <= 2 && !hit; d++)
@@ -479,7 +544,7 @@ cv.addEventListener('pointerdown', e => {
       for (let xx = x - d; xx <= x + d && !hit; xx++)
         if (xx >= 0 && yy >= 0 && xx < W && yy < H && occ[yy * W + xx]) hit = byId.get(occ[yy * W + xx]);
   select(hit);
-});
+}
 function nextCreature() {
   if (!creatures.length) return select(null);
   const i = sel ? creatures.indexOf(sel) : -1;
@@ -668,10 +733,26 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'c' || e.key === 'C') setPlacing(placing === 'creature' ? null : 'creature');
   else if (e.key === 'r' || e.key === 'R') setPlacing(placing === 'remove' ? null : 'remove');
   else if (e.key === 'n' || e.key === 'N') nextCreature();
+  else if (e.key === '+' || e.key === '=') zoomBy(1.5);
+  else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.5);
   else if (e.key === '?') $('#helpDlg').showModal();
   else if (e.key === 'Escape' && sel) select(null);
 });
 window.addEventListener('resize', () => { fit(); draw(); });
+// The followed creature sits in the middle of the part of the world the info
+// card doesn't cover; on a phone the card covers most of the bottom.
+function followSel() {
+  const r = cv.getBoundingClientRect(), dpr = cv.width / r.width, card = $('#info');
+  const sy = card.hidden ? cv.height / 2 : (card.getBoundingClientRect().top - r.top) * dpr / 2;
+  ox = cv.width / 2 - (sel.x + sel.w / 2) * T; oy = sy - (sel.y + sel.h / 2) * T; clampView();
+}
+// The + and − buttons zoom around the picked creature if there is one.
+function zoomBy(f) {
+  if (sel && !sel.dead) { setZoom(zoom * f); followSel(); follow = true; }
+  else setZoom(zoom * f);
+}
+$('#zoomIn').onclick = () => zoomBy(1.5);
+$('#zoomOut').onclick = () => zoomBy(1 / 1.5);
 
 // ---------------------------------------------------------------------------
 let last = performance.now(), acc = 0;
@@ -686,6 +767,7 @@ function frame(now) {
     while (acc >= 1 && performance.now() < until) { step(); acc--; }
     acc = Math.min(acc, settings.speed / 10);
   }
+  if (follow && sel && !sel.dead && zoom > 1) followSel();
   draw();
   if (now - lastStats > 250) { lastStats = now; showStats(); }
   requestAnimationFrame(frame);

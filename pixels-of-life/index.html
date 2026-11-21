@@ -20,7 +20,7 @@
 </div>
 
 <div id="stage">
-  <canvas id="world" tabindex="0" aria-label="The world. Tap a creature, or press N, to see its numbers."></canvas>
+  <canvas id="world" tabindex="0" aria-label="The world. Tap a creature, or press N, to see its numbers. Zoom with + and −."></canvas>
   <div class="stats" aria-live="off">
     <span class="pill">Time <b id="sTime">0</b></span>
     <span class="pill">Creatures <b id="sN">0</b></span>
@@ -28,6 +28,10 @@
     <span class="pill">Died <b id="sDied">0</b></span>
     <span class="pill">Top generation <b id="sGen">0</b></span>
     <span class="pill">Food <b id="sFood">0</b></span>
+  </div>
+  <div class="zoom">
+    <button class="pill" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+    <button class="pill" type="button" id="zoomOut" aria-label="Zoom out">−</button>
   </div>
   <div class="info" id="info" hidden>
     <h2 id="infoTitle">Creature</h2>
@@ -96,7 +100,8 @@
   <p>An eye cell sees a few squares around it. A creature that can move heads for food it sees, and runs from any creature with a killer cell. A killer with an eye chases the creatures it sees.</p>
   <p>A killer cell takes energy from any other creature it touches, unless it touches armor.</p>
   <p>Poison blocks are solid. A creature touching one loses energy. Add poison drops them; with it on, tapping a poison block takes it away.</p>
-  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off, C turns Add creature on and off, R turns Remove on and off.</p>
+  <p>Zoom in with + and − (or pinch, or the mouse wheel) to see the cells up close, and drag to look around. Zoomed in, the view follows the creature you picked.</p>
+  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off, C turns Add creature on and off, R turns Remove on and off, + and − zoom.</p>
   <div class="row"><button class="btn" type="button" id="helpClose">Close</button></div>
 </dialog>
 
