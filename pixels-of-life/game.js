@@ -55,7 +55,10 @@ const WORLD = {
   // energy every tick.
   poisonHurt: 1,
   maxCreatures: 400, // the world stops babies past this many
-  speed: 20,         // Speed slider start: ticks each second
+  speed: 20,         // ticks each second at ×1
+  // The Speed dial (his ask, 21 Nov: evolution was too slow to watch). Each
+  // step is a multiple of `speed`; the dial starts at ×1.
+  speeds: [0.25, 0.5, 1, 2, 5, 10, 25, 50, 100],
 };
 
 // ---------------------------------------------------------------------------
@@ -293,7 +296,7 @@ function step() {
   growFood();
   for (const c of creatures.slice()) if (!c.dead) live(c);
   creatures = creatures.filter(c => !c.dead);
-  if (tick % 10 === 0) { hist.push(creatures.length); if (hist.length > 180) hist.shift(); }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +340,10 @@ function drawShape(canvas, cells) {
 
 let lastStats = 0;
 function showStats() {
-  $('#sN').textContent = creatures.length; $('#sBorn').textContent = born; $('#sDied').textContent = died;
+  // a graph point every quarter second of real time (not every 10 ticks, which
+  // at ×100 showed only the last second), so it shows about 45 seconds
+  if (!paused) { hist.push(creatures.length); if (hist.length > 180) hist.shift(); }
+  $('#sTime').textContent = tick.toLocaleString(); $('#sN').textContent = creatures.length; $('#sBorn').textContent = born; $('#sDied').textContent = died;
   $('#sGen').textContent = creatures.reduce((m, c) => Math.max(m, c.gen), 0); $('#sFood').textContent = foodCount;
   drawGraph();
   if (sel) showInfo();
@@ -582,7 +588,14 @@ function bindSlider(id, fmt) {
 }
 bindSlider('food', v => v);
 bindSlider('change', v => v + '%');
-bindSlider('speed', v => v);
+// Speed is a dial of steps, not a number of ticks.
+{
+  const el = $('#speed'), out = $('#speedOut'), steps = WORLD.speeds;
+  const fmt = m => '×' + (m === 0.25 ? '¼' : m === 0.5 ? '½' : m);
+  el.max = steps.length - 1; el.value = steps.indexOf(1);
+  const set = () => { const m = steps[+el.value]; settings.speed = WORLD.speed * m; out.textContent = fmt(m); el.setAttribute('aria-valuetext', fmt(m).replace('×', 'times ')); };
+  el.addEventListener('input', set); set();
+}
 $('#babies').checked = settings.babies;
 $('#babies').onchange = e => { settings.babies = e.target.checked; };
 function setPaused(p) { paused = p; $('#pauseBtn').textContent = p ? 'Play' : 'Pause'; }
@@ -609,10 +622,13 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.25, (now - last) / 1000); last = now;
   if (!paused) {
+    // Fast speeds run as many ticks as fit in about 12 ms of each frame, so
+    // the page stays smooth; a busy world can run slower than the dial says,
+    // and the Time counter shows how far it really got.
     acc += dt * settings.speed;
-    let n = 0;
-    while (acc >= 1 && n++ < 30) { step(); acc--; }
-    if (n > 30) acc = 0;
+    const until = now + 12;
+    while (acc >= 1 && performance.now() < until) { step(); acc--; }
+    acc = Math.min(acc, settings.speed / 10);
   }
   draw();
   if (now - lastStats > 250) { lastStats = now; showStats(); }

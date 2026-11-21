@@ -22,6 +22,7 @@
 <div id="stage">
   <canvas id="world" tabindex="0" aria-label="The world. Tap a creature, or press N, to see its numbers."></canvas>
   <div class="stats" aria-live="off">
+    <span class="pill">Time <b id="sTime">0</b></span>
     <span class="pill">Creatures <b id="sN">0</b></span>
     <span class="pill">Born <b id="sBorn">0</b></span>
     <span class="pill">Died <b id="sDied">0</b></span>
@@ -46,7 +47,7 @@
   <div class="sliders">
     <label class="sl"><span>Food <output id="foodOut"></output></span><input type="range" id="food" min="0" max="20" step="1"></label>
     <label class="sl"><span>Babies change <output id="changeOut"></output></span><input type="range" id="change" min="0" max="100" step="5"></label>
-    <label class="sl"><span>Speed <output id="speedOut"></output></span><input type="range" id="speed" min="1" max="60" step="1"></label>
+    <label class="sl"><span>Speed <output id="speedOut"></output></span><input type="range" id="speed" min="0" max="8" step="1"></label>
     <label class="check"><input type="checkbox" id="babies"> Babies</label>
   </div>
   <div class="graph"><span>Creatures over time</span><canvas id="graph" width="180" height="52"></canvas></div>
