@@ -162,7 +162,7 @@ const STATS = {
   },
   // timer in seconds, splash in tiles
   boom: {
-    nuke:   { timer: 45, dmg: 3500, splash: 40 },
+    nuke:   { timer: 45, dmg: 6000, splash: 40 },   // 6000 his answer, 20 Nov (his sheet said 3500)
     strike: { timer: 10, dmg: 500,  splash: 8 },
     c4:     { timer: 20, dmg: 600,  splash: 10 },
   },
@@ -184,7 +184,7 @@ const STATS = {
 };
 // Numbers the game needs. Reload and carry are his (16 Nov); the rest are ours.
 const TUNE = {
-  reload: 2,        // seconds to change a mag; he says 2 to 5. Mags never run out (ASK)
+  reload: 2,        // seconds to change a mag; he says 2 to 5. Mags never run out; you reload (his answer, 20 Nov)
   carry: 2,         // explosives you carry in; he says two C4s
   react: 0.4,       // seconds before a guard who spots you starts shooting
   forget: 4,        // seconds a guard keeps hunting after losing sight of you
@@ -202,18 +202,27 @@ const TUNE = {
   throwAhead: 3,    // tiles: otherwise it lands this far ahead of you (short of a wall)
   pickUp: 1.1,      // tiles: how close you stand to a dropped gun to take it
   pilotLeaves: 2,   // his number: on the nuke mission the pilot leaves with this many seconds left
-  nestHp: 400,      // a trench gun's HP (ours; ask him)
-  labHp: 400,       // the lab's HP (ours; ask him)
+  nestHp: 400,      // a trench gun's HP (his answer, 20 Nov)
+  labHp: 2000,      // the lab's HP (his answer, 20 Nov)
   hack: 3,          // seconds standing at an artillery gun to hack it
-  bonus: 1,         // $ for each extra building blown up and each side objective (ours; ask him)
+  bonus: 4,         // $ for each extra building blown up and each side objective (his answer, 20 Nov)
   barrelHp: 20, barrelBlast: { dmg: 150, splash: 3 },  // oil barrels (ours)
-  // the hold-the-trench mission (19 Nov, his idea; these numbers are ours, ask him)
-  holdTime: 300,    // seconds to hold; he said "10 minutes or so five minutes"
-  waveEvery: 30,    // seconds between enemy waves
+  // the hold-the-trench mission (19 Nov, his idea). 20 Nov he settled 5 minutes
+  // and $1 a soldier; the rest of these are ours
+  holdTime: 300,    // seconds to hold
+  waveEvery: 25,    // seconds between enemy waves (30 at first; 20 Nov he found it easy)
   firstWave: 6,     // seconds before the first wave
-  perSoldier: 1,    // $ for each of our soldiers you get out alive
+  perSoldier: 1,    // $ for each of our soldiers you get out alive (his OK, 20 Nov)
   cover: 0.5,       // on the hold mission, shots from outside the trench do this share of damage to anyone in it (the sandbags)
-  heal: 8, healAfter: 3,  // on the hold mission you and our soldiers heal this many HP a second, this many seconds after the last hit
+  heal: 8, healAfter: 3,
+  // 20 Nov, his ask: enemies felt dead, like robots. They have characters now
+  // (`CHARACTERS`), talk, hear you, run away and give up. These are ours.
+  speedVary: 0.15,  // each enemy walks up to this much faster or slower than his number
+  hear: 3,          // tiles: a guard hears you this close behind him and turns round
+  surrender: 0.3,   // chance an enemy gives up when he drops under half his HP (double if nervous)
+  fleeFor: 8,       // seconds an enemy runs away before he comes back
+  prisonerPay: 3,   // $ for each prisoner you get to the copter, on top of his gun
+  chat: [20, 45],   // seconds between bored chatter from a guard on duty  // on the hold mission you and our soldiers heal this many HP a second, this many seconds after the last hit
 };
 
 // ---- Words on screen ----
@@ -242,6 +251,9 @@ const STR = {
   retreatedTitle: 'Retreated',
   wonRetreat: 'You pulled out early with {n} of {m} soldiers.',
   saved: 'Soldiers out',
+  prisonerKey: 'Take prisoner (E)', prisonerTouch: 'Take prisoner',
+  prisoners: 'Prisoners',
+  newGun: 'New gun: {gun}',
   mapAlt: 'The mission map: the trench along the top, roads, hills and buildings with their letters. The target is circled.',
   mapLz: 'Land here',
   mapTarget: 'Target',
@@ -305,6 +317,36 @@ const STR = {
   boom: 'BOOM',
 };
 const t = (k, v = {}) => STR[k].replace(/\{(\w+)\}/g, (_, n) => v[n]);
+// What enemies say, picked at random. Cartoony, no real people.
+const SAY = {
+  spot: ['There!', 'Over there!', 'Intruder!', 'I see him!', 'Get him!'],
+  hit: ['Ow!', 'I\'m hit!', 'Hey!', 'Ouch!', 'Not cool!'],
+  down: ['Man down!', 'We lost one!', 'Watch out!'],
+  flee: ['I\'m out of here!', 'Run!', 'Nope!', 'Too much for me!'],
+  back: ['OK, I\'m back.', 'Where did he go?'],
+  give: ['I give up!', 'Don\'t shoot!', 'OK, OK, you win!'],
+  follow: ['Fine, I\'m coming.', 'Do they have snacks?'],
+  huh: ['Huh?', 'Did you hear that?', 'Who\'s there?'],
+  idle: ['So bored...', 'Is it lunch yet?', 'My feet hurt.', 'Quiet night.', 'I miss my mom.', 'Nice weather.', 'Why do I always get guard duty?'],
+  hot: ['Come here!', 'Charge!', 'You can\'t hide!'],
+};
+// 20 Nov, his ask: each enemy has a character instead of all acting the same.
+// share: how many of them; speed: on top of his number; flee: runs when hurt.
+const CHARACTERS = {
+  steady:  { share: .4,  speed: 1 },
+  nervous: { share: .25, speed: 1.05, flee: true },
+  slow:    { share: .2,  speed: .75 },
+  hothead: { share: .15, speed: 1.1, charge: true },
+};
+function giveCharacter(g) {
+  if (g.heavy || g.nest) { g.trait = 'steady'; return g; }
+  let r = Math.random(), k = 'steady';
+  for (const [name, c] of Object.entries(CHARACTERS)) { if (r < c.share) { k = name; break; } r -= c.share; }
+  g.trait = k;
+  g.speed *= CHARACTERS[k].speed * (1 + (Math.random() * 2 - 1) * TUNE.speedVary);
+  g.chat = TUNE.chat[0] * Math.random() + 5;
+  return g;
+}
 
 // ---- His colours ----
 const C = {
@@ -612,6 +654,15 @@ function drawTroop(g, side, gun, heavy) {
   rr(g, -.26, -.04, .52, .12, .02, team, .02);
   star(g, 0, .02, .11);
 }
+// given up: no gun, both hands up beside the helmet
+function drawHandsUp(g, side) {
+  rr(g, -.44, -.16, .88, .44, .2, C[side]);
+  ell(g, -.42, -.42, .11, .11, C.glove); ell(g, .42, -.42, .11, .11, C.glove);
+  g.strokeStyle = C[side]; g.lineWidth = .12; g.beginPath(); g.moveTo(-.34, -.1); g.lineTo(-.42, -.36); g.moveTo(.34, -.1); g.lineTo(.42, -.36); g.stroke();
+  ell(g, 0, .02, .26, .26, C.grey);
+  rr(g, -.26, -.04, .52, .12, .02, C[side], .02);
+  star(g, 0, .02, .11);
+}
 // His helicopter, from above: star on the nose, light-blue canopy, blue window,
 // engine pods, side guns, the long tail with two blue ovals, and the rotor.
 // The black X over his drawing is the rotor blades (decided 16 Nov).
@@ -790,6 +841,7 @@ function newMission() {
       // the hold mission: the base doesn't stand guard, it attacks in waves (stepWaves)
       if (next.kind === 'hold') return [];
       const gs = spawnGroups().map(o => mk(o, foe));
+      gs.forEach(giveCharacter);
       for (const g of gs) g.pace = Math.min(...gs.filter(m => m.group === g.group).map(m => m.speed));
       // trench guns: they turn and shoot but never walk
       for (const n of NESTS) gs.push(Object.assign(mk({ x: n.x, y: n.y, face: Math.PI / 2, gun: 'minigun' }, foe), { nest: true, hp: TUNE.nestHp, speed: 0, pace: 0 }));
@@ -824,7 +876,11 @@ const keys = new Set();
 const stick = { x: 0, y: 0, id: null };
 let fireHeld = false;
 addEventListener('keydown', e => {
-  if (!cover.hidden) return;
+  // on a card, E (Use in play) presses the card's main button too
+  if (!cover.hidden) {
+    if (e.key.toLowerCase() === 'e' && !e.repeat) { const b = card.querySelector('.row .btn:last-child'); if (b && !b.disabled) b.click(); }
+    return;
+  }
   const k = e.key.toLowerCase();
   if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
   keys.add(k);
@@ -930,7 +986,7 @@ function shoot(u, dt, foes) {
   if (u.cool > 0) return;
   // aim at the nearest foe in range you can see; otherwise shoot straight ahead
   let tg = null, best = 1e9;
-  for (const f of foes) if (f.hp > 0 && !f.gone) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
+  for (const f of foes) if (f.hp > 0 && !f.gone && f.state !== 'surrender') { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
   if (!tg && u === G.player && G.barrels) for (const f of G.barrels) if (f.hp > 0) { const d = dist(u, f); if (d <= u.gun.range && d < best && los(u, f)) { best = d; tg = f; } }
   u.cool = 1 / u.gun.rate; u.ammo--;
   const dmg = u.gun.dmg * (u === G.player ? TUNE.youDamage : 1);
@@ -941,7 +997,7 @@ function shoot(u, dt, foes) {
     for (let i = 0; i < u.gun.pellets; i++) {
       const a = aim + (u.gun.pellets === 1 ? 0 : (i / (u.gun.pellets - 1) - .5) * 2 * sp);
       let hit = null, hd = 1e9;
-      for (const f of foes) if (f.hp > 0 && !f.gone) {
+      for (const f of foes) if (f.hp > 0 && !f.gone && f.state !== 'surrender') {
         const d = dist(u, f), off = Math.abs(((Math.atan2(f.y - u.y, f.x - u.x) - a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI);
         if (d <= u.gun.range && d < hd && Math.sin(off) * d < .45 && Math.cos(off) > 0 && los(u, f)) { hd = d; hit = f; }
       }
@@ -974,15 +1030,87 @@ function hurt(u, dmg, why, from) {
   if (u === G.player) {
     if (u.hp <= 0) { u.hp = 0; lose(why === 'shot' ? 'shot' : why); }
   } else {
-    if (u.state !== 'alert') { u.state = 'alert'; u.react = TUNE.react; }
+    if (u.state !== 'alert' && u.state !== 'flee' && u.state !== 'surrender') { u.state = 'alert'; u.react = TUNE.react; }
     u.lastSeen = { x: G.player.x, y: G.player.y }; u.lost = 0;
-    if (u.hp <= 0) { u.hp = 0; G.down++; if (!u.nest) G.drops.push({ x: u.x, y: u.y, gun: u.gun, a: u.a + .8 }); }
-    else if (u.hurtT == null) u.hurtT = 0; // the count to the alarm starts
+    if (u.hp <= 0) {
+      u.hp = 0; G.down++; u.bubble = null;
+      if (!u.nest && !u.gave) G.drops.push({ x: u.x, y: u.y, gun: u.gun, a: u.a + .8 });
+      // his group notices: one says so, and the nervous ones may run
+      const mates = G.guards.filter(m => m.group === u.group && m !== u && m.hp > 0 && m.state !== 'surrender');
+      if (mates.length) say(pickOne(mates), 'down');
+      for (const m of mates) if (m.trait === 'nervous' && Math.random() < .5) flee(m);
+      return;
+    }
+    if (u.state === 'surrender') return;
+    if (u.hurtT == null && u.state !== 'flee') u.hurtT = 0; // the count to the alarm starts
+    say(u, 'hit');
+    // under half his HP an enemy may give up, or run (heavies and guns never do)
+    if (!u.heavy && !u.nest && u.max && u.hp < u.max / 2 && !u.shaken) {
+      u.shaken = true;
+      if (Math.random() < TUNE.surrender * (u.trait === 'nervous' ? 2 : 1)) surrender(u);
+      else if (u.trait === 'nervous' || Math.random() < .25) flee(u);
+    }
   }
+}
+// A word bubble over an enemy. Each one waits a few seconds between lines,
+// and only a few talk at once so the screen doesn't fill up.
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+function say(u, kind, force) {
+  if (!u || u.hp <= 0 || (!force && (u.sayCool > 0 || G.guards.filter(m => m.bubble).length >= 3))) return;
+  u.bubble = { text: pickOne(SAY[kind]), t: 2.4 };
+  u.sayCool = 4 + Math.random() * 3;
+}
+// somewhere away from you to run to: the start point (his red pen marks, or
+// where the waves come in) farthest from you
+function fleeFrom(g) {
+  const p = G.player, spots = GROUPS.map(o => [o.x, o.y]).concat(WAVE_FROM);
+  let best = null, bd = -1;
+  for (const [x, y] of spots) { const d = Math.hypot(x - p.x, y - p.y); if (d > bd) { bd = d; best = { x, y }; } }
+  return best;
+}
+function flee(g) {
+  if (g.state === 'flee' || g.state === 'surrender' || g.nest) return;
+  g.state = 'flee'; g.fleeT = TUNE.fleeFor * (.75 + Math.random() * .5); g.fleeTo = fleeFrom(g);
+  g.hurtT = null;   // too busy running to sound the alarm
+  say(g, 'flee', true);
+}
+function deliver(g) {
+  g.gone = true; g.delivered = true; g.bubble = null;
+  G.prisoners = (G.prisoners || 0) + 1;
+  G.extras += TUNE.prisonerPay;
+  // his rule: you get his weapon. A gun you'd have to buy is yours to keep.
+  const k = gunOf(g.gave || g.gun).kind;
+  if (STATS.guns.NA[k] && STATS.guns.NA[k].cost && !owns(k) && !(G.newGuns || []).includes(k)) G.newGuns = (G.newGuns || []).concat(k);
+}
+const nearPrisoner = p => G.guards.find(g => g.state === 'surrender' && !g.prisoner && g.hp > 0 && !g.gone && dist(g, p) < 1.4);
+function surrender(g) {
+  g.state = 'surrender'; g.hurtT = null; g.sees = false;
+  G.drops.push({ x: g.x + .4, y: g.y + .3, gun: g.gun, a: g.a + .8 });
+  g.gave = g.gun;
+  say(g, 'give', true);
 }
 function stepGuard(g, dt) {
   if (g.hp <= 0) { g.downT += dt; if (g.downT > 1.6 && !g.nest) g.gone = true; return; }
   if (g.flash) g.flash = Math.max(0, g.flash - dt);
+  if (g.bubble) { g.bubble.t -= dt; if (g.bubble.t <= 0) g.bubble = null; }
+  if (g.sayCool > 0) g.sayCool -= dt;
+  if (g.gone) return;
+  // given up: hands up, waits; once you take him he follows you to the copter
+  if (g.state === 'surrender') {
+    g.sees = false;
+    if (g.prisoner && phase === 'play') {
+      const p = G.player;
+      if (copterReady() && dist(g, LZ) < 2.8) { deliver(g); return; }
+      if (!p.gone && dist(g, p) > 1.3) chase(g, p, Math.max(g.speed, STATS.troop.NA.speed), dt);
+    }
+    return;
+  }
+  // running away: off to the far side, then back into the fight
+  if (g.state === 'flee') {
+    g.sees = false; g.fleeT -= dt;
+    if (g.fleeT <= 0 || dist(g, g.fleeTo) < 1) { g.state = 'alert'; g.react = TUNE.react; g.lastSeen = { x: G.player.x, y: G.player.y }; g.lost = 0; say(g, 'back'); }
+    else { chase(g, g.fleeTo, g.speed * 1.1, dt); return; }
+  }
   // a guard sees inside its yellow cone (or right next to it), not behind it
   const canSee = u => {
     if (phase !== 'play' || u.hp <= 0 || u.gone) return false;
@@ -993,6 +1121,17 @@ function stepGuard(g, dt) {
   let p = G.player, sees = canSee(p), d = dist(g, p);
   for (const a of G.allies) if (canSee(a) && (!sees || dist(g, a) < d)) { p = a; sees = true; d = dist(g, a); }
   g.sees = sees;   // the landed copter covers you (and our soldiers) from guards who can see you
+  if (sees && g.state !== 'alert') say(g, g.trait === 'hothead' ? 'hot' : 'spot', true);
+  // 20 Nov, his ask that they react: a guard hears you close behind him,
+  // says so, and turns round (then his cone sees you if you stay)
+  const me = G.player;
+  if (!sees && g.state !== 'alert' && phase === 'play' && !me.gone && me.hp > 0 && dist(g, me) < TUNE.hear && los(g, me)) {
+    if (!g.heard) { g.heard = true; say(g, 'huh', true); }
+    const want = Math.atan2(me.y - g.y, me.x - g.x), da = ((want - g.a) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+    g.a += Math.sign(da) * Math.min(Math.abs(da), 2.2 * dt);
+    g.look = 0; g.face = g.a;
+    return;
+  } else if (g.heard && dist(g, me) > TUNE.hear + 2) g.heard = false;
   if (sees) {
     // a group goes on alert together
     for (const m of G.guards) if (m.hp > 0 && (m === g || (m.group === g.group && m.group != null))) {
@@ -1015,6 +1154,8 @@ function stepGuard(g, dt) {
       g.a = Math.atan2(p.y - g.y, p.x - g.x);
       g.react -= dt;
       if (g.react <= 0) shoot(g, dt, [p]);
+      // a hothead doesn't stand back at the edge of his range, he comes at you
+      if (g.trait === 'hothead' && d > 2.5) { chase(g, p, g.speed * .6, dt); g.a = Math.atan2(p.y - g.y, p.x - g.x); }
     } else chase(g, sees ? p : g.lastSeen, g.speed * (G.alarm && !sees ? TUNE.alarmPace : 1), dt);
   } else if (g.path) {
     // Decided 18 Nov: a patrol walks in single file behind its leader. Each
@@ -1033,7 +1174,9 @@ function stepGuard(g, dt) {
     }
   } else if (dist(g, g.home) > .3) moveToward(g, g.home, g.speed * TUNE.patrol, dt);
   else {
-    // standing guard: looks slowly left and right
+    // standing guard: looks slowly left and right, and gets bored
+    g.chat = (g.chat ?? TUNE.chat[0]) - dt;
+    if (g.chat <= 0) { g.chat = TUNE.chat[0] + Math.random() * (TUNE.chat[1] - TUNE.chat[0]); if (phase === 'play') say(g, 'idle'); }
     g.look = (g.look || 0) + dt;
     g.a = g.face + Math.sin(g.look / TUNE.lookTime * 2 * Math.PI) * TUNE.lookAround;
   }
@@ -1047,7 +1190,7 @@ function stepAlly(a, dt) {
   if (a.flash) a.flash = Math.max(0, a.flash - dt);
   if (a.reload > 0) { a.reload -= dt; if (a.reload <= 0) { a.reload = 0; a.ammo = a.gun.mag; } }
   let tg = null, best = a.gun.range;
-  for (const g of G.guards) if (g.hp > 0 && !g.gone) { const d = dist(a, g); if (d <= best && los(a, g)) { best = d; tg = g; } }
+  for (const g of G.guards) if (g.hp > 0 && !g.gone && g.state !== 'surrender') { const d = dist(a, g); if (d <= best && los(a, g)) { best = d; tg = g; } }
   if (tg) shoot(a, dt, [tg]); else a.cool -= dt;
   // they stay behind the sandbags until the copter is nearly down: running out
   // to the pad while it was still away lost soldiers on the way
@@ -1058,21 +1201,22 @@ function stepAlly(a, dt) {
   else if (!tg) a.a = a.face;
 }
 // The enemy waves: a group walks in from the south or the sides every
-// TUNE.waveEvery seconds, a little bigger every fourth wave, with a heavy in
-// the middle of every other wave from the sixth on. They head for the nearest of us (the alarm).
+// TUNE.waveEvery seconds, a little bigger every third wave, with a heavy in
+// the middle of every other wave from the fourth on. (20 Nov: he found the
+// first waves easy; they were 2 to 4 every 30 seconds, heavies from the sixth.) They head for the nearest of us (the alarm).
 const WAVE_FROM = [[31, 33], [44, 35.4], [52, 27], [1.5, 25]];
 function stepWaves(dt) {
   G.wave -= dt;
   if (G.wave > 0 || G.retreat) return;
   G.wave = TUNE.waveEvery;
-  const [sx, sy] = WAVE_FROM[G.waves % WAVE_FROM.length], n = Math.min(4, 2 + Math.floor(G.waves / 4)), gi = 100 + G.waves;
+  const [sx, sy] = WAVE_FROM[G.waves % WAVE_FROM.length], n = Math.min(6, 3 + Math.floor(G.waves / 3)), gi = 100 + G.waves;
   for (let i = 0; i < n; i++) {
-    const heavy = G.waves >= 5 && G.waves % 2 === 1 && i === Math.floor(n / 2), kind = heavy ? STATS.juggernaut.DE : STATS.troop.DE;
+    const heavy = G.waves >= 3 && G.waves % 2 === 1 && i === Math.floor(n / 2), kind = heavy ? STATS.juggernaut.DE : STATS.troop.DE;
     const gun = STATS.guns.DE[heavy ? (G.waves % 4 === 1 ? 'pump' : 'minigun') : i === 3 ? 'heavy' : 'rifle'];
     let x = sx + (i - (n - 1) / 2) * GAP, y = sy;
     if (isSolid(x, y)) { x = sx; y = sy; }
-    G.guards.push({ x, y, a: -Math.PI / 2, side: 'DE', heavy, group: gi, hp: kind.hp, speed: kind.speed, detect: kind.detect, pace: STATS.troop.DE.speed,
-      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'alert', react: TUNE.react, lost: 0, lastSeen: { x: sx, y: sy }, home: { x, y }, face: -Math.PI / 2, downT: 0 });
+    G.guards.push(giveCharacter({ x, y, a: -Math.PI / 2, side: 'DE', heavy, group: gi, hp: kind.hp, max: kind.hp, hitT: 0, speed: kind.speed, detect: kind.detect, pace: STATS.troop.DE.speed,
+      gun, ammo: gun.mag, cool: 0, reload: 0, state: 'alert', react: TUNE.react, lost: 0, lastSeen: { x: sx, y: sy }, home: { x, y }, face: -Math.PI / 2, downT: 0 }));
   }
   G.waves++;
 }
@@ -1119,6 +1263,8 @@ function use() {
     return;
   }
   if (phase !== 'play') return;
+  const pr = nearPrisoner(p);
+  if (pr) { pr.prisoner = true; say(pr, 'follow', true); return; }
   const dr = nearDrop(p);
   if (dr) return takeGun(dr);
   const here = nearThing(p);
@@ -1134,7 +1280,7 @@ function use() {
   // 16 Nov, his ask: explosives are for groups of enemies too, so it lands on
   // the nearest one you can see, or a few tiles ahead
   let to = null, best = TUNE.throwAt;
-  for (const g of G.guards) if (g.hp > 0) { const d = dist(p, g); if (d < best && los(p, g)) { best = d; to = { x: g.x, y: g.y }; } }
+  for (const g of G.guards) if (g.hp > 0 && g.state !== 'surrender') { const d = dist(p, g); if (d < best && los(p, g)) { best = d; to = { x: g.x, y: g.y }; } }
   if (!to) to = rayEnd(p.x, p.y, p.a, TUNE.throwAhead);
   const b = STATS.boom[pick.boom];
   G.left--;
@@ -1177,8 +1323,9 @@ function blast(k) {
   for (const g of G.guards) if (g.hp > 0 && dist(g, k) <= k.splash) hurt(g, k.dmg, 'blast');
   for (const b of G.barrels) if (b.hp > 0 && dist(b, k) <= k.splash) hurt(b, k.dmg, 'blast');
   for (const b of G.buildings) if (b.hp > 0 && rectDist(b, k) <= k.splash) {
-    // the nuke takes the bunker down (his numbers: nuke 3500, bunker 5000; ask him)
-    b.hp -= k.kind === 'nuke' && b.kind === 'bunker' ? b.hp : k.dmg;
+    // 20 Nov he made the nuke 6000, so it takes the 5000 bunker down on his numbers
+    // (with his first 3500 the game took the bunker down by a special rule)
+    b.hp -= k.dmg;
     if (b.hp <= 0) { b.hp = 0; if (!b.target && k.kind !== 'nuke') G.extras += TUNE.bonus; }
   }
   if (G.target && G.target.hp <= 0 && !G.targetDown) G.targetDown = true;
@@ -1237,6 +1384,7 @@ function coverTarget(c) {
   return tg;
 }
 function board() {
+  for (const g of G.guards) if (g.prisoner && !g.gone && g.hp > 0 && dist(g, G.player) < 4) deliver(g);
   phase = 'flyout'; G.fly = 0; G.player.gone = true; G.copter.a = Math.atan2(13 - LZ.y, -14 - LZ.x);
 }
 function walk(p, dt) {
@@ -1350,7 +1498,7 @@ function draw(now) {
     g.beginPath(); g.arc(k.x, k.y, k.splash, 0, 7); g.stroke(); g.setLineDash([]);
   }
   // where each guard can see: a see-through yellow cone that stops at walls
-  if (phase === 'play') for (const u of G.guards) if (u.hp > 0) {
+  if (phase === 'play') for (const u of G.guards) if (u.hp > 0 && !u.gone && u.state !== 'surrender' && u.state !== 'flee') {
     const h = TUNE.sight * Math.PI / 180;
     g.beginPath(); g.moveTo(u.x, u.y);
     for (let i = 0; i <= 16; i++) { const e = rayEnd(u.x, u.y, u.a - h + 2 * h * i / 16, u.detect); g.lineTo(e.x, e.y); }
@@ -1401,15 +1549,29 @@ function draw(now) {
   if (G.alarm && G.alarm.t < 2.5) { ctx.strokeText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); ctx.fillStyle = '#ff5a4a'; ctx.fillText(t('alarm'), sx(G.alarm.x), sy(G.alarm.y - 1.1)); }
   if (!G.alarm) for (const u of G.guards) if (u.hurtT != null && u.hp > 0) { ctx.strokeText('!', sx(u.x), sy(u.y - 1)); ctx.fillStyle = '#ffd23f'; ctx.fillText('!', sx(u.x), sy(u.y - 1)); }
   for (const f of G.fx) if (f.t < .9) { const w = f.word || t('boom'); ctx.strokeText(w, sx(f.x), sy(f.y)); ctx.fillStyle = f.word ? '#9cc4ff' : '#ffd23f'; ctx.fillText(w, sx(f.x), sy(f.y)); }
+  // what enemies say: a white bubble over his head
+  const bs2 = Math.max(12, S_ * .34);
+  ctx.font = `600 ${bs2}px Lexend, Verdana, sans-serif`;
+  for (const u of G.guards) if (u.bubble && !u.gone && u.hp > 0) {
+    const w = ctx.measureText(u.bubble.text).width + bs2, h = bs2 * 1.7, x = sx(u.x), y = sy(u.y - .9) - h / 2;
+    ctx.globalAlpha = Math.min(1, u.bubble.t * 3);
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = Math.max(2, bs2 / 7);
+    ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 3); ctx.moveTo(x - bs2 * .3, y + h / 2); ctx.lineTo(x, y + h / 2 + bs2 * .45); ctx.lineTo(x + bs2 * .3, y + h / 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.fillRect(x - bs2 * .26, y + h / 2 - ctx.lineWidth, bs2 * .52, ctx.lineWidth * 1.5);
+    ctx.fillStyle = '#1a1a1a'; ctx.fillText(u.bubble.text, x, y + 1);
+    ctx.globalAlpha = 1;
+  }
+  ctx.font = `${fs}px "Press Start 2P", monospace`; ctx.lineWidth = fs / 4; ctx.strokeStyle = '#1a1a1a';
   // a white flash right as the nuke goes off
   for (const f of G.fx) if (f.nuke && f.t < .6) { ctx.fillStyle = `rgba(255,255,255,${.9 * (1 - f.t / .6)})`; ctx.fillRect(0, 0, cw, ch); }
   // a word over the soldier when Use does something here
   const p = G.player, dr = phase === 'play' && G.drops ? nearDrop(p) : null;
   const th = phase === 'play' && G.kind !== 'hq' ? nearThing(p) : null;
-  const n = phase === 'hq' ? nearHq(p) : dr ? 'gun' : th === 'plant' ? 'plant' : th ? 'hack' : phase === 'play' && (G.targetDown || G.nukeSet || G.retreat) && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
+  const pr = phase === 'play' && G.kind !== 'hq' ? nearPrisoner(p) : null;
+  const n = phase === 'hq' ? nearHq(p) : pr ? 'prisoner' : dr ? 'gun' : th === 'plant' ? 'plant' : th ? 'hack' : phase === 'play' && (G.targetDown || G.nukeSet || G.retreat) && copterReady() && dist(p, LZ) < 2.6 ? 'copter' : null;
   if (n && !(n === 'copter' && G.kind === 'hq' && !G.folder) && cover.hidden) {
     const touch = matchMedia('(pointer:coarse)').matches, hs = Math.max(12, S_ * .35);
-    const w = n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : n === 'plant' ? t(touch ? 'plantTouch' : 'plantKey') : n === 'hack' ? t(touch ? 'hackTouch' : 'hackKey') : touch ? t('useTouch') : t('useKey');
+    const w = n === 'prisoner' ? t(touch ? 'prisonerTouch' : 'prisonerKey') : n === 'gun' ? t(touch ? 'takeTouch' : 'takeKey', { gun: t(gunOf(dr.gun).kind) }) : n === 'plant' ? t(touch ? 'plantTouch' : 'plantKey') : n === 'hack' ? t(touch ? 'hackTouch' : 'hackKey') : touch ? t('useTouch') : t('useKey');
     ctx.font = `${hs}px "Press Start 2P", monospace`; ctx.lineWidth = hs / 3;
     ctx.strokeText(w, sx(p.x), sy(p.y - 1)); ctx.fillStyle = '#fff'; ctx.fillText(w, sx(p.x), sy(p.y - 1));
   }
@@ -1427,7 +1589,7 @@ function unit(g, u) {
   g.rotate(u.a + Math.PI / 2);
   // down, not hurt: a guard tips over and fades away (cartoony, no blood)
   if (u.hp <= 0) { g.globalAlpha = Math.max(0, 1 - u.downT / 1.6); g.rotate(Math.min(1, u.downT * 3) * Math.PI / 2); g.scale(1, .7); }
-  drawTroop(g, u.side, u.gun, u.heavy);
+  if (u.state === 'surrender') drawHandsUp(g, u.side); else drawTroop(g, u.side, u.gun, u.heavy);
   if (u.flash) { g.globalAlpha = .6; g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, .5, 0, 7); g.fill(); }
   g.restore();
 }
@@ -1611,25 +1773,35 @@ function win() {
   const time = G.t, newBest = S.best === null || time < S.best;
   if (newBest) S.best = time;
   S.money = (S.money || 0) + STATS.money.perMission + G.extras;
+  const got = takeNewGuns();
   S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat(kind).slice(-4);
   if (kind === 'barracks') S.lastTarget = G.mission.target;
   save(); next = null;
   showCard(`<h2 id="cardTitle">${t('wonTitle')}</h2><p>${t(kind === 'bunker' ? 'wonText_bunker' : 'wonText')}</p>
-    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b><span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission + G.extras })}</b></div>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(time)}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('best')}</span><b>${fmt(S.best)}</b>${prisonerRows()}<span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: STATS.money.perMission + G.extras })}</b></div>${got}
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
 }
 
 // The hold mission's end. His rule: a retreat isn't a failed mission, and the
 // more soldiers you get out the better. Holding the whole time pays his $5;
-// each soldier out pays TUNE.perSoldier (ours; ask him).
+// each soldier out pays TUNE.perSoldier ($1, his OK 20 Nov). You don't replay
+// for the ones left behind; it's on to the next mission.
+// prisoners' guns you'd have to buy are yours once you're out (his rule)
+function takeNewGuns() {
+  const ks = G.newGuns || [];
+  if (ks.length) S.owned = Object.assign({}, S.owned, Object.fromEntries(ks.map(k => [k, true])));
+  return ks.map(k => `<p><b>${t('newGun', { gun: t(k) })}</b></p>`).join('');
+}
+const prisonerRows = () => G.prisoners ? `<span>${t('prisoners')}</span><b>${G.prisoners}</b>` : '';
 function winHold() {
   const m = G.allies.filter(a => !a.nest).length, pay = (G.held ? STATS.money.perMission : 0) + G.saved * TUNE.perSoldier + G.extras;
   S.money = (S.money || 0) + pay; S.triedHold = true;
+  const got = takeNewGuns();
   S.count = (S.count || 0) + 1; S.recent = (S.recent || []).concat('hold').slice(-4);
   save(); next = null;
   showCard(`<h2 id="cardTitle">${t(G.held ? 'wonTitle' : 'retreatedTitle')}</h2><p>${t(G.held ? 'wonHeld' : 'wonRetreat', { n: G.saved, m })}</p>
-    <div class="stats"><span>${t('time')}</span><b>${fmt(G.t)}</b><span>${t('saved')}</span><b>${G.saved} / ${m}</b><span>${t('down')}</span><b>${G.down}</b><span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: pay })}</b></div>
+    <div class="stats"><span>${t('time')}</span><b>${fmt(G.t)}</b><span>${t('saved')}</span><b>${G.saved} / ${m}</b><span>${t('down')}</span><b>${G.down}</b>${prisonerRows()}<span>${t('extras')}</span><b>${t('moneyWon', { n: G.extras })}</b><span>${t('money', { n: S.money })}</span><b>${t('moneyWon', { n: pay })}</b></div>${got}
     <div class="row">${btn('go', t('toHq'))}</div>`);
   on('go', enterHq);
 }
