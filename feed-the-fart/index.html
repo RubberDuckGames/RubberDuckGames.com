@@ -54,6 +54,48 @@ main{max-width:64rem;margin:0 auto;padding:0 .75rem 2rem}
 .food:disabled{opacity:.5;cursor:default}
 /* a locked snack stays readable (full contrast), marked by a dashed border instead of fading */
 .food[data-lock="true"]{opacity:1;background:#efe3cc;border-style:dashed;border-color:#8a7355}
+/* the house (top-down, decided 20 Nov) */
+.hhud{display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;margin:.2rem 0 .6rem}
+.hstats{display:flex;gap:.8rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;flex-wrap:wrap}
+.hstage{position:relative;border:4px solid var(--ink);box-shadow:.4rem .4rem 0 rgba(0,0,0,.2);max-width:calc(60vh * 16 / 9);margin:0 auto;background:#000}
+#hc{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}
+.hmsg{position:absolute;left:50%;top:.6rem;transform:translateX(-50%);background:#fff;color:#1d120a;border:3px solid #1d120a;padding:.3rem .7rem;font-family:"Press Start 2P",monospace;font-size:clamp(.5rem,1.6vw,.8rem);line-height:1.6;max-width:92%;width:max-content;text-align:center;pointer-events:none}
+.hmsg.alert{background:#c2410c;color:#fff}
+.hctrl{display:flex;justify-content:space-between;align-items:center;margin-top:.8rem;gap:1rem}
+.hctrl .stick{position:relative;width:8rem;height:8rem;border-radius:50%;background:rgba(58,36,20,.12);border:3px solid rgba(58,36,20,.4);touch-action:none;visibility:hidden;flex:none}
+@media (pointer:coarse){.hctrl .stick{visibility:visible}}
+.hctrl .stick i{position:absolute;left:50%;top:50%;width:3.4rem;height:3.4rem;margin:-1.7rem;border-radius:50%;background:var(--ink);opacity:.8}
+.fartBtn{width:5.6rem;height:5.6rem;border-radius:50%;background:#7aa83a;color:#14210a;font-family:"Press Start 2P",monospace;font-size:.8rem;box-shadow:0 .35rem 0 #4f7a20;touch-action:none;margin-left:auto;flex:none}
+.fartBtn:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #4f7a20}
+.hacts{display:flex;gap:.9rem;align-items:flex-start;margin-left:auto}
+/* Game Boy style (Randi, 20 Nov: "an action and interact"): two round buttons
+   on a diagonal, Use (B) low on the left, Fart (A) high on the right. Each says
+   what it does; Use reads Open or Close next to a door or the fridge. */
+.useBtn{width:5.6rem;height:5.6rem;border-radius:50%;background:#a3244a;color:#fff;font-family:"Press Start 2P",monospace;font-size:.65rem;box-shadow:0 .35rem 0 #6e1631;touch-action:none;margin-top:2.6rem}
+.useBtn:active:not(:disabled){transform:translateY(.25rem);box-shadow:0 .1rem 0 #6e1631}
+.useBtn:disabled{opacity:.45}
+/* While you're in the house it fills the screen, with the bar, buttons and
+   messages floating over it, like Mission Directive (Randi's ask, 20 Nov: no
+   wasted space on a phone). */
+body.housePlay{overflow:hidden;touch-action:none;overscroll-behavior:none}
+body.housePlay .bar{position:fixed;top:0;left:0;right:0;z-index:9;padding-top:max(.6rem,env(safe-area-inset-top))}
+@media (max-width:30rem){body.housePlay .bar{flex-wrap:nowrap;gap:.4rem}body.housePlay .bar .pill{font-size:.5rem;padding:.3rem .4rem}}
+body.housePlay main{max-width:none;padding:0}
+body.housePlay #house{position:fixed;inset:0;z-index:5;background:#2a1a10;overflow:hidden}
+body.housePlay .hstage{position:absolute;inset:0;border:0;box-shadow:none;max-width:none;margin:0;background:#2a1a10}
+body.housePlay #hc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:auto}
+body.housePlay .hhud{position:fixed;z-index:8;top:calc(3.6rem + env(safe-area-inset-top));left:max(.75rem,env(safe-area-inset-left));right:max(.75rem,env(safe-area-inset-right));margin:0;background:rgba(255,250,240,.9);border:3px solid var(--ink);padding:.35rem .6rem;gap:.3rem 1rem}
+body.housePlay .hhud .meterbox label{font-size:.85rem;margin-bottom:.15rem}
+body.housePlay .hhud .meter{height:1.1rem}
+body.housePlay .hmsg{position:fixed;top:calc(8.4rem + env(safe-area-inset-top));z-index:8}
+body.housePlay .hctrl{position:fixed;z-index:8;left:0;right:0;bottom:0;margin:0;padding:1rem max(1rem,env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));pointer-events:none}
+body.housePlay .hctrl>*{pointer-events:auto}
+body.housePlay .hctrl .stick{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.55)}
+body.housePlay .hctrl .stick i{background:#f4f1e4}
+/* how to play stays behind the ? button (Randi, 20 Nov: no instructions left up) */
+.helpBox{position:fixed;z-index:12;top:calc(3.6rem + env(safe-area-inset-top));right:max(.75rem,env(safe-area-inset-right));max-width:min(24rem,calc(100vw - 1.5rem));background:var(--panel);border:3px solid var(--ink);padding:.7rem .9rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3);line-height:1.45}
+.hdList{list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.4rem}
+.hdList img{width:2.5rem;height:2.5rem;image-rendering:pixelated;display:block}
 .cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(40,24,12,.6);z-index:20;padding:1rem;overflow:auto}
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
 .card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.6;text-align:center}
@@ -137,11 +179,25 @@ svg.wilt #cactus{transform:rotate(85deg)}
 <div class="bar">
   <a class="pill" href="../">← All games</a>
   <span class="grow"></span>
+  <button class="pill" id="helpBtn" aria-expanded="false" aria-controls="helpBox" aria-label="How to play">?</button>
   <button class="pill" id="collBtn" aria-haspopup="dialog">Farts 0/8</button>
   <button class="pill" id="soundBtn">Sound on</button>
 </div>
 <main>
   <h1 class="sr">Feed the Fart</h1>
+  <section id="house" hidden aria-label="The house">
+    <div class="hhud">
+      <div class="meterbox">
+        <label for="hMeter"><span id="hBarLabel"></span><span id="hWord"></span></label>
+        <div class="meter" id="hMeter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hFill"></i></div>
+      </div>
+      <div class="hstats"><span id="hRoom"></span><span id="hScore"></span><span id="hFood"></span></div>
+    </div>
+    <div class="hstage"><canvas id="hc" width="256" height="144" role="img"></canvas><div class="hmsg" id="hMsg" hidden></div></div>
+    <div class="hctrl"><div class="stick" id="hStick" aria-hidden="true"><i></i></div><div class="hacts"><button class="useBtn" id="hUse" disabled></button><button class="fartBtn" id="hFart"></button></div></div>
+  </section>
+  <div id="dinner">
+  <p class="hint" id="fromHouse" hidden></p>
   <div class="top">
   <div class="stage" id="stage">
     <svg id="scene" viewBox="0 0 800 460" role="img" aria-label="Thanksgiving dinner. The plumber stands by the table, with the family, a dog under the table and a cat on the windowsill." data-face="normal">
@@ -350,6 +406,7 @@ svg.wilt #cactus{transform:rotate(85deg)}
   <div class="foods" id="foods"></div>
   <h2 class="snacksH" id="snacksH"></h2>
   <div class="foods" id="snacks"></div>
+  </div>
   <p class="sr" aria-live="polite" id="live"></p>
 </main>
 
@@ -358,7 +415,7 @@ svg.wilt #cactus{transform:rotate(85deg)}
     <h2>Feed the Fart</h2>
     <p id="startText"></p>
     <p id="startKeys" style="color:var(--soft);font-size:1rem"></p>
-    <div class="row"><button class="btn" id="startBtn">Play</button></div>
+    <div class="row"><button class="btn plain" id="dinnerBtn"></button><button class="btn" id="startBtn"></button></div>
   </div>
 </div>
 
@@ -378,6 +435,16 @@ svg.wilt #cactus{transform:rotate(85deg)}
   </div>
 </div>
 
+<div class="cover" id="houseDone" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="hdTitle">
+    <h2 id="hdTitle"></h2>
+    <p id="hdText"></p>
+    <ul class="hdList" id="hdFoods"></ul>
+    <div class="row"><button class="btn plain" id="hdAgain"></button><button class="btn" id="hdDinner"></button></div>
+  </div>
+</div>
+
+<div class="helpBox" id="helpBox" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -417,6 +484,7 @@ const T = {
   winText: `You found the Ultimate Shart, the secret win! ${NAME} made it to the bathroom. Nobody saw anything.`,
   notFound: '???',
   play: 'Play it',
+  fromHouse: 'Dinner is what you found in the house.',
   snacks: 'Snacks from the fridge',
   locked: '???',
   lockedHint: 'Find {n} farts to unlock',
@@ -472,8 +540,8 @@ const ORDER = Object.keys(TYPES);
 
 // The rules, first match wins. The shart recipe is the secret (card #55): the
 // meter maxed, eggnog and mac and cheese, plus deviled eggs or Brussels sprouts.
-function whichFart() {
-  const b = belly, share = k => b[k] / Math.max(1, b.total);
+function whichFart(b = belly) {   // the house passes its own belly
+  const share = k => b[k] / Math.max(1, b.total);
   if (b.gas >= 100 && b.ate.has('eggnog') && b.ate.has('mac') && (b.ate.has('eggs') || b.ate.has('sprouts'))) return 'shart';
   if (b.gas < 35) return 'sneaky';
   if (share('sulfur') >= .4) return 'sbd';
@@ -542,6 +610,7 @@ let found = new Set();
 try { found = new Set(JSON.parse(store.get(KEY) || '[]').filter(k => TYPES[k])); } catch (e) {}
 let soundOn = store.get(SKEY) !== 'off';
 let belly, busy = false, clearT = 0;
+let mode = 'start';   // 'start', 'house' or 'dinner'
 const READY = 20;   // the finger comes out at 20%, so the Sneaky (a small one) can be found; full is the big payoff
 function emptyBelly() { belly = { gas: 0, total: 0, dairy: 0, sulfur: 0, bread: 0, sweet: 0, savory: 0, ate: new Set() }; }
 emptyBelly();
@@ -798,18 +867,28 @@ const foodBtns = FOODS.map(f => {
   (f.unlock ? $('#snacks') : $('#foods')).append(b);
   return { f, b };
 });
+// Dinner serves everything (Just dinner) or only what was found in the house.
+function startDinner(allowed) {
+  mode = 'dinner';
+  $('#house').hidden = true; $('#dinner').hidden = false;
+  for (const { f, b } of foodBtns) b.hidden = !!allowed && !allowed.has(f.id);
+  $('#snacksH').hidden = !foodBtns.some(o => o.f.unlock && !o.b.hidden);
+  $('#fromHouse').hidden = !allowed; $('#fromHouse').textContent = T.fromHouse;
+  emptyBelly(); busy = false; calm(); face('normal'); update();
+}
 $('#pullBtn').onclick = pull;
 $('#armOut').addEventListener('click', pull);
 $('#startText').textContent = T.start;
 $('#snacksH').textContent = T.snacks;
 $('#startKeys').textContent = T.keys;
-$('#startBtn').onclick = () => { audio(); $('#startCover').hidden = true; $('#foods button').focus(); };
+$('#dinnerBtn').onclick = () => { audio(); $('#startCover').hidden = true; startDinner(null); $('#foods button').focus(); };
 const soundIcon = () => { $('#soundBtn').textContent = soundOn ? T.soundOn : T.soundOff; };
 $('#soundBtn').onclick = () => { soundOn = !soundOn; store.set(SKEY, soundOn ? 'on' : 'off'); soundIcon(); };
 soundIcon();
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;   // the Menu dialog
   if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
+  if (mode === 'house') return;   // the house has its own keys
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
   if (e.key === 'f' || e.key === 'F') pull();
   else if (e.key === 'c' || e.key === 'C') showColl();
@@ -897,8 +976,607 @@ for (const im of document.querySelectorAll('#scene image[data-spr]')) {
     img.onerror = () => { URL.revokeObjectURL(url); out.hidden = true; };
     img.src = url;
   }
-  setInterval(snap, 66);   // about 15 frames a second, which suits the look
+  setInterval(() => { if (mode !== 'house') snap(); }, 66);   // about 15 frames a second, which suits the look
   snap();
 })();
+</script>
+<script>
+// ---------- the house (decided 20 Nov) ----------
+// Randi's idea after launch: a level before dinner, seen from above like Bread
+// and Math Force. The first try was six big rooms; she pictured "more hallways
+// and doors, people getting trapped in small spaces with his farts", so it's a
+// maze of halls and small rooms with doors. A fart leaves gas that spreads
+// square by square through open space and stops at walls and closed doors, so
+// it thins out in a big room and builds up in a shut pantry. People and pets
+// walk their own rounds and never open a closed door, so shutting Dad in the
+// pantry with a fart traps him. Her other idea: leave one in the fridge, and
+// it gets Dad when he goes for his glass of milk. Standing still fills the bar
+// (it's the "mana"); a full bar means a run for the bathroom. The dining room
+// door at the far end of the halls leads to dinner, which serves only the food
+// he picked up. On a phone the house fills the screen with the bar and buttons
+// floating over it, like Mission Directive (her ask: no wasted space).
+Object.assign(T, {
+  start: `Walk ${NAME} through the house. Grab the food and fart where people and pets will smell it. Gas spreads through open rooms and stops at closed doors, so trap them in small spaces! A full bar means a run for the bathroom. Then it's dinner: feed him what you found and pull his finger.`,
+  keys: 'Keyboard: arrows to walk, Space or F to fart, E to open or close a door. At dinner: Tab to a food, Enter to eat, F pulls his finger.',
+  playHouse: 'Play the house', justDinner: 'Just dinner',
+  barLabel: 'Fart bar', fart: 'Fart', open: 'Open', close: 'Close', use: 'Use',
+  barWords: ['Empty', 'Rumbling', 'Ready', 'Full!'],
+  score: 'Score {n}', food: 'Food {n}',
+  houseHint: 'Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door or fridge next to you. Fill the bar all the way and run for the bathroom. The glowing door at the end of the hall goes to dinner.',
+  intro: 'Find the food. Trap them with your farts!',
+  got: 'Got the {food}!',
+  empty: 'Nothing left in the tank.',
+  knock: { plant: 'The plant wilted!', dog: 'The dog passed out!', cat: 'The cat fainted!', tank: 'The fish played dead!', person: `${NAME.toUpperCase()}!!` },
+  trapped: 'Trapped in the {room}!',
+  sniff: '{who} sniffed.',
+  who: { plant: 'The plant', dog: 'The dog', cat: 'The cat', tank: 'The fish', grandma: 'Grandma', dad: 'Dad', kid: 'The kid' },
+  stuck: 'Who closed the door?!',
+  pts: '+{n}',
+  fridgeIn: 'You left one in the fridge...',
+  fridgeGot: 'WHO FARTED IN THE FRIDGE?!',
+  milk: 'Mmm, milk.',
+  alert: 'Shart alert! Get to the bathroom! {n}',
+  relief: 'Ahh. Made it!',
+  ohNo: 'Oh no.',
+  oops: 'I might need a change of clothes.',
+  needFood: 'Grab some food first!',
+  doneTitle: 'Dinner time!',
+  doneText: 'Score {score}. You knocked out {dust} of {all}. Best score {best}.',
+  doneNone: 'You brought:',
+  again: 'Play the house again', toDinner: 'Go to dinner',
+  rooms: { northHall: 'Hallway', westHall: 'Hallway', eastHall: 'Hallway', mainHall: 'Hallway', living: 'Living room', kitchen: 'Kitchen',
+    pantry: 'Pantry', laundry: 'Laundry room', bath: 'Bathroom', den: 'Den', bedroom: 'Bedroom', kidroom: "Kid's room", closet: 'Coat closet', entry: 'Front hall' },
+});
+
+const HOUSE = (() => {
+  const TS = 16, MW = 48, MH = 30;
+  const cv = $('#hc'), cx = cv.getContext('2d');
+  let VW = 256, VH = 144;
+  // The canvas covers the screen at a whole-number scale (sharp pixels); a
+  // phone held upright sees more house up and down, sideways more across.
+  function fitView() {
+    const w = innerWidth, h = innerHeight, k = Math.max(2, Math.floor(Math.min(w, h) / 190));
+    VW = Math.ceil(w / k); VH = Math.ceil(h / k);
+    if (cv.width !== VW || cv.height !== VH) { cv.width = VW; cv.height = VH; }
+    cv.style.width = VW * k + 'px'; cv.style.height = VH * k + 'px';
+    cx.imageSmoothingEnabled = false;
+  }
+  addEventListener('resize', () => { if (mode === 'house') fitView(); });
+
+  // ---- the map: walls everywhere, rooms carved out, doors, then furniture ----
+  const map = Array.from({ length: MH }, () => Array(MW).fill('#'));
+  const put = (x, y, w, h, c) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) map[j][i] = c; };
+  const ROOMS = {
+    northHall: [4, 2, 28, 2, '='], westHall: [4, 4, 2, 14, '='], eastHall: [30, 4, 2, 14, '='], mainHall: [4, 18, 40, 2, '='],
+    living: [7, 6, 12, 10, '_'], kitchen: [20, 6, 9, 8, ','], pantry: [20, 15, 4, 2, '.'],
+    laundry: [33, 5, 5, 4, ','], bath: [33, 11, 5, 5, ','],
+    den: [7, 21, 11, 7, '.'], bedroom: [20, 21, 9, 7, '-'], kidroom: [31, 21, 5, 5, '.'], closet: [38, 21, 2, 2, '.'], entry: [41, 21, 6, 8, '.'],
+  };
+  for (const k in ROOMS) put(...ROOMS[k]);
+  put(19, 9, 1, 2, '.'); put(42, 20, 2, 1, '.'); put(18, 24, 2, 1, '.');        // open archways
+  const DOORS = [[6, 10], [29, 11], [21, 14], [32, 6], [32, 13], [12, 20], [24, 20], [33, 20], [38, 20]];
+  for (const [x, y] of DOORS) map[y][x] = 'd';                                   // d open, D closed
+  put(3, 2, 1, 2, 'X');                                                          // the dining room door
+  put(43, 29, 2, 1, 'O');                                                        // the front door
+  put(8, 6, 4, 1, 'V'); put(15, 6, 3, 1, 'H'); put(9, 9, 3, 1, 'T'); put(8, 12, 5, 2, 'C'); put(16, 13, 2, 2, 'C');
+  put(20, 6, 7, 1, 'K'); put(22, 6, 2, 1, 'S'); put(27, 6, 2, 1, 'F'); put(22, 9, 4, 2, 'K');
+  put(20, 16, 4, 1, 'H');
+  put(33, 5, 2, 1, 'L');
+  put(36, 11, 1, 1, 'W'); put(34, 11, 1, 1, 'k'); put(33, 14, 3, 2, 'B');
+  put(8, 25, 4, 2, 'C'); put(14, 21, 3, 1, 'T'); put(8, 21, 3, 1, 'H');
+  put(21, 21, 3, 4, 'E'); put(26, 21, 3, 1, 'T');
+  put(34, 21, 2, 3, 'E'); put(31, 25, 2, 1, 'T');
+  put(38, 21, 2, 1, 'H');
+  put(41, 21, 1, 1, 'H'); put(45, 25, 2, 1, 'T');
+  const SOLID = '#VHTCKSFWkBOLED';          // what you can't walk through ('D' is a closed door)
+  const AIRTIGHT = '#DFO';                   // what gas can't pass (furniture lets it over)
+  const roomAt = (i, j) => { for (const k in ROOMS) { const [x, y, w, h] = ROOMS[k]; if (i >= x && i < x + w && j >= y && j < y + h) return k; } return null; };
+  const at = (i, j) => (i < 0 || j < 0 || i >= MW || j >= MH) ? '#' : map[j][i];
+
+  // ---- painting the map once (doors and the fridge are drawn every frame) ----
+  const mapCan = document.createElement('canvas'); mapCan.width = MW * TS; mapCan.height = MH * TS;
+  const m = mapCan.getContext('2d');
+  const R = (x, y, w, h, c) => { m.fillStyle = c; m.fillRect(x, y, w, h); };
+  function floor(i, j) {
+    const x = i * TS, y = j * TS, room = roomAt(i, j), f = room ? ROOMS[room][4] : '.';
+    if (f === '_' || f === '-') {
+      const a1 = f === '_' ? '#8a4a4e' : '#4a5a8a', a2 = f === '_' ? '#97585b' : '#5a6a9a';
+      R(x, y, TS, TS, a1); for (let a = 0; a < TS; a += 2) for (let b = (a / 2) % 2 * 2; b < TS; b += 4) R(x + b, y + a, 1, 1, a2);
+    } else if (f === ',') {
+      R(x, y, TS, TS, room === 'bath' ? '#cfe3e8' : room === 'laundry' ? '#d8d0e0' : '#ddd6c8');
+      R(x, y, TS, 1, '#b9b0a0'); R(x, y, 1, TS, '#b9b0a0'); R(x + 8, y, 1, TS, '#c9c0b0'); R(x, y + 8, TS, 1, '#c9c0b0');
+    } else {
+      const hall = f === '=';
+      R(x, y, TS, TS, hall ? '#c08a56' : '#b07a48');
+      for (let a = 3; a < TS; a += 4) R(x, y + a, TS, 1, hall ? '#a47040' : '#946238');
+      R(x + ((i * 7 + j * 3) % 12), y, 1, 4, '#946238'); R(x + ((i * 5 + j * 11) % 12) + 2, y + 8, 1, 4, '#946238');
+    }
+  }
+  for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
+    const t = map[j][i], x = i * TS, y = j * TS;
+    if (t === '#') {
+      R(x, y, TS, TS, '#5a3a24');
+      const below = at(i, j + 1);
+      if (below !== '#') { R(x, y + 4, TS, 12, '#e2c896'); R(x, y + 4, TS, 1, '#f2dcb0'); for (let a = 2; a < TS; a += 5) R(x + a, y + 6, 1, 8, '#d4b882'); R(x, y + 13, TS, 3, '#7a4a2a'); }
+      continue;
+    }
+    floor(i, j);
+    if (t === 'X') { R(x, y, TS, TS, '#f6d68a'); R(x, y, TS, 2, '#7a4522'); R(x, y + 14, TS, 2, '#7a4522'); if (j === 2) R(x + 4, y + 8, 8, 8, '#f9e4a8'); else R(x + 4, y, 8, 8, '#f9e4a8'); }
+    else if (t === 'O') { R(x, y, TS, TS, '#7a4522'); R(x + 2, y + 2, 12, 12, '#8a5228'); R(x + 5, y + 4, 6, 4, '#a8d8f0'); if (i === 44) R(x + 1, y + 9, 2, 2, '#e8c35a'); }
+    else if (t === 'V') { R(x, y + 2, TS, 12, '#1d1a22'); R(x + 1, y + 3, 14, 9, '#2a3a5a'); R(x + 2, y + 8, 12, 4, '#3f8f3a'); R(x + 2, y + 4, 4, 1, '#6a8ac8'); }
+    else if (t === 'H') { R(x, y, TS, 14, '#6b3f22'); const cs = ['#c2304a', '#3a6ea5', '#d9a420', '#3f8f3a', '#7d4fa0']; for (let a = 1; a < 15; a += 3) R(x + a, y + 2, 2, 10, cs[(a + i + j) % 5]); R(x, y + 14, TS, 2, '#4a2c16'); }
+    else if (t === 'T') { R(x, y + 1, TS, 12, '#8a5228'); R(x, y + 1, TS, 2, '#a8693a'); R(x, y + 13, TS, 2, '#5a3418'); }
+    else if (t === 'C') { const d = roomAt(i, j) === 'den'; R(x, y, TS, TS, d ? '#8a4a3a' : '#4f7a4a'); R(x + 1, y + 3, 14, 11, d ? '#a85a48' : '#6a9a5a'); R(x + 8, y + 3, 1, 11, d ? '#8a4a3a' : '#4f7a4a'); }
+    else if (t === 'K') { R(x, y, TS, 15, '#6e665a'); R(x, y, TS, 11, '#b8ad98'); R(x, y, TS, 2, '#cfc4ae'); R(x, y + 11, TS, 1, '#8a8070'); }
+    else if (t === 'k') { R(x, y, TS, 14, '#e4e0d6'); R(x + 3, y + 3, 10, 7, '#f8f8f8'); R(x + 4, y + 4, 8, 5, '#b8d8e8'); }
+    else if (t === 'S') { R(x, y, TS, 14, '#2a2a30'); for (const [a, b] of [[2, 2], [9, 2], [2, 8], [9, 8]]) R(x + a, y + b, 5, 4, '#5a2a22'); }
+    else if (t === 'L') { R(x, y, TS, 15, '#f0f0ec'); R(x + 3, y + 4, 10, 9, '#9aa8b0'); R(x + 5, y + 6, 6, 5, '#c8dce8'); R(x + 2, y + 1, 4, 2, '#7a8a94'); }
+    else if (t === 'W') { R(x + 3, y, 10, 5, '#f4f4f0'); R(x + 4, y + 5, 8, 9, '#f4f4f0'); R(x + 5, y + 6, 6, 6, '#b8d8e8'); }
+    else if (t === 'B') { R(x, y, TS, TS, '#f4f4f0'); const top = at(i, j - 1) !== 'B', bot = at(i, j + 1) !== 'B', l = at(i - 1, j) !== 'B', r = at(i + 1, j) !== 'B';
+      R(x + (l ? 3 : 0), y + (top ? 3 : 0), TS - (l ? 3 : 0) - (r ? 3 : 0), TS - (top ? 3 : 0) - (bot ? 3 : 0), '#8fd3f5'); }
+    else if (t === 'E') { const top = at(i, j - 1) !== 'E'; R(x, y, TS, TS, '#f4ece0'); R(x, y + (top ? 6 : 0), TS, TS - (top ? 6 : 0), roomAt(i, j) === 'kidroom' ? '#3a8ac8' : '#c2304a');
+      if (top) R(x + 3, y + 1, 10, 4, '#ffffff'); R(x + (at(i - 1, j) === 'E' ? 0 : 0), y, 1, TS, '#8a5228'); }
+  }
+
+  // ---- sprites, with a one-pixel dark outline like the dinner scene ----
+  const cache = {};
+  function sprite(key, w, h, draw) {
+    if (cache[key]) return cache[key];
+    const c = document.createElement('canvas'); c.width = w + 2; c.height = h + 2;
+    const x = c.getContext('2d'); x.translate(1, 1);
+    draw((a, b, cw, ch, col) => { x.fillStyle = col; x.fillRect(a, b, cw, ch); });
+    const d = x.getImageData(0, 0, c.width, c.height), p = d.data, W2 = c.width, H2 = c.height, out = [];
+    for (let j = 0; j < H2; j++) for (let i = 0; i < W2; i++) {
+      if (p[(j * W2 + i) * 4 + 3]) continue;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([u, v]) => { const a = i + u, b = j + v; return a >= 0 && b >= 0 && a < W2 && b < H2 && p[(b * W2 + a) * 4 + 3] > 128; })) out.push(j * W2 + i);
+    }
+    for (const k of out) { p[k * 4] = 42; p[k * 4 + 1] = 26; p[k * 4 + 2] = 14; p[k * 4 + 3] = 255; }
+    x.setTransform(1, 0, 0, 1, 0, 0); x.putImageData(d, 0, 0);
+    return (cache[key] = c);
+  }
+  // him from above: lean face, tousled brown hair, mustache and goatee, tan
+  // bib overalls over the charcoal shirt (the same look as at dinner)
+  const SK = '#e2a978', HR = '#5a3a22', HL = '#8a5a32', BD = '#7a4a2a', SH = '#3d3d45', OV = '#b07a3a', OD = '#9c6a30', BT = '#4a3020', K = '#2a1a0e';
+  function himSprite(dir, step, frozen) {
+    const side = dir === 'left' || dir === 'right';
+    const base = sprite(`him-${side ? 'side' : dir}-${step}-${frozen ? 1 : 0}`, 14, 20, r => {
+      const lift = step === 1 ? [1, 0] : step === 2 ? [0, 1] : [0, 0];
+      if (side) {
+        const f = step === 1 ? -1 : step === 2 ? 1 : 0;
+        r(5 + f, 14, 3, 4, OV); r(7 - f, 14, 3, 4, OD); r(4 + f, 18, 4, 2, BT); r(7 - f, 18, 4, 2, BT);
+        r(4, 8, 7, 7, SH); r(5, 9, 5, 6, OV); r(6, 8, 1, 2, OD); r(6, 9, 2, 5, SH); r(6, 14, 2, 1, SK);
+        r(3, 1, 8, 7, SK); r(3, 0, 8, 3, HR); r(4, 0, 3, 1, HL); r(7, 3, 4, 3, HR); r(2, 4, 1, 2, SK);
+        r(4, 3, 1, 1, K); r(3, 5, 3, 1, BD); r(3, 6, 2, 1, '#ffffff'); r(4, 7, 2, 1, BD);
+        return;
+      }
+      r(3, 14 + lift[0], 3, 4 - lift[0], OV); r(8, 14 + lift[1], 3, 4 - lift[1], OV);
+      r(2, 18 - lift[0], 4, 2, BT); r(8, 18 - lift[1], 4, 2, BT);
+      r(2, 8, 10, 7, SH); r(4, 9, 6, 6, OV); r(4, 8, 1, 2, OD); r(9, 8, 1, 2, OD); r(4, 11, 6, 1, OD);
+      r(2, 14, 2, 1, SK); r(10, 14, 2, 1, SK);
+      r(3, 1, 8, 7, SK);
+      if (dir === 'up') { r(3, 0, 8, 7, HR); r(5, 0, 3, 1, HL); r(6, 7, 2, 1, SK); r(4, 9, 1, 3, OD); r(9, 9, 1, 3, OD); return; }
+      r(3, 0, 8, 3, HR); r(5, 0, 3, 1, HL); r(3, 3, 1, 2, HR); r(10, 3, 1, 2, HR); r(8, 2, 2, 1, HR);
+      if (frozen) { r(4, 3, 2, 2, '#ffffff'); r(8, 3, 2, 2, '#ffffff'); r(5, 4, 1, 1, K); r(8, 4, 1, 1, K); r(6, 6, 2, 2, '#5a2318'); }
+      else { r(5, 4, 1, 1, K); r(8, 4, 1, 1, K); r(5, 5, 4, 1, BD); r(6, 6, 2, 1, '#ffffff'); r(6, 7, 2, 1, BD); }
+    });
+    if (dir !== 'right') return base;
+    const key = `him-right-${step}`;
+    if (!cache[key]) { const c = document.createElement('canvas'); c.width = base.width; c.height = base.height; const x = c.getContext('2d'); x.scale(-1, 1); x.drawImage(base, -base.width, 0); cache[key] = c; }
+    return cache[key];
+  }
+  const GR = '#3f8f3a', GL = '#6cbf3f', BR = '#8a6a3a';
+  function targetSprite(t, time) {
+    const out = t.out, k = t.kind;
+    if (k === 'plant') return sprite(`plant-${out}`, 16, 16, r => {
+      if (out) { r(2, 7, 5, 3, BR); r(9, 7, 5, 3, BR); r(6, 5, 4, 5, '#a07a48'); }
+      else { r(3, 2, 4, 6, GR); r(9, 1, 4, 7, GR); r(6, 0, 4, 9, GL); r(4, 4, 2, 2, GL); r(10, 3, 2, 2, GL); }
+      r(4, 10, 8, 2, '#d97a4a'); r(5, 12, 6, 4, '#c2643a');
+    });
+    if (k === 'dog') return sprite(`dog-${out}`, 17, 14, r => {
+      r(0, 6, 3, 2, '#b87333'); r(2, 5, 10, 7, '#b87333'); r(4, 7, 6, 4, '#c98a4a');
+      r(11, 3, 6, 7, '#c98544'); r(11, 2, 2, 4, '#7a4a20'); r(15, 6, 2, 3, '#f0d2a8'); r(16, 6, 1, 1, K); r(10, 4, 1, 6, '#c2304a');
+      if (out) { r(13, 3, 1, 1, K); r(15, 3, 1, 1, K); r(14, 4, 1, 1, K); r(13, 5, 1, 1, K); r(15, 5, 1, 1, K); r(4, 2, 1, 3, '#a8652a'); r(8, 2, 1, 3, '#a8652a'); }
+      else { r(14, 4, 1, 1, K); r(4, 12, 2, 2, '#a8652a'); r(9, 12, 2, 2, '#a8652a'); }
+    });
+    if (k === 'cat') return sprite(`cat-${out}`, 15, 14, r => {
+      if (out) { r(4, 8, 11, 5, '#2b2b33'); r(0, 6, 6, 6, '#2b2b33'); r(1, 8, 1, 1, '#f5d34a'); r(3, 8, 1, 1, '#f5d34a'); r(13, 6, 2, 2, '#2b2b33'); return; }
+      r(4, 6, 8, 8, '#2b2b33'); r(5, 1, 6, 6, '#2b2b33'); r(5, 0, 1, 1, '#2b2b33'); r(10, 0, 1, 1, '#2b2b33');
+      r(6, 3, 1, 1, '#f5d34a'); r(9, 3, 1, 1, '#f5d34a'); r(7, 5, 2, 1, '#f27d92'); r(12, 10, 3, 2, '#2b2b33'); r(6, 7, 4, 4, '#3a3a44');
+    });
+    if (k === 'tank') return sprite(`tank-${out}`, 18, 12, r => {
+      r(0, 0, 18, 12, '#3a2414'); r(1, 1, 16, 10, '#8fd3f5'); r(1, 9, 16, 2, '#c9a26a'); r(3, 5, 1, 4, GR);
+      if (out) { r(8, 1, 5, 2, '#f4ece0'); r(8, 3, 5, 1, '#f08a1e'); }
+      else { r(8, 4, 4, 3, '#f08a1e'); r(6, 4, 2, 3, '#d96a10'); r(11, 5, 1, 1, K); }
+    });
+    const fan = out && Math.floor(time * 6) % 2, w = t.walk ? Math.floor(time * 6) % 2 : 0;
+    return sprite(`p-${t.who}-${out}-${fan}-${w}`, 16, 18, r => {
+      const skin = out ? '#b8c890' : t.skin;
+      r(2, 8, 12, 8, t.shirt); r(5, 1, 6, 7, skin); r(5, 0, 6, 3, t.hair); r(5, 3, 1, 2, t.hair); r(10, 3, 1, 2, t.hair);
+      r(6, 4, 1, 1, K); r(9, 4, 1, 1, K);
+      if (out) { r(7, 5, 2, 2, t.skin); r(13, fan ? 1 : 3, 2, 6, t.shirt); r(13, fan ? 0 : 2, 3, 2, t.skin); }
+      else r(7, 6, 2, 1, '#7a2e22');
+      r(4, 16 - w, 3, 2, '#3a3a4a'); r(9, 16 - (1 - w) * (t.walk ? 1 : 0), 3, 2, '#3a3a4a');
+    });
+  }
+  const foodImg = {};
+  for (const f of FOODS) { const im = new Image(); im.src = spriteURL(f.id); foodImg[f.id] = im; }
+
+  // ---- who and what is in the house ----
+  // need: how much gas (gas x seconds) knocks them out. route: tile spots they
+  // walk between, with a pause at each; milk marks Dad's trip to the fridge.
+  const TARGETS = [
+    { kind: 'plant', x: 17.5, y: 7.6, need: 12 }, { kind: 'plant', x: 16.5, y: 2.7, need: 12 },
+    { kind: 'plant', x: 27.5, y: 26.6, need: 12 }, { kind: 'plant', x: 45.5, y: 27.6, need: 12 },
+    { kind: 'cat', x: 36.5, y: 7.6, need: 22 }, { kind: 'tank', x: 15.5, y: 21.5, need: 18 },
+    { kind: 'dog', x: 12.5, y: 24.6, need: 26, route: [[12.5, 24.5], [24.5, 26.5], [16.5, 19], [36.5, 19]], pause: 4 },
+    { kind: 'person', who: 'grandma', x: 17, y: 14.9, need: 34, hair: '#c9c9c9', shirt: '#7d4fa0', skin: '#f0c9a0' },
+    { kind: 'person', who: 'dad', x: 24.5, y: 12.6, need: 34, hair: '#8a4b22', shirt: '#3a6ea5', skin: '#e9b88f',
+      route: [[27.5, 7.5, 'milk'], [21.5, 15.6], [11.5, 10.6], [24.5, 12.6], [21.5, 15.6]], pause: 5 },
+    { kind: 'person', who: 'kid', x: 32.5, y: 23.6, need: 28, hair: '#2a1a10', shirt: '#3f8f5a', skin: '#c68a5e',
+      route: [[32.5, 23.6], [38.5, 22.6], [10.5, 23.6], [35.5, 7.6], [32.5, 23.6]], pause: 4 },
+  ];
+  const FOOD_AT = { turkey: [24.5, 12.5], mac: [21.5, 7.5], eggnog: [27.5, 8.5], eggs: [26.5, 12.5], gravy: [20.5, 12.5], mash: [27.5, 11.5],
+    casserole: [25.5, 7.5], stuffing: [22.5, 15.5], rolls: [20.5, 15.5], cranberry: [44.5, 23.5], sweetpot: [13.5, 23.5], corn: [4.5, 10.5],
+    sprouts: [35.5, 12.5], pie: [25.5, 25.5], pizzabites: [10.5, 11.5], bagel: [33.5, 23.5], sardines: [34.5, 7.5], creamblock: [38.5, 22.5] };
+
+  let G = null, keys = {}, stick = { x: 0, y: 0 }, hold = null, last = 0, msgT = 0, raf = 0, gasT = 0;
+  const gas = new Float32Array(MW * MH), gas2 = new Float32Array(MW * MH);
+  const newBelly = () => ({ gas: 0, total: 0, dairy: 0, sulfur: 0, bread: 0, sweet: 0, savory: 0, ate: new Set() });
+  function start() {
+    for (const [x, y] of DOORS) map[y][x] = 'd';
+    gas.fill(0);
+    G = {
+      x: 43.5 * TS, y: 28 * TS + 10, dir: 'up', step: 0, stepT: 0, moving: false, room: '',
+      b: newBelly(), score: 0, dusts: 0, got: new Set(), puffs: [], pops: [],
+      alert: 0, frozen: 0, needMsgT: 0, time: 0, fridgeOpen: 0, fridgeGas: 0,
+      targets: TARGETS.map(t => ({ ...t, out: false, sniffed: false, dose: 0, leg: 0, wait: 2, path: null, stuckT: 0 })),
+      foods: FOODS.filter(f => !locked(f) && FOOD_AT[f.id]).map(f => ({ f, x: FOOD_AT[f.id][0] * TS, y: FOOD_AT[f.id][1] * TS })),
+    };
+    mode = 'house';
+    document.body.classList.add('housePlay');
+    $('#dinner').hidden = true; $('#house').hidden = false; fitView();
+    say(T.intro, 3500);
+    hud();
+    cancelAnimationFrame(raf); last = performance.now(); raf = requestAnimationFrame(frame);
+  }
+
+  function say(text, ms = 2200, alert = false) {
+    const el = $('#hMsg'); el.textContent = text; el.hidden = false; el.classList.toggle('alert', alert);
+    $('#live').textContent = text; msgT = ms;
+  }
+  function hud() {
+    const g = Math.round(G.b.gas);
+    $('#hFill').style.width = g + '%';
+    const w = g >= 100 ? 3 : g >= 50 ? 2 : g >= 15 ? 1 : 0;
+    $('#hWord').textContent = T.barWords[w];
+    $('#hMeter').setAttribute('aria-valuenow', g); $('#hMeter').setAttribute('aria-valuetext', `${g}%, ${T.barWords[w]}`);
+    $('#hScore').textContent = fill(T.score, { n: G.score });
+    $('#hFood').textContent = fill(T.food, { n: G.got.size });
+    $('#hRoom').textContent = T.rooms[G.room] || '';
+    const u = useTarget();
+    $('#hUse').disabled = !u;
+    $('#hUse').textContent = !u ? T.use : u.kind === 'door' ? (map[u.y][u.x] === 'D' ? T.open : T.close) : (G.fridgeOpen > 0 ? T.close : T.open);
+  }
+
+  // ---- moving ----
+  const solidT = (i, j) => SOLID.includes(at(i, j));
+  const solidAt = (px, py) => solidT(Math.floor(px / TS), Math.floor(py / TS));
+  const corners = (x, y) => [[x - 5, y - 6], [x + 5, y - 6], [x - 5, y - 1], [x + 5, y - 1]];
+  const blocked = (x, y) => corners(x, y).some(([a, b]) => solidAt(a, b));
+  function bumpDoor(x, y) {   // walking into a closed door opens it
+    for (const [a, b] of corners(x, y)) { const i = Math.floor(a / TS), j = Math.floor(b / TS); if (at(i, j) === 'D') { map[j][i] = 'd'; return; } }
+  }
+  const inRoom = (name, px, py) => { const [x, y, w, h] = ROOMS[name], i = px / TS, j = py / TS; return i >= x && i < x + w && j >= y && j < y + h; };
+
+  // ---- the gas: spreads to open neighbours, stopped by walls and closed doors ----
+  const airtight = k => AIRTIGHT.includes(map[Math.floor(k / MW)][k % MW]);
+  function stepGas() {
+    for (let k = 0; k < MW * MH; k++) {
+      if (airtight(k)) { gas2[k] = 0; continue; }
+      let sum = 0, n = 0;
+      for (const d of [-1, 1, -MW, MW]) { const q = k + d; if (q >= 0 && q < MW * MH && !airtight(q) && Math.abs((q % MW) - (k % MW)) <= 1) { sum += gas[q]; n++; } }
+      gas2[k] = (gas[k] + .2 * (sum - n * gas[k])) * .9975;
+    }
+    gas.set(gas2);
+  }
+  const gasAt = (px, py) => { const i = Math.floor(px / TS), j = Math.floor(py / TS); return i < 0 || j < 0 || i >= MW || j >= MH ? 0 : gas[j * MW + i]; };
+  function addGas(px, py, amount) {
+    const i = Math.floor(px / TS), j = Math.floor(py / TS);
+    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const k = (j + b) * MW + i + a; if (k >= 0 && k < MW * MH && !airtight(k)) gas[k] += amount * (a || b ? .07 : .44); }
+  }
+  // the room around a tile, as far as gas can go, and whether a closed door shuts it
+  function pocket(i, j) {
+    const seen = new Set([j * MW + i]), q = [j * MW + i]; let door = false;
+    while (q.length && seen.size < 60) {
+      const k = q.shift();
+      for (const d of [-1, 1, -MW, MW]) { const n = k + d, c = map[Math.floor(n / MW)][n % MW]; if (seen.has(n)) continue; if (c === 'D') { door = true; continue; } if (AIRTIGHT.includes(c)) continue; seen.add(n); q.push(n); }
+    }
+    return seen.size < 60 && door;
+  }
+
+  // ---- walking people and pets: shortest path over open floor ----
+  function path(from, to) {
+    const s = from[1] * MW + from[0], e = to[1] * MW + to[0], prev = new Map([[s, -1]]), q = [s];
+    while (q.length) {
+      const k = q.shift(); if (k === e) break;
+      for (const d of [-1, 1, -MW, MW]) { const n = k + d; if (prev.has(n) || n < 0 || n >= MW * MH || Math.abs((n % MW) - (k % MW)) > 1) continue; if (solidT(n % MW, Math.floor(n / MW))) continue; prev.set(n, k); q.push(n); }
+    }
+    if (!prev.has(e)) return null;
+    const out = []; for (let k = e; k !== s; k = prev.get(k)) out.unshift([(k % MW) + .5, Math.floor(k / MW) + .6]);
+    return out;
+  }
+  function walkTarget(t, dt) {
+    t.walk = false;
+    if (!t.route || t.out) return;
+    if (t.wait > 0) { t.wait -= dt; return; }
+    if (!t.path) {
+      const goal = t.route[t.leg % t.route.length];
+      t.path = path([Math.floor(t.x), Math.floor(t.y - .2)], [Math.floor(goal[0]), Math.floor(goal[1])]);
+      if (!t.path) {   // a closed door in the way: they don't open doors
+        t.stuckT += dt;
+        if (t.kind === 'person' && t.stuckT > .1 && t.stuckT < .2 && Math.hypot(t.x * TS - G.x, t.y * TS - G.y) < 160) say(T.stuck);
+        if (t.stuckT > 5) { t.leg++; t.stuckT = 0; }
+        t.wait = .5; return;
+      }
+      t.stuckT = 0;
+    }
+    if (!t.path.length) { const goal = t.route[t.leg % t.route.length]; t.path = null; t.leg++; t.wait = t.pause; if (goal[2] === 'milk') milk(t); return; }
+    const [nx, ny] = t.path[0];
+    if (solidT(Math.floor(nx), Math.floor(ny - .2))) { t.path = null; return; }   // a door shut in front of them
+    const dx = nx - t.x, dy = ny - t.y, d = Math.hypot(dx, dy), sp = 1.7 * dt;
+    if (d <= sp) { t.x = nx; t.y = ny; t.path.shift(); } else { t.x += dx / d * sp; t.y += dy / d * sp; }
+    t.walk = true;
+  }
+  function milk(dad) {
+    G.fridgeOpen = 2.5;
+    if (G.fridgeGas >= 20) { G.fridgeGas = 0; knock(dad, 300, T.fridgeGot); }
+    else if (Math.hypot(dad.x * TS - G.x, dad.y * TS - G.y) < 160) say(T.milk);
+  }
+  function knock(t, pts, line) {
+    t.out = true; t.walk = false; G.dusts++;
+    const trapped = pocket(Math.floor(t.x), Math.floor(t.y - .2));
+    const room = roomAt(Math.floor(t.x), Math.floor(t.y - .2));
+    if (trapped) pts *= 2;
+    G.score += pts;
+    say(line || (trapped ? fill(T.trapped, { room: (T.rooms[room] || '').toLowerCase() }) + ' ' + T.knock[t.kind] : T.knock[t.kind]));
+    pop(t.x * TS, t.y * TS - 20, fill(T.pts, { n: pts }));
+  }
+
+  function step(dt) {
+    G.time += dt;
+    if (msgT > 0 && !G.alert) { msgT -= dt * 1000; if (msgT <= 0) $('#hMsg').hidden = true; }
+    let dx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0) + stick.x;
+    let dy = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0) + stick.y;
+    if (hold) { const c = cam(), hx = hold.x + c.x - G.x, hy = hold.y + c.y - (G.y - 8), d = Math.hypot(hx, hy); if (d > 4) { dx += hx / d; dy += hy / d; } }
+    const len = Math.hypot(dx, dy);
+    G.moving = len > .2 && G.frozen <= 0;
+    if (G.frozen > 0) G.frozen -= dt;
+    if (G.moving) {
+      dx /= Math.max(1, len); dy /= Math.max(1, len);
+      const sp = 66 * dt;
+      if (!blocked(G.x + dx * sp, G.y)) G.x += dx * sp; else if (dx) bumpDoor(G.x + dx * sp, G.y);
+      if (!blocked(G.x, G.y + dy * sp)) G.y += dy * sp; else if (dy) bumpDoor(G.x, G.y + dy * sp);
+      G.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      G.stepT += dt; if (G.stepT > .16) { G.stepT = 0; G.step = G.step === 1 ? 2 : 1; }
+    } else G.step = 0;
+    const room = roomAt(Math.floor(G.x / TS), Math.floor((G.y - 3) / TS));
+    if (room && room !== G.room) { G.room = room; G.roomT = 1.6; }
+    if (G.roomT > 0) G.roomT -= dt;
+
+    if (G.frozen <= 0) G.b.gas = Math.min(100, G.b.gas + (G.moving ? .6 : 3.5) * dt);
+
+    for (const fd of G.foods) {
+      if (fd.taken || Math.hypot(fd.x - G.x, fd.y - (G.y - 6)) > 11) continue;
+      fd.taken = true; G.got.add(fd.f.id); nom();
+      const add = fd.f.gas * .6; G.b.gas = Math.min(100, G.b.gas + add); G.b.total += add;
+      for (const k in fd.f.mix) G.b[k] += fd.f.mix[k] * add;
+      G.b.ate.add(fd.f.id);
+      say(fill(T.got, { food: fd.f.name.toLowerCase() }));
+    }
+
+    if (G.b.gas >= 100 && !G.alert && G.frozen <= 0) { G.alert = 10; uhoh(); }
+    if (G.alert) {
+      G.alert -= dt;
+      say(fill(T.alert, { n: Math.max(0, Math.ceil(G.alert)) }), 500, true);
+      if (G.b.gas < 100) { G.alert = 0; $('#hMsg').hidden = true; }
+      else if (G.alert <= 0) {
+        G.alert = 0; G.frozen = 2.2; G.dir = 'down'; G.b.gas = 0; G.score = Math.max(0, G.score - 150);
+        addGas(G.x, G.y - 6, 160);
+        const a = audio(); if (a) SOUNDS.shart(a.currentTime + .02);
+        say(T.ohNo, 1100); setTimeout(() => { if (mode === 'house') say(T.oops, 2200); }, 1100);
+      }
+    }
+    if (inRoom('bath', G.x, G.y - 3) && G.b.gas >= 50 && G.frozen <= 0) {
+      const pts = G.alert ? 100 : 30;
+      G.score += pts; G.alert = 0; G.b.gas = 0; flush(); say(T.relief); pop(G.x, G.y - 22, fill(T.pts, { n: pts }));
+    }
+
+    gasT += dt; while (gasT > .05) { gasT -= .05; stepGas(); }
+    if (G.fridgeOpen > 0) G.fridgeOpen -= dt;
+
+    for (const t of G.targets) {
+      walkTarget(t, dt);
+      if (t.out) continue;
+      t.dose += gasAt(t.x * TS, t.y * TS - 4) * dt;
+      if (t.dose >= t.need) knock(t, 50 + t.need * 4);
+      else if (!t.sniffed && t.dose >= t.need * .3) {
+        t.sniffed = true; G.score += 10;
+        say(fill(T.sniff, { who: T.who[t.who || t.kind] }));
+        pop(t.x * TS, t.y * TS - 20, fill(T.pts, { n: 10 }));
+      }
+    }
+    for (const p of G.puffs) p.t += dt;
+    G.puffs = G.puffs.filter(p => p.t < .7);
+    for (const p of G.pops) p.t += dt;
+    G.pops = G.pops.filter(p => p.t < 1.2);
+
+    if (at(Math.floor((G.x - 6) / TS), Math.floor((G.y - 3) / TS)) === 'X') {
+      if (G.got.size) return finish();
+      if (G.needMsgT <= 0) { say(T.needFood); G.needMsgT = 2.5; }
+    }
+    if (G.needMsgT > 0) G.needMsgT -= dt;
+    hud();
+  }
+  const pop = (x, y, text) => G.pops.push({ x, y, text, t: 0 });
+  const nearFridge = () => Math.hypot(28 * TS - G.x, 7 * TS - (G.y - 6)) < 26;
+
+  // the door or fridge Use works on: the nearest within reach
+  function useTarget() {
+    if (!G) return null;
+    if (nearFridge()) return { kind: 'fridge' };
+    let best = null, bd = 24;
+    for (const [x, y] of DOORS) { const d = Math.hypot((x + .5) * TS - G.x, (y + .5) * TS - (G.y - 6)); if (d < bd) { bd = d; best = { kind: 'door', x, y }; } }
+    return best;
+  }
+  function use() {
+    if (mode !== 'house' || !G || G.frozen > 0) return;
+    const u = useTarget(); if (!u) return;
+    if (u.kind === 'fridge') { G.fridgeOpen = G.fridgeOpen > 0 ? 0 : 6; return hud(); }
+    const open = map[u.y][u.x] === 'd';
+    if (open) {   // nobody standing in the doorway
+      const busyDoor = corners(G.x, G.y).some(([a, b]) => Math.floor(a / TS) === u.x && Math.floor(b / TS) === u.y)
+        || G.targets.some(t => Math.floor(t.x) === u.x && Math.floor(t.y - .2) === u.y);
+      if (busyDoor) return;
+      map[u.y][u.x] = 'D'; gas[u.y * MW + u.x] = 0;
+      for (const t of G.targets) t.path = null;   // everyone works out their way again
+    } else map[u.y][u.x] = 'd';
+    const a = audio(); if (a) note(a.currentTime, open ? 140 : 220, .08, 'square', .12);
+    hud();
+  }
+
+  function fart() {
+    if (mode !== 'house' || !G || G.frozen > 0) return;
+    audio();
+    const strength = G.b.gas;
+    if (strength < 12) { say(T.empty); const a = audio(); if (a) SOUNDS.sneaky(a.currentTime, .6); return; }
+    let type = whichFart({ ...G.b, gas: strength });
+    if (type === 'shart') type = 'trumpet';   // the shart only happens at dinner, or by missing the bathroom
+    const ty = TYPES[type];
+    const back = { up: [0, 4], down: [0, -12], left: [6, -6], right: [-6, -6] }[G.dir];
+    const px = G.x + back[0], py = G.y + back[1];
+    if (G.fridgeOpen > 0 && nearFridge()) { G.fridgeGas = Math.max(G.fridgeGas, strength); G.score += 20; say(T.fridgeIn); }
+    else addGas(px, py, strength * 1.3);
+    G.puffs.push({ x: px, y: py, t: 0, color: ty.color, r: 6 + strength * .12 });
+    playType(type, .45 + strength / 200);
+    G.b.gas = Math.max(0, G.b.gas - 40);
+    discover(type);
+  }
+  function flush() { const a = audio(); if (a) brap(a.currentTime, 1.1, { f: 300, wave: 'sine', tone: 0, hiss: true, noise: .5, lp: 3000, vol: .35 }); }
+  function uhoh() { const a = audio(); if (!a) return; const t = a.currentTime; note(t, 523, .18, 'square', .15); note(t + .22, 392, .3, 'square', .15); }
+
+  function finish() {
+    mode = 'done'; cancelAnimationFrame(raf);
+    let best = Math.max(+store.get('feed-the-fart:best') || 0, G.score); store.set('feed-the-fart:best', best);
+    $('#hdTitle').textContent = T.doneTitle;
+    $('#hdText').textContent = fill(T.doneText, { score: G.score, dust: G.dusts, all: G.targets.length, best }) + ' ' + T.doneNone;
+    $('#hdFoods').innerHTML = '';
+    for (const id of G.got) { const f = FOODS.find(x => x.id === id), li = document.createElement('li'); li.innerHTML = `<img src="${spriteURL(id)}" alt="${f.name}" title="${f.name}">`; $('#hdFoods').append(li); }
+    $('#houseDone').hidden = false; $('#hdDinner').focus();
+  }
+
+  // ---- drawing ----
+  // He stays a little above the middle of the screen, clear of the buttons; past
+  // the house's edge is dark (clamping the camera to the house put him under
+  // the buttons by the front door on an upright phone).
+  function cam() { return { x: Math.round(G.x - VW / 2), y: Math.round(G.y - 8 - VH * .44) }; }
+  function draw() {
+    const c = cam();
+    cx.fillStyle = '#2a1a10'; cx.fillRect(0, 0, VW, VH);
+    cx.drawImage(mapCan, -c.x, -c.y);
+    // doors and the fridge, which change
+    for (const [i, j] of DOORS) {
+      const x = i * TS - c.x, y = j * TS - c.y; if (x < -TS || y < -TS || x > VW || y > VH) continue;
+      const across = at(i - 1, j) === '#';   // walls left and right: the door runs across
+      cx.fillStyle = '#7a4522';
+      if (map[j][i] === 'D') { if (across) { cx.fillRect(x, y + 4, TS, 9); cx.fillStyle = '#9a6234'; cx.fillRect(x + 1, y + 5, TS - 2, 7); cx.fillStyle = '#e8c35a'; cx.fillRect(x + 12, y + 8, 2, 2); }
+        else { cx.fillRect(x + 3, y, 9, TS); cx.fillStyle = '#9a6234'; cx.fillRect(x + 4, y + 1, 7, TS - 2); cx.fillStyle = '#e8c35a'; cx.fillRect(x + 7, y + 12, 2, 2); } }
+      else if (across) cx.fillRect(x, y - 10, 3, 14); else cx.fillRect(x - 10, y, 14, 3);
+    }
+    { const x = 27 * TS - c.x, y = 6 * TS - c.y;
+      cx.fillStyle = '#f0f0ec'; cx.fillRect(x, y, 32, 15); cx.fillStyle = '#b8b8b0'; cx.fillRect(x, y + 13, 32, 2); cx.fillStyle = '#9a9a9a'; cx.fillRect(x + 28, y + 3, 2, 8);
+      if (G.fridgeOpen > 0) { cx.fillStyle = '#fff8c8'; cx.fillRect(x + 2, y + 2, 28, 11); cx.fillStyle = '#c8d8e0'; cx.fillRect(x + 2, y + 7, 28, 1); cx.fillStyle = '#ffffff'; cx.fillRect(x + 5, y + 3, 4, 4); cx.fillStyle = '#3a6ea5'; cx.fillRect(x + 5, y + 3, 4, 1); cx.fillStyle = '#f0f0ec'; cx.fillRect(x + 30, y + 14, 4, 12); }
+      if (G.fridgeGas > 0) { cx.globalAlpha = .5 + .2 * Math.sin(G.time * 5); cx.fillStyle = '#9fc93a'; cx.fillRect(x + 12, y - 4, 2, 2); cx.fillRect(x + 18, y - 7, 2, 2); cx.globalAlpha = 1; } }
+    const items = [];
+    for (const fd of G.foods) if (!fd.taken) items.push({ y: fd.y, d: () => { const b = Math.round(Math.sin(G.time * 4 + fd.x) * 1.5); cx.drawImage(foodImg[fd.f.id], Math.round(fd.x - 8 - c.x), Math.round(fd.y - 12 - c.y + b)); } });
+    for (const t of G.targets) items.push({ y: t.y * TS, d: () => { const s = targetSprite(t, G.time); cx.drawImage(s, Math.round(t.x * TS - s.width / 2 - c.x), Math.round(t.y * TS - s.height - c.y + 2));
+      if (t.out && (t.kind === 'dog' || t.kind === 'cat' || t.kind === 'person')) { cx.fillStyle = '#fff'; cx.font = '8px "Press Start 2P", monospace'; cx.fillText('z', Math.round(t.x * TS + 6 - c.x), Math.round(t.y * TS - 16 - c.y - (G.time * 6 % 6))); } } });
+    items.push({ y: G.y, d: () => { const s = himSprite(G.frozen > 0 ? 'down' : G.dir, G.step, G.frozen > 0); cx.fillStyle = 'rgba(0,0,0,.2)'; cx.fillRect(Math.round(G.x - 6 - c.x), Math.round(G.y - 2 - c.y), 12, 3); cx.drawImage(s, Math.round(G.x - s.width / 2 - c.x), Math.round(G.y - s.height + 1 - c.y)); } });
+    items.sort((a, b) => a.y - b.y).forEach(i => i.d());
+    // the gas: a green haze per square, thicker where there's more, in 2 x 2 dither
+    const i0 = Math.max(0, Math.floor(c.x / TS)), j0 = Math.max(0, Math.floor(c.y / TS));
+    cx.fillStyle = '#9fc93a';
+    for (let j = j0; j <= j0 + Math.ceil(VH / TS) && j < MH; j++) for (let i = i0; i <= i0 + Math.ceil(VW / TS) && i < MW; i++) {
+      const g = gas[j * MW + i]; if (g < .25) continue;
+      const a = Math.min(.66, g / 8), x = i * TS - c.x, y = j * TS - c.y;
+      cx.globalAlpha = a; cx.fillRect(x, y, TS, TS);
+      if (a > .25) { cx.globalAlpha = a * .5; cx.fillStyle = '#d4e870'; for (let v = 0; v < TS; v += 4) for (let u = (v / 4 + i + j) % 2 * 2; u < TS; u += 4) cx.fillRect(x + u, y + v, 2, 2); cx.fillStyle = '#9fc93a'; }
+    }
+    cx.globalAlpha = 1;
+    for (const p of G.puffs) { cx.globalAlpha = .7 * (1 - p.t / .7); cx.fillStyle = p.color; cx.beginPath(); cx.arc(Math.round(p.x - c.x), Math.round(p.y - c.y), p.r * (.5 + p.t), 0, 7); cx.fill(); }
+    cx.globalAlpha = 1;
+    cx.font = '8px "Press Start 2P", monospace'; cx.textAlign = 'center';
+    for (const p of G.pops) { cx.fillStyle = '#2a1a0e'; cx.fillText(p.text, Math.round(p.x - c.x) + 1, Math.round(p.y - c.y - p.t * 10) + 1); cx.fillStyle = '#ffe066'; cx.fillText(p.text, Math.round(p.x - c.x), Math.round(p.y - c.y - p.t * 10)); }
+    cx.textAlign = 'start';
+  }
+  function frame(t) {
+    if (mode !== 'house') return;
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    try { step(dt); if (mode === 'house') draw(); } catch (e) { console.error(e); }   // one bad frame mustn't stop the loop
+    if (mode === 'house') raf = requestAnimationFrame(frame);
+  }
+
+  // ---- controls ----
+  document.addEventListener('keydown', e => {
+    if (mode !== 'house' || document.querySelector('dialog[open]')) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; e.preventDefault(); }
+    else if ((k === ' ' || k === 'f') && !e.repeat) { e.preventDefault(); fart(); }
+    else if ((k === 'e' || k === 'Enter') && !e.repeat && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); use(); }
+    else if (k === 'c') showColl();
+  });
+  document.addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
+  window.addEventListener('blur', () => { keys = {}; stick = { x: 0, y: 0 }; hold = null; });
+  const st = $('#hStick'), knob = st.querySelector('i');
+  function stickAt(e) {
+    const r = st.getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2, max = r.width / 2, d = Math.hypot(x, y);
+    const k = d > max ? max / d : 1; stick = { x: x * k / max, y: y * k / max }; if (Math.hypot(stick.x, stick.y) < .2) stick = { x: 0, y: 0 };
+    knob.style.transform = `translate(${x * k}px, ${y * k}px)`;
+  }
+  st.addEventListener('pointerdown', e => { st.setPointerCapture(e.pointerId); stickAt(e); e.preventDefault(); });
+  st.addEventListener('pointermove', e => { if (st.hasPointerCapture(e.pointerId)) stickAt(e); });
+  const stickOff = () => { stick = { x: 0, y: 0 }; knob.style.transform = ''; };
+  st.addEventListener('pointerup', stickOff); st.addEventListener('pointercancel', stickOff);
+  cv.dataset.hold = '';
+  const holdAt = e => { const r = cv.getBoundingClientRect(); hold = { x: (e.clientX - r.left) / r.width * VW, y: (e.clientY - r.top) / r.height * VH }; };
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); holdAt(e); });
+  cv.addEventListener('pointermove', e => { if (cv.hasPointerCapture(e.pointerId)) holdAt(e); });
+  cv.addEventListener('pointerup', () => hold = null); cv.addEventListener('pointercancel', () => hold = null);
+  for (const [id, fn] of [['#hFart', fart], ['#hUse', use]]) {
+    const b = $(id);
+    b.addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
+    b.addEventListener('click', e => { if (e.detail === 0) fn(); });   // Enter or Space on the focused button
+  }
+  const leave = () => document.body.classList.remove('housePlay');
+  return { peek: () => G, gas, start,   // peek: for checking the level from the console
+    again: () => { $('#houseDone').hidden = true; start(); },
+    dinner: () => { $('#houseDone').hidden = true; leave(); startDinner(new Set(G.got)); window.scrollTo(0, 0); } };
+})();
+
+$('#startText').textContent = T.start;
+$('#startKeys').textContent = T.keys;
+$('#startBtn').textContent = T.playHouse; $('#dinnerBtn').textContent = T.justDinner;
+$('#hBarLabel').textContent = T.barLabel; $('#hFart').textContent = T.fart; $('#hUse').textContent = T.use;
+function toggleHelp(show = $('#helpBox').hidden) {
+  $('#helpBox').textContent = mode === 'house' ? T.houseHint : T.keys;
+  $('#helpBox').hidden = !show; $('#helpBtn').setAttribute('aria-expanded', String(show));
+}
+$('#helpBtn').onclick = () => toggleHelp();
+document.addEventListener('keydown', e => { if ((e.key === 'h' || e.key === 'H') && $('#startCover').hidden && !document.querySelector('dialog[open]')) toggleHelp(); });
+document.addEventListener('pointerdown', e => { if (!$('#helpBox').hidden && !e.target.closest('#helpBox, #helpBtn')) toggleHelp(false); });
+$('#hMeter').setAttribute('aria-label', T.barLabel);
+$('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner;
+$('#startBtn').onclick = () => { audio(); $('#startCover').hidden = true; HOUSE.start(); };
+$('#hdAgain').onclick = HOUSE.again;
+$('#hdDinner').onclick = HOUSE.dinner;
 </script>
 </body>
