@@ -78,7 +78,7 @@ const HOUSE = (() => {
     cv.style.width = VW * k + 'px'; cv.style.height = VH * k + 'px';
     cx.imageSmoothingEnabled = false;
   }
-  addEventListener('resize', () => { if (mode === 'house') fitView(); });
+  addEventListener('resize', () => { if (mode === 'house' || mode === 'car' || mode === 'rest') fitView(); });
 
   // ---- the map: walls everywhere, rooms carved out, doors, then furniture ----
   const map = Array.from({ length: MH }, () => Array(MW).fill('#'));
@@ -761,7 +761,7 @@ const HOUSE = (() => {
   window.addEventListener('blur', () => { keys = {}; stick.letGo(); hold = null; });
   // the stick and the zoom block come from the kit, like the other steered games
   const stick = RDG.stick('#hStick', '#hStick i');
-  RDG.noZoom(() => mode === 'house', ['#hStick', '#hFart', '#hUse', '#hc']);
+  RDG.noZoom(() => mode === 'house' || mode === 'car' || mode === 'rest', ['#hStick', '#hFart', '#hUse', '#hc']);
   // A game controller (#56): A farts, B is Use, X is F (a fart in the house,
   // the finger or waking him at dinner), Select is the ? help, Start is Enter,
   // and the left thumbstick drives the stick. The cross pad is the arrow keys.
@@ -782,7 +782,9 @@ const HOUSE = (() => {
     return `<b>${esc(fill(T.goalsHead, { n: G ? G.goals.size : 0, all: GOALS.length }))}</b><ul class="goalList">` +
       GOALS.map(id => { const d = G && G.goals.has(id); return `<li class="${d ? 'done' : ''}"><span class="box" aria-hidden="true"></span>${esc(T.goals[id])}<span class="sr">${d ? ' (done)' : ''}</span></li>`; }).join('') + '</ul>';
   }
-  return { goalsHTML, peek: () => G, gas, start,   // peek: for checking the level from the console
+  // out.js (going out to dinner) borrows the canvas, the stick and the sprites
+  const kit = { cv, cx, stick, fitView, sprite, himSprite, targetSprite, view: () => [VW, VH], hold: () => hold };
+  return { kit, goalsHTML, peek: () => G, gas, start,   // peek: for checking the level from the console
     again: () => { $('#houseDone').hidden = true; start(); },
     dinner: () => { $('#houseDone').hidden = true; leave(); startDinner(new Set(G.got)); window.scrollTo(0, 0); } };
 })();
@@ -796,7 +798,7 @@ function toggleHelp(show, kind = 'help') {
   const box = $('#helpBox');
   if (show === undefined) show = box.hidden || box.dataset.kind !== kind;
   box.dataset.kind = kind;
-  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : T.keys;
+  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : T.keys;
   box.hidden = !show;
   $('#helpBtn').setAttribute('aria-expanded', String(show && kind === 'help')); $('#goalsBtn').setAttribute('aria-expanded', String(show && kind === 'goals'));
 }

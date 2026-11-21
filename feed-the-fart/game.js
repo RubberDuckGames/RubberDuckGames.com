@@ -493,7 +493,7 @@ soundIcon();
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;   // the Menu dialog
   if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
-  if (mode === 'house') return;   // the house has its own keys
+  if (mode === 'house' || mode === 'car' || mode === 'rest') return;   // the house and the night out have their own keys
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
   if (e.key === 'f' || e.key === 'F') { if (coma) wake(true); else pull(); }
   else if (e.key === 'c' || e.key === 'C') showColl();
