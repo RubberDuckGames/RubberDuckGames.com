@@ -42,6 +42,7 @@ main{max-width:64rem;margin:0 auto;padding:0 .75rem 2rem}
 .pull:active:not(:disabled){transform:translateY(.25rem);box-shadow:0 .1rem 0 var(--accentDark)}
 @keyframes beg{50%{transform:scale(1.06)}}
 .hint{color:var(--soft);margin:.2rem 0 .8rem;font-size:1rem}
+.snacksH{font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.6;margin:1.4rem 0 .6rem}
 .foods{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.5rem}
 /* On a phone the foods scrolled the table off screen while you picked; the
    scene, meter and button stay pinned and the foods scroll under them. */
@@ -51,6 +52,8 @@ main{max-width:64rem;margin:0 auto;padding:0 .75rem 2rem}
 .food .d{font-size:.75rem;color:var(--soft)}
 .food:hover:not(:disabled){border-color:var(--accent)}
 .food:disabled{opacity:.5;cursor:default}
+/* a locked snack stays readable (full contrast), marked by a dashed border instead of fading */
+.food[data-lock="true"]{opacity:1;background:#efe3cc;border-style:dashed;border-color:#8a7355}
 .cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(40,24,12,.6);z-index:20;padding:1rem;overflow:auto}
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
 .card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.6;text-align:center}
@@ -342,6 +345,8 @@ svg.wilt #cactus{transform:rotate(85deg)}
   <p class="hint" id="hint"></p>
   </div>
   <div class="foods" id="foods"></div>
+  <h2 class="snacksH" id="snacksH"></h2>
+  <div class="foods" id="snacks"></div>
   <p class="sr" aria-live="polite" id="live"></p>
 </main>
 
@@ -407,6 +412,11 @@ const T = {
   winText: `You found the Ultimate Shart, the secret win! ${NAME} made it to the bathroom. Nobody saw anything.`,
   notFound: '???',
   play: 'Play it',
+  snacks: 'Snacks from the fridge',
+  locked: '???',
+  lockedHint: 'Find {n} farts to unlock',
+  lockedHint1: 'Find 1 fart to unlock',
+  newSnack: 'New snack: {name}!',
   soundOn: 'Sound on',
   soundOff: 'Sound off',
   live: '{name}! {react}',
@@ -432,6 +442,13 @@ const FOODS = [
   { id: 'sprouts', name: 'Brussels sprouts', gas: 20, mix: { sulfur: 1 } },
   { id: 'pie', name: 'Pumpkin pie', d: 'with whipped cream', gas: 15, mix: { sweet: .5, dairy: .5 } },
   { id: 'eggnog', name: 'Eggnog', gas: 30, mix: { dairy: 1 } },
+  // Snacks from the fridge (decided 20 Nov, family favorites). Each unlocks
+  // when that many kinds of fart have been found, and has its own line.
+  { id: 'pizzabites', name: 'Pizza bites', gas: 15, mix: { dairy: .5, savory: .5 }, unlock: 1, say: 'Pizza bites! The best food group.' },
+  { id: 'bagel', name: 'Cream cheese bagel', gas: 20, mix: { dairy: .6, bread: .4 }, unlock: 3, say: 'Extra cream cheese. Always.' },
+  { id: 'sardines', name: 'Sardines', d: 'and cheese crackers', gas: 25, mix: { sulfur: .6, dairy: .2, bread: .2 }, unlock: 5, say: 'Sardines and cheese crackers. Don\'t tell anyone.' },
+  { id: 'creamblock', name: 'A whole block of cream cheese', d: 'with tortilla chips', gas: 40, mix: { dairy: .85, savory: .15 }, unlock: 7,
+    say: 'It\'s a dip. Dip is a vegetable.', room: 'Is that a WHOLE block of cream cheese?' },
 ];
 
 // The kinds of fart, in collection order. size scales the cloud; react is the
@@ -496,12 +513,16 @@ const SPRITES = {
     '...koooooooOk...', '..kooooooooOk...', '.kooooooooOOk...', 'kMMMMMMMMMMMMk..', 'kBBBBBBBBBBBBk..', '.kkkkkkkkkkkk...'],
   eggnog: ['...kkkkkkkk.....', '...kcBcccBck....', '...kccBccccbk...', '...khcccccckkk..', '...khcccccck.kk.', '...khcccccck..k.',
     '...khcccccck.kk.', '...khcccccckkk..', '...kwcccccck....', '...kwwwwwwwk....', '....kkkkkkk.....'],
+  pizzabites: ['................', '................', '................', '.kkkk.kkkk.kkkk.', 'kyrhykyrhykyrhyk', 'kyyyYkyyyYkyyyYk', 'kYyyYkYyyYkYyyYk', '.kkkk.kkkk.kkkk.', 'kkkkkkkkkkkkkkkk', 'kphhhhhhhhhhhhpk', '.kkkkkkkkkkkkkk.'],
+  bagel: ['....kkkkkkkk....', '..kkbbbbbbbbkk..', '.kbbwwwwwwwwbbk.', 'kbbwwwhhwwwwwbbk', 'kbwwwhwwkkwwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwwkkwwwwbk', 'kbbwwwwwwwwwwbbk', '.kbbwwwwwwwwbbk.', '..kkbbOObbbbkk..', '....kkkkkkkk....'],
+  sardines: ['kkkkkkkkkkkk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwwwwwwwwwwk....', 'kkkkkkkkkkkk....', '.kkkkkk.kkkkkkk.', '.koYoYk.koYoYok.', '.kooook.koooook.', '.koYoYk.koYoYok.', '.kkkkkk.kkkkkkk.'],
+  creamblock: ['..kkkkkkkkkkk...', '..khhhhhhhhhk...', '..kwwwwwwwwwk...', '..kwwwwwwwwwk...', '..kwwwwwwwwwk...', '.kpppppppppppk..', '.kpwpwpwpwpwpk..', '..kkkkkkkkkkk...', '.k....k....k....', 'kyk..kyk..kyk...', 'kyYk.kyYk.kyYk..', 'kkkkkkkkkkkkkk..'],
 };
 PAL.K = PAL.k;
-function spriteURL(id) {
+function spriteURL(id, dark) {   // dark: a one-colour outline for a snack not unlocked yet
   const rows = SPRITES[id], c = document.createElement('canvas'); c.width = c.height = 16;
   const x = c.getContext('2d'), top = 16 - rows.length >> 1;
-  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, top + j, 1, 1); } }));
+  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = dark ? '#6b5a48' : PAL[ch]; x.fillRect(i, top + j, 1, 1); } }));
   return c.toDataURL();
 }
 
@@ -639,7 +660,9 @@ function eat(f) {
   for (const k in f.mix) belly[k] += f.mix[k] * f.gas;
   belly.ate.add(f.id);
   face('eat', 500);
+  if (f.room) sayRoom(f.room);
   if (belly.gas >= 100) say(T.full, 0);
+  else if (f.say) say(f.say);
   else if ((f.mix.dairy || 0) >= .5) say(pick(T.dairyEat));
   else if (belly.gas >= READY && !svg.classList.contains('finger')) say(T.ready);
   else say(fill(T.mmm, { food: f.name.toLowerCase() }), 1500);
@@ -656,7 +679,7 @@ function update() {
   svg.classList.toggle('finger', ready);
   $('#pullBtn').disabled = !ready;
   $('#pullBtn').classList.toggle('ready', ready && g >= 100);
-  document.querySelectorAll('.food').forEach(b => b.disabled = busy || g >= 100);
+  for (const { f, b } of foodBtns) { drawFood(f, b); b.disabled = locked(f) || busy || g >= 100; }
   $('#hint').textContent = busy ? T.hintBusy : g >= 100 ? T.hintFull : g >= READY ? T.hintReady : T.hintEmpty;
   svg.style.setProperty('--b', (1 + g * .0018).toFixed(3));
   $('#collBtn').textContent = fill(T.count, { n: found.size, total: ORDER.length });
@@ -693,7 +716,8 @@ function pull() {
 function discover(type) {
   if (found.has(type)) return;
   found.add(type); store.set(KEY, JSON.stringify([...found]));
-  toast(fill(T.newFind, { name: TYPES[type].name }));
+  const snack = FOODS.find(f => f.unlock === found.size);
+  toast(fill(T.newFind, { name: TYPES[type].name }) + (snack ? ' ' + fill(T.newSnack, { name: snack.name }) : ''));
   update();
 }
 let toastT;
@@ -748,16 +772,27 @@ $('#winColl').onclick = () => { playAgain(); showColl(); };
 $('#winAgain').onclick = playAgain;
 
 // ---------- setup ----------
-for (const f of FOODS) {
+const locked = f => f.unlock && found.size < f.unlock;
+function drawFood(f, b) {
+  const lock = !!locked(f);
+  if (b.dataset.lock === String(lock)) return;
+  b.dataset.lock = lock;
+  b.innerHTML = lock
+    ? `<img class="e" src="${spriteURL(f.id, true)}" alt="" width="16" height="16"><span>${T.locked}</span><span class="d">${f.unlock === 1 ? T.lockedHint1 : fill(T.lockedHint, { n: f.unlock })}</span>`
+    : `<img class="e" src="${spriteURL(f.id)}" alt="" width="16" height="16"><span>${f.name}</span>${f.d ? `<span class="d">${f.d}</span>` : ''}`;
+}
+const foodBtns = FOODS.map(f => {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'food';
-  b.innerHTML = `<img class="e" src="${spriteURL(f.id)}" alt="" width="16" height="16"><span>${f.name}</span>${f.d ? `<span class="d">${f.d}</span>` : ''}`;
   b.onclick = () => eat(f);
-  $('#foods').append(b);
-}
+  drawFood(f, b);
+  (f.unlock ? $('#snacks') : $('#foods')).append(b);
+  return { f, b };
+});
 $('#pullBtn').onclick = pull;
 $('#armOut').addEventListener('click', pull);
 $('#startText').textContent = T.start;
+$('#snacksH').textContent = T.snacks;
 $('#startKeys').textContent = T.keys;
 $('#startBtn').onclick = () => { audio(); $('#startCover').hidden = true; $('#foods button').focus(); };
 const soundIcon = () => { $('#soundBtn').textContent = soundOn ? T.soundOn : T.soundOff; };
