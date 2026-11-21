@@ -134,6 +134,18 @@ svg.dognose #dogPaw{transform:translate(18px,-58px) rotate(-20deg)}
 svg.dognose #dogEyes2{display:inline}svg.dognose #dogEyes{display:none}
 #cat{transition:transform .5s ease-in,opacity .5s}
 svg.catgone #cat{transform:translateX(220px);opacity:0}
+#cat2{transition:transform .5s ease-in,opacity .5s}
+svg.catgone #cat2{transform:translateX(-220px);opacity:0}
+/* the dogs from the corgi game turn their backs on the smell */
+#bread,#crumb{transform-box:fill-box;transform-origin:center;transition:transform .3s}
+svg.dognose #bread,svg.dognose #crumb{transform:scaleX(-1)}
+/* the game on the TV: whole-pixel steps so the players stay crisp */
+.tvA{animation:tvA 2.4s steps(6) infinite alternate}
+.tvB{animation:tvB 2.4s steps(6) infinite alternate}
+.tvBall{animation:tvBall 1.2s steps(6) infinite alternate}
+@keyframes tvA{to{transform:translateX(18.75px)}}
+@keyframes tvB{to{transform:translateX(-18.75px)}}
+@keyframes tvBall{from{transform:translate(-9.375px,3.125px)}to{transform:translate(9.375px,-6.25px)}}
 .noseHand,.fanHand{display:none}
 svg.noses .noseHand{display:inline}
 svg.noses .fanHand{display:inline;animation:fan .3s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:left bottom}
@@ -172,5 +184,5 @@ svg.coma #him{display:none}
 .zz path{fill:none;stroke:#fff;stroke-width:2.5;animation:zz 2.4s linear infinite;transform-box:view-box}
 .zz path:nth-child(2){animation-delay:.8s}.zz path:nth-child(3){animation-delay:1.6s}
 @keyframes zz{0%{transform:translate(0,6px);opacity:0}20%{opacity:1}100%{transform:translate(10px,-14px);opacity:0}}
-@media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish,.fall,.zz path{animation:none}}
+@media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish,.fall,.zz path,.tvA,.tvB,.tvBall{animation:none}}
 .startKeys{color:var(--soft);font-size:1rem}

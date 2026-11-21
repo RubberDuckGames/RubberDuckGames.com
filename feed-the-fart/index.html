@@ -39,7 +39,7 @@
   <p class="hint" id="fromHouse" hidden></p>
   <div class="top">
   <div class="stage" id="stage">
-    <svg id="scene" viewBox="0 0 800 460" role="img" aria-label="Thanksgiving dinner. The plumber stands by the table, with the family, a dog under the table and a cat on the windowsill." data-face="normal">
+    <svg id="scene" viewBox="0 0 800 460" role="img" aria-label="Thanksgiving dinner. The plumber stands by the table with his mom and his two brothers. The game is on the TV with a black and white cat on top, the kids play with Legos on the floor, three dogs wait for scraps and a black cat sits on the windowsill." data-face="normal">
       <defs>
         <!-- Dithers line up with the game's pixels: one canvas pixel is 800/256 = 3.125 SVG units. -->
         <pattern id="dLight" width="6.25" height="6.25" patternUnits="userSpaceOnUse"><rect width="3.125" height="3.125" fill="#fbecc9"/><rect x="3.125" y="3.125" width="3.125" height="3.125" fill="#fbecc9"/></pattern>
@@ -65,9 +65,18 @@
         <path d="M540 50q-8 20-4 44M548 52q0 22 2 40M556 50q8 18 4 38" stroke="#3f8f3a" stroke-width="3" fill="none"/>
         <path transform="translate(538 62) rotate(160)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(538 62) rotate(160)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(536 78) rotate(200)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(536 78) rotate(200)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(537 92) rotate(150)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(537 92) rotate(150)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(551 68) rotate(20)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(551 68) rotate(20)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(551 86) rotate(160)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(551 86) rotate(160)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(560 60) rotate(30)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(560 60) rotate(30)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(562 76) rotate(-20)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(562 76) rotate(-20)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(561 90) rotate(40)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(561 90) rotate(40)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/>
       </g>
-      <!-- a picture on the wall: hills at sunset -->
-      <rect x="236" y="60" width="96" height="70" fill="#7a4a2a"/><rect x="243" y="67" width="82" height="56" fill="#f2b26a"/>
-      <path d="M243 105q20-22 40-6t42-10v34h-82z" fill="#6b8f3a"/><circle cx="300" cy="88" r="8" fill="#ffe08a"/>
+      <!-- the TV with the game on (decided 21 Nov; it took the place of a picture of hills).
+           Football: green field, yard lines, end zones, two teams running back and forth. -->
+      <rect x="234.375" y="68.75" width="109.375" height="68.75" fill="#1d1d22"/>
+      <rect x="240.625" y="75" width="96.875" height="56.25" fill="#3f8f3a"/>
+      <rect x="240.625" y="84.375" width="12.5" height="46.875" fill="#c2304a"/><rect x="325" y="84.375" width="12.5" height="46.875" fill="#3a6ea5"/>
+      <path d="M271.875 84.375v46.875M289.0625 84.375v46.875M306.25 84.375v46.875" stroke="#bfe8a8" stroke-width="3.125"/>
+      <rect x="240.625" y="75" width="96.875" height="9.375" fill="#22160e"/><rect x="250" y="78.125" width="9.375" height="3.125" fill="#c2304a"/><rect x="318.75" y="78.125" width="9.375" height="3.125" fill="#3a6ea5"/><rect x="284.375" y="78.125" width="9.375" height="3.125" fill="#f5d34a"/>
+      <g class="tvA"><rect x="262.5" y="90.625" width="6.25" height="6.25" fill="#e8584a"/><rect x="268.75" y="109.375" width="6.25" height="6.25" fill="#e8584a"/><rect x="259.375" y="121.875" width="6.25" height="6.25" fill="#e8584a"/></g>
+      <g class="tvB"><rect x="309.375" y="96.875" width="6.25" height="6.25" fill="#8fc4f0"/><rect x="300" y="115.625" width="6.25" height="6.25" fill="#8fc4f0"/><rect x="315.625" y="106.25" width="6.25" height="6.25" fill="#8fc4f0"/></g>
+      <g class="tvBall"><rect x="287.5" y="103.125" width="3.125" height="3.125" fill="#8a4b22"/></g>
+      <rect x="284.375" y="137.5" width="9.375" height="6.25" fill="#1d1d22"/>
+      <g id="cat2"><image data-spr="cat2" x="271.875" y="18.75"/></g>
       <rect y="250" width="800" height="80" fill="#e2bd83"/>
       <rect y="246" width="800" height="6" fill="#b88a52"/>
       <rect y="330" width="800" height="130" fill="#9a6a43"/>
@@ -103,8 +112,10 @@
         <path d="M736 136h20l-3 12h-14z" fill="#c2643a"/>
       </g>
       <g id="cat"><image data-spr="cat" x="650" y="96.875"/></g>
-      <!-- family behind the table. Generic people, not anyone real. Their faces are
-           pixel sprites: one normal, one for "ew" (shown while they hold their noses). -->
+      <!-- family behind the table: his mom (gray bun) and his two brothers (a mustache and
+           goatee like his, and a full beard), decided 21 Nov; drawn without photos, so the
+           faces are simple. Their faces are pixel sprites: one normal, one for "ew"
+           (shown while they hold their noses). -->
       <g class="person">
         <rect x="302" y="198" width="56" height="70" rx="18" fill="#7d4fa0"/><rect x="344" y="204" width="12" height="62" rx="6" fill="#000" opacity=".16"/>
         <image data-spr="famA" x="309.375" y="146.875" class="pmouth"/>
@@ -183,6 +194,29 @@
         <g id="dogEyes2"><path d="M496 346l8 2" stroke="#2a1a0e" stroke-width="2.5"/></g>
         <g id="dogPaw"><rect x="494" y="402" width="9" height="28" rx="4" fill="#c98544"/></g>
       </g>
+      <!-- the kids on the floor in front of the table, playing with Legos (decided 21 Nov) -->
+      <g class="person">
+        <rect x="576" y="412" width="54" height="16" rx="7" fill="#3a5a8a"/>
+        <rect x="584" y="384" width="38" height="34" rx="10" fill="#e8742a"/>
+        <image data-spr="kidA" x="584.375" y="353.125" class="pmouth"/>
+        <image data-spr="kidAEw" x="584.375" y="353.125" class="pmouthEw"/>
+        <circle class="noseHand" cx="603" cy="379" r="5" fill="#f0c9a0"/>
+        <circle cx="628" cy="414" r="5" fill="#f0c9a0"/>
+      </g>
+      <rect x="634" y="420" width="12" height="8" fill="#c2304a"/><rect x="648" y="424" width="12" height="8" fill="#f2c230"/>
+      <rect x="640" y="404" width="10" height="16" fill="#3a6ea5"/><rect x="641" y="401" width="3" height="3" fill="#3a6ea5"/><rect x="646" y="401" width="3" height="3" fill="#3a6ea5"/>
+      <rect x="656" y="430" width="10" height="7" fill="#3f8f3a"/>
+      <g class="person">
+        <rect x="670" y="412" width="54" height="16" rx="7" fill="#4a4a58"/>
+        <rect x="678" y="384" width="38" height="34" rx="10" fill="#7d4fa0"/>
+        <image data-spr="kidB" x="678.125" y="353.125" class="pmouth"/>
+        <image data-spr="kidBEw" x="678.125" y="353.125" class="pmouthEw"/>
+        <circle class="noseHand" cx="697" cy="379" r="5" fill="#c68a5e"/>
+        <circle cx="672" cy="414" r="5" fill="#c68a5e"/>
+      </g>
+      <!-- Bread the corgi and Crumb the puppy, from the corgi game (decided 21 Nov) -->
+      <g id="bread"><image data-spr="bread" x="300" y="384.375"/></g>
+      <g id="crumb"><image data-spr="crumb" x="731.25" y="396.875"/></g>
       <!-- the plumber: lean, tousled brown hair, mustache and goatee, tan bib overalls over a
            charcoal long-sleeve shirt, from family photos Randi sent 20 Nov (kept out of the repo); no cap, no logo, nothing lettered (card #55) -->
       <g id="him">

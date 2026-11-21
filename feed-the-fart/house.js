@@ -28,10 +28,10 @@ Object.assign(T, {
   slow2: 'Too full to hurry.',
   got: 'Got the {food}!',
   empty: 'Nothing left in the tank.',
-  knock: { plant: 'The plant wilted!', dog: 'The dog passed out!', cat: 'The cat fainted!', tank: 'The fish played dead!', person: `${NAME.toUpperCase()}!!` },
+  knock: { plant: 'The plant wilted!', dog: '{who} passed out!', cat: '{who} fainted!', tank: 'The fish played dead!', person: `${NAME.toUpperCase()}!!` },
   trapped: 'Trapped in the {room}!',
   sniff: '{who} sniffed.',
-  who: { cousin1: 'Cousin', cousin2: 'Cousin', plant: 'The plant', dog: 'The dog', cat: 'The cat', tank: 'The fish', grandma: 'Grandma', dad: 'Dad', kid: 'The kid', aunt: 'Aunt', uncle: 'Uncle' },
+  who: { cousin1: 'Cousin', cousin2: 'Cousin', brother1: 'His brother', brother2: 'His brother', cat2: 'The other cat', bread: 'Bread', crumb: 'Crumb', plant: 'The plant', dog: 'The dog', cat: 'The cat', tank: 'The fish', grandma: 'Grandma', dad: 'Dad', kid: 'The kid', aunt: 'Aunt', uncle: 'Uncle' },
   stuck: 'Who closed the door?!',
   pts: '+{n}',
   fridgeIn: 'You left one in the fridge...',
@@ -51,7 +51,8 @@ Object.assign(T, {
   opened: '{who} opened a window.',
   ding: 'Ding dong! {who} is here.',
   brought: '{who} brought {foods}!',
-  pron: { aunt: 'She', uncle: 'He' },
+  pron: { aunt: 'She', uncle: 'He', brother1: 'He', brother2: 'He' },
+  dogsToo: 'Bread and Crumb came too!',
   goalsBtn: 'Goals',
   goalDone: 'Goal: {goal}! +100',
   goalsHead: 'Goals {n}/{all}',
@@ -209,6 +210,11 @@ const HOUSE = (() => {
     return cache[key];
   }
   const GR = '#3f8f3a', GL = '#6cbf3f', BR = '#8a6a3a';
+  const DOGS = {
+    dog: { body: '#b87333', belly: '#c98a4a', head: '#c98544', ear: '#7a4a20', snout: '#f0d2a8', collar: '#c2304a', legs: '#a8652a' },
+    bread: { body: '#e8913a', belly: '#fff6ea', head: '#e8913a', ear: '#c46a1f', snout: '#fff6ea', collar: '#3a6fd8', legs: '#fff6ea', up: true, short: true },
+    crumb: { body: '#2b2b33', belly: '#b8773a', head: '#2b2b33', ear: '#2b2b33', snout: '#b8773a', collar: '#9b5cd8', legs: '#b8773a', up: true, short: true },
+  };
   function targetSprite(t, time) {
     const out = t.out, k = t.kind;
     if (k === 'plant') return sprite(`plant-${out}`, 16, 16, r => {
@@ -216,17 +222,22 @@ const HOUSE = (() => {
       else { r(3, 2, 4, 6, GR); r(9, 1, 4, 7, GR); r(6, 0, 4, 9, GL); r(4, 4, 2, 2, GL); r(10, 3, 2, 2, GL); }
       r(4, 10, 8, 2, '#d97a4a'); r(5, 12, 6, 4, '#c2643a');
     });
-    if (k === 'dog') return sprite(`dog-${out}`, 17, 14, r => {
-      r(0, 6, 3, 2, '#b87333'); r(2, 5, 10, 7, '#b87333'); r(4, 7, 6, 4, '#c98a4a');
-      r(11, 3, 6, 7, '#c98544'); r(11, 2, 2, 4, '#7a4a20'); r(15, 6, 2, 3, '#f0d2a8'); r(16, 6, 1, 1, K); r(10, 4, 1, 6, '#c2304a');
-      if (out) { r(13, 3, 1, 1, K); r(15, 3, 1, 1, K); r(14, 4, 1, 1, K); r(13, 5, 1, 1, K); r(15, 5, 1, 1, K); r(4, 2, 1, 3, '#a8652a'); r(8, 2, 1, 3, '#a8652a'); }
-      else { r(14, 4, 1, 1, K); r(4, 12, 2, 2, '#a8652a'); r(9, 12, 2, 2, '#a8652a'); }
-    });
-    if (k === 'cat') return sprite(`cat-${out}`, 15, 14, r => {
-      if (out) { r(4, 8, 11, 5, '#2b2b33'); r(0, 6, 6, 6, '#2b2b33'); r(1, 8, 1, 1, '#f5d34a'); r(3, 8, 1, 1, '#f5d34a'); r(13, 6, 2, 2, '#2b2b33'); return; }
+    // Decided 21 Nov: Bread the corgi and Crumb, the puppy, from the corgi game
+    // come over with his brother; same dog shape in their own colours, ears up
+    if (k === 'dog') { const d = DOGS[t.who || 'dog']; return sprite(`dog-${t.who || 'dog'}-${out}`, 17, 14, r => {
+      r(0, 6, 3, 2, d.body); r(2, 5, 10, 7, d.body); r(4, 7, 6, 4, d.belly);
+      r(11, 3, 6, 7, d.head); if (d.up) { r(11, 0, 2, 3, d.ear); r(14, 0, 2, 3, d.ear); r(12, 1, 1, 1, '#f4a6a0'); r(14, 1, 1, 1, '#f4a6a0'); } else r(11, 2, 2, 4, d.ear);
+      r(15, 6, 2, 3, d.snout); r(16, 6, 1, 1, K); r(10, 4, 1, 6, d.collar);
+      if (out) { r(13, 3, 1, 1, K); r(15, 3, 1, 1, K); r(14, 4, 1, 1, K); r(13, 5, 1, 1, K); r(15, 5, 1, 1, K); r(4, 2, 1, 3, d.legs); r(8, 2, 1, 3, d.legs); }
+      else { r(14, 4, 1, 1, K); r(4, 12, 2, d.short ? 1 : 2, d.legs); r(9, 12, 2, d.short ? 1 : 2, d.legs); }
+    }); }
+    if (k === 'cat') { const tux = t.who === 'cat2', W = '#f4f4f4', eye = tux ? '#8fd06a' : '#f5d34a'; return sprite(`cat-${t.who || 'cat'}-${out}`, 15, 14, r => {
+      if (out) { r(4, 8, 11, 5, '#2b2b33'); r(0, 6, 6, 6, '#2b2b33'); if (tux) { r(6, 10, 4, 3, W); r(1, 9, 3, 2, W); } r(1, 8, 1, 1, eye); r(3, 8, 1, 1, eye); r(13, 6, 2, 2, '#2b2b33'); return; }
       r(4, 6, 8, 8, '#2b2b33'); r(5, 1, 6, 6, '#2b2b33'); r(5, 0, 1, 1, '#2b2b33'); r(10, 0, 1, 1, '#2b2b33');
-      r(6, 3, 1, 1, '#f5d34a'); r(9, 3, 1, 1, '#f5d34a'); r(7, 5, 2, 1, '#f27d92'); r(12, 10, 3, 2, '#2b2b33'); r(6, 7, 4, 4, '#3a3a44');
-    });
+      r(6, 3, 1, 1, eye); r(9, 3, 1, 1, eye); r(12, 10, 3, 2, '#2b2b33'); r(6, 7, 4, 4, tux ? W : '#3a3a44');
+      if (tux) { r(6, 4, 4, 3, W); r(5, 12, 2, 2, W); r(9, 12, 2, 2, W); }   // the black and white cat: white muzzle, chest and paws
+      r(7, 5, 2, 1, '#f27d92');
+    }); }
     if (k === 'tank') return sprite(`tank-${out}`, 18, 12, r => {
       r(0, 0, 18, 12, '#3a2414'); r(1, 1, 16, 10, '#8fd3f5'); r(1, 9, 16, 2, '#c9a26a'); r(3, 5, 1, 4, GR);
       if (out) { r(8, 1, 5, 2, '#f4ece0'); r(8, 3, 5, 1, '#f08a1e'); }
@@ -261,7 +272,7 @@ const HOUSE = (() => {
   const TARGETS = [
     { kind: 'plant', x: 17.5, y: 7.6, need: 12 }, { kind: 'plant', x: 16.5, y: 2.7, need: 12 },
     { kind: 'plant', x: 27.5, y: 26.6, need: 12 }, { kind: 'plant', x: 45.5, y: 27.6, need: 12 },
-    { kind: 'cat', x: 36.5, y: 7.6, need: 22 }, { kind: 'tank', x: 15.5, y: 21.5, need: 18 },
+    { kind: 'cat', x: 36.5, y: 7.6, need: 22 }, { kind: 'cat', who: 'cat2', x: 26.5, y: 25.6, need: 22 }, { kind: 'tank', x: 15.5, y: 21.5, need: 18 },
     { kind: 'dog', x: 12.5, y: 24.6, need: 26, route: [[12.5, 24.5], [24.5, 26.5], [16.5, 19], [36.5, 19]], pause: 4 },
     { kind: 'person', who: 'grandma', x: 16.5, y: 15.6, need: 34, hair: '#c9c9c9', shirt: '#7d4fa0', skin: '#f0c9a0', route: [[16.5, 15.6]], pause: 30 },
     { kind: 'person', who: 'dad', x: 24.5, y: 12.6, need: 34, hair: '#8a4b22', shirt: '#3a6ea5', skin: '#e9b88f',
@@ -271,7 +282,14 @@ const HOUSE = (() => {
     // two cousins on the living room floor in front of the TV, playing with Legos (Randi, 21 Nov)
     { kind: 'person', who: 'cousin1', sit: true, x: 9.2, y: 8.3, need: 26, hair: '#e8c35a', shirt: '#e8742a', skin: '#f0c9a0', route: [[9.2, 8.3]], pause: 30 },
     { kind: 'person', who: 'cousin2', sit: true, x: 11.6, y: 8.3, need: 26, hair: '#3a2414', shirt: '#7d4fa0', skin: '#c68a5e', route: [[11.6, 8.3]], pause: 30 },
-    // Thanksgiving guests ring the bell during the level (Randi: more to do)
+    // Thanksgiving guests ring the bell during the level (Randi: more to do).
+    // Decided 21 Nov: his two brothers come too, and the first brings the dogs.
+    { kind: 'person', who: 'brother1', arrive: 20, x: 43.5, y: 27.6, need: 34, hair: '#5a3a22', shirt: '#2f4f6f', skin: '#e2a978',
+      route: [[42.5, 23.6], [24.5, 18.6], [14.5, 10.6], [25.5, 12.6]], pause: 5 },
+    { kind: 'dog', who: 'bread', arrive: 20, with: 'brother1', x: 44.5, y: 27.6, need: 26, route: [[40.5, 19], [16.5, 19], [12.5, 24.5], [36.5, 19]], pause: 3 },
+    { kind: 'dog', who: 'crumb', arrive: 20, with: 'brother1', x: 42.5, y: 27.6, need: 20, route: [[44.5, 24.5], [26.5, 19], [14.5, 11.5], [33.5, 19]], pause: 2 },
+    { kind: 'person', who: 'brother2', arrive: 55, x: 43.5, y: 27.6, need: 34, hair: '#7a5232', shirt: '#a0522d', skin: '#d9a074',
+      route: [[44.5, 22.6], [33.5, 23.6], [16.5, 24.6], [30.5, 9.6]], pause: 5 },
     { kind: 'person', who: 'aunt', arrive: 35, x: 43.5, y: 27.6, need: 30, hair: '#e8c35a', shirt: '#c2304a', skin: '#f0c9a0',
       route: [[44.5, 23.6], [11.5, 8.6], [24.5, 24.6], [35.5, 13.6], [26.5, 11.6]], pause: 4 },
     { kind: 'person', who: 'uncle', arrive: 75, x: 43.5, y: 27.6, need: 38, hair: '#6a6a6a', shirt: '#4f7a4a', skin: '#d9a074',
@@ -461,7 +479,8 @@ const HOUSE = (() => {
     const room = roomAt(Math.floor(t.x), Math.floor(t.y - .2));
     if (trapped) pts *= 2;
     G.score += pts;
-    say(line || (trapped ? fill(T.trapped, { room: (T.rooms[room] || '').toLowerCase() }) + ' ' + T.knock[t.kind] : T.knock[t.kind]));
+    const kn = fill(T.knock[t.kind], { who: T.who[t.who || t.kind] });
+    say(line || (trapped ? fill(T.trapped, { room: (T.rooms[room] || '').toLowerCase() }) + ' ' + kn : kn));
     pop(t.x * TS, t.y * TS - 20, fill(T.pts, { n: pts }));
     checkGoals(t, trapped, room);
   }
@@ -530,9 +549,10 @@ const HOUSE = (() => {
       if (!t.here) {
         if (G.time < t.arrive) continue;
         t.here = true;
+        if (t.with) continue;   // the dogs come in with his brother; one ding
         const dishes = G.foods.filter(fd => fd.wait === t.who); dishes.forEach(fd => fd.wait = null);
         const names = dishes.map(fd => fd.f.name.toLowerCase());
-        say(fill(T.ding, { who: T.who[t.who] }) + (names.length ? ' ' + fill(T.brought, { who: T.pron[t.who], foods: names.join(' and ') }) : ''), 3600);
+        say(fill(T.ding, { who: T.who[t.who] }) + (names.length ? ' ' + fill(T.brought, { who: T.pron[t.who], foods: names.join(' and ') }) : '') + (G.targets.some(x => x.with === t.who) ? ' ' + T.dogsToo : ''), 3600);
         tone(660, .35, 'sine', 0, .2); tone(523, .5, 'sine', .38, .2);   // ding dong
       }
       walkTarget(t, dt);
