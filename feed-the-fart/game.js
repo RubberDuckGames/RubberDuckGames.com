@@ -497,7 +497,28 @@ document.addEventListener('keydown', e => {
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
   if (e.key === 'f' || e.key === 'F') { if (coma) wake(true); else pull(); }
   else if (e.key === 'c' || e.key === 'C') showColl();
+  else if (e.key.startsWith('Arrow') && mode === 'dinner') { e.preventDefault(); dinnerNav(e.key); }
+  // Space with nothing picked pulls the finger (a controller's A, #56)
+  else if (e.key === ' ' && mode === 'dinner' && (!document.activeElement || document.activeElement === document.body)) { e.preventDefault(); pull(); }
 });
+// The arrow keys (and a controller's cross pad, #56) move around the food
+// tiles as a grid: left and right one tile, up and down a row, and up from
+// the top row to Pull my finger (or Wake him up). Space or Enter eats.
+function dinnerNav(key) {
+  const act = [$('#pullBtn'), $('#wakeBtn')].find(b => !b.hidden);
+  const foods = [...document.querySelectorAll('#dinner .food')].filter(b => b.offsetParent);
+  if (!foods.length) return;
+  const cols = Math.max(1, foods.filter(b => b.offsetTop === foods[0].offsetTop).length);
+  const at = document.activeElement, i = foods.indexOf(at);
+  let to;
+  if (at === act) to = key === 'ArrowDown' ? foods[0] : act;
+  else if (i < 0) to = foods[0];
+  else if (key === 'ArrowRight') to = foods[Math.min(foods.length - 1, i + 1)];
+  else if (key === 'ArrowLeft') to = foods[Math.max(0, i - 1)];
+  else if (key === 'ArrowDown') to = foods[Math.min(foods.length - 1, i + cols)];
+  else to = i < cols ? act : foods[i - cols];
+  if (to) { to.focus(); to.scrollIntoView({ block: 'nearest' }); }
+}
 update();
 
 // Hand-pixelled sprites for faces and hands (decided 20 Nov, the art pass after

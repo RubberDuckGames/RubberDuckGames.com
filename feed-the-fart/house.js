@@ -14,14 +14,14 @@
 // floating over it, like Mission Directive (her ask: no wasted space).
 Object.assign(T, {
   start: `Walk ${NAME} through the house. Grab the food and fart where people and pets will smell it. Gas spreads through open rooms and stops at closed doors, so trap them in small spaces! A full bar means a run for the bathroom. Then it's dinner: feed him what you found and pull his finger.`,
-  keys: 'Keyboard: arrows to walk, Space or F to fart, E to open or close a door. At dinner: Tab to a food, Enter to eat, F pulls his finger.',
+  keys: 'Keyboard: arrows to walk, Space or F to fart, E to open or close a door. At dinner: arrows to a food, Space or Enter to eat, F pulls his finger. A game controller works too: A farts, B is Use, X pulls the finger at dinner, Select is help.',
   playHouse: 'Play the house', justDinner: 'Just dinner',
   barLabel: 'Fart bar', fart: 'Fart', open: 'Open', close: 'Close', use: 'Use',
   barWords: ['Empty', 'Rumbling', 'Ready', 'Full!'],
   score: 'Score {n}', food: 'Food {n}/{all}',
   where: 'Dinner is through the glowing door at the end of the big hall.',
   allFood: "That's all the food! Head to the dining room.",
-  houseHint: 'Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door, window or fridge next to you. People who smell it open a window, so shut them in a room without one. Goals has things to try. Fill the bar all the way and run for the bathroom. The glowing door at the end of the big hall goes to dinner.',
+  houseHint: 'Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door, window or fridge next to you. People who smell it open a window, so shut them in a room without one. Goals has things to try. Fill the bar all the way and run for the bathroom. The glowing door at the end of the big hall goes to dinner. With a controller: A farts, B is Use, Select opens this.',
   intro: 'Find the food. Trap them with your farts!',
   got: 'Got the {food}!',
   empty: 'Nothing left in the tank.',
@@ -694,6 +694,10 @@ const HOUSE = (() => {
   // the stick and the zoom block come from the kit, like the other steered games
   const stick = RDG.stick('#hStick', '#hStick i');
   RDG.noZoom(() => mode === 'house', ['#hStick', '#hFart', '#hUse', '#hc']);
+  // A game controller (#56): A farts, B is Use, X is F (a fart in the house,
+  // the finger or waking him at dinner), Select is the ? help, Start is Enter,
+  // and the left thumbstick drives the stick. The cross pad is the arrow keys.
+  RDG.pad({ a: ' ', b: 'e', x: 'f', select: 'h', stick });
   cv.dataset.hold = '';
   const holdAt = e => { const r = cv.getBoundingClientRect(); hold = { x: (e.clientX - r.left) / r.width * VW, y: (e.clientY - r.top) / r.height * VH }; };
   cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); holdAt(e); });
