@@ -271,6 +271,7 @@ const SPARKLE = [
   ['.......', '...h...', '...e...', '.heeeh.', '...e...', '...h...', '.......'],
   ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
 ];
+const SPARKLE_NEAR = 3;
 function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
 
 // Bread, side on, facing right. The pad rows on top leave room for hats.
@@ -933,7 +934,6 @@ const POND = (() => {
     // rubber duck out in the pond, so you have to swim for it
     spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
     goldSpots: bushes,                       // the dead ends of the mazes by the pond
-    crumbSpots: { duckling: [1.5, 20.5] },   // in the bush at the bottom of the left maze
   };
 })();
 // The farm (decided 28 Oct with the kid designer: the pig costume, and the
@@ -1112,8 +1112,8 @@ const FARM_OPEN = (() => {
     run: [[20.5, 20.5], [20.5, 33.5], [12, 34], [12, 31]], crumbAt: down(COOP.roost), piglet: FARM.crumbAt,
     spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])), ...Object.fromEntries(Object.entries(RING.spots).map(([k, v]) => [k, both(v)])) },
     coopGold: COOP.goldSpots.map(down), ringGold: RING.goldSpots.map(both),
-    // Crumb's costumes: in the pig pen, the tack room, the feed pen, the coop and the ring's meadow
-    crumbSpots: { piglet: [23.5, 18.5], kitten: at([29.5, 8.5]), mouse: at([16.5, 3.5]), chick: down([8.5, 9.5]), foal: both([20.5, 1.5]) },
+    // Crumb's hidden costumes: in the pig pen, the tack room and the coop
+    crumbSpots: { piglet: [23.5, 18.5], mouse: at([16.5, 3.5]), chick: down([8.5, 9.5]) },   // the kitten and foal are challenge prizes since 20 Nov
     ring: { box: [RING.ring[0] + BX, RING.ring[1] + CY, RING.ring[2] + BX, RING.ring[3] + CY], gate: both(RING.gate), barrels: RING.barrels.map(both), pony: both(RING.pony) },
     coop: { rect: [COOP.rect[0], COOP.rect[1] + CY, COOP.rect[2], COOP.rect[3] + CY], nests: COOP.nests.map(([x, y, c]) => [x, y + CY, c]), down: down(COOP.down),
       eggs: COOP.eggs.map(([x, y, c, hide]) => [x, y + CY, c, hide]), run: [COOP.run[0], COOP.run[1] + CY, COOP.run[2], COOP.run[3] + CY], door: [11.5, 11.4 + CY] },
@@ -1222,7 +1222,6 @@ const MUSE = (() => {
     // behind the rope in the corner (a jump), the toy rocket in the gift shop
     spots: { rocketHat: [33.5, 9.5], medal: [2.5, 14.5], toyRocket: [33.5, 15.5] },
     goldSpots: [[1.5, 16.5], [24.5, 1.5], [21.5, 2.5]],
-    crumbSpots: { astronaut: [24.5, 9.5] },
     timeDoor: [20.5, 5.2],
     rocket: [32.6, 9],
     labDoor: [3.5, 10.6],    // the science lab's door, in the hall; it opens once the museum is done       // the rocket ride in the space room; the stars wake it up   // in the hall; it wakes up once the museum is done
@@ -1326,11 +1325,11 @@ const LAB = (() => {
     bench: [8.9, 3.7],
     spots: { goggles: [2.5, 4.4], atomPin: [16.5, 9.5], testTube: [15.5, 1.6] },
     goldSpots: [[1.5, 9.5], [16.5, 4.5], [5.5, 1.5]],
-    crumbSpots: { slime: [1.5, 1.5] },
   };
 })();
 const LIQ = { g: '#7ed957', m: '#a07bc4', o: '#ff8a1f', c: '#e9fbff' };   // slime green, purple, orange, and the clear cure
 const CAP = 3;
+const LAB_SPARE = 3;
 const tubeKey = tubes => tubes.map(t => t.join('')).join('|');
 function canPour(tubes, a, b) {
   const A = tubes[a], B = tubes[b];
@@ -1374,7 +1373,7 @@ function stepBench(dt, dx, dy) {
   if (L.padT > 0) return;
   if (Math.abs(dx) > .6) { L.cur = (L.cur + Math.sign(dx) + L.tubes.length) % L.tubes.length; L.padT = .22; sfx.tick(); }
   else if (dy > .6) closeBench();
-  else if (dy < -.6) { L.tubes = L.start.map(t => [...t]); L.sel = -1; L.padT = .5; sfx.shell(); toast('Back to the start.'); }
+  else if (dy < -.6) { L.tubes = L.start.map(t => [...t]); L.sel = -1; L.pours = 0; L.padT = .5; sfx.shell(); toast('Back to the start.'); }
 }
 function closeBench() { const L = G.lab; L.open = false; L.sel = -1; G.bread.y = LAB.bench[1] + .6; }
 function pourAction() {
@@ -1382,10 +1381,16 @@ function pourAction() {
   if (L.sel < 0) { if (L.tubes[L.cur].length) { L.sel = L.cur; sfx.paw(); } return; }
   if (L.sel === L.cur) { L.sel = -1; return; }
   if (!canPour(L.tubes, L.sel, L.cur)) { sfx.nope(); L.sel = -1; return; }
-  pourInto(L.tubes, L.sel, L.cur); L.sel = -1; sfx.splash();
+  pourInto(L.tubes, L.sel, L.cur); L.sel = -1; sfx.splash(); L.pours = (L.pours || 0) + 1;
   if (labSolved(L.tubes)) {
     L.open = false; L.done = true; sfx.win();
-    hold(BEAKER_CURE, 'The cure!', () => stage('cure', 'Take it to Crumb!'));
+    // decided 20 Nov: the slime costume is for a tidy sort, at most LAB_SPARE
+    // pours more than the fewest (counted since the last start over)
+    const par = labMoves(L.start) + LAB_SPARE, next = () => stage('cure', 'Take it to Crumb!');
+    hold(BEAKER_CURE, 'The cure!', () => {
+      if (L.pours <= par) crumbWin('slime', `${L.pours} pours! For Crumb: the slime costume!`, next);
+      else { next(); if (!S.crumbHave.includes('slime')) setTimeout(() => G && toast(`${L.pours} pours. Try it in ${par}!`), 2500); }
+    });
   }
 }
 const benchX = k => (VW * T) / 2 + (k - (G.lab.tubes.length - 1) / 2) * 34;
@@ -1468,9 +1473,11 @@ function startWorld(key) {
     crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
   const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p', W.treatOk); G.treats.push({ x, y, v }); } };
   // Decided 15 Nov: fewer treats (there were 31 everywhere, which crowded the
-  // ground, and the small rooms most). Now about half as many in a full-size
-  // world, and fewer still in a small room, by how big the place is.
-  const k = Math.min(1, LW * LH / 792); add(Math.round(10 * k), 1); add(Math.round(4 * k), 2); add(Math.max(1, Math.round(2 * k)), 5);
+  // ground, and the small rooms most), scaled by how big the place is.
+  // Decided 20 Nov: still too many (16 in a full-size world, worth 28, so one
+  // trip nearly bought a shop item). Now 7 in a full-size world, worth 13;
+  // the challenges pay the rest.
+  const k = Math.min(1, LW * LH / 792); add(Math.round(4 * k), 1); add(Math.round(2 * k), 2); add(1, 5);
   // the gold paw print: in a bush at the pond, buried in a mound at the farm
   const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
   if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
@@ -1486,7 +1493,7 @@ function startWorld(key) {
 }
 const WORLDS = {
   pond: {
-    key: 'pond', name: 'pond', Name: 'Pond', map: POND, stop: 1, costume: 'duck', pic: DUCK, baddies: 'Squirrels caught', soil: 5,
+    key: 'pond', name: 'pond', Name: 'Pond', map: POND, stop: 1, costume: 'duck', pic: DUCK, baddies: 'Squirrels caught', soil: 2,
     goals: {
       key: 'Catch the squirrel with the key', getKey: 'Pick up the key', gate: 'Take the key to the gate',
       ducks: 'Herd the ducklings into the pond', frogs: 'Bark the frogs’ song back', find: 'Swim out to Crumb', back: 'Bring Crumb to the car',
@@ -1833,15 +1840,21 @@ function castleTile(kind, ghost) {
   });
 }
 const CRAB_HAT = ['r...r', 'rr.rr'];
+// Decided 20 Nov: Crumb's costumes are won by doing a challenge (the duckling,
+// frog, barn kitten, foal, astronaut, crab and slime costumes). Six are still
+// hidden (piglet, mouse, chick, clownfish, sea turtle, triceratops), but only
+// twinkle up close. Returns false if Crumb has it already, so next() runs.
+function crumbWin(k, msg, next) {
+  if (S.crumbHave.includes(k)) { if (next) next(); return false; }
+  S.crumbHave.push(k); persist();
+  const w = { body: k }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), msg, next); return true;
+}
 function stepCastle() {
   if (G.castleDone || !OCEAN.castle.every(([x, y, c]) => G.m[y][x] === c)) return;
   G.castleDone = true; sfx.win();
   OCEAN.castle.forEach(([x, y]) => burst(x + .5, y + .5, COL.y));
   for (let i = 0; i < 5; i++) G.treats.push({ x: 22.5 + i, y: 19.6, v: i % 2 ? 2 : 1 });
-  if (!S.crumbHave.includes('crab')) {
-    S.crumbHave.push('crab'); persist();
-    const w = { body: 'crab' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The sandcastle is done! For Crumb: the crab costume!');
-  } else toast('The sandcastle is done!');
+  if (!crumbWin('crab', 'The sandcastle is done! For Crumb: the crab costume!')) toast('The sandcastle is done!');
 }
 function drawCastle(t) {
   // the outline in the sand for each spot still empty, and a flag once it's done
@@ -2029,12 +2042,13 @@ function drawJungle(t) {
 // bones, no losing, no clock); the moon just keeps getting closer.
 const RIDE_ROCKET = ['.....rr.....', '....rrrr....', '...rrrrrr...', '...hhhhhh...', '..hhhllhhh..', '..hhl..lhh..', '..hhl..lhh..', '..hhhllhhh..', '..hhhhhhhh..', '..hhrhhrhh..', '..hhhhhhhh..', '.rhhhhhhhhr.', 'rrhhhhhhhhrr', 'rr.hhhhhh.rr', 'r...gggg...r'];
 const FLAME = [['...yyyy...', '....yy....'], ['..yyeeyy..', '...yyyy...', '....yy....']];
+const ZAP_WIN = 15;                              // 31 to 34 asteroids came by in 5 test flights (20 Nov)
 const FLIGHT_S = 30;                             // seconds to the moon
 function startFlight() {
   const r = seeded(Math.floor(Math.random() * 1e6) + 1);
   G.flight = { p: 0, ship: { x: VW / 2, y: VH - 2.4, bonk: 0 }, rocks: [], shots: [], spawn: 1, t: 0, shotT: 0,
     stars: [...Array(45)].map(() => ({ x: r() * VW, y: r() * VH, s: .5 + r() * 2.5 })) };
-  G.zapped = G.zapped || 0; sfx.start(); toast('Zap the asteroids! Fly to the moon.');
+  G.zapped = G.zapped || 0; G.flightZaps = 0; sfx.start(); toast('Zap the asteroids! Fly to the moon.');
 }
 function zap() {
   const f = G.flight; if (!f || f.shotT > 0) return;
@@ -2054,7 +2068,7 @@ function stepFlight(dt, dx, dy) {
   f.rocks.forEach(k => { k.x += k.vx * dt; k.y += k.vy * dt; k.a += dt; });
   f.rocks = f.rocks.filter(k => {
     const hit = f.shots.find(sh => Math.hypot(sh.x - k.x, sh.y - k.y) < k.r + .3);
-    if (hit) { f.shots.splice(f.shots.indexOf(hit), 1); G.zapped++; sfx.boom(); flightBurst(k.x, k.y); return false; }
+    if (hit) { f.shots.splice(f.shots.indexOf(hit), 1); G.zapped++; G.flightZaps++; sfx.boom(); flightBurst(k.x, k.y); return false; }
     if (s.bonk <= 0 && Math.hypot(s.x - k.x, s.y - .2 - k.y) < k.r + .55) { s.bonk = 1; sfx.ouch(); flightBurst(k.x, k.y); return false; }   // a bump: the rocket wobbles, that's all
     return k.y < VH + 1;
   });
@@ -2062,12 +2076,16 @@ function stepFlight(dt, dx, dy) {
   if (f.p >= 1 && !f.landed) {                   // at the moon: Crumb hops in, and the rocket lands back in the space room
     f.landed = true;
     const c = G.crumb, w = S.crumbWear || {}, [rx, ry] = MUSE.rocket;
-    hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'Crumb hopped in!', () => {
+    const home = () => {
       G.flight = null; G.moonDone = true;
       G.bread.x = rx - 1.3; G.bread.y = ry + .3; G.bread.face = -1;
       c.x = rx - .4; c.y = ry + .3; c.mode = 'follow'; G.trail = []; sfx.found();
       stage('back', 'Back from the moon!');
-    });
+      // decided 20 Nov: the astronaut costume is for zapping ZAP_WIN on one flight
+      if (G.flightZaps >= ZAP_WIN) crumbWin('astronaut', `${G.flightZaps} asteroids! For Crumb: the astronaut costume!`);
+      else if (!S.crumbHave.includes('astronaut')) setTimeout(() => G && toast(`${G.flightZaps} zapped. Zap ${ZAP_WIN} for a surprise!`), 2500);
+    };
+    hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'Crumb hopped in!', home);
   }
 }
 function flightBurst(x, y) { const f = G.flight; f.fx = f.fx || []; for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 3; f.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, c: ['#c9c9d4', '#ffd23f', '#ffffff'][i % 3] }); } }
@@ -2248,8 +2266,8 @@ function stepDucklings(b, dt) {
 function ducksDone() {
   [[-1, 1.3], [0, 1.5], [1, 1.3]].forEach(([dx, dy]) => G.treats.push({ x: G.mama.x + dx, y: G.mama.y + dy, v: 2 }));
   const next = () => { const c = G.crumb; c.mode = 'swim'; c.to = [14.3, 7.6]; stage('frogs', 'Crumb swam out to the frogs!'); };
-  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); hold(DUCKLING, 'The ducklings are home!', next); }
-  else { sfx.win(); next(); }
+  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); }
+  if (!crumbWin('duckling', 'The ducklings are home! For Crumb: the duckling costume!', next)) { sfx.win(); toast('The ducklings are home!'); }
 }
 // ---------- The frog song, at the pond ----------
 // Decided 5 Nov, the testers' idea: four frogs sit on lily pads in the big
@@ -2321,7 +2339,7 @@ function frogsWon() {
   G.song.state = 'won'; burst(14.3, 7.5);
   [[-1, -2.2], [0, -2.4], [1, -2.2]].forEach(([dx, dy]) => G.treats.push({ x: 14.3 + dx, y: 7.5 + dy, v: 2 }));
   const next = () => stage('find', 'The frogs sang!');
-  if (!S.crumbHave.includes('frog')) { S.crumbHave.push('frog'); persist(); const w = { body: 'frog' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The frogs sang! For Crumb: the frog costume!', next); }
+  if (!S.crumbHave.includes('frog')) crumbWin('frog', 'The frogs sang! For Crumb: the frog costume!', next);
   else { sfx.win(); next(); }
 }
 // ---------- The barn, on the open farm ----------
@@ -2397,8 +2415,8 @@ function stepBarn(b, dt) {
 // the ladder reached the loft: the cats climb down
 function ladderUp(x, y) {
   G.m[y][x] = 'a'; G.ladder = [x, y]; G.catsDown = true; sfx.gate();
-  burst(x + .5, y); toast('The cats can climb down!');
-  barnDone();
+  burst(x + .5, y);
+  if (!crumbWin('kitten', 'The cats can climb down! For Crumb: the barn kitten costume!', barnDone)) { toast('The cats can climb down!'); barnDone(); }
 }
 function barnDone() {
   if (G.cowsHome < 3 || !G.catsDown || G.barnWon) return;
@@ -2497,7 +2515,8 @@ function finishRace() {
   G.riding = false; G.race = null; const po = G.pony; po.x = FR.gate[0] + 2; po.y = FR.gate[1] + 2; G.bread.y = FR.gate[1] - .6;
   if (!best || time < best) S.ring.best = time;
   if (!S.ring.beat) { S.ring.beat = true; if (!S.have.includes('cowboy')) S.have.push('cowboy'); persist(); hold(sprite(PONY[0], { map: HORSE_PAL }), `${time} seconds! You won the cowboy costume!`); }
-  else { persist(); toast(best && time >= best ? `${time} seconds! Best: ${best}.` : `${time} seconds! A new best!`); sfx.win(); }
+  else if (time < best) { persist(); if (!crumbWin('foal', `${time} seconds! A new best! For Crumb: the foal costume!`)) { toast(`${time} seconds! A new best!`); sfx.win(); } }   // decided 20 Nov: the foal is for beating your own time
+  else { persist(); toast(`${time} seconds! Best: ${best}.`); sfx.win(); }
 }
 // Decided 3 Nov: pushing, learned from the dairy cow. Walking into a hay bale
 // for a moment slides it one tile, if the tile past it is empty floor. Only
@@ -2620,7 +2639,7 @@ function dig() {
   if (at(W.map.fossilMound) && !S.jungle.fossil) { S.jungle.fossil = true; S.toys.push('fossil'); persist(); hold(AMMONITE, 'A fossil!'); return; }
   if (at(W.map.chickenMound) && !S.farm.chicken) { S.farm.chicken = true; S.toys.push('chicken'); persist(); hold(CHICKEN, 'A rubber chicken!'); return; }
   if (at(G.goldMound)) { G.treats.push({ x: x + .5, y: y + .5, v: 10 }); toast('Something shiny!'); return; }
-  G.treats.push({ x: x + .2, y: y + .5, v: W.soil }, { x: x + .8, y: y + .5, v: W.soil }); toast('Treats!');
+  G.treats.push({ x: x + .5, y: y + .5, v: W.soil }); toast('A treat!');   // one per dig since 20 Nov (was two)
 }
 // Decided 28 Oct: no "how many are left" counters on screen. The tally at the
 // end counts everything up instead, one line at a time.
@@ -2713,11 +2732,7 @@ function stepLevel(dt, t) {
   G.sparkles = G.sparkles.filter(sp => {
     if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
     if (W.map.deep && W.map.deep.includes(sp.k) && !G.under) return true;   // on the sea floor: dive for it
-    if (sp.crumb) {                          // one of Crumb's costumes
-      S.crumbHave.push(sp.k); persist(); burst(sp.x, sp.y);
-      const w = { body: sp.k }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), `For Crumb: the ${CRUMB_ITEMS[sp.k].name.toLowerCase()}!`);
-      return false;
-    }
+    if (sp.crumb) { burst(sp.x, sp.y); crumbWin(sp.k, `For Crumb: the ${CRUMB_ITEMS[sp.k].name.toLowerCase()}!`); return false; }   // one of Crumb's hidden costumes
     S[sp.sec][sp.k] = true;
     if (TOYS[sp.k]) { S.toys.push(sp.k); hold(TOYS[sp.k].pic, `A ${TOYS[sp.k].name}!`); }
     else { S.have.push(sp.k); hold(ITEM_PIC[sp.k], `${ITEMS[sp.k].name}!`); }
@@ -3385,7 +3400,10 @@ function drawLevel(t) {
     if (c === 'H') { const isH = (i, j) => G.m[j]?.[i] === 'H'; put(hedgeTop((isH(x, y - 1) ? 0 : 1) | (isH(x + 1, y) ? 0 : 2) | (isH(x - 1, y) ? 0 : 8)), X, Y - 7); }
     if (c === 'r') put(reedsTile(Math.floor(t / 700 + x) % 2), X, Y - 4);   // cattails, swaying a little
   }
-  G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
+  // Decided 20 Nov: hidden pieces twinkle only when Bread is close (they used
+  // to show through bushes from across the map, which made them too easy).
+  // Sniff still puffs over any within 6 squares.
+  G.sparkles.forEach(sp => { if (Math.hypot(sp.x - G.bread.x, sp.y - G.bread.y) < SPARKLE_NEAR) twinkle(sp.x * T, sp.y * T, t); });
   // the roofs hide the insides until Bread goes in the door (drawn after the
   // sparkles: the first barn showed the pieces inside on top of the roof)
   if (G.world === 'farm') [[FB.rect, BX + 17, ['#8e2a20', '#a8302f', '#c0392b']], [FC.rect, 11, ['#5e3319', '#7a4a2a', '#b07a46']]].forEach(([[x0, y0, x1, y1], door, [dark, mid, light]]) => {
