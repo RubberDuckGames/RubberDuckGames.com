@@ -494,6 +494,7 @@ cv.addEventListener('pointerdown', e => { if (!matchMedia('(pointer:coarse)').ma
 ['pointerup', 'pointercancel'].forEach(ev => addEventListener(ev, e => { if (e.pointerId === goId) { goId = null; release(); } }));
 // the stick works like Math Force's: push it the way you want the horse to go
 const stick = RDG.stick('#stick', '#knob');
+RDG.pad({ a: ' ', stick });   // a game controller: A is GO
 // pinch and double-tap zoom were zooming the screen mid-run (31 Oct); only
 // during a run, so the results card can still be zoomed to read
 RDG.noZoom(() => G && !['done', 'menu', 'title'].includes(G.state), ['#goBtn', '#stick']);

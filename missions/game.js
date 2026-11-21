@@ -803,6 +803,8 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => { keys.clear(); fireHeld = false; });
 const stick = RDG.stick('#stick', '#knob', { reach: .5, travel: 1 });
+// a game controller: A Fire, B Use (and the card's main button), X reload, Y retreat
+RDG.pad({ a: ' ', b: 'e', x: 'r', y: 'q', stick });
 const bFire = document.getElementById('bFire'), bUse = document.getElementById('bUse');
 let fireId = null;
 bFire.addEventListener('pointerdown', e => { fireHeld = true; fireId = e.pointerId; bFire.classList.add('down'); try { bFire.setPointerCapture(e.pointerId); } catch (_) {} });

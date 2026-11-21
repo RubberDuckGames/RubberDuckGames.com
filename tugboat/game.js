@@ -590,6 +590,7 @@ function honk() {
 $('#hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (screen === 'play') honk(); else pressStart(); });
 // the steering stick, like Bread's: the boat goes the way it's pushed
 const stick = RDG.stick('#pad', '#knob');
+RDG.pad({ a: ' ', stick });   // a game controller: A is the horn
 RDG.noZoom(() => screen === 'play', ['#pad', '#hornBtn']);
 
 // ---------- Screen size ----------

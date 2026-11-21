@@ -2894,6 +2894,8 @@ $('#diveBtn').addEventListener('pointerdown', e => { e.preventDefault(); dive();
 // a thumb on; decided 2 Nov, after more play-tests, it's a round stick: Bread
 // walks the way it's pushed, any direction. Lifting the thumb stops her.
 const stick = RDG.stick('#pad', '#knob');
+// a game controller: A is Paw (the action), B Bark, X Sniff, Y Dig, Select the ? help
+RDG.pad({ a: ' ', b: 'b', x: 'c', y: 'z', select: 'h', stick });
 // pinch and double-tap zoom are blocked while playing a world (seen 2 Nov, as in Rodeo)
 RDG.noZoom(() => screen === 'level' && G && !G.done && !G.ask, ['#pad', '#barkBtn', '#pawBtn', '#digBtn', '#sniffBtn', '#jumpBtn', '#diveBtn']);
 

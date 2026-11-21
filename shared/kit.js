@@ -85,5 +85,99 @@ const RDG = (() => {
     document.addEventListener('touchend', e => { const now = performance.now(); if (now - lastEnd < 350) stop(e); lastEnd = now; }, { passive: false });
   }
 
-  return { sound, stick, noZoom };
+  // ---------- Game controller ----------
+  // A Switch, Xbox or PlayStation controller (anything the browser reads as a
+  // standard gamepad). Decided 20 Nov: it presses the keys the game already
+  // knows, so a game only says which key each button is; nothing in the game's
+  // own controls changes. Buttons are named by where they sit, Xbox style:
+  // a bottom, b right, x left, y top (on a Switch controller the bottom button
+  // is printed B). The cross pad is the arrow keys.
+  //
+  //   RDG.pad({ a: ' ', b: 'b', start: 'Enter', stick });
+  //
+  //   a, b, x, y, l, r, zl, zr, select, start: the key each button presses
+  //   stick:    the game's RDG.stick; the left thumbstick steers it smoothly.
+  //             Without one, the thumbstick presses the arrow keys too.
+  //   deadzone: how far the thumbstick moves before it counts
+  //   menu:     says when a card or menu is open; by default, when a .card or
+  //             dialog shows
+  //
+  // On a card or menu, the cross pad moves between its buttons and A presses
+  // the one picked, unless the game does that itself.
+  const BUTTON = { a: 0, b: 1, x: 2, y: 3, l: 4, r: 5, zl: 6, zr: 7, select: 8, start: 9, up: 12, down: 13, left: 14, right: 15 };
+  const FOCUSABLE = 'button:not([disabled]), a[href], input, select, [tabindex]:not([tabindex="-1"])';
+  function pad(opt = {}) {
+    const shown = e => e.offsetParent !== null || getComputedStyle(e).position === 'fixed';
+    const o = {
+      a: ' ', start: 'Enter', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', stick: null, deadzone: .25,
+      menu: () => [...document.querySelectorAll('.card, dialog[open], [role="dialog"]')].some(shown),
+      ...opt,
+    };
+    const held = {};      // key -> true while a button or the thumbstick holds it
+    let steering = false;  // the thumbstick is moving the game's stick
+    function moveFocus(step) {
+      const at = document.activeElement;
+      const box = (at && at !== document.body && at.closest('.card, dialog, [role="dialog"]')) ||
+        [...document.querySelectorAll('.card, dialog, [role="dialog"]')].filter(shown).pop() || document.body;
+      const list = [...box.querySelectorAll(FOCUSABLE)].filter(shown);
+      if (!list.length) return;
+      const i = list.indexOf(at);
+      list[i < 0 ? 0 : (i + step + list.length) % list.length].focus();
+    }
+    function send(type, key) {
+      const before = document.activeElement;
+      const e = new KeyboardEvent(type, { key, bubbles: true, cancelable: true });
+      (before || document.body).dispatchEvent(e);
+      if (type !== 'keydown') return;
+      // What a real key would have done, if the game didn't use it. On a card
+      // the controller has no Tab key, so it also steps in when the game took
+      // the key but did nothing with the buttons (Math Force's start card uses
+      // the arrows for walking, even under the card; found 20 Nov).
+      const at = document.activeElement;
+      const free = !e.defaultPrevented || (o.menu() && at === before);
+      if (!free) return;
+      if (key === ' ' || key === 'Enter') {
+        if (at && at.matches('button, a[href]')) at.click();
+        else if (o.menu()) moveFocus(1);   // nothing picked yet (Rodeo's events): pick the first
+      }
+      if (key === 'ArrowDown' || key === 'ArrowRight') moveFocus(1);
+      if (key === 'ArrowUp' || key === 'ArrowLeft') moveFocus(-1);
+    }
+    function hold(key, down) {
+      if (!key || !!held[key] === down) return;
+      held[key] = down;
+      send(down ? 'keydown' : 'keyup', key);
+    }
+    function poll() {
+      const gp = [...(navigator.getGamepads ? navigator.getGamepads() : [])].find(g => g && g.connected);
+      if (gp) {
+        const want = {};
+        for (const [name, i] of Object.entries(BUTTON)) {
+          const b = gp.buttons[i];
+          if (o[name] && b && (b.pressed || b.value > .5)) want[o[name]] = true;
+        }
+        const lx = gp.axes[0] || 0, ly = gp.axes[1] || 0, far = Math.hypot(lx, ly) > o.deadzone;
+        const s = o.stick;
+        if (s && s.id == null) {           // a thumb on the touch stick wins
+          if (far) { const l = Math.max(1, Math.hypot(lx, ly)); s.x = lx / l; s.y = ly / l; s.on = true; steering = true; }
+          else if (steering) { s.x = s.y = 0; s.on = false; steering = false; }
+        } else if (!s && far) {
+          if (lx < -.5) want[o.left] = true;
+          if (lx > .5) want[o.right] = true;
+          if (ly < -.5) want[o.up] = true;
+          if (ly > .5) want[o.down] = true;
+        }
+        for (const k of new Set([...Object.keys(held), ...Object.keys(want)])) hold(k, !!want[k]);
+      }
+      requestAnimationFrame(poll);
+    }
+    let started = false;
+    const start = () => { if (!started) { started = true; requestAnimationFrame(poll); } };
+    addEventListener('gamepadconnected', start);
+    if ([...(navigator.getGamepads ? navigator.getGamepads() : [])].some(g => g)) start();
+    // a controller unplugged mid-press lets go of everything
+    addEventListener('gamepaddisconnected', () => { Object.keys(held).forEach(k => hold(k, false)); if (o.stick && steering) { o.stick.x = o.stick.y = 0; o.stick.on = false; steering = false; } });
+  }
+
+  return { sound, stick, noZoom, pad };
 })();

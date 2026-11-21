@@ -1135,6 +1135,8 @@ $('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing()
 $('#tUse').addEventListener('pointerdown', e => { e.preventDefault(); use(); });
 $('#tQuad').addEventListener('pointerdown', e => { e.preventDefault(); quad(); });
 const stick = touchMode ? RDG.stick('#stick', '#knob') : { x: 0, y: 0, id: null };
+// a game controller: A Fire, B Wrench, X Use, Y Quad, R reload, Start pause, Select the ? help
+RDG.pad({ a: ' ', b: 'e', x: 'f', y: 'q', r: 'r', start: 'p', select: 'h', stick });
 if (touchMode) {
   document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors. Use drills cracked walls, drops doors, and works the wire panel and terminal. Tip: turn your phone sideways for a bigger maze.';
   // A thumb on the stick and a thumb on Fire look like a pinch to iPhone Safari,
