@@ -159,7 +159,7 @@ dialog p{margin:.35rem 0}
   <p>When a creature is full of energy, it has a baby and gives it half. With Babies change turned up, some babies are born with one cell added, taken away or swapped.</p>
   <p>Change the sliders, or edit a copy of a creature, and watch what happens. Add food lets you drop food by tapping or dragging on the world.</p>
   <p>Save keeps a creature on this device. Its picture shows under the builder grid; tap it to build it again.</p>
-  <p>A killer cell hurts any other creature it touches, unless it touches armor.</p>
+  <p>A killer cell takes energy from any other creature it touches, unless it touches armor.</p>
   <p>Poison blocks are solid. A creature touching one loses energy. Add poison drops them; with it on, tapping a poison block takes it away.</p>
   <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off.</p>
   <div class="row"><button class="btn" type="button" id="helpClose">Close</button></div>
@@ -180,7 +180,9 @@ dialog p{margin:.35rem 0}
 // Decided 20 Nov (his rule): when a killer cell touches another creature, that
 // creature takes damage (energy lost each tick, `damage`), and armor stops it:
 // a killer touching only armor does nothing. Killers don't hurt their own
-// creature. Whether the killer gets the energy is still to ask; for now it doesn't.
+// creature. His answer the same day: the killer gets the energy it takes (no
+// more than the other creature had left, and up to what the killer can hold),
+// so a killer can live by hunting.
 // PLACEHOLDER: every number below is a first guess until he gives his own.
 // The colours and drawings are placeholders too, until he picks or draws them.
 const CELLS = {
@@ -188,7 +190,7 @@ const CELLS = {
   mover:   { name: 'Mover',   says: 'Moves the creature.',                 upkeep: 0.15, holds: 10, push: 1, color: '#0b7285' },
   storage: { name: 'Storage', says: 'Holds lots of energy, so it lasts longer without food.', upkeep: 0.05, holds: 60, color: '#e8a317' },
   bone:    { name: 'Bone',    says: 'Inside frame. Lets the creature grow bigger.', upkeep: 0.05, holds: 10, room: 4, color: '#efe4cc' },
-  killer:  { name: 'Killer',  says: 'Hurts other creatures it touches. Armor stops it.', upkeep: 0.15, holds: 10, damage: 2, color: '#26282c' },
+  killer:  { name: 'Killer',  says: 'Takes energy from other creatures it touches. Armor stops it.', upkeep: 0.15, holds: 10, damage: 2, color: '#26282c' },
   armor:   { name: 'Armor',   says: 'Outside protection. Killer cells can\'t hurt it.', upkeep: 0.10, holds: 10, color: '#62708a' },
 };
 const TYPES = Object.keys(CELLS);
@@ -380,7 +382,11 @@ function live(c) {
       const v = byId.get(o);
       if (!v || v.dead) continue;
       const hit = v.cells.find(q => v.x + q.x === x && v.y + q.y === y);
-      if (hit && hit.t !== 'armor') { v.energy -= CELLS.killer.damage; if (v.energy <= 0) die(v); }
+      if (hit && hit.t !== 'armor') {
+        const take = Math.min(CELLS.killer.damage, Math.max(0, v.energy));
+        v.energy -= CELLS.killer.damage; c.energy = Math.min(c.max, c.energy + take);
+        if (v.energy <= 0) die(v);
+      }
     }
   }
   for (const p of c.cells) {
