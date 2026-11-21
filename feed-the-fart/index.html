@@ -101,6 +101,10 @@ svg.noses .fanHand{display:inline;animation:fan .3s ease-in-out infinite alterna
 svg.noses .pmouth{display:none}
 .pmouthEw{display:none}
 svg.noses .pmouthEw{display:inline}
+#scene image{image-rendering:pixelated}
+.fall{animation:fall 7s linear infinite;transform-box:view-box}
+.fall.f1{animation-delay:-2.5s;animation-duration:8s}.fall.f2{animation-delay:-5s;animation-duration:6.5s}
+@keyframes fall{0%{transform:translate(0,-10px)}25%{transform:translate(10px,25px)}50%{transform:translate(-4px,55px)}75%{transform:translate(8px,85px)}100%{transform:translate(0,115px)}}
 #flyWing{animation:buzz .08s linear infinite alternate}
 @keyframes buzz{to{opacity:.2}}
 #flyLoop{animation:loop 3s linear infinite;transform-box:view-box;transform-origin:470px 195px}
@@ -121,7 +125,7 @@ svg.noses #fishHide{transform:translate(-14px,-6px) scale(.6);opacity:.55}
 svg.wilt #hangLeaves{transform:scaleY(1.2) scaleX(.8);filter:saturate(.15) brightness(.75)}
 #cactus{transition:transform .6s ease-in;transform-box:view-box;transform-origin:756px 148px}
 svg.wilt #cactus{transform:rotate(85deg)}
-@media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish{animation:none}}
+@media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish,.fall{animation:none}}
 </style>
 </head>
 <body>
@@ -139,12 +143,10 @@ svg.wilt #cactus{transform:rotate(85deg)}
   <div class="stage" id="stage">
     <svg id="scene" viewBox="0 0 800 460" role="img" aria-label="Thanksgiving dinner. The plumber stands by the table, with the family, a dog under the table and a cat on the windowsill." data-face="normal">
       <defs>
-        <!-- Dithers line up with the game's pixels: one canvas pixel is 800/256 = 3.125 SVG units.
-             The gingham is faint on purpose: stronger checks crossed the outline pass's
-             brightness jump and every square got a dark box round it. -->
+        <!-- Dithers line up with the game's pixels: one canvas pixel is 800/256 = 3.125 SVG units. -->
         <pattern id="dLight" width="6.25" height="6.25" patternUnits="userSpaceOnUse"><rect width="3.125" height="3.125" fill="#fbecc9"/><rect x="3.125" y="3.125" width="3.125" height="3.125" fill="#fbecc9"/></pattern>
         <pattern id="dShade" width="6.25" height="6.25" patternUnits="userSpaceOnUse"><rect width="3.125" height="3.125" fill="#6e4528"/><rect x="3.125" y="3.125" width="3.125" height="3.125" fill="#6e4528"/></pattern>
-        <pattern id="gingham" width="25" height="25" patternUnits="userSpaceOnUse"><rect width="25" height="25" fill="#f4e6c4"/><rect width="12.5" height="25" fill="#a01830" opacity=".15"/><rect width="25" height="12.5" fill="#a01830" opacity=".15"/></pattern>
+        <clipPath id="winClip"><rect x="608" y="36" width="144" height="106"/></clipPath>
       </defs>
       <!-- room -->
       <rect width="800" height="330" fill="#f1d7a6"/>
@@ -163,9 +165,7 @@ svg.wilt #cactus{transform:rotate(85deg)}
       <path d="M537 38h22l-3 14h-16z" fill="#c2643a"/>
       <g id="hangLeaves">
         <path d="M540 50q-8 20-4 44M548 52q0 22 2 40M556 50q8 18 4 38" stroke="#3f8f3a" stroke-width="3" fill="none"/>
-        <ellipse cx="537" cy="64" rx="5" ry="3" fill="#5ab04a"/><ellipse cx="535" cy="80" rx="5" ry="3" fill="#3f8f3a"/><ellipse cx="537" cy="94" rx="5" ry="3" fill="#5ab04a"/>
-        <ellipse cx="552" cy="70" rx="5" ry="3" fill="#3f8f3a"/><ellipse cx="551" cy="88" rx="5" ry="3" fill="#5ab04a"/>
-        <ellipse cx="562" cy="62" rx="5" ry="3" fill="#5ab04a"/><ellipse cx="563" cy="78" rx="5" ry="3" fill="#3f8f3a"/>
+        <path transform="translate(538 62) rotate(160)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(538 62) rotate(160)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(536 78) rotate(200)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(536 78) rotate(200)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(537 92) rotate(150)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(537 92) rotate(150)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(551 68) rotate(20)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(551 68) rotate(20)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(551 86) rotate(160)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(551 86) rotate(160)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(560 60) rotate(30)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(560 60) rotate(30)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(562 76) rotate(-20)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#3f7d2a"/><path transform="translate(562 76) rotate(-20)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(561 90) rotate(40)" d="M0 0q6 -4.0 12 0q-6 4.0 -12 0z" fill="#4f9a3a"/><path transform="translate(561 90) rotate(40)" d="M1 0h8.4" stroke="#8fd06a" stroke-width="1.6"/>
       </g>
       <!-- a picture on the wall: hills at sunset -->
       <rect x="236" y="60" width="96" height="70" fill="#7a4a2a"/><rect x="243" y="67" width="82" height="56" fill="#f2b26a"/>
@@ -191,9 +191,9 @@ svg.wilt #cactus{transform:rotate(85deg)}
       <rect x="608" y="36" width="144" height="106" fill="#f6c870"/>
       <rect x="608" y="36" width="144" height="30" fill="#f9dc98"/>
       <path d="M608 118q30-18 70-8t74-6v38h-144z" fill="#b8642a"/>
-      <rect x="628" y="88" width="6" height="30" fill="#5a3418"/><circle cx="631" cy="80" r="16" fill="#d9542a"/><circle cx="642" cy="90" r="11" fill="#e8923a"/>
-      <rect x="716" y="84" width="6" height="34" fill="#5a3418"/><circle cx="719" cy="74" r="18" fill="#c2304a"/><circle cx="706" cy="84" r="10" fill="#e8923a"/>
-      <circle cx="668" cy="52" r="3" fill="#d9542a"/><circle cx="690" cy="64" r="3" fill="#e8923a"/>
+      <rect x="628" y="88" width="6" height="30" fill="#5a3418"/><path transform="translate(644 90) rotate(76)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(637 71) rotate(154)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(618 92) rotate(339)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(617 80) rotate(207)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(626 72) rotate(273)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(625 80) rotate(118)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(612 76) rotate(26)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(630 93) rotate(219)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(629 89) rotate(87)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(627 83) rotate(210)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(621 93) rotate(123)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(631 87) rotate(158)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(618 85) rotate(66)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(635 72) rotate(54)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(635 69) rotate(130)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(634 70) rotate(152)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(627 86) rotate(212)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(623 82) rotate(134)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(634 87) rotate(286)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(620 83) rotate(141)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(645 80) rotate(181)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(623 90) rotate(327)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(644 85) rotate(102)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(622 92) rotate(270)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(627 93) rotate(337)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(631 88) rotate(357)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/>
+      <rect x="716" y="84" width="6" height="34" fill="#5a3418"/><path transform="translate(693 81) rotate(5)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(694 71) rotate(130)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(692 78) rotate(211)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(699 80) rotate(105)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(707 68) rotate(289)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(695 66) rotate(217)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(702 83) rotate(218)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(697 81) rotate(166)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(726 81) rotate(222)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(727 78) rotate(28)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(708 62) rotate(24)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(693 83) rotate(11)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(720 81) rotate(348)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(715 65) rotate(114)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(720 88) rotate(314)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(692 73) rotate(256)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(704 75) rotate(242)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(706 81) rotate(307)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(707 73) rotate(357)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(727 83) rotate(333)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(691 78) rotate(228)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(730 79) rotate(195)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(711 70) rotate(249)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(727 79) rotate(58)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(724 81) rotate(299)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#d9542a"/><path transform="translate(689 79) rotate(149)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(711 60) rotate(319)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#f2b632"/><path transform="translate(706 61) rotate(72)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/><path transform="translate(697 77) rotate(15)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#e8923a"/><path transform="translate(727 74) rotate(302)" d="M0 0q5 -3.3 10 0q-5 3.3 -10 0z" fill="#c2304a"/>
+      <g clip-path="url(#winClip)"><g class="fall f0"><path transform="translate(650 40) rotate(20)" d="M0 0q4 -2.7 8 0q-4 2.7 -8 0z" fill="#e8923a"/></g><g class="fall f1"><path transform="translate(690 40) rotate(140)" d="M0 0q4 -2.7 8 0q-4 2.7 -8 0z" fill="#d9542a"/></g><g class="fall f2"><path transform="translate(735 40) rotate(70)" d="M0 0q4 -2.7 8 0q-4 2.7 -8 0z" fill="#f2b632"/></g></g>
       <path d="M680 36v106M608 89h144" stroke="#7a4a2a" stroke-width="6"/>
       <rect x="584" y="20" width="192" height="6" fill="#5a3418"/>
       <path d="M586 24h22v120q-10 8-22 0z" fill="#d9a420"/><path d="M594 28v112" stroke="#b5841a" stroke-width="3"/>
@@ -204,43 +204,27 @@ svg.wilt #cactus{transform:rotate(85deg)}
         <rect x="745" y="120" width="3" height="22" fill="#5ab04a"/>
         <path d="M736 136h20l-3 12h-14z" fill="#c2643a"/>
       </g>
-      <g id="cat">
-        <path d="M702 146q30-10 24-34" stroke="#e8923a" stroke-width="7" fill="none" stroke-linecap="round"/>
-        <ellipse cx="682" cy="130" rx="20" ry="18" fill="#f4ece0"/>
-        <path d="M690 116q12 4 12 18t-10 12z" fill="#e8923a"/><path d="M664 136q4 8 12 10l-12 0z" fill="#4a3020"/>
-        <circle cx="670" cy="108" r="13" fill="#f4ece0"/>
-        <path d="M670 95q10 2 13 12l-13 2z" fill="#4a3020"/><path d="M658 104q2-8 10-9l-4 10z" fill="#e8923a"/>
-        <path d="M659 101l2-14 9 9zM672 96l9-9 1 14z" fill="#f4ece0"/><path d="M662 98l1-7 4 4zM675 95l4-4 1 6z" fill="#f2a7b8"/>
-        <circle cx="665" cy="107" r="2.5" fill="#2a1a0e"/><circle cx="675" cy="107" r="2.5" fill="#2a1a0e"/><path d="M669 112h3" stroke="#f27d92" stroke-width="2"/>
-      </g>
-      <!-- family behind the table. Generic people, not anyone real. -->
+      <g id="cat"><image data-spr="cat" x="650" y="96.875"/></g>
+      <!-- family behind the table. Generic people, not anyone real. Their faces are
+           pixel sprites: one normal, one for "ew" (shown while they hold their noses). -->
       <g class="person">
         <rect x="302" y="198" width="56" height="70" rx="18" fill="#7d4fa0"/><rect x="344" y="204" width="12" height="62" rx="6" fill="#000" opacity=".16"/>
-        <circle cx="330" cy="176" r="22" fill="#f0c9a0"/>
-        <path d="M308 172q2-22 22-22t22 22q-6-12-22-12t-22 12z" fill="#c9c9c9"/><circle cx="330" cy="148" r="9" fill="#c9c9c9"/>
-        <circle cx="322" cy="176" r="2.5" fill="#222"/><circle cx="338" cy="176" r="2.5" fill="#222"/>
-        <path class="pmouth" d="M323 186q7 5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
-        <path class="pmouthEw" d="M323 189q7-5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <image data-spr="famA" x="309.375" y="146.875" class="pmouth"/>
+        <image data-spr="famAEw" x="309.375" y="146.875" class="pmouthEw"/>
         <circle class="noseHand" cx="330" cy="182" r="7" fill="#e8b98c"/>
         <g class="fanHand"><path d="M356 214l22-34" stroke="#7d4fa0" stroke-width="9" stroke-linecap="round"/><ellipse cx="381" cy="174" rx="7" ry="10" fill="#e8b98c"/></g>
       </g>
       <g class="person">
         <rect x="408" y="206" width="44" height="60" rx="16" fill="#3f8f5a"/><rect x="441" y="212" width="10" height="52" rx="5" fill="#000" opacity=".16"/>
-        <circle cx="430" cy="188" r="18" fill="#c68a5e"/>
-        <path d="M412 184q0-18 18-18t18 18q-4-8-18-8t-18 8z" fill="#2a1a10"/>
-        <circle cx="424" cy="188" r="2.3" fill="#222"/><circle cx="436" cy="188" r="2.3" fill="#222"/>
-        <path class="pmouth" d="M424 196q6 5 12 0" stroke="#5a2a1a" stroke-width="2.5" fill="none"/>
-        <path class="pmouthEw" d="M424 199q6-5 12 0" stroke="#5a2a1a" stroke-width="2.5" fill="none"/>
+        <image data-spr="famB" x="409.375" y="168.75" class="pmouth"/>
+        <image data-spr="famBEw" x="409.375" y="168.75" class="pmouthEw"/>
         <circle class="noseHand" cx="430" cy="193" r="6" fill="#b87b50"/>
         <g class="fanHand"><path d="M450 220l18-30" stroke="#3f8f5a" stroke-width="8" stroke-linecap="round"/><ellipse cx="470" cy="185" rx="6" ry="9" fill="#b87b50"/></g>
       </g>
       <g class="person">
         <rect x="662" y="196" width="58" height="72" rx="18" fill="#3a6ea5"/><rect x="706" y="202" width="12" height="64" rx="6" fill="#000" opacity=".16"/>
-        <circle cx="691" cy="174" r="22" fill="#e9b88f"/>
-        <path d="M669 170q0-24 22-24t22 24q-4-14-22-14t-22 14z" fill="#8a4b22"/>
-        <circle cx="683" cy="174" r="2.5" fill="#222"/><circle cx="699" cy="174" r="2.5" fill="#222"/>
-        <path class="pmouth" d="M684 185q7 5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
-        <path class="pmouthEw" d="M684 188q7-5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <image data-spr="famC" x="668.75" y="153.125" class="pmouth"/>
+        <image data-spr="famCEw" x="668.75" y="153.125" class="pmouthEw"/>
         <circle class="noseHand" cx="691" cy="180" r="7" fill="#dca67a"/>
         <g class="fanHand"><path d="M664 212l-14-34" stroke="#3a6ea5" stroke-width="9" stroke-linecap="round"/><ellipse cx="648" cy="172" rx="7" ry="10" fill="#dca67a"/></g>
       </g>
@@ -249,15 +233,24 @@ svg.wilt #cactus{transform:rotate(85deg)}
       <ellipse cx="470" cy="68" rx="10" ry="5" fill="#fff4c2"/>
       <!-- table -->
       <ellipse cx="515" cy="372" rx="300" ry="26" fill="url(#dShade)"/>
-      <rect x="262" y="300" width="12" height="70" fill="#5a3418"/><rect x="760" y="300" width="12" height="70" fill="#5a3418"/>
-      <path d="M240 255h550v62q-20 8-34 0t-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0z" fill="url(#gingham)"/>
-      <rect x="240" y="252" width="550" height="8" fill="#a32a3e"/>
+      <!-- a wooden table (it had a gingham cloth for an evening; Randi's references are wood),
+           with the family's chairs and legs under it -->
+      <rect x="306" y="291" width="6" height="50" fill="#5a3418"/><rect x="348" y="291" width="6" height="50" fill="#5a3418"/><rect x="303" y="283" width="54" height="8" fill="#8a5228"/><rect x="315" y="278" width="12" height="58" fill="#3a3a4a"/><rect x="333" y="278" width="12" height="58" fill="#3a3a4a"/><rect x="313" y="334" width="15" height="7" rx="2" fill="#2a1a0e"/><rect x="332" y="334" width="15" height="7" rx="2" fill="#2a1a0e"/>
+      <rect x="406" y="291" width="6" height="50" fill="#5a3418"/><rect x="448" y="291" width="6" height="50" fill="#5a3418"/><rect x="403" y="283" width="54" height="8" fill="#8a5228"/><rect x="415" y="278" width="12" height="52" fill="#3a3a4a"/><rect x="433" y="278" width="12" height="52" fill="#3a3a4a"/><rect x="413" y="328" width="15" height="7" rx="2" fill="#2a1a0e"/><rect x="432" y="328" width="15" height="7" rx="2" fill="#2a1a0e"/>
+      <rect x="667" y="291" width="6" height="50" fill="#5a3418"/><rect x="709" y="291" width="6" height="50" fill="#5a3418"/><rect x="664" y="283" width="54" height="8" fill="#8a5228"/><rect x="676" y="278" width="12" height="58" fill="#3a3a4a"/><rect x="694" y="278" width="12" height="58" fill="#3a3a4a"/><rect x="674" y="334" width="15" height="7" rx="2" fill="#2a1a0e"/><rect x="693" y="334" width="15" height="7" rx="2" fill="#2a1a0e"/>
+      <rect x="262" y="276" width="14" height="96" fill="#7a4522"/><rect x="760" y="276" width="14" height="96" fill="#7a4522"/>
+      <ellipse cx="269" cy="304" rx="10" ry="5" fill="#8a5228"/><ellipse cx="269" cy="346" rx="10" ry="5" fill="#8a5228"/>
+      <ellipse cx="767" cy="304" rx="10" ry="5" fill="#8a5228"/><ellipse cx="767" cy="346" rx="10" ry="5" fill="#8a5228"/>
+      <rect x="236" y="250" width="558" height="12" fill="#b5733a"/><rect x="236" y="250" width="558" height="3" fill="#d99a5a"/>
+      <rect x="244" y="262" width="542" height="18" fill="#8a5228"/><rect x="244" y="262" width="542" height="3" fill="#5a3418"/>
+      <path d="M318 265v15M408 265v15M498 265v15M588 265v15M678 265v15" stroke="#6e3f1c" stroke-width="2"/>
       <!-- food on the table -->
       <ellipse cx="300" cy="254" rx="26" ry="6" fill="#e8e0d0"/><path d="M282 252q18-26 36 0z" fill="#fbf6e9"/><rect x="296" y="236" width="8" height="5" fill="#f5d34a"/>
       <path d="M352 252l6-14h26l8 14z" fill="#f2efe6"/><ellipse cx="371" cy="240" rx="13" ry="3" fill="#8a5a2a"/>
       <ellipse cx="470" cy="256" rx="60" ry="9" fill="#f2efe6"/>
       <ellipse cx="470" cy="238" rx="42" ry="22" fill="#b0642a"/><ellipse cx="462" cy="232" rx="20" ry="8" fill="#cf8a4a"/>
       <path d="M432 244l-14 6M508 244l14 6" stroke="#b0642a" stroke-width="9" stroke-linecap="round"/><circle cx="416" cy="251" r="5" fill="#fff"/><circle cx="524" cy="251" r="5" fill="#fff"/>
+      <path transform="translate(424 257) rotate(170)" d="M0 0q5.5 -3.7 11 0q-5.5 3.7 -11 0z" fill="#3f8f3a"/><path transform="translate(424 257) rotate(170)" d="M1 0h7.7" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(516 257) rotate(10)" d="M0 0q5.5 -3.7 11 0q-5.5 3.7 -11 0z" fill="#3f8f3a"/><path transform="translate(516 257) rotate(10)" d="M1 0h7.7" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(436 261) rotate(150)" d="M0 0q5.5 -3.7 11 0q-5.5 3.7 -11 0z" fill="#3f8f3a"/><path transform="translate(436 261) rotate(150)" d="M1 0h7.7" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(504 261) rotate(30)" d="M0 0q5.5 -3.7 11 0q-5.5 3.7 -11 0z" fill="#3f8f3a"/><path transform="translate(504 261) rotate(30)" d="M1 0h7.7" stroke="#8fd06a" stroke-width="1.6"/>
       <g class="steam"><path d="M456 214q-5-6 0-12t0-12" /><path d="M472 210q5-6 0-12t0-12"/><path d="M488 214q-5-6 0-12t0-12"/></g>
       <ellipse cx="640" cy="252" rx="28" ry="7" fill="#c9893f"/><ellipse cx="640" cy="249" rx="22" ry="5" fill="#d9822b"/><ellipse cx="634" cy="246" rx="7" ry="3" fill="#fff"/>
       <ellipse cx="730" cy="252" rx="20" ry="5" fill="#9b1b30"/>
@@ -269,6 +262,7 @@ svg.wilt #cactus{transform:rotate(85deg)}
         <g class="stem" id="stemL"><path d="M560 228q-10-20-22-36" stroke="#3f7d2a" stroke-width="4" fill="none"/><circle cx="538" cy="190" r="10" fill="#e8743b"/><circle cx="538" cy="190" r="4" fill="#7a3a10"/></g>
         <g class="stem" id="stemM"><path d="M560 228v-48" stroke="#3f7d2a" stroke-width="4"/><circle cx="560" cy="178" r="11" fill="#f2c230"/><circle cx="560" cy="178" r="4.5" fill="#7a3a10"/></g>
         <g class="stem" id="stemR"><path d="M560 228q10-20 22-36" stroke="#3f7d2a" stroke-width="4" fill="none"/><circle cx="582" cy="190" r="10" fill="#c2304a"/><circle cx="582" cy="190" r="4" fill="#7a3a10"/></g>
+        <path transform="translate(552 229) rotate(205)" d="M0 0q7.5 -5.0 15 0q-7.5 5.0 -15 0z" fill="#3f7d2a"/><path transform="translate(552 229) rotate(205)" d="M1 0h10.5" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(568 229) rotate(-25)" d="M0 0q7.5 -5.0 15 0q-7.5 5.0 -15 0z" fill="#3f7d2a"/><path transform="translate(568 229) rotate(-25)" d="M1 0h10.5" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(554 232) rotate(170)" d="M0 0q7.5 -5.0 15 0q-7.5 5.0 -15 0z" fill="#5ab04a"/><path transform="translate(554 232) rotate(170)" d="M1 0h10.5" stroke="#8fd06a" stroke-width="1.6"/><path transform="translate(566 232) rotate(10)" d="M0 0q7.5 -5.0 15 0q-7.5 5.0 -15 0z" fill="#5ab04a"/><path transform="translate(566 232) rotate(10)" d="M1 0h10.5" stroke="#8fd06a" stroke-width="1.6"/>
         <path d="M546 226h28l-4 28h-20z" fill="#3a6ea5"/>
       </g>
       <!-- a fly over the turkey -->
@@ -288,8 +282,8 @@ svg.wilt #cactus{transform:rotate(85deg)}
         <g id="dogEyes2"><path d="M496 346l8 2" stroke="#2a1a0e" stroke-width="2.5"/></g>
         <g id="dogPaw"><rect x="494" y="402" width="9" height="28" rx="4" fill="#c98544"/></g>
       </g>
-      <!-- the plumber: fit, in tan canvas bib overalls over a long-sleeve maroon shirt, from
-           the photo Randi sent 20 Nov; no cap, no logo, nothing lettered (card #55) -->
+      <!-- the plumber: lean, tousled brown hair, mustache and goatee, tan bib overalls over a
+           charcoal long-sleeve shirt, from family photos Randi sent 20 Nov (kept out of the repo); no cap, no logo, nothing lettered (card #55) -->
       <g id="him">
         <g id="legs">
           <rect x="122" y="330" width="24" height="98" fill="#b07a3a"/><rect x="154" y="330" width="24" height="98" fill="#b07a3a"/>
@@ -298,7 +292,7 @@ svg.wilt #cactus{transform:rotate(85deg)}
           <rect x="116" y="434" width="32" height="6" fill="#1d120a"/><rect x="152" y="434" width="32" height="6" fill="#1d120a"/>
         </g>
         <g id="belly">
-          <rect x="112" y="214" width="76" height="96" rx="16" fill="#8a2a2e"/>
+          <rect x="112" y="214" width="76" height="96" rx="16" fill="#3d3d45"/>
           <rect x="112" y="288" width="76" height="52" rx="6" fill="#b07a3a"/>
           <rect x="124" y="236" width="52" height="58" fill="#b07a3a"/>
           <path d="M128 237l-4-22M172 237l4-22" stroke="#b07a3a" stroke-width="7"/>
@@ -308,48 +302,27 @@ svg.wilt #cactus{transform:rotate(85deg)}
           <rect x="175" y="218" width="12" height="120" rx="5" fill="#000" opacity=".16"/>
         </g>
         <rect x="141" y="198" width="18" height="18" fill="#d9a074"/>
-        <path d="M138 214q12 8 24 0" stroke="#74222a" stroke-width="4" fill="none"/>
+        <path d="M138 214q12 8 24 0" stroke="#2a2a30" stroke-width="4" fill="none"/>
         <g id="armDown">
-          <path d="M188 222l6 30" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
-          <path d="M194 252l3 46" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
-          <circle cx="197" cy="304" r="9" fill="#d9a074"/>
+          <path d="M188 222l6 30" stroke="#3d3d45" stroke-width="18" stroke-linecap="round"/>
+          <path d="M194 252l3 46" stroke="#3d3d45" stroke-width="15" stroke-linecap="round"/>
+          <image data-spr="handR" x="187.5" y="293.75"/>
         </g>
         <g id="armOut" role="button" aria-label="Pull his finger">
-          <path d="M186 224l34 8" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
-          <path d="M220 232l38 4" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
-          <circle cx="266" cy="236" r="10" fill="#d9a074"/>
-          <rect x="270" y="230" width="22" height="8" rx="4" fill="#d9a074"/>
-          <circle id="tip" cx="292" cy="234" r="6" fill="none" stroke="#fff" stroke-width="3"/>
+          <path d="M186 224l34 8" stroke="#3d3d45" stroke-width="18" stroke-linecap="round"/>
+          <path d="M220 232l38 4" stroke="#3d3d45" stroke-width="15" stroke-linecap="round"/>
+          <image data-spr="handPoint" x="256.25" y="225"/>
+          <circle id="tip" cx="295" cy="236" r="6" fill="none" stroke="#fff" stroke-width="3"/>
           <circle cx="282" cy="234" r="34" fill="transparent"/>
         </g>
-        <path d="M112 222l-6 30" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
-        <path d="M106 252l-2 46" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
-        <circle cx="104" cy="304" r="9" fill="#d9a074"/>
-        <circle cx="120" cy="180" r="6" fill="#d9a074"/><circle cx="180" cy="180" r="6" fill="#d9a074"/>
-        <circle cx="150" cy="178" r="30" fill="#e2a978"/>
-        <path d="M121 172q-1-26 29-26t29 26q-4-14-29-15t-29 15z" fill="#22160e"/>
-        <g class="face f-normal">
-          <circle cx="140" cy="176" r="3" fill="#1d120a"/><circle cx="160" cy="176" r="3" fill="#1d120a"/>
-          <path d="M134 168l10-2M156 166l10 2" stroke="#4a2f1d" stroke-width="3"/>
-          <path d="M140 191q10 7 20 0" stroke="#7a3b2a" stroke-width="3" fill="none"/>
-        </g>
-        <g class="face f-eat">
-          <path d="M136 176h8M156 176h8" stroke="#1d120a" stroke-width="3"/>
-          <path d="M134 167l10-2M156 165l10 2" stroke="#4a2f1d" stroke-width="3"/>
-          <ellipse cx="150" cy="193" rx="6" ry="5" fill="#5a2318"/>
-        </g>
-        <g class="face f-smug">
-          <path d="M136 177q4-3 8 0M156 177q4-3 8 0" stroke="#1d120a" stroke-width="3" fill="none"/>
-          <path d="M134 164l10 1M156 165l10-1" stroke="#4a2f1d" stroke-width="3"/>
-          <path d="M142 192q8 2 16-4" stroke="#7a3b2a" stroke-width="3" fill="none"/>
-        </g>
-        <g class="face f-frozen">
-          <circle cx="140" cy="175" r="6.5" fill="#fff" stroke="#1d120a" stroke-width="2"/><circle cx="160" cy="175" r="6.5" fill="#fff" stroke="#1d120a" stroke-width="2"/>
-          <circle cx="140" cy="175" r="1.6" fill="#1d120a"/><circle cx="160" cy="175" r="1.6" fill="#1d120a"/>
-          <path d="M132 163l12 3M156 166l12-3" stroke="#4a2f1d" stroke-width="3"/>
-          <ellipse cx="150" cy="194" rx="4" ry="5" fill="#5a2318"/>
-          <path d="M178 160q5 8 0 12q-5-4 0-12z" fill="#8fd3f5"/>
-        </g>
+        <path d="M112 222l-6 30" stroke="#3d3d45" stroke-width="18" stroke-linecap="round"/>
+        <path d="M106 252l-2 46" stroke="#3d3d45" stroke-width="15" stroke-linecap="round"/>
+        <image data-spr="handL" x="93.75" y="293.75"/>
+        <!-- his head and hands are hand-pixelled sprites (SCENE_SPRITES below); one per face -->
+        <g class="face f-normal"><image data-spr="himNormal" x="125" y="143.75"/></g>
+        <g class="face f-eat"><image data-spr="himEat" x="125" y="143.75"/></g>
+        <g class="face f-smug"><image data-spr="himSmug" x="125" y="143.75"/></g>
+        <g class="face f-frozen"><image data-spr="himFrozen" x="125" y="143.75"/><path d="M182 158q5 8 0 12q-5-4 0-12z" fill="#8fd3f5"/></g>
       </g>
       <g id="clouds"></g>
     </svg>
@@ -799,6 +772,24 @@ document.addEventListener('keydown', e => {
 });
 update();
 
+// Hand-pixelled sprites for faces and hands (decided 20 Nov, the art pass after
+// launch). They sit in the SVG as <image>s on whole game pixels (x and y are
+// multiples of 3.125), so the point-sampling lands in the middle of each sprite
+// pixel and they come out exact. One letter per pixel, '.' see-through; a
+// sprite's own pal overrides SCENE_PAL (the family share one face shape with
+// their own hair and skin).
+const SCENE_PAL = { k: '#2a1a0e', h: '#22160e', H: '#4a3020', b: '#22160e', s: '#e2a978', S: '#c98a5e', r: '#e8907a',
+  m: '#7a2e22', R: '#d8445a', w: '#ffffff' };
+const SCENE_SPRITES = {"himNormal": {"rows": ["....kkkkkkk.....", "..kkhhHHhhhkkk..", ".khhHHhhhhhhhhk.", "khhHhhhhhhhhHhhk", "khhhhhhhhhHhhhhk", "khhhsshhhhhhhhhk", "khhsssshhhhhhshk", ".khssssssshhssk.", ".kshhhsssshhhsk.", "kSsskksssskkssSk", "kSskssksskssksSk", "kSsssssSSsssssSk", ".ksssssSSsssssk.", ".kssbbbbbbbbssk.", ".ksbmwwwwwwmbsk.", ".ksbbmmmmmmbbsk.", ".kSsssbbbbsssSk.", "..kSssbbbbssSk..", "...kSsbbbbsSk...", "....kSBBBBSk....", ".....kkkkkk....."], "pal": {"h": "#5a3a22", "H": "#8a5a32", "b": "#7a4a2a", "B": "#5a3420"}}, "himEat": {"rows": ["....kkkkkkk.....", "..kkhhHHhhhkkk..", ".khhHHhhhhhhhhk.", "khhHhhhhhhhhHhhk", "khhhhhhhhhHhhhhk", "khhhsshhhhhhhhhk", "khhsssshhhhhhshk", ".khssssssshhssk.", ".kshhhsssshhhsk.", "kSssssssssssssSk", "kSsskksssskkssSk", "kSsssssSSsssssSk", ".ksssssSSsssssk.", ".kssbbbbbbbbssk.", ".ksbsmmmmmmsbsk.", ".ksssmRRRRmsssk.", ".kSsssbbbbsssSk.", "..kSssbbbbssSk..", "...kSsbbbbsSk...", "....kSBBBBSk....", ".....kkkkkk....."], "pal": {"h": "#5a3a22", "H": "#8a5a32", "b": "#7a4a2a", "B": "#5a3420"}}, "himSmug": {"rows": ["....kkkkkkk.....", "..kkhhHHhhhkkk..", ".khhHHhhhhhhhhk.", "khhHhhhhhhhhHhhk", "khhhhhhhhhHhhhhk", "khhhsshhhhhhhhhk", "khhsssshhhhhhshk", ".khssssssshhssk.", ".kshhhsssshhhsk.", "kSsskksssskkssSk", "kSssskssssksssSk", "kSsssssSSsssssSk", ".ksssssSSsssssk.", ".kssbbbbbbbbssk.", ".ksbssssmmmbbsk.", ".ksssssbbsssssk.", ".kSsssbbbbsssSk.", "..kSssbbbbssSk..", "...kSsbbbbsSk...", "....kSBBBBSk....", ".....kkkkkk....."], "pal": {"h": "#5a3a22", "H": "#8a5a32", "b": "#7a4a2a", "B": "#5a3420"}}, "himFrozen": {"rows": ["....kkkkkkk.....", "..kkhhHHhhhkkk..", ".khhHHhhhhhhhhk.", "khhHhhhhhhhhHhhk", "khhhhhhhhhHhhhhk", "khhhsshhhhhhhhhk", "khhsssshhhhhhshk", ".khssssssshhssk.", ".kshhhsssshhhsk.", "kSsswwsssswwssSk", "kSsswksssswkssSk", "kSsssssSSsssssSk", ".ksssssSSsssssk.", ".kssbbbbbbbbssk.", ".ksbsssmmsssbsk.", ".ksssssmmsssssk.", ".kSsssbbbbsssSk.", "..kSssbbbbssSk..", "...kSsbbbbsSk...", "....kSBBBBSk....", ".....kkkkkk....."], "pal": {"h": "#5a3a22", "H": "#8a5a32", "b": "#7a4a2a", "B": "#5a3420"}}, "famA": {"rows": [".....kkkk.....", ".....khhk.....", "....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSssksssskssSk", "kSssssSSssssSk", ".krssssssssrk.", ".kssmssssmssk.", ".ksssmmmmsssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#c9c9c9", "H": "#ececec", "s": "#f0c9a0", "S": "#d9a880"}}, "famAEw": {"rows": [".....kkkk.....", ".....khhk.....", "....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSskksssskksSk", "kSssssSSssssSk", ".krssssssssrk.", ".ksssmmmmsssk.", ".kssmssssmssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#c9c9c9", "H": "#ececec", "s": "#f0c9a0", "S": "#d9a880"}}, "famB": {"rows": ["....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSssksssskssSk", "kSssssSSssssSk", ".krssssssssrk.", ".kssmssssmssk.", ".ksssmmmmsssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#2a1a10", "H": "#4a3020", "s": "#c68a5e", "S": "#a8703f"}}, "famBEw": {"rows": ["....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSskksssskksSk", "kSssssSSssssSk", ".krssssssssrk.", ".ksssmmmmsssk.", ".kssmssssmssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#2a1a10", "H": "#4a3020", "s": "#c68a5e", "S": "#a8703f"}}, "famC": {"rows": ["....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSssksssskssSk", "kSssssSSssssSk", ".krssssssssrk.", ".kssmssssmssk.", ".ksssmmmmsssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#8a4b22", "H": "#a8642e", "s": "#e9b88f", "S": "#cf9a70"}}, "famCEw": {"rows": ["....kkkkkk....", "..kkhhHHhhkk..", ".khhHhhhhhhhk.", ".khhsssssshhk.", ".khsssssssshk.", "kSssssssssssSk", "kSskksssskksSk", "kSssssSSssssSk", ".krssssssssrk.", ".ksssmmmmsssk.", ".kssmssssmssk.", "..kSssssssSk..", "...kkkkkkkk..."], "pal": {"h": "#8a4b22", "H": "#a8642e", "s": "#e9b88f", "S": "#cf9a70"}}, "handL": {"rows": [".kkkk.", "kssssk", "kssssk", "ksssSk", "kssSSk", "kSsSk.", ".kkk.."]}, "handR": {"rows": [".kkkk.", "kssssk", "kssssk", "kSsssk", "kSSssk", ".kSsSk", "..kkk."]}, "handPoint": {"rows": [".kkkk.......", "kssssk......", "ksssskkkkkk.", "kssssssssssk", "kSsssskkkkk.", "kSSssk......", ".kkkk......."]}, "cat": {"rows": [".k.....k..........", "kpk...kpk.........", "kcckkkkcck........", "kcccccccck........", "kcykccykck........", "kcccccccck........", "kccccpccck........", ".kcccccck.........", "..kccccccck.......", ".kcccccccCck......", ".kccccccccCck.....", "kcccccccccCck..kk.", "kcccccccccCck.kcck", "kcckccccckcck..kck", "kcckccccckccckkkck", ".kkkkkkkkkkkkkkkk."], "pal": {"k": "#0e0e12", "c": "#2b2b33", "C": "#4a4a58", "y": "#f5d34a", "p": "#f27d92"}}};
+for (const im of document.querySelectorAll('#scene image[data-spr]')) {
+  const sp = SCENE_SPRITES[im.dataset.spr], rows = sp.rows, pal = Object.assign({}, SCENE_PAL, sp.pal);
+  const c = document.createElement('canvas'); c.width = rows[0].length; c.height = rows.length;
+  const x = c.getContext('2d');
+  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i, j, 1, 1); } }));
+  im.setAttribute('href', c.toDataURL());
+  im.setAttribute('width', c.width * 3.125); im.setAttribute('height', c.height * 3.125);
+}
+
 // ---------- 16-bit look (decided 20 Nov, Randi: "can we go 8bit? or really 16 bit?") ----------
 // The scene is still drawn as one SVG, so the poses, reactions and clouds stay
 // simple CSS and DOM. A copy of it, with each element's live (mid-animation)
@@ -816,7 +807,7 @@ update();
   const b = big.getContext('2d', { willReadFrequently: true });
   const frame = o.createImageData(W, H);
   const els = [svg, ...svg.querySelectorAll('*')];
-  const PROPS = ['display', 'opacity', 'transform', 'transform-origin', 'transform-box', 'filter'];
+  const PROPS = ['display', 'opacity', 'transform', 'transform-origin', 'transform-box', 'filter', 'image-rendering'];
   let loading = false;
   // Pixel-art outlines (decided 20 Nov, from Randi's Stardew-style references):
   // where two colours meet with a big jump in brightness, the darker side gets
