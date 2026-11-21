@@ -379,7 +379,25 @@ const tileAt = e => {
 // Add poison works the same way one square at a time; a stroke that starts
 // on a poison block takes blocks away instead.
 let placing = null, painting = false, erasing = false;
+// Remove (Randi's ask, 21 Nov): tapping or dragging clears a 3 by 3 patch of
+// creatures, food and poison. A removed creature is taken away, not killed:
+// it leaves no food and doesn't count in Died.
+function removeCreature(v) {
+  mark(v, 0); v.dead = true; byId.delete(v.id);
+  creatures = creatures.filter(c => c !== v);
+  if (sel === v) select(null);
+}
 function drop(x, y) {
+  if (placing === 'remove') {
+    for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) {
+      if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      const k = yy * W + xx;
+      if (occ[k]) { const v = byId.get(occ[k]); if (v) removeCreature(v); }
+      if (food[k]) { food[k] = 0; foodCount--; }
+      if (poison[k]) { poison[k] = 0; poisonCount--; }
+    }
+    return;
+  }
   if (placing === 'poison') {
     if (x < 0 || y < 0 || x >= W || y >= H) return;
     const k = y * W + x;
@@ -398,11 +416,13 @@ function setPlacing(kind) {
   $('#foodBtn').setAttribute('aria-pressed', kind === 'food');
   $('#poisonBtn').setAttribute('aria-pressed', kind === 'poison');
   $('#creatureBtn').setAttribute('aria-pressed', kind === 'creature');
+  $('#removeBtn').setAttribute('aria-pressed', kind === 'remove');
   cv.style.cursor = kind ? 'crosshair' : '';
 }
 $('#foodBtn').onclick = () => setPlacing(placing === 'food' ? null : 'food');
 $('#poisonBtn').onclick = () => setPlacing(placing === 'poison' ? null : 'poison');
 $('#creatureBtn').onclick = () => setPlacing(placing === 'creature' ? null : 'creature');
+$('#removeBtn').onclick = () => setPlacing(placing === 'remove' ? null : 'remove');
 
 // Add creature (his ask, 21 Nov): each tap puts a copy of the builder's
 // creature where he taps, centred on the tap, or the nearest free spot within
@@ -611,6 +631,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'f' || e.key === 'F') setPlacing(placing === 'food' ? null : 'food');
   else if (e.key === 'p' || e.key === 'P') setPlacing(placing === 'poison' ? null : 'poison');
   else if (e.key === 'c' || e.key === 'C') setPlacing(placing === 'creature' ? null : 'creature');
+  else if (e.key === 'r' || e.key === 'R') setPlacing(placing === 'remove' ? null : 'remove');
   else if (e.key === 'n' || e.key === 'N') nextCreature();
   else if (e.key === '?') $('#helpDlg').showModal();
   else if (e.key === 'Escape' && sel) select(null);
