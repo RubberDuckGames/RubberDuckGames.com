@@ -1,0 +1,75 @@
+:root{--ink:#1f2418;--soft:#4a5040;--panel:#fbf7ea;--line:#8a7d55;--accent:#1f4fc9;--folder:#e6c77a;--folderDark:#b8963f}
+html,body{margin:0;background:#2c3a22;color:var(--ink);height:100%;overflow:hidden;touch-action:manipulation}
+body{font-size:1.125rem;line-height:1.45}
+button:focus-visible,a:focus-visible,input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem max(.9rem,env(safe-area-inset-right)) .6rem max(.9rem,env(safe-area-inset-left));pointer-events:none;flex-wrap:wrap}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 rgba(0,0,0,.35)}
+.dir{white-space:normal;text-align:center;max-width:22rem}
+.pill.retreat{background:#b3261e;border-color:#5c120e;color:#fff;cursor:pointer}
+.hud{position:fixed;z-index:7;right:max(.9rem,env(safe-area-inset-right));top:3.4rem;display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;pointer-events:none}
+.hud .pill{font-size:.65rem}
+.hud .pill.alarm{background:#b3261e;border-color:#5c120e;color:#fff}
+.hud .pill[hidden]{display:none}
+.cover{position:fixed;inset:0;z-index:9;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,26,14,.55);padding:1rem;overflow:auto}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:34rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35);margin:auto}
+.card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.5}
+.card h1{font-size:1.4rem;text-align:center}
+.card p{margin:.35rem 0}
+.card .soft{color:var(--soft);font-size:1rem}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
+.btn{background:var(--accent);color:#fff;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 #10204f}
+.btn.plain{background:#e7e1cf;color:var(--ink);box-shadow:.25rem .25rem 0 var(--line)}
+/* The mission folder: a manila folder with a tab, the map on graph paper the
+   way he drew it, and the directive typed under it. */
+.card.folder{background:var(--folder);border-color:#5a4613;position:relative;margin-top:2.2rem}
+.card.folder::before{content:attr(data-tab);position:absolute;left:-4px;top:-2.15rem;background:var(--folder);border:4px solid #5a4613;border-bottom:none;padding:.35rem 1rem;font-family:"Press Start 2P",monospace;font-size:.65rem;line-height:1.6}
+.paper{background:#fff;border:2px solid var(--folderDark);padding:.4rem;box-shadow:.2rem .2rem 0 rgba(0,0,0,.2)}
+.paper canvas{display:block;width:100%;height:auto}
+.typed{font-family:"Courier New",Courier,monospace;font-weight:700;font-size:1.05rem;background:#fff;border:2px solid var(--folderDark);padding:.6rem .8rem;margin-top:.7rem}
+.typed b{display:block;font-size:.85rem;letter-spacing:.08em}
+/* The weapons wall card: his weapons hanging on a pegboard, a gun and an
+   explosive to take down. */
+.card.board{max-width:44rem;background-color:#a07c50}
+.board{background-image:radial-gradient(#5c4128 16%,transparent 19%);background-size:1.3rem 1.3rem;border:.55rem solid #5c3d22;padding:.8rem 1rem 1rem;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
+.board h2,.board legend{background:#1f1f1f;color:#f5f0dc;padding:.3rem .7rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
+.board h2{display:inline-block;margin:0 0 .6rem}
+.board fieldset{border:none;margin:0;padding:0}
+.board legend{float:left;margin:0 0 .5rem;font-size:.6rem}
+.pegs{clear:both;display:flex;flex-wrap:wrap;gap:.8rem;justify-content:center;margin-bottom:.8rem}
+.peg{position:relative;cursor:pointer;display:block}
+.peg.locked{cursor:default;opacity:.6}
+.money{text-align:right;font-family:"Press Start 2P",monospace;font-size:.8rem;margin:.2rem 0 .6rem}
+.row.buy{justify-content:flex-end;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.peg input{position:absolute;opacity:0;width:1px;height:1px}
+.hang{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:.5rem .4rem;border:.25rem solid transparent;width:10rem}
+.hang canvas{width:3.6rem;height:9rem}
+.hang canvas.small{height:4.5rem;width:3.6rem}
+.peg input:checked+.hang{border-color:#f5c938;background:rgba(255,255,255,.18)}
+.peg input:focus-visible+.hang{outline:3px solid #fff;outline-offset:2px}
+.plate{background:#1f1f1f;color:#fff;padding:.35rem .5rem;text-align:center;font-size:.85rem;line-height:1.35;width:100%}
+.plate b{display:block;font-size:1rem}
+.on{display:none;background:#f5c938;color:#1f1f1f;font-weight:800;font-size:.85rem;padding:.1rem .5rem}
+.peg input:checked+.hang .on{display:block}
+.keys{font-size:.95rem;margin:.4rem 0 0}
+.board .keys{background:#1f1f1f;color:#f5f0dc;padding:.4rem .6rem}
+.stats{display:grid;grid-template-columns:auto auto;gap:.2rem 1rem;justify-content:start;margin:.6rem 0}
+/* touch: the stick on the left, Use and Fire on the right, only on touch screens */
+.talk{position:fixed;z-index:8;left:50%;transform:translateX(-50%);top:4.4rem;display:flex;align-items:center;gap:.7rem;max-width:min(36rem,92vw);background:#fbf7ea;color:var(--ink);border:3px solid #1f2418;padding:.5rem .8rem;box-shadow:.25rem .25rem 0 rgba(0,0,0,.35)}
+.talk canvas{width:3.6rem;height:3.6rem;flex:none;background:#cfe3f5;border:2px solid #1f2418}
+.talk p{margin:0;font-size:1rem;line-height:1.35}
+.talk[hidden]{display:none}
+.ctrl{display:none;position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:flex-end;padding:1rem max(1rem,env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));pointer-events:none}
+@media (pointer:coarse){.ctrl.live{display:flex}}
+.ctrl>*{pointer-events:auto}
+.stick{position:relative;width:8rem;height:8rem;border-radius:50%;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.55);touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.5rem;height:3.5rem;margin:-1.75rem;border-radius:50%;background:#f4f1e4;opacity:.9}
+.acts{display:flex;gap:.8rem;align-items:flex-end}
+.round{border-radius:50%;font-family:"Press Start 2P",monospace;color:#fff;touch-action:none}
+.use{width:4.5rem;height:4.5rem;font-size:.6rem;background:#4b5b2a;box-shadow:0 .3rem 0 #26300f}
+.fire{width:6.5rem;height:6.5rem;font-size:.85rem;background:#b8322a;box-shadow:0 .35rem 0 #6a1712}
+.round.down{transform:translateY(.25rem);box-shadow:none}
+@media (max-width:30rem){.pill{font-size:.55rem;padding:.3rem .5rem}.hud{top:4.6rem}}

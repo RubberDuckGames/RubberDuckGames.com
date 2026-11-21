@@ -1,0 +1,48 @@
+:root{--ink:#1f2f45;--soft:#4d6078;--bg:#d9f1ff;--panel:#fffdf7;--line:#b9dcf0;--accent:#e04848}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;overflow:hidden}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.stagebox{position:relative}
+canvas{display:block;width:100%;image-rendering:pixelated;background:#5bb8e8;touch-action:none}
+/* the docket: what to pick up and which dock it goes to. Decided 15 Nov: the
+   card on screen confused him, so it's only read out to screen readers now; the
+   harbor shows it instead (the thing waits on its pier with a sparkle, and the
+   dock it goes to blinks a white ring) */
+.docket{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(20,40,60,.45);z-index:9;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;text-align:center;box-shadow:.4rem .4rem 0 rgba(0,0,0,.25)}
+.card h2{margin:0 0 .5rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.4rem 0;color:var(--soft)}
+.card input,.card select{display:block;width:100%;font:inherit;font-size:1.2rem;padding:.5rem .7rem;border:3px solid var(--ink);margin:.6rem 0;background:#fff;color:var(--ink)}
+.card label{display:block;text-align:left;font-weight:600;margin-top:.6rem}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.75rem}
+.btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+@media (max-width:30rem){#pickBtn .lbl{display:none}.bar{gap:.35rem;padding-left:.5rem;padding-right:.5rem}.bar .pill{padding:.3rem .5rem;font-size:.6rem}}   /* the bar has to fit a phone held upright */
+.picks{display:grid;gap:.7rem;margin-top:.8rem}
+.picks .btn{font-size:1rem;padding:1rem;text-align:left}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
+/* touch controls: a steering stick and a big horn, only on touch screens */
+.ctrl{display:none}
+@media (pointer:coarse){.ctrl{display:flex}}
+.ctrl{position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:center;padding:1rem;pointer-events:none}
+.ctrl>*{pointer-events:auto}
+/* Decided 15 Nov: a round stick like Bread's and Math Force's instead of the
+   cross pad, so every game steers the same way on a phone. Push it the way the
+   boat should go, as far as you like; lifting the thumb stops the boat. */
+.stick{position:relative;width:9rem;height:9rem;border-radius:50%;background:#1f2f45;border:3px solid #0e1826;touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.8rem;height:3.8rem;margin:-1.9rem;border-radius:50%;background:#d9f1ff;box-shadow:0 .25rem 0 #8fb6cc;pointer-events:none}
+.tri{width:1.2rem;height:1.2rem;fill:currentColor}
+.horn{width:6rem;height:6rem;border-radius:50%;background:#e04848;color:#fff;font-family:"Press Start 2P",monospace;font-size:.8rem;box-shadow:0 .35rem 0 #a8302f}
+.horn:active{transform:translateY(.25rem);box-shadow:0 .1rem 0 #a8302f}
+/* a phone held upright: the harbor sits at the top, the pad and horn at the bottom */
+@media (pointer:coarse) and (orientation:portrait){
+  .wrap{align-items:flex-start;padding-top:3.6rem}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}

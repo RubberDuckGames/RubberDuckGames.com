@@ -1,0 +1,181 @@
+:root{--ink:#3b2a1a;--soft:#7a6450;--bg:#fff4e0;--panel:#fffdf7;--line:#ead7b8;--accent:#e8913a;--green:#3f9d5d;--gold:#f5b700}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html{touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:0.625rem;padding:0.625rem 0.875rem;max-width:62.5rem;margin:0 auto}
+.bar h1{font-size:1.375rem;margin:0;flex:1;letter-spacing:.03em}
+.bar h1 b{color:var(--accent)}
+.pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:0.375rem 0.875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
+.wrap{max-width:62.5rem;margin:0 auto;padding:0 0.875rem 1.25rem}
+.stagebox{position:relative;margin:0 auto;max-width:100%}
+canvas{display:block;width:100%;border-radius:18px;background:#8fd17a;box-shadow:0 0 0 3px var(--line),0 8px 24px rgba(90,60,20,.18);touch-action:none}
+.toast{position:absolute;top:0.75rem;left:50%;transform:translateX(-50%);background:rgba(255,253,247,.96);border:2px solid var(--accent);border-radius:999px;padding:0.375rem 1rem;font-weight:700;z-index:5;pointer-events:none;max-width:92%;text-align:center}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(60,40,20,.45);border-radius:18px;z-index:6;padding:0.875rem}
+.card{background:var(--panel);border:3px solid var(--line);border-radius:20px;padding:1.25rem;max-width:32.5rem;width:100%;text-align:center;max-height:100%;overflow:auto}
+.card h2{margin:0 0 0.375rem;font-size:1.75rem}
+.card p{margin:0.375rem 0;color:var(--soft)}
+.card .big{font-size:1.375rem;font-weight:800;color:var(--ink)}
+.trow{display:flex;justify-content:space-between;gap:1rem;max-width:22rem;margin:0.5rem auto;color:var(--ink);visibility:hidden}
+.trow.on{visibility:visible}
+.trow b,.pct b{font-family:"Press Start 2P",monospace}
+.pct{visibility:hidden}.pct.on{visibility:visible}
+.found{display:flex;flex-wrap:wrap;gap:0.375rem;justify-content:center;margin:0.625rem 0}
+.found span{border:2px solid var(--line);border-radius:999px;padding:0.25rem 0.75rem;font-size:0.9375rem;font-weight:700}
+.found .yes{border-color:var(--green);color:var(--green)}
+.found .tile{display:inline-block;padding:.3rem;border-radius:0}
+.found .tile.on{box-shadow:none}
+.found .no{color:var(--soft)}
+.row{display:flex;gap:0.625rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem}
+.btn{background:var(--panel);border:3px solid var(--line);border-radius:16px;padding:0.75rem 1.25rem;font-weight:800;font-size:1.25rem}
+.btn:hover{border-color:var(--accent)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.on{border-color:var(--green);box-shadow:0 0 0 2px var(--green)}
+.btn[disabled]{opacity:.45;cursor:default}
+.btn small{display:block;font-weight:400;font-size:0.875rem;color:var(--soft)}
+.btn.go small{color:#fff3e0}
+.panelbox{background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:0.75rem 0.875rem;margin-top:0.75rem}
+.panelbox h3{margin:0 0 0.375rem;font-size:1.25rem}
+.panelbox .row{justify-content:flex-end}
+/* Decided 28 Oct: on a touch screen there's no keyboard, so an arrow pad like
+   a Game Boy's sits on the left (holding the game where Bread should go still
+   works too). It only shows on touch screens. */
+.pad{display:none;grid-template-columns:repeat(3,3.25rem);grid-template-rows:repeat(3,3.25rem);gap:.15rem;margin-right:auto}
+@media (pointer:coarse){.pad{display:grid}}
+.pad{touch-action:none}
+.pad .btn{padding:0;font-family:Lexend,Verdana,sans-serif;font-size:1.25rem;line-height:1;touch-action:none;pointer-events:none}
+.pad .btn.on{transform:translate(.15rem,.15rem);box-shadow:none}
+.pad [data-k=arrowup]{grid-area:1/2}.pad [data-k=arrowleft]{grid-area:2/1}.pad [data-k=arrowright]{grid-area:2/3}.pad [data-k=arrowdown]{grid-area:3/2}
+/* Decided 2 Nov: a stick like Math Force's instead of the cross. The testers
+   asked for it; push it the way Bread should go, as far as you like. */
+.pad.stickpad{display:none;position:relative;width:8.5rem;height:8.5rem;border-radius:50%;background:rgba(59,42,26,.15);border:3px solid rgba(59,42,26,.4);padding:0}
+@media (pointer:coarse){.pad.stickpad{display:block}}
+.stickpad i{position:absolute;left:50%;top:50%;width:3.6rem;height:3.6rem;margin:-1.8rem;border-radius:50%;background:#3b2a1a;opacity:.85;pointer-events:none}
+#levelBtns{align-items:flex-end}
+/* Decided 7 Nov: on the map, the play controls drive the car: the pad points the way, Paw goes in */
+#levelBtns.mapmode #barkBtn,#levelBtns.mapmode #digBtn,#levelBtns.mapmode #sniffBtn,#levelBtns.mapmode #jumpBtn,#levelBtns.mapmode #diveBtn,#levelBtns.mapmode [data-home]{display:none!important}
+.acts{display:contents}
+@media (pointer:coarse) and (min-width:43.76rem) and (orientation:portrait){#levelBtns{left:1rem}}
+/* Decided 28 Oct: a phone turned sideways plays like a Switch. The game sits
+   in the middle; the thumb pad is on a dark controller on the left, and Paw,
+   Bark and Dig are round buttons in a diamond on a dark controller on the
+   right. Our own colors, not Nintendo's. */
+@media (pointer:coarse) and (orientation:landscape){
+  html,body{background:#202230}
+  canvas{border:3px solid #111}
+  #levelBtns{position:fixed;inset:0;display:block;margin:0;pointer-events:none;z-index:7}
+  #levelBtns>*,#levelBtns .acts>*{pointer-events:auto}
+  .pad,.acts{position:fixed;top:50%;transform:translateY(-50%);background:#33364a;border-radius:2.5rem;padding:1rem .7rem;box-shadow:inset 0 0 0 3px #262839}
+  .pad{left:.6rem;grid-template-columns:repeat(3,3rem);grid-template-rows:repeat(3,3rem);gap:0;margin:0}
+  .pad .btn{background:#1d1f2b;color:#cfd1dc;border:0;border-radius:.3rem;box-shadow:0 .2rem 0 #111}
+  .pad.stickpad{width:8rem;height:8rem;border-radius:50%;background:#1d1f2b;border:3px solid #262839;box-shadow:none}
+  .stickpad i{background:#cfd1dc}
+  .acts{right:.6rem;display:grid;grid-template-columns:repeat(3,3rem);grid-template-rows:repeat(3,3rem);gap:0}
+  #pawBtn{grid-area:2/3}#barkBtn{grid-area:3/2}#digBtn{grid-area:2/1}#sniffBtn{grid-area:1/2}#jumpBtn{grid-area:1/3}#diveBtn{grid-area:3/3}
+  #barkBtn,#pawBtn,#digBtn,#sniffBtn,#jumpBtn,#diveBtn{width:3.4rem;height:3.4rem;margin:-.2rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.45rem;box-shadow:0 .25rem 0 #6e1631}
+  #levelBtns>[data-home]{position:fixed;right:.8rem;bottom:.6rem;border-radius:999px;font-size:.5rem;padding:.4rem .8rem}
+}
+/* Arrows are drawn shapes, not ◀ ▶ characters: iPhones turn those two into
+   blue emoji boxes but leave ▲ ▼ alone, so the pad came out mismatched. */
+.tri{width:1.1rem;height:1.1rem;fill:currentColor;display:block;margin:auto}
+/* Decided 28 Oct: the closet is something to look through, not a list of
+   words. A mirror shows Bread in the outfit; each spot is a wooden shelf of
+   pictures; things not found yet are dark shapes with a ? (tap one for where
+   to look). The words stay as labels for screen readers. */
+#closet.panelbox{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(52rem,calc(100vw - 2rem));max-height:calc(100vh - 2rem)}
+.wardrobe{display:grid;grid-template-columns:minmax(9rem,14rem) 1fr;gap:1rem;align-items:start}
+.mirror{background:#b07a46;border:4px solid #3b2a1a;padding:.6rem;box-shadow:inset 0 0 0 4px #d9a86c}
+.mirror img{display:block;width:100%;background:linear-gradient(#e8f6ff,#bfe8ff);image-rendering:pixelated;aspect-ratio:1}
+.racks{display:grid;gap:.5rem 1rem;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+.rack{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.35rem .4rem .55rem;background:linear-gradient(transparent calc(100% - .45rem),#b07a46 0);border-bottom:3px solid #3b2a1a}
+.rack .lbl{font-family:"Press Start 2P",monospace;font-size:.55rem;color:var(--soft);width:100%}
+.tile{width:4.25rem;height:4.25rem;padding:.3rem;background:var(--panel);border:3px solid var(--line);box-shadow:.2rem .2rem 0 var(--line)}
+.tile img{display:block;width:100%;height:100%;image-rendering:pixelated}
+.tile.on{border-color:var(--green);box-shadow:0 0 0 3px var(--green)}
+.tile.locked{background:#e9dcc6}
+@media (max-width:43.75rem){.wardrobe{grid-template-columns:1fr}.mirror{width:100%;max-width:12rem;margin:0 auto}}
+@media (max-width:43.75rem) and (orientation:portrait){#closet.panelbox{position:static;transform:none;width:auto;max-height:none}}
+.who-pick{display:flex;gap:.5rem;margin:0 0 .75rem}
+.who-pick .btn[aria-pressed="true"]{outline:3px solid var(--line);outline-offset:2px}
+.slot{display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0.375rem 0}
+.slot b{min-width:5.625rem}
+.slot .btn{font-size:1rem;padding:0.5rem 0.875rem}
+/* Decided 28 Oct: full screen, like Math Force. The top bar and the buttons
+   float over the world, a level's goal shows when it changes, and the controls
+   are behind the ? button instead of a line under the game. */
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;max-width:none;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar h1{visibility:hidden}
+.wrap{max-width:none;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:0}
+canvas{box-shadow:none}
+#pressBtns,#homeBtns,#levelBtns{position:fixed;right:1rem;bottom:1rem;z-index:7;justify-content:flex-end;margin:0}
+#closet,#shop{position:fixed;right:1rem;bottom:1rem;z-index:9;width:min(30rem,calc(100vw - 2rem));max-height:calc(100vh - 5rem);overflow:auto;margin:0}
+.tops{position:absolute;top:3.75rem;left:1rem;right:1rem;z-index:5;display:flex;flex-direction:column;align-items:center;gap:.5rem;pointer-events:none}
+.tops .toast{position:static;transform:none}
+.goal{background:#3b2a1a;color:#fff6ea;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;padding:.5rem .9rem;box-shadow:.25rem .25rem 0 rgba(0,0,0,.25);text-align:center}
+.info{display:flex;align-items:center;gap:.75rem;width:100%;max-width:46rem;background:var(--panel);border:4px solid var(--line);padding:.6rem .75rem .6rem 1rem;pointer-events:auto;box-shadow:.25rem .25rem 0 rgba(90,52,24,.25)}
+.info p{margin:0;flex:1;font-size:1rem;color:var(--soft)}
+.info b{color:var(--ink)}
+/* On a phone held upright the world is a short strip, so the bar and the
+   buttons go back above and below it instead of covering it. */
+@media (max-width:43.75rem) and (orientation:portrait){
+  .bar{position:static;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+  .bar .pill:first-child{margin-right:auto}
+  .bar h1{display:none}
+  .wrap{display:block;min-height:0;padding:0 .875rem 1.25rem}
+  #pressBtns,#homeBtns,#levelBtns,#closet,#shop{position:static;width:auto;max-height:none}
+  #closet,#shop{margin-top:.75rem}
+  #pressBtns,#homeBtns,#levelBtns{margin-top:.75rem}
+  /* messages sit in a text box at the bottom of the game screen, like an old
+     handheld game. Below the screen, each one pushed the buttons down and
+     back up again as it came and went. */
+  .tops{top:auto;bottom:.5rem;left:.5rem;right:.5rem;gap:.3rem}
+  .tops .toast,.goal{font-size:.8rem;padding:.35rem .6rem;max-width:100%}
+  .info p{font-size:.85rem}
+  /* the world is a short strip here, so the cards (who's playing, the
+     results, the nap) cover the whole screen and scroll instead of being
+     cut off inside it (seen on an iPhone) */
+  .cover{position:fixed;inset:0;z-index:20;border-radius:0;align-items:flex-start;overflow:auto;padding:1rem}
+  .card{max-height:none;margin:auto 0}
+}
+/* Decided 28 Oct: on a phone held upright, Bread looks like a Game Boy. The
+   game sits in a dark screen frame, the arrow pad is a black cross on the
+   left, and Paw, Bark and Dig are round red buttons on the right. */
+@media (max-width:43.75rem) and (orientation:portrait) and (pointer:coarse){
+  html,body{background:#c9c4b8}
+  .bar .pill{background:#e2ddd2;border-color:#a8a294;box-shadow:.2rem .2rem 0 #a8a294}
+  .stagebox{background:#4a4a58;padding:.9rem .9rem 1.6rem;border-radius:.6rem .6rem 2.4rem .6rem;box-shadow:inset 0 0 0 3px #3a3a46}
+  .stagebox::after{content:"BREAD";position:absolute;left:1rem;bottom:.35rem;font-family:"Press Start 2P",monospace;font-size:.5rem;color:#b9b9c9;letter-spacing:.1em}
+  canvas{border:3px solid #2a2a33}
+  .tops{bottom:2.1rem;left:1.3rem;right:1.3rem}   /* inside the screen, above the frame's bottom edge */
+  #levelBtns{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"pad acts" "home home";align-items:center;gap:1rem}
+  .pad{grid-area:pad;gap:0;grid-template-columns:repeat(3,3.4rem);grid-template-rows:repeat(3,3.4rem);margin:0}
+  .pad .btn{background:#2a2a33;color:#c9c4b8;border:0;box-shadow:0 .25rem 0 #15151b;border-radius:.3rem}
+  .pad.stickpad{width:9rem;height:9rem;background:#b3ae9f;border-color:#a8a294}
+  .stickpad i{background:#2a2a33;opacity:1}
+  .pad .btn.on{transform:translateY(.15rem);box-shadow:0 .1rem 0 #15151b}
+  #barkBtn,#pawBtn,#digBtn,#sniffBtn,#jumpBtn,#diveBtn{width:4.4rem;height:4.4rem;border-radius:50%;padding:0;background:#a3244a;border:0;color:#fff;font-size:.55rem;box-shadow:0 .3rem 0 #6e1631}
+  #barkBtn:active,#pawBtn:active,#digBtn:active,#sniffBtn:active,#jumpBtn:active,#diveBtn:active{transform:translateY(.2rem);box-shadow:0 .1rem 0 #6e1631}
+  #pressBtns{justify-content:center;margin-top:2.5rem}
+  #startBtn{border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.6rem;padding:.6rem 1.6rem;box-shadow:0 .2rem 0 #6f6b63}
+  #levelBtns>[data-home]{grid-area:home;justify-self:center;border-radius:999px;background:#8f8a80;border:0;color:#fff;font-size:.55rem;padding:.5rem 1.1rem;box-shadow:0 .2rem 0 #6f6b63}
+  .acts{grid-area:acts;display:flex;justify-content:flex-end;align-items:flex-start;gap:.7rem;flex-wrap:wrap}
+  #barkBtn{margin-top:1.8rem}   /* staggered, like the A and B buttons */
+}
+@media (max-width:37.5rem){.bar h1{font-size:1.125rem}.btn{font-size:1.0625rem;padding:0.625rem 0.875rem}.toast{font-size:0.875rem}}
+/* 8-bit look: pixel font for buttons and titles, square corners, chunky
+   borders with a hard shadow. Longer sentences stay in Lexend so they're easy
+   to read. */
+.bar h1,.btn,.pill,.card h2,.panelbox h3,.found span{font-family:"Press Start 2P",monospace;letter-spacing:0}
+.bar h1{font-size:1rem}
+.pill,.btn,.card,.panelbox,.toast,.found span,canvas{border-radius:0}
+.btn,.pill{font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.btn{border-width:4px;padding:.8rem 1rem}
+.btn small{font-family:Lexend,Verdana,sans-serif;font-size:.85rem;margin-top:.3rem}
+.btn:active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--line)}
+.card,.panelbox{border-width:4px;box-shadow:.4rem .4rem 0 rgba(90,52,24,.25)}
+.card h2{font-size:1.1rem;line-height:1.6}
+.panelbox h3{font-size:.9rem}
+.found span{font-size:.6rem;line-height:1.8}
+canvas{image-rendering:pixelated;box-shadow:0 0 0 4px var(--line),.5rem .5rem 0 rgba(90,52,24,.2)}
+.toast{border-width:3px}

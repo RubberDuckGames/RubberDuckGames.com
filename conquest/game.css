@@ -1,0 +1,74 @@
+/* Decided 4 Nov: a WW2 world, worn and faded rather than bright and happy. */
+:root{--ink:#e8dfc8;--soft:#b9ad92;--bg:#2b2a22;--panel:#3b382c;--line:#5d5843;--accent:#c9a44a}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;touch-action:manipulation}
+body{font-size:1.0625rem;line-height:1.45;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;flex-wrap:wrap}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .75rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.65rem;line-height:1.6;box-shadow:.2rem .2rem 0 #1b1a15}
+.game{display:flex;gap:1rem;justify-content:center;align-items:flex-start;padding:0 .75rem 1rem;flex-wrap:wrap}
+/* Decided 5 Nov: the map is twice as wide (24 squares). Where it doesn't fit,
+   the squares keep a tappable size and the map scrolls sideways. */
+/* Decided 10 Nov: the map is a camera on his big map. The canvas shows as
+   many squares as fit the screen (fitView); drag it to look around. */
+.mapbox{flex:1 1 40rem;min-width:0;position:relative;border:3px solid #1b1a15}
+#cv{min-width:0;touch-action:none;cursor:grab}
+.zoom{position:absolute;top:.4rem;right:.4rem;display:flex;flex-direction:column;gap:.3rem}
+.zoom .pill{font-size:1rem;line-height:1;padding:.5rem .7rem;min-width:2.75rem;min-height:2.75rem}
+.dist{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;padding:.3rem 0;border-top:1px solid var(--line)}
+.dist span{flex:1 1 100%;color:var(--ink)}
+.dbtn{background:#2f2d23;border:2px solid var(--line);padding:.3rem .55rem;font-size:.85rem}
+.dbtn[aria-pressed="true"]{background:var(--accent);color:#211f18;border-color:#1b1a15}
+.dbtn:disabled{opacity:.5;cursor:default}
+canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixelated;background:#4a4834;touch-action:manipulation}
+.side{flex:1 1 18rem;max-width:26rem;display:flex;flex-direction:column;gap:.75rem}
+.info{background:var(--panel);border:2px solid var(--line);padding:.9rem 1rem;min-height:8rem}
+.info h2{margin:0 0 .4rem;font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.6}
+.info p{margin:.3rem 0;color:var(--soft)}
+.stats{display:grid;grid-template-columns:auto 1fr;gap:.1rem .8rem;margin:.4rem 0}
+.stats dt{color:var(--soft)}
+.stats dd{margin:0}
+.shop{display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem}
+.buy{display:flex;align-items:center;gap:.6rem;background:#2f2d23;border:2px solid var(--line);padding:.35rem .6rem;text-align:left}
+.buy img{width:2.2rem;height:2.2rem;object-fit:contain;image-rendering:pixelated}
+.buy span{flex:1}
+.buy b{font-family:"Press Start 2P",monospace;font-size:.6rem}
+.buy:disabled{opacity:.5;cursor:default}
+.grp{margin:.8rem 0 0!important;font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--accent)!important}
+.actions{display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap}
+.btn{background:var(--accent);color:#211f18;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 #1b1a15}
+.btn.quiet{background:var(--panel);color:var(--ink);border:2px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.small{padding:.5rem .7rem;font-size:.6rem}
+.log{font-size:.95rem;color:var(--soft);margin:0}
+/* Decided 5 Nov: a card taller than the screen was cut off at the top in
+   Safari, because centring it in a flex box pushes the top out of reach of
+   scrolling. The card starts at the top, and margin:auto centres it when it fits. */
+.cover{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;background:rgba(20,18,12,.7);z-index:9;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.card{margin:auto;background:var(--panel);border:4px solid #1b1a15;padding:1.25rem;max-width:28rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
+.card h1,.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.3rem;line-height:1.5;color:var(--accent)}
+.card h3{margin:0;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
+.card p{margin:.4rem 0}
+.card ul{margin:.4rem 0;padding-left:1.2rem}
+.lvl{border:2px solid var(--line);margin:.8rem 0 0;padding:.5rem .8rem}
+.lvl legend{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--accent);padding:0 .3rem}
+.lvl label{display:block;padding:.3rem 0;cursor:pointer}
+.lvl input{accent-color:var(--accent)}
+.lvl b{font-family:"Press Start 2P",monospace;font-size:.6rem}
+.lvl span{display:block;color:var(--soft);font-size:.9rem;padding-left:1.6rem}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1rem;padding:.35rem 0}
+.who b{flex:0 0 6.5rem}
+.who label{display:inline-flex;gap:.35rem;align-items:center;padding:0}
+.chip{display:inline-block;width:.8rem;height:.8rem;border:2px solid #1b1a15;vertical-align:-.1rem;margin-right:.35rem}
+.tm{border-top:2px solid var(--line);padding:.6rem 0;display:flex;flex-wrap:wrap;gap:.3rem .8rem;align-items:center}
+.tm .grow{flex:1 1 10rem}
+.tm .col{display:flex;flex-direction:column;gap:.3rem;margin-left:auto;align-items:flex-end}
+.tm p{margin:.1rem 0;color:var(--soft);font-size:.95rem}
+.warn{color:#e3a07a}
+.gstep{font-family:"Press Start 2P",monospace;font-size:.6rem;color:var(--soft)}
+.gpic{display:block;width:100%;min-width:0;height:auto;image-rendering:pixelated;border:3px solid #1b1a15;margin:.4rem 0}
+.gtext{min-height:4.5em}
+.gdots{display:flex;gap:.35rem;justify-content:center;margin-top:.4rem}
+.gdots i{width:.5rem;height:.5rem;background:var(--line)}
+.gdots i.on{background:var(--accent)}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}

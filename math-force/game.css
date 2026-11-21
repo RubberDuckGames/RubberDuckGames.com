@@ -1,0 +1,115 @@
+:root{--ink:#e8f1ff;--soft:#9fb2cc;--bg:#0f1830;--panel:#18254a;--line:#2b3d6e;--cyan:#41e3ff;--gold:#ffc93c;--green:#5fe0a0;--red:#ff5f6d}
+html,body{margin:0;background:radial-gradient(ellipse at 50% 0%,#1c2c58,var(--bg) 70%);color:var(--ink);min-height:100%}
+body{font-size:18px;line-height:1.45;user-select:none;-webkit-user-select:none}
+input{user-select:text;-webkit-user-select:text}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:10px;padding:10px 14px;max-width:1100px;margin:0 auto}
+.bar h1{font-size:22px;margin:0;flex:1;letter-spacing:.04em}
+.bar h1 b{color:var(--cyan)}
+.pill{background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:0 14px 20px}
+/* Decided 28 Oct: the game fills the screen, and the bubbles sit on top of the
+   world instead of in a row above it. The how-to-move line used to sit under
+   the game all the time; now it's behind the ? button. */
+.hud{position:absolute;top:10px;left:10px;right:64px;z-index:4;display:flex;flex-wrap:wrap;gap:8px;margin:0;pointer-events:none}
+.hud .pill{font-size:16px;pointer-events:auto;background:rgba(16,26,54,.82)}
+.help{position:absolute;top:10px;right:10px;z-index:4;width:44px;height:44px;padding:0;font-size:20px;background:rgba(16,26,54,.82)}
+.info{position:absolute;top:60px;left:10px;right:10px;z-index:5;display:flex;align-items:center;gap:12px;background:rgba(16,26,54,.94);border:2px solid var(--cyan);border-radius:14px;padding:10px 12px 10px 16px}
+.info[hidden]{display:none}
+.info p{margin:0;flex:1;font-size:16px;color:var(--soft)}
+.info b{color:var(--ink)}
+.info .touchonly,body.touchdev .info .deskonly{display:none}
+body.touchdev .info .touchonly{display:block}
+.info:not([hidden]) ~ .toast{top:124px}
+/* Decided 21 Oct: in play, only the game. The top bar hides after Start and the
+   pause button holds everything else. */
+body.playing .bar{display:none}
+body.playing{overflow:hidden}
+body.playing .wrap{max-width:none;padding:0}
+body.playing canvas{border-radius:0;box-shadow:none}
+body.playing:not(.touchdev) .touch.on{position:fixed;right:16px;bottom:16px;margin:0;z-index:4}
+.pause{display:inline-flex;align-items:center;justify-content:center}
+.stagebox{position:relative;margin:0 auto;max-width:100%}
+canvas{display:block;width:100%;border-radius:18px;background:#0b1226;box-shadow:0 0 0 2px var(--line),0 10px 30px rgba(0,0,0,.4);touch-action:none}
+.panel{position:absolute;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.96);border:2px solid var(--cyan);border-radius:18px;padding:14px 18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:5}
+#reload{bottom:12px;min-width:min(92%,420px)}
+#reload .q,#task .q{font-size:34px;font-weight:800;margin:2px 0 8px}
+#reload .lbl{color:var(--cyan);font-weight:700;font-size:15px;letter-spacing:.05em}
+.ans{font:inherit;font-size:26px;width:140px;text-align:center;border-radius:12px;border:2px solid var(--line);background:#0b1226;color:var(--ink);padding:6px}
+.choices{display:flex;gap:10px;justify-content:center;margin-top:10px}
+.choice{min-width:76px;padding:10px 14px;font-size:24px;font-weight:800;border-radius:14px;background:var(--panel);border:2px solid var(--line)}
+.choice:hover{border-color:var(--cyan)}
+.msg{color:var(--gold);font-weight:700;min-height:1.4em;font-size:16px}
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,13,30,.82);border-radius:18px;z-index:6;padding:14px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:22px;max-width:560px;width:100%;text-align:center;max-height:100%;overflow:auto}
+.card h2{margin:0 0 6px;font-size:28px}
+.card p{margin:6px 0;color:var(--soft)}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.btn{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 16px;font-weight:700}
+.btn.go{background:var(--cyan);border-color:var(--cyan);color:#081226}
+.btn.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.btn small{display:block;font-weight:400;color:var(--soft);font-size:13px}
+.btn.go small{color:#123}
+.ans.sm{width:70px}
+#tform{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
+#tpic svg{cursor:crosshair}
+.tbtn.ready{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,201,60,.45)}
+.shop{display:grid;gap:8px;margin-top:10px;text-align:left}
+.shop button{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.shop button[disabled]{opacity:.45;cursor:default}
+.keys{font-size:15px;color:var(--soft);margin-top:10px}
+.keys b{color:var(--ink)}
+#task{top:50%;transform:translate(-50%,-50%);min-width:min(92%,460px)}
+#task svg{display:block;margin:6px auto;max-width:100%}
+.touch{display:none}
+/* Decided 21 Oct: the Wrench and Fire buttons show on laptops too, with their
+   keys, because the E key was only mentioned once on the start screen. */
+/* On touch screens the controls sit under the maze, so they never cover it. */
+.touch.on{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px}
+.stick{position:relative;flex:none;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);touch-action:none}
+.stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(65,227,255,.5)}
+.tbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.tbtn{width:84px;height:84px;touch-action:none;border-radius:50%;background:rgba(65,227,255,.25);border:2px solid var(--cyan);font-weight:800;font-size:15px}
+.tbtn .key{display:none}
+body:not(.touchdev) .stick{display:none}
+body:not(.touchdev) .tbtn{width:auto;height:auto;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:8px;font-size:17px}
+body:not(.touchdev) .tbtn .key{display:inline-block;background:#0b1226;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700}
+.tbtn.glow{animation:glow .6s ease-in-out 5 alternate}
+@keyframes glow{to{box-shadow:0 0 0 6px rgba(255,201,60,.7);border-color:var(--gold)}}
+.toast{position:absolute;top:62px;left:50%;transform:translateX(-50%);background:rgba(16,26,54,.92);border:2px solid var(--gold);border-radius:999px;padding:6px 16px;font-weight:700;z-index:5;pointer-events:none;transition:opacity .3s}
+/* On a phone the maze is short, so screens and questions cover the whole
+   screen instead of being squeezed into the maze box (seen on iPhone Chrome). */
+@media (max-width:700px), (orientation: landscape) and (max-height: 500px){
+  .cover{position:fixed;inset:0;border-radius:0;align-items:flex-start;overflow:auto;padding:16px;z-index:20}
+  .card{max-height:none;margin:auto 0}
+  #reload{position:fixed;left:50%;bottom:16px;z-index:20}
+  #task{position:fixed;z-index:20;max-height:92vh;overflow:auto}
+}
+/* On a phone held upright the maze is a short strip, so the bubbles and the
+   help bar go back above it instead of covering it. */
+@media (max-width:700px) and (orientation: portrait){
+  .stagebox{display:flex;flex-direction:column}
+  .hud{position:static;order:-2;padding:6px 56px 6px 6px;gap:4px}
+  .hud .pill{font-size:14px;padding:4px 10px}
+  .help{top:6px;right:6px}
+  .info{position:static;order:-1;margin:0 0 6px}
+  .info p{font-size:15px}
+  .toast,.info:not([hidden]) ~ .toast{top:auto;bottom:8px}
+}
+/* A phone turned sideways: maze in the middle, stick bottom-left, buttons bottom-right. */
+@media (orientation: landscape) and (max-height: 500px){
+  .bar{display:none}
+  .wrap{padding:4px 8px}
+  .hud{gap:4px}
+  .hud .pill{font-size:13px;padding:2px 9px;border-width:1px}
+  body.touchdev .touch.on{position:fixed;inset:0;margin:0;pointer-events:none;z-index:6}
+  body.touchdev .stick{position:fixed;left:10px;bottom:12px;width:104px;height:104px;pointer-events:auto}
+  body.touchdev .stick i{left:27px;top:27px}
+  body.touchdev .tbtns{position:fixed;right:10px;bottom:10px;flex-direction:column;gap:6px;pointer-events:auto}
+  body.touchdev .tbtn{width:60px;height:60px;font-size:12px}
+}
+@media (max-width:600px){.stick{width:104px;height:104px}.stick i{left:27px;top:27px}.tbtn{width:70px;height:70px;font-size:13px}.toast{font-size:14px;max-width:90%;text-align:center}.bar h1{font-size:18px}.hud .pill{font-size:14px;padding:4px 10px}#reload .q,#task .q{font-size:26px}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+.lbl.gold{color:var(--gold);font-weight:700}
+.card p.pickhead{color:var(--ink);font-weight:700;margin-top:12px}
+a.btn{text-decoration:none;color:inherit}

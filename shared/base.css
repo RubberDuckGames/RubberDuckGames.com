@@ -1,0 +1,6 @@
+/* What every game starts from. Each game links this first, then its own
+   game.css, which sets its colours (:root) and adds its own look. */
+:root{font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}

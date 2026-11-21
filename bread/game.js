@@ -1,0 +1,3617 @@
+// Bread the Corgi. Decided 27-28 Oct, designed by the middle kid tester: Bread
+// rides in the car from home to a small world, chases off the squirrels and
+// fleas, picks up treats (the money) and finds her lost toy. Beating a world
+// wins that animal's costume, just for fun. Every world can be played again for
+// the extra pieces, the hidden sparkles and the gold paw print; finding all of them
+// is 100% and wins the trophy.
+const $ = s => document.querySelector(s);
+// Decided 28 Oct: 8-bit. Everything is drawn on a small canvas, 16 pixels to a
+// tile, then scaled up with smoothing off so the pixels show as hard blocks.
+// The first try at 20 pixels still looked fuzzy: the canvas softens every edge
+// with in-between colors. So each frame, every pixel snaps to the nearest color
+// in the game's own palette (the colors written in this file), which leaves
+// only hard edges.
+const cv = $('#cv'), out = cv.getContext('2d');
+const VW = 18, VH = 11;                       // the view, in tiles
+const T = 16;
+const lo = document.createElement('canvas'); lo.width = VW * T; lo.height = VH * T;
+const cx = lo.getContext('2d');
+const PIX = '"Press Start 2P", monospace';
+// Every color used in this file. When the code lived inside index.html it read
+// them from its own text; as a separate file it lists them. Add a new color here too.
+const PALETTE_HEX = [
+  '#2a1a10', '#1d1410', '#e8913a', '#c46a1f', '#fff6ea', '#f4a6a0', '#ffd23f', '#e0a800', '#ff8a1f', '#e04848',
+  '#a8302f', '#bfe8ff', '#c9c9d4', '#2b2b33', '#9b5cd8', '#b8773a', '#8a4f2a', '#f2d8b8', '#3a6fd8', '#ffffff',
+  '#ffe680', '#3f8a5c', '#5aa772', '#2e6b45', '#5bb8e8', '#3a8fc0', '#e8a0bf', '#cf7fa3', '#a07bc4', '#7b4fa0',
+  '#fffdf7', '#e8b35a', '#b07a2a', '#8fa3bd', '#5f7290', '#fffaf0', '#c98a5a', '#9fd3e8', '#5e3319', '#2a1a12',
+  '#c98a6a', '#d8343f', '#6b3a1a', '#f2c8a0', '#e8b33f', '#c9853f', '#b8362f', '#9be27a', '#f6e3c4', '#efd6b0',
+  '#d9a86c', '#b8854e', '#9fdcff', '#7a4a2a', '#94603a', '#8a7258', '#c9a86a', '#ecd6a0', '#d4bb82', '#fff1d6',
+  '#c0623b', '#ead9b8', '#d9c4a0', '#a8502f', '#e08a5e', '#c4ecff', '#c0392b', '#8e2a20', '#d0493a', '#e8c35a',
+  '#f5dc8a', '#5a7fb0', '#46689a', '#7fc8ee', '#e3c48e', '#2b3a5c', '#efe3cf', '#d9c7a8', '#f0d9a0', '#d9bf85',
+  '#3a8fd8', '#d7f1ff', '#5aa6e4', '#7ed957', '#e9fbff', '#e9eef3', '#dce3ea', '#8a93a6', '#b8c0cc', '#3b3f52',
+  '#d6dce4', '#5e6578', '#c6f5a8', '#7a8aa8', '#9aaac6', '#0b0f1e', '#f4dfae', '#e6c88a', '#8a6a3a', '#5e4a30',
+  '#3b2a1a', '#7fa8f0', '#a6dff5', '#5aaee6', '#cfeeff', '#0b3d6e', '#6b4226', '#4e2f1a', '#8a5a34', '#d8cbb0',
+  '#1d4f80', '#a8743f', '#4a2c18', '#7d8091', '#a7aab8', '#666979', '#5ad1e0', '#3a3a44', '#5e4a40', '#7a6458',
+  '#4a3a30', '#0b0f2a', '#8a92c0', '#9a9aa6', '#6b6b78', '#2b2b44', '#1d2440', '#d6eef5', '#8a5a3a', '#d9a520',
+  '#5a6a9a', '#9fb4e0', '#ff8fb1', '#7fe0ff', '#c9a03a', '#5a3a22', '#e0474c', '#3a8fe0', '#f5b700', '#c08a5a',
+  '#9b6cd8', '#b4e39a', '#8fd17a', '#79bd66', '#5ea352', '#f6e5b8', '#bfa26c', '#8fd3f5', '#4aa8dc', '#2e7ab0',
+  '#b07a46', '#c99460', '#8d5c30', '#9c6a3a', '#f4ecdc', '#6b5646', '#d9a066', '#1f4a30', '#7fc48f', '#173a26',
+  '#c9925a', '#d9a66e', '#b8814c', '#7a1f18', '#5a1610', '#3a120c', '#e05a48', '#6e1a14', '#6b4a14', '#d4ad48',
+  '#b8902e', '#cfae74', '#f0d9a8', '#33466e', '#3f5684', '#26354f', '#1e2a42', '#8fb0d8', '#9a9387', '#b3ada1',
+  '#7d776c', '#5e5950', '#c9c2b5', '#e4ded2', '#a8a195', '#7a4a3a', '#94604c', '#5e3328', '#4a2820', '#b8a483',
+  '#14101a', '#dbe6f1', '#cbd9e8', '#b4c4d8', '#eef4fa', '#e4d4b8', '#cdb994', '#fbf4e6', '#d6c4a2', '#3b4f73',
+  '#566c94', '#304262', '#4c5268', '#3a3f52', '#2c3040', '#666c84', '#c4c7d2', '#1d1a24', '#fbeccb', '#7fd0ef',
+  '#3483cc', '#8fd8f2', '#c9b98a', '#2f6c8f', '#3f86a8', '#285d7c', '#5a6878', '#788698', '#7a5a3a', '#5f4428',
+  '#4e3720', '#94704a', '#b98a4e', '#a0743c', '#cfa36a', '#7cc6ee', '#a07c56', '#6b4a2a', '#4f8f3a', '#6b5442',
+  '#7a3f12',
+];
+const PALETTE = PALETTE_HEX.map(h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)));
+const snapCache = new Map();
+function snap() {
+  const img = cx.getImageData(0, 0, lo.width, lo.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const key = d[i] << 16 | d[i + 1] << 8 | d[i + 2];
+    let c = snapCache.get(key);
+    if (!c) {
+      let best = 1e9;
+      for (const q of PALETTE) { const e = (q[0] - d[i]) ** 2 * 3 + (q[1] - d[i + 1]) ** 2 * 4 + (q[2] - d[i + 2]) ** 2 * 2; if (e < best) { best = e; c = q; } }
+      snapCache.set(key, c);
+    }
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+}
+
+// ---------- Saved progress (this browser only) ----------
+// Decided 29 Oct: three save files, like a console game (shared/files.js).
+// Sound is one setting for the whole computer, so it has its own key and
+// isn't part of a file.
+const KEY = 'bread-corgi', SOUND = 'bread-corgi-sound';
+const DEF = { bank: 0, have: [], wear: {}, crumbWear: {}, crumbHave: [], pond: {}, farm: {}, barn: {}, coop: {}, ring: {}, aquarium: {}, museum: {}, ocean: {}, jungle: {}, lab: {}, toys: [], moves: {} };   // moves: what Bread has learned (dig, push, sniff, jump, dive)
+const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
+const S = Object.assign(structuredClone(DEF), { sound: soundOn() });
+let me = null;   // the open file's number
+function useFile(n, m) {
+  me = n;
+  const data = SaveFiles.load(KEY, n) || {};
+  try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
+  delete data.sound;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, structuredClone(DEF), data, { sound: soundOn() });
+  // Crumb used to wear Bread's pieces; those come off now that Crumb has a closet of Crumb's own
+  Object.keys(S.crumbWear).forEach(k => { if (!CRUMB_ITEMS[S.crumbWear[k]]) delete S.crumbWear[k]; });
+  $('#whoBtn').hidden = false;
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span> ${SaveFiles.esc(m.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
+}
+function persist() { if (me) { const { sound, ...rest } = S; SaveFiles.save(KEY, me, rest); } }
+// a file's progress at a glance: pieces found, and treats
+function fileSummary(d) {
+  const found = Object.keys(PARTS).reduce((a, w) => a + PARTS[w].filter(([k]) => d[w]?.[k]).length, 0), all = Object.values(PARTS).flat().length;
+  return `🐾 ${found} of ${all} · 🦴 ${d.bank || 0}`;
+}
+
+const ITEMS = {
+  duck: { slot: 'body', name: 'Duck costume', world: 'pond' },
+  duckHat: { slot: 'hat', name: 'Little duck hat', world: 'pond' },
+  duckFeet: { slot: 'feet', name: 'Duck feet', world: 'pond' },
+  pig: { slot: 'body', name: 'Pig costume', world: 'farm' },
+  pigSnout: { slot: 'face', name: 'Pig snout', world: 'farm' },
+  pigTail: { slot: 'back', name: 'Curly tail', world: 'farm' },
+  cow: { slot: 'body', name: 'Cow costume', world: 'barn' },
+  cowbell: { slot: 'neck', name: 'Cowbell', world: 'barn' },
+  horns: { slot: 'hat', name: 'Little horns', world: 'barn' },
+  chicken: { slot: 'body', name: 'Chicken costume', world: 'coop' },
+  comb: { slot: 'hat', name: 'Rooster comb', world: 'coop' },
+  feathers: { slot: 'back', name: 'Tail feathers', world: 'coop' },
+  cowboy: { slot: 'body', name: 'Cowboy costume', world: 'horse ring' },
+  cowboyHat: { slot: 'hat', name: 'Cowboy hat', world: 'horse ring' },
+  bandana: { slot: 'neck', name: 'Bandana', world: 'horse ring' },
+  octopus: { slot: 'body', name: 'Octopus costume', world: 'aquarium' },
+  starfish: { slot: 'hat', name: 'Starfish clip', world: 'aquarium' },
+  pearls: { slot: 'neck', name: 'Pearl necklace', world: 'aquarium' },
+  dino: { slot: 'body', name: 'Dino costume', world: 'museum' },
+  rocketHat: { slot: 'hat', name: 'Rocket hat', world: 'museum' },
+  medal: { slot: 'neck', name: 'Museum medal', world: 'museum' },
+  shark: { slot: 'body', name: 'Shark costume', world: 'ocean' },
+  snorkel: { slot: 'face', name: 'Snorkel mask', world: 'ocean' },
+  pirateHat: { slot: 'hat', name: 'Pirate hat', world: 'ocean' },
+  cavePup: { slot: 'body', name: 'Cave pup costume', world: 'Dino Land' },
+  labCoat: { slot: 'body', name: 'Scientist costume', world: 'science lab' },
+  goggles: { slot: 'face', name: 'Safety goggles', world: 'science lab' },
+  atomPin: { slot: 'neck', name: 'Atom pin', world: 'science lab' },
+  boneClip: { slot: 'hat', name: 'Bone hair clip', world: 'Dino Land' },
+  toothNecklace: { slot: 'neck', name: 'Tooth necklace', world: 'Dino Land' },
+  bowtie: { slot: 'neck', name: 'Bow tie', cost: 20 },
+  shades: { slot: 'face', name: 'Sunglasses', cost: 30 },
+  party: { slot: 'hat', name: 'Party hat', cost: 40 },
+  cape: { slot: 'back', name: 'Hero cape', cost: 50 },
+};
+const SLOTS = [['body', 'Costume'], ['hat', 'Hat'], ['face', 'Face'], ['neck', 'Neck'], ['back', 'Back'], ['feet', 'Feet']];
+// what counts toward 100% in each world: always five pieces, so each is 20%
+const PARTS = {
+  pond: [['beat', 'Duck costume'], ['duckHat', 'Little duck hat'], ['duckFeet', 'Duck feet'], ['rubberDuck', 'Rubber duck toy'], ['gold', 'Gold paw print']],
+  farm: [['beat', 'Pig costume'], ['pigSnout', 'Pig snout'], ['pigTail', 'Curly tail'], ['chicken', 'Rubber chicken toy'], ['gold', 'Gold paw print']],
+  barn: [['beat', 'Cow costume'], ['cowbell', 'Cowbell'], ['horns', 'Little horns'], ['milk', 'Milk bottle toy'], ['gold', 'Gold paw print']],
+  ring: [['beat', 'Cowboy costume'], ['cowboyHat', 'Cowboy hat'], ['bandana', 'Bandana'], ['horseshoe', 'Horseshoe toy'], ['gold', 'Gold paw print']],
+  coop: [['beat', 'Chicken costume'], ['comb', 'Rooster comb'], ['feathers', 'Tail feathers'], ['goldEgg', 'Golden egg toy'], ['gold', 'Gold paw print']],
+  aquarium: [['beat', 'Octopus costume'], ['starfish', 'Starfish clip'], ['pearls', 'Pearl necklace'], ['toyFish', 'Toy fish'], ['gold', 'Gold paw print']],
+  museum: [['beat', 'Dino costume'], ['rocketHat', 'Rocket hat'], ['medal', 'Museum medal'], ['toyRocket', 'Toy rocket'], ['gold', 'Gold paw print']],
+  ocean: [['beat', 'Shark costume'], ['snorkel', 'Snorkel mask'], ['pirateHat', 'Pirate hat'], ['conch', 'Conch shell'], ['gold', 'Gold paw print']],
+  lab: [['beat', 'Scientist costume'], ['goggles', 'Safety goggles'], ['atomPin', 'Atom pin'], ['testTube', 'Test tube toy'], ['gold', 'Gold paw print']],
+  jungle: [['beat', 'Cave pup costume'], ['boneClip', 'Bone hair clip'], ['toothNecklace', 'Tooth necklace'], ['fossil', 'Fossil'], ['gold', 'Gold paw print']],
+};
+
+// ---------- Sounds ----------
+// Decided 28 Oct: no voice in this game, only chiptune beeps. Everything a
+// player needs is written on the screen. The bell turns the beeps on and off.
+const tone = RDG.sound({ on: () => S.sound, type: 'sine', vol: .06 });
+const sfx = {
+  treat: v => { tone(988, .05, 'square', 0, .03); tone(1319 + v * 40, .07, 'square', .05, .03); },
+  bark: () => { tone(330, .09, 'square', 0, .05, 200); tone(300, .11, 'square', .12, .05, 180); },
+  paw: () => tone(500, .07, 'square', 0, .03, 1300),
+  dig: () => [180, 140, 200, 150].forEach((f, i) => tone(f, .05, 'square', i * .07, .04, 90)),
+  splat: () => tone(220, .14, 'square', 0, .03, 70),
+  oink: () => { tone(260, .09, 'square', 0, .04, 200); tone(240, .1, 'square', .11, .04, 170); },
+  cluck: () => [700, 640, 760].forEach((f, i) => tone(f, .04, 'square', i * .07, .02)),
+  yip: () => { tone(1100, .05, 'square', 0, .03, 1500); tone(1250, .06, 'square', .08, .03, 1700); },
+  gate: () => [392, 523, 659].forEach((f, i) => tone(f, .1, 'square', i * .08, .04)),
+  splash: () => { tone(260, .16, 'square', 0, .03, 90); tone(1200, .06, 'square', .03, .02, 600); },
+  shake: () => [720, 520, 720, 520, 720].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
+  catch: () => { tone(880, .06, 'square', 0, .03); tone(1175, .08, 'square', .06, .03); },
+  sparkle: () => [784, 988, 1175, 1568, 1976].forEach((f, i) => tone(f, .09, 'square', i * .06, .03)),
+  honk: () => { tone(330, .12, 'square', 0, .05, 260); tone(300, .14, 'square', .14, .05, 220); },
+  quack: () => { tone(520, .1, 'square', 0, .03, 320); tone(500, .1, 'square', .13, .03, 300); },
+  squeak: () => tone(1400, .12, 'square', 0, .03, 1900),
+  croak: f => { tone(f / 2, .05, 'square', 0, .04, f); tone(f, .26, 'square', .05, .045); },
+  nope: () => { tone(200, .12, 'square', 0, .05, 150); tone(160, .2, 'square', .14, .05, 110); },
+  honk: () => { tone(440, .12, 'square', 0, .04); tone(440, .12, 'square', .18, .04); },
+  moo: () => tone(190, .5, 'square', 0, .04, 120),
+  meow: () => { tone(880, .14, 'square', 0, .03, 620); tone(760, .16, 'square', .16, .03, 540); },
+  neigh: () => [880, 990, 830, 740, 620].forEach((f, i) => tone(f, .07, 'square', i * .06, .03)),
+  push: () => { tone(120, .12, 'square', 0, .05, 80); tone(90, .1, 'square', .1, .04, 70); },
+  ouch: () => { tone(400, .08, 'square', 0, .04, 200); tone(260, .12, 'square', .09, .04, 120); },
+  tick: () => tone(1500, .03, 'square', 0, .025),
+  found: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, i < 4 ? .1 : .5, 'square', i * .1, .04)),
+  start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
+  win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .14, 'square', i * .11, .04)),
+  sniff: () => [0, .11, .22].forEach(w => tone(2400, .05, 'sawtooth', w, .012, 900)),
+  blub: () => { tone(300, .08, 'sine', 0, .06, 600); tone(420, .1, 'sine', .1, .06, 800); },
+  shell: () => tone(700, .06, 'square', 0, .025, 500),
+  pinch: () => [1500, 1700].forEach((f, i) => tone(f, .04, 'square', i * .06, .02)),
+  jump: () => tone(300, .18, 'square', 0, .035, 900),
+  zap: () => tone(1400, .08, 'square', 0, .025, 500),
+  boom: () => { tone(160, .22, 'sawtooth', 0, .04, 50); tone(900, .08, 'square', 0, .02, 200); },
+  roar: () => { tone(110, .5, 'sawtooth', 0, .06, 70); tone(160, .4, 'square', .05, .03, 90); },
+  dive: () => [600, 450, 330, 240].forEach((f, i) => tone(f, .08, 'sine', i * .07, .05)),
+  surface: () => [240, 330, 450, 600].forEach((f, i) => tone(f, .06, 'sine', i * .05, .05)),
+  wave: () => { tone(180, .35, 'sawtooth', 0, .02, 90); tone(900, .2, 'square', .05, .01, 300); },
+  star: n => { tone(784 * 2 ** (n / 12), .12, 'square', 0, .03); tone(1568 * 2 ** (n / 12), .2, 'square', .08, .02); },
+};
+$('#soundBtn').onclick = () => { S.sound = !S.sound; try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; };
+$('#soundBtn').textContent = S.sound ? '🔔' : '🔕';
+
+let toastT;
+function toast(m, ms = Math.max(2400, m.length * 70)) {
+  const el = $('#toast'); el.textContent = m; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, ms);
+}
+
+// ---------- Screen size ----------
+function resize() {
+  const box = $('#box'), dpr = Math.min(2, devicePixelRatio || 1);
+  box.style.width = '';
+  const upright = matchMedia('(max-width:43.75rem) and (orientation:portrait)').matches;
+  const sides = matchMedia('(pointer:coarse) and (orientation:landscape)').matches ? 2 * 11.5 * 16 : 0;   // room for the two controllers
+  let w = upright ? box.clientWidth : innerWidth - sides;
+  const room = upright ? innerHeight - box.getBoundingClientRect().top - 130 : innerHeight;
+  let h = w * VH / VW;
+  if (h > room) { h = Math.max(200, room); w = h * VW / VH; }
+  box.style.width = w + 'px';
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener('resize', resize);
+
+// ---------- Pixel art ----------
+// Decided 28 Oct, after "clean like Mario": no smooth shapes. Every sprite is
+// written out pixel by pixel below, and each one gets a 1-pixel dark outline
+// added around it, the way 8-bit sprites have. The smooth-shape version still
+// looked fuzzy even after the colors were snapped.
+cx.imageSmoothingEnabled = false;
+const COL = {
+  k: '#2a1a10', n: '#1d1410', o: '#e8913a', d: '#c46a1f', w: '#fff6ea', p: '#f4a6a0', f: '#fff6ea',
+  y: '#ffd23f', Y: '#e0a800', b: '#ff8a1f', r: '#e04848', R: '#a8302f', l: '#bfe8ff', g: '#c9c9d4',
+  D: '#2b2b33', m: '#9b5cd8', s: '#b8773a', t: '#8a4f2a', c: '#f2d8b8', u: '#3a6fd8', h: '#ffffff', e: '#ffe680',
+  G: '#3f8a5c', L: '#5aa772', q: '#2e6b45', W: '#5bb8e8', V: '#3a8fc0', P: '#e8a0bf', Q: '#cf7fa3', M: '#a07bc4', N: '#7b4fa0',
+};
+const LINE = COL.k;
+const spriteCache = new Map();
+// Decided 15 Nov: the characters and animals keep their 8-bit look (a black
+// outline, no added shading, fat pixels when drawn bigger). A 16-bit pass on
+// them was tried the same day; the middle kid tester liked the old Crumb and
+// Bread better. Only the backgrounds are 16-bit (see the tiles below).
+function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length;
+  const grid = rows.map(r => [...r.padEnd(w, '.')]);
+  if (outline) {
+    const src = grid.map(r => r.slice());
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
+  }
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  spriteCache.set(key, c);
+  return c;
+}
+function put(img, x, y, scale = 1) { cx.drawImage(img, Math.round(x), Math.round(y), img.width * scale, img.height * scale); }
+const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
+function text(t, x, y, col = LINE) { cx.font = `8px ${PIX}`; cx.textAlign = 'center'; cx.fillStyle = col; cx.fillText(t, Math.round(x), Math.round(y)); }
+function plate(t, x, y) {                    // a label on a little cream sign
+  cx.font = `8px ${PIX}`; const w = Math.ceil(cx.measureText(t).width) + 8;
+  px(x - w / 2 - 1, y - 11, w + 2, 15, LINE); px(x - w / 2, y - 10, w, 13, '#fffdf7'); text(t, x, y);
+}
+// a round blob (tree tops, bushes, the rug, the pond on the map), shaded on the bottom
+function blob(w, h, fill, shade, hi) {
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    let r = '';
+    for (let x = 0; x < w; x++) {
+      const dx = (x + .5 - w / 2) / (w / 2 - 1), dy = (y + .5 - h / 2) / (h / 2 - 1), e = dx * dx + dy * dy;
+      r += e > 1 ? '.' : dx < -.15 && dy < -.25 && e < .45 ? hi : dy > .5 ? shade : fill;
+    }
+    rows.push(r);
+  }
+  return rows;
+}
+const SPARKLE = [
+  ['...h...', '...h...', '...e...', 'hheeehh', '...e...', '...h...', '...h...'],
+  ['.......', '...h...', '...e...', '.heeeh.', '...e...', '...h...', '.......'],
+  ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
+];
+function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
+
+// Bread, side on, facing right. The pad rows on top leave room for hats.
+const BREAD = {
+  A: ['........................', '.............o....o.....', '.............oo..oo.....', '.............opoopo.....', '............oooowooo....', '............oooowooo....', '............oooowwnoo...', '.wo.........oooowwwwwn..', '.ooo.oooooooooowwwwwww..', '...oooooooooowwwwwwo....', '..ooooooooooowwww.......', '..ddooooooooowwww.......', '...dddooowwwwwwww.......', '....dddwwwwwwwww........', '....dd.......oo.........', '....dd.......oo.........', '....ff.......ff.........', '........................'],
+  B: ['........................', '.............o....o.....', '.............oo..oo.....', '.............opoopo.....', '............oooowooo....', '............oooowooo....', '............oooowwnoo...', '.wo.........oooowwwwwn..', '.ooo.oooooooooowwwwwww..', '...oooooooooowwwwwwo....', '..ooooooooooowwww.......', '..ddooooooooowwww.......', '...dddooowwwwwwww.......', '....dddwwwwwwwww........', '...dd.........oo........', '...dd.........oo........', '...ff.........ff........', '........................'],
+};
+const WEAR_PIX = {
+  cape: [3, 8, ['....rrrrr', '..rrrrrrr', 'rrrrrrrR.', 'rrrRR....']],
+  duck: [17, 4, ['bbbbbb', '.bbbbb']],             // the bill on the duck costume's hood
+  bowtie: [12, 9, ['u.u', 'uuu', 'u.u']],
+  shades: [13, 5, ['DDDDDDDD', '...DhDDD', '...DDDD.']],   // a band to the ear, a lens with a shine
+  pigSnout: [19, 6, ['PPP', 'QPQ', 'PPP']],
+  pigTail: [0, 4, ['.PP.', 'P..P', '..PP', '.P..']],
+  duckHat: [13, -5, ['...yy..', '...ynbb', 'y..yyy.', 'yyyyyy.', '.yyyy..']],
+  party: [14, -5, ['..r..', '..m..', '.mym.', '.mmm.', 'mmymm']],
+  cowSpots: [5, 8, ['.nn..nn.', 'nnn..nn.', '.n.....n']],   // black spots on the cow costume
+  cowbell: [12, 9, ['.g.', 'yyy', 'yyy', '.Y.']],
+  horns: [14, 1, ['t..t', '.tt.']],
+  beak: [17, 5, ['yyy', '.yy']],                     // the beak on the chicken costume
+  comb: [14, 0, ['r.r.r', 'rrrrr']],
+  feathers: [0, 3, ['r..u', '.ruu', '..ry']],
+  vest: [5, 8, ['tttttttt', 'tttttttt', '.tttttt.']],      // the cowboy costume: a leather vest
+  cowboyHat: [12, -2, ['...tttt..', '..tttttt.', 'ttttttttt']],
+  bandana: [12, 9, ['rrr', 'rhr', '.r.']],
+  octoSpots: [5, 8, ['.e...e...e.', '...e...e...']],     // suckers on the octopus costume
+  octoArms: [2, 14, ['M.M..M..M.M..', '.M..M..M...M.']],   // its curly arms under her tummy
+  starfish: [15, -3, ['..b..', 'bbbbb', '.bbb.', '.b.b.']],
+  pearls: [12, 9, ['g.g.g', '.g.g.']],              // gray, so they show on her white chest
+  dinoSpikes: [5, 7, ['.q.q.q.q.']],                 // spikes down the dino costume's back
+  rocketHat: [14, -6, ['..r..', '.rhr.', '.rlr.', 'rrhrr', 'r.y.r']],
+  medal: [12, 9, ['r.r', 'yyy', 'yYy']],
+  sharkFin: [7, 3, ['...d', '..dd', '.ddd']],         // the fin on the shark costume's back
+  sharkTeeth: [17, 11, ['h.h.h']],
+  snorkel: [13, 5, ['uuuuuuuu', '...ullu.', '...uuuu.']],
+  pirateHat: [11, -3, ['...nnnn...', '..nnhnnn..', 'nnnnnnnnnn']],
+  labCoat: [5, 8, ['hhhhhhhh', 'hhhhhhhh', 'hhgh.hhh', '.hhh.hh.']],   // a white lab coat
+  goggles: [13, 4, ['DDDDDDDD', '..DlDDlD', '...DDDD.']],
+  atomPin: [12, 9, ['.m.', 'mym', '.m.']],
+  leopard: [5, 8, ['.n...n...n.', '...n...n...', 'n.....n....']],   // spots on the cave pup costume
+  boneClip: [13, -2, ['h...h', 'hhhhh', 'h...h']],
+  toothNecklace: [11, 9, ['ttttt', 'h.h.h']],
+};
+function breadRows(frame, wear) {
+  const pad = 6, g = [...Array(pad).fill('.'.repeat(24)), ...BREAD[frame ? 'B' : 'A']].map(r => [...r]);
+  const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
+  if (wear.back === 'cape') over(WEAR_PIX.cape);
+  if (wear.body === 'duck') over(WEAR_PIX.duck);
+  if (wear.body === 'cow') over(WEAR_PIX.cowSpots);
+  if (wear.body === 'chicken') over(WEAR_PIX.beak);
+  if (wear.body === 'cowboy') over(WEAR_PIX.vest);
+  if (wear.body === 'octopus') { over(WEAR_PIX.octoSpots); over(WEAR_PIX.octoArms); }
+  if (wear.body === 'dino') over(WEAR_PIX.dinoSpikes);
+  if (wear.body === 'shark') { over(WEAR_PIX.sharkFin); over(WEAR_PIX.sharkTeeth); }
+  if (wear.body === 'cavePup') over(WEAR_PIX.leopard);
+  if (wear.body === 'labCoat') over(WEAR_PIX.labCoat);
+  if (wear.neck) over(WEAR_PIX[wear.neck]);
+  if (wear.face) over(WEAR_PIX[wear.face]);
+  if (wear.back === 'pigTail' || wear.back === 'feathers') over(WEAR_PIX[wear.back]);
+  if (wear.hat) over(WEAR_PIX[wear.hat]);
+  return g.map(r => r.join(''));
+}
+// (x, y) is the ground under the middle of Bread
+// the costume colors: the duck is yellow, the pig pink, the cow white with black spots
+function wearMap(wear) {
+  const map = {};
+  if (wear.body === 'duck') Object.assign(map, { o: COL.y, d: COL.Y, p: COL.y });
+  if (wear.body === 'pig') Object.assign(map, { o: COL.P, d: COL.Q, p: COL.Q });
+  if (wear.body === 'cow') Object.assign(map, { o: COL.h, d: COL.g, p: COL.P });
+  if (wear.body === 'chicken') Object.assign(map, { o: COL.h, d: COL.g, p: COL.r });
+  if (wear.body === 'octopus') Object.assign(map, { o: COL.M, d: COL.N, p: COL.N });
+  if (wear.body === 'dino') Object.assign(map, { o: COL.L, d: COL.G, p: COL.q });
+  if (wear.body === 'cavePup') Object.assign(map, { o: '#e8b35a', d: '#b07a2a', p: '#b07a2a' });
+  if (wear.body === 'shark') Object.assign(map, { o: '#8fa3bd', d: '#5f7290', p: '#5f7290' });
+  if (wear.feet === 'duckFeet') map.f = COL.b;
+  return map;
+}
+function drawBread(x, y, scale, face, t, moving, wear = S.wear) {
+  const map = wearMap(wear);
+  const img = sprite(breadRows(moving && Math.floor(t / 130) % 2, wear), { map, flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
+}
+const SQUIRREL = [
+  ['.............', '..ttt........', '.ttttt.......', '.tt..tt...s..', '......tt.sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '......s..s...', '.............'],
+  ['.............', '.ttt.........', 'ttttt........', 'tt..tt....s..', '.....tt..sss.', '......ttssns.', '.....tssssss.', '.....tsscss..', '......sccss..', '.....s....s..', '.............'],
+];
+const FLEA = ['........', '...mm...', '..mmmh..', '..mmmm..', '...mm...', '..m..m..', '........'];
+const FROG = ['..LL....LL..', '.LhnL..LhnL.', '.LLLLLLLLLL.', 'LLLLLLLLLLLL', 'LLqqqqqqqqLL', '.LLLLLLLLLL.', 'GG.GG..GG.GG'];
+const DUCKLING = ['....yy.', '...yynb', 'y..yyy.', 'yyyyyy.', '.yyyy..'];
+const DUCK = ['..............', '........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...', '..............'];
+const CLAW = [...Array(8)].map((_, r) => [...Array(15)].map((_, x) => [0, 3, 6].some(o => x - r - o === 0 || x - r - o === 1) ? 'h' : '.').join(''));   // three claw lines
+// Crumb, Bread's puppy friend: a mini corgi with Rottweiler colors (decided 28
+// Oct by the kid designer), black with tan eyebrows, muzzle, chest and legs
+const CRUMB = (() => {
+  // drawn on Bread's shape, smaller: tall ears with pink insides, a long tan
+  // snout with the nose at the tip, a tan eyebrow over the eye
+  const top = ['..........D..D....', '..........DD.DD...', '..........DpDDpD..', '.........DDDsDDD..', '.........DDDhDsss.', '.D.......DDDDssssn', '.DD.DDDDDDDDDsss..', '..DDDDDDDDDDsss...', '..DDDDDDDDDDss....', '...DDDDDDDDss.....'];
+  return [[...top, '...sD.....ss......', '...ss.....ss......', '..................'], [...top, '....sD.....ss.....', '....ss.....ss.....', '..................']];
+})();
+const CRUMB_HEAD = ['D..D.', 'DDDD.', 'DhDss', '.Dssn'];
+const PIG = ['..............', '..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPhPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...', '..QQ.....QQ...'];
+const PIGLET = ['.P....P.', 'PPPPPPhP', 'PPPPPPPQ', '.Q...Q..'];
+// Decided 2 Nov: the first crows were long and low and read as little dogs.
+// Now they stand up like birds: a round head, a long beak, a gray wing, a
+// fanned tail low behind, and thin legs. The second frame flaps.
+const CROW = [
+  ['......DDD....', '.....DDDhD...', '.....DDDDyyy.', '....DDDDD....', '...DDDgDD....', '..DDDggDD....', '.DDDDDDDD....', 'DDD.DDDD.....', '.....y.y.....', '.....y.y.....'],
+  ['..D...DDD....', '..DD.DDDhD...', '...DDDDDDyyy.', '...DDDDDD....', '....DDDDD....', '..DDDDDDD....', '.DDDDDDD.....', 'DD...DD......', '.....y.y.....', '.............'],
+];
+// The farm's boss: a big white goose guarding Crumb in the corn (asked for by
+// the testers, 2 Nov). Drawn half again as big as everything else.
+const GOOSE = [
+  ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '.....b..b.......', '.....b..b.......', '....bb.bb.......'],
+  ['..........hhh...', '.........hhnhbb.', '.........hhhhbbb', '.........hhh....', '..........hh....', '..........hh....', '..hh......hh....', '.hhhhhhhhhhh....', 'hhhhggggghhh....', 'hhhgggggghhh....', '.hhhhhhhhhh.....', '..hhhhhhhh......', '....b...b.......', '....b...b.......', '...bb..bb.......'],
+];
+// The barn (decided 3 Nov from the testers' asks: go inside the barn, and a
+// dairy cow level). Cows in the pasture, the dairy cow in her stall, mice in the barn.
+const COW = [
+  '...............c.c..', '..............hhhhh.', '.hhhhhhhhhhhhhhhnhh.', 'hnnhhhhhnnnhhhhhhhPP', 'hnnnhhhhnnhhhhhhhhPP', 'hhnhhhhhhhhhnnhhhh..',
+  'hhhhhhhhhhhnnnhhhh..', '.ggggggPPggggggggg..', '.hh.hh.PP....hh.hh..', '.hh.hh.......hh.hh..', '.nn.nn.......nn.nn..',
+];
+const MOUSE = [
+  ['......pp..', '...gggggg.', '..ggggggng', 'p.gggggggp', '.pggggggg.', '...p...p..'],
+  ['......pp..', '...gggggg.', '..ggggggng', '.pgggggggp', 'p.ggggggg.', '..p...p...'],
+];
+const EGG = ['.ee.', 'eeee', 'eeee', '.ee.'];
+const EGG_COL = { white: '#fffaf0', brown: '#c98a5a', blue: '#9fd3e8' };
+const HORSESHOE = ['.gggg.', 'gg..gg', 'g....g', 'g....g', 'gg..gg'];
+// the pony for the horse ring: the Rodeo horse, copied from rodeo/game.js
+const HORSE_BODY = [
+    '...........................t.t',
+    '..........................mbbb',
+    '.........................mmbkbb',
+    '........................mmbbbbbbb',
+    '.......................mmbbbbbbbbp',
+    '......................mmbbbb..bbbp',
+    '.....................mmbbbb',
+    '...mmm...bbbbbbbbbbbmmbbbbb',
+    '.mmmmbbbbbbbbbbbbbbbbbbbbbb',
+    'mmm.bbbbbbbbbbbbbbbbbbbbbbb',
+    'mm..bbbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbbb',
+    'm...bbbbbbbbbbbbbbbbbbbb',
+    '.....bbbbbddddddddbbbbb',
+  ];
+const HORSE_LEGS = [
+    ['..bb....................bbb', '.bb.......................bb', 'bb.........................bb', 'b...........................bb', 'h............................hh'],
+    ['.....bb..............bb', '......bb............bb', '.......bb...........bb', '.......bb..........bb', '.......hh..........hh'],
+    ['.....bbb........bbb', '.......bbb....bbb', '.........bbbbb', '........hh..hh'],
+    ['....bb.................bb', '...bb....................bb', '..bb.......................b', '..bb........................b', '..hh.........................h'],
+  ];
+const HORSE_PAL = { b: '#8a4f2a', d: '#5e3319', m: '#2a1a12', t: '#8a4f2a', k: '#1d1410', p: '#c98a6a', h: '#1d1410', r: '#d8343f', s: '#6b3a1a', f: '#f2c8a0', y: '#e8b33f', j: '#3a6fd8', H: '#c9853f', n: '#6b3a1a', e: '#b8362f' };
+const PONY = [0, 1, 2, 3].map(f => {
+  const g = Array.from({ length: 24 }, () => Array(36).fill('.')), put = (rows, x, y, as) => rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') g[y + j][x + i] = as && ch !== 'h' ? as : ch; }));
+  put(HORSE_LEGS[(f + 1) % 4], 3, 14, 'd'); put(HORSE_LEGS[f], 1, 14); put(HORSE_BODY, 1, 0);
+  return g.map(r => r.join('')).filter((r, i) => i < 20);
+});
+const BARREL = ['.rrrr.', 'rhhhhr', 'rrrrrr', 'RRRRRR', 'rrrrrr', '.RRRR.'];
+const GOLD_EGG = ['..yy..', '.yyey.', 'yyyyyy', 'yyyyyy', '.yyyy.'];
+const MILK = ['..rr..', '..hh..', '.hhhh.', 'hhhhhh', 'huuuuh', 'huuuuh', 'hhhhhh', '.hhhh.'];
+const CHICKEN = ['...rr.....', '..hhhh....', '..hhnhy...', '..hhhhyy..', 'hhhhhhh...', 'hhhhhhh...', '.hhhhh....', '..y..y....'];
+const MOUND = ['....tt....', '..tttttt..', '.tttssttt.', 'tttttttttt'];
+// The aquarium (decided 10 Nov: the next world on the plan, the octopus and
+// sniffing). The octopus wiggles her arms; crabs scuttle like the squirrels;
+// jellyfish glow in the dark room; fish swim behind the tank glass.
+const OCTOPUS = [
+  ['....MMMMMM....', '...MMMMMMMM...', '..MMMMMMMMMM..', '..MhnMMMMhnM..', '..MMMMMMMMMM..', '...NMMMMMMN...', '..MM.MM.MM.MM.', '.MM.MM..MM.MM.', 'M..M..MM..M..M', '.M..M....M..M.'],
+  ['....MMMMMM....', '...MMMMMMMM...', '..MMMMMMMMMM..', '..MhnMMMMhnM..', '..MMMMMMMMMM..', '...NMMMMMMN...', '.MM.MM.MM.MM..', 'MM.MM..MM.MM..', '.M..M.MM.M..M.', 'M..M....M..M..'],
+];
+const CRAB = [
+  ['.rr......rr.', 'r..r....r..r', '.rr.n..n.rr.', '..rrrrrrrr..', '.rrrrrrrrrr.', '..RRRRRRRR..', '.r.r....r.r.'],
+  ['.rr......rr.', 'r.r......r.r', '.rr.n..n.rr.', '..rrrrrrrr..', '.rrrrrrrrrr.', '..RRRRRRRR..', '..r.r..r.r..'],
+];
+const JELLY = [
+  ['..PPPPP..', '.PPhPPPP.', 'PPhPPPPPP', 'PPPPPPPPP', 'QQQQQQQQQ', '.Q.Q.Q.Q.', 'Q.Q.Q.Q..', '.Q.Q.Q.Q.'],
+  ['..PPPPP..', '.PPhPPPP.', 'PPhPPPPPP', 'PPPPPPPPP', 'QQQQQQQQQ', 'Q.Q.Q.Q.Q', '.Q.Q.Q.Q.', '..Q.Q.Q.Q'],
+];
+const FISH = ['....bb..', 'b.bbhbb.', 'bbbbhbnb', 'b.bbhbb.', '....bb..'];
+const SHELL = ['...cccc...', '..cscscc..', '.ccscsccc.', 'cscscscscc', 'cscscscscc', '.cccccccc.'];
+const SHARK = ['.........g......', '........gg......', '.gggggggggggg...', 'gggggggggggnggg.', '.g.ggghhhhhhgg..', 'g.......g.......'];
+const WISP = ['.h.', 'h..', '.h.', '..h', '.h.'];   // a puff of smell, for sniffing
+// The museum (decided 14 Nov): the dinosaur skeleton on its stand, a small
+// green dino for the costume, the toy robots from the gift shop, stars, a rocket.
+const DINO_BONES = ['..................hhhhh.....', '.................hhnhhhhh...', '.................hhhhhhhhh..', '................hhh.h.h.h...', '...............hhhh.........', '..............hhh...........',
+  '.h..h..h..h..hhhh...........', 'hhhhhhhhhhhhhhhhhh..........', '..h.h.h.h.hhhhhhhh.hh.......', '.......h.h.hhhhh.h..h.......', '........h.h..hh.............', '.............hh.............', '............hh.hh...........', '............h...h...........', '...........hh...hh..........'];
+const DINOSAUR = ['....GGG.', '...GGnGG', '...GGGGG', 'G..GGG..', 'GGGGGGG.', '.GGGGG..', '..G..G..'];
+const ROBOT = [
+  ['....r.....', '....g.....', '..gggggg..', '..gnggng..', '..gggggg..', '...gYYg...', '.gggggggg.', '.g.gggg.g.', '...g..g...', '..gg..gg..'],
+  ['....r.....', '....g.....', '..gggggg..', '..gnggng..', '..gggggg..', '...gYYg...', '.gggggggg.', '.g.gggg.g.', '...g..g...', '...gg.gg..'],
+];
+const STAR = ['..h..', '.hhh.', 'hhhhh', '.hhh.', '.h.h.'];
+// The ocean (decided 15 Nov): a big friendly shark, Crumb's surfboard, a palm tree.
+const BIG_SHARK = ['...............gg...............', '..............ggg...............', '.............gggg...............', 'g...........gggggggggggg........', 'gg......ggggggggggggggggggggg...', 'ggg..gggggggggggggggggggggnggg..', '.ggggggggggggggggggggggggggggggg', '.gggggghhhhhhhhhhhhhhhhhhhhhggg.', 'ggg...hhhhhhhhhhhhhhhhhhhhhhh...', 'gg.........gg........gg.........', 'g..........g.........g..........'];
+const FIN = ['...g', '..gg', '.ggg', 'gggg'];
+const SURFBOARD = ['..yyyyyyyyyyyy..', '.yyrrrrrrrrrrryy', '..yyyyyyyyyyyy..'];
+const ROCKET = ['..r..', '.rhr.', '.hlh.', '.hhh.', 'rhhhr', 'r.y.r', '..y..'];
+// Dino Land (decided 15 Nov): the long-neck dinosaur Crumb climbs, little
+// raptors for baddies, big ferns for the long-neck to eat, a fossil to dig up.
+const LONGNECK = (() => {
+  const legs = ['............GGG..GGG....GGG..GGG...L', '............LLL..LLL....LLL..LLL....', '............LLL..LLL....LLL..LLL....', '............LLL..LLL....LLL..LLL....', '............qqq..qqq....qqq..qqq....'];
+  const up = ['...LLLL.............................', '..LLnLLL............................', '..LLLLLLL...........................', '....LLLL............................', '.....LLL............................', '......LLL...........................', '.......LLL..........................', '........LLL.........................', '.........LLL........................', '..........LLL.......................', '...........LLL......................', '............LLLL....................',
+    '.............LLLLLLLLLLLL...........', '............LLLLLLLLLLLLLLLL........', '...........LLLLLLLLLLLLLLLLLLL......', '...........LLLLLLLLLLLLLLLLLLLLL....', '...........LGGLLLLLLLLLLLLLLLLLLLL..', '...........LGGGGGGGGGGGGGGGLLLLLLLLL', ...legs];
+  const down = [...Array(12).fill('.'.repeat(36)),
+    '.............LLLLLLLLLLLL...........', '..........LLLLLLLLLLLLLLLLLL........', '.LLLL..LLLLLLLLLLLLLLLLLLLLLL.......', 'LLnLLLLLLLLLLLLLLLLLLLLLLLLLLL......', 'LLLLLLL....LGGLLLLLLLLLLLLLLLLLLLL..', '.LLL.......LGGGGGGGGGGGGGGGLLLLLLLLL', ...legs];
+  return { up, down };
+})();
+const RAPTOR = [
+  ['.........LL.', '........LLnL', '........LLLLL', '...LLLLLLLL..', 'LLLLLLLLLL...', '....LLLLL.L..', '....L...L....', '...LL..LL....'],
+  ['.........LL.', '........LLnL', '........LLLLL', '...LLLLLLLL..', 'LLLLLLLLLL...', '....LLLLL.L..', '.....L.L.....', '....LL.LL....'],
+];
+const FERN = ['....L....', '..L.L.L..', '.L.LLL.L.', 'L.LL.LL.L', '..LLGLL..', 'L..LGL..L', '...GGG...'];
+const AMMONITE = ['..ggg..', '.g...g.', 'g..g..g', 'g.g.g.g', 'g..gg.g', '.g...g.', '..ggg..'];
+// toys for the shelf at home
+const TOYS = { rubberDuck: { name: 'rubber duck toy', pic: DUCK }, chicken: { name: 'rubber chicken', pic: CHICKEN }, milk: { name: 'milk bottle toy', pic: MILK }, goldEgg: { name: 'golden egg', pic: GOLD_EGG }, horseshoe: { name: 'lucky horseshoe', pic: HORSESHOE }, toyFish: { name: 'toy fish', pic: FISH }, toyRocket: { name: 'toy rocket', pic: ROCKET }, conch: { name: 'conch shell', pic: SHELL }, fossil: { name: 'fossil', pic: AMMONITE }, testTube: { name: 'test tube', pic: ['g.g', 'g.g', 'gmg', 'gmg', 'gmg', '.g.'] } };
+const GATE_KEY = ['.yy......', 'y..y.....', 'y..yyyyyy', 'y..y..y.y', '.yy......'];
+const GOLD_PAW = ['.y.y.y.', '.y.y.y.', '.......', '..yyy..', '.yyeyy.', '.yyyyy.', '..yyy..'];
+const DUCK_HAT = ['...yyy.....', '..yyyny....', '..yyyyybb..', '.yyyyyyy...', 'YYYYYYYYY..'];
+const DUCK_FEET = ['.b.b...b.b.', '.bbb...bbb.', 'bbbbb.bbbbb'];
+const BONE = ['..........', '.cc....cc.', '..cccccc..', '.cc....cc.', '..........'];
+const HP_BONE = ['.........', '.hh...hh.', '..hhhhh..', '.hh...hh.', '.........'];
+const BIG_BONE = ['..............', '.hh........hh.', '.hhh......hhh.', '..hhhhhhhhhh..', '.hhh......hhh.', '.hh........hh.', '..............'];
+const TROPHY = ['...........', '.y.yyyyy.y.', '.yyyyyyyyy.', '..yyyyyyy..', '...yyeyy...', '....yyy....', '.....y.....', '....YYY....', '...YYYYY...', '...........'];
+const CAR = ['..........................', '......rrrrrrrr............', '.....rllllllllr...........', '....rllllllllllr..........', '...rrrrrrrrrrrrrrrrrrrr...', '..rrrrrrrrrrrrrrrrrrrrre..', '..rrrrrrrrrrrrrrrrrrrrrr..', '..RRRRRRRRRRRRRRRRRRRRRR..', '...DDDD.........DDDD......', '...DggD.........DggD......', '...DDDD.........DDDD......', '..........................'];
+const CAR_HEAD = ['o...o...', 'oo.oo...', 'ooooo...', 'oowonww.', 'oowwwwwn', '.wwwww..'];
+// (x, y) is the ground under the middle of the car
+function drawCar(x, y, face, t, riders = true) {
+  const img = sprite(CAR, { flip: face < 0 }), head = sprite(CAR_HEAD, { map: wearMap(S.wear), flip: face < 0 });
+  const bob = Math.floor(t / 120) % 2, X = Math.round(x - 13), Y = Math.round(y - 12);
+  if (riders) {
+    put(sprite(CRUMB_HEAD, { flip: face < 0 }), face > 0 ? X + 2 : X + 26 - 2 - 5, Y - 3 + bob);   // Crumb, in the back seat
+    put(head, face > 0 ? X + 8 : X + 26 - 8 - head.width, Y - 3 + bob);
+  }
+  put(img, X, Y + bob);
+}
+// Decided 2 Nov: Crumb can dress up too. Decided 3 Nov, after play-tests:
+// Crumb has a closet of Crumb's own, with puppy-sized things instead of
+// Bread's pieces (the sunglasses and the rest looked wrong on Crumb's small
+// black face). Crumb's costumes are little animals hidden around the worlds,
+// one or two per place, and Crumb's shop sells small things for treats.
+// Each piece: its slot, the pixels laid over Crumb ([x, y, rows]), and for
+// costumes the colors Crumb's black and tan become.
+const CRUMB_ITEMS = {
+  duckling: { slot: 'body', name: 'Duckling costume', world: 'pond', map: { D: COL.y, s: COL.Y, p: COL.y }, pix: [15, 4, ['bbb', 'bbb']] },
+  frog: { slot: 'body', name: 'Frog costume', world: 'pond', map: { D: COL.G, s: '#9be27a', p: '#9be27a' }, pix: [11, -1, ['GG.GG', 'Gn.Gn']] },
+  piglet: { slot: 'body', name: 'Piglet costume', world: 'farm', map: { D: COL.P, s: COL.Q, p: COL.Q }, pix: [15, 4, ['PPP', 'QPQ']] },
+  kitten: { slot: 'body', name: 'Barn kitten costume', world: 'barn', map: { D: COL.o, s: COL.w, p: COL.p }, pix: [4, 6, ['.d..d..d', '..d..d..']] },
+  mouse: { slot: 'body', name: 'Mouse costume', world: 'barn', map: { D: COL.g, s: COL.w, p: COL.p }, pix: [9, -1, ['gg..gg', 'gpggpg', '.g..g.']] },
+  chick: { slot: 'body', name: 'Chick costume', world: 'coop', map: { D: COL.e, s: COL.y, p: COL.e }, pix: [15, 4, ['YY', '.Y']] },
+  foal: { slot: 'body', name: 'Foal costume', world: 'horse ring', map: { D: COL.t, s: COL.s, p: COL.t }, pix: [8, 1, ['n.', 'nn', 'nn', 'n.']] },
+  slime: { slot: 'body', name: 'Slime costume', world: 'science lab', map: { D: '#5aa772', s: '#9be27a', p: '#9be27a' }, pix: [7, 9, ['L..L..L', 'L.....L']] },
+  triceratops: { slot: 'body', name: 'Triceratops costume', world: 'Dino Land', map: { D: COL.L, s: COL.G, p: COL.G }, pix: [9, 0, ['h...', '.qq.', 'qqqq']] },
+  astronaut: { slot: 'body', name: 'Astronaut costume', world: 'museum', map: { D: COL.h, s: COL.g, p: COL.g }, pix: [11, 3, ['lll', 'lll']] },
+  crab: { slot: 'body', name: 'Crab costume', world: 'ocean', map: { D: COL.r, s: COL.R, p: COL.R }, pix: [12, 0, ['r...r', 'rr.rr']] },
+  turtle: { slot: 'body', name: 'Sea turtle costume', world: 'ocean', map: { D: COL.G, s: '#9be27a', p: '#9be27a' }, pix: [3, 5, ['..ttttt...', '.tqtttqt..', 'tttqqtttt.']] },
+  clownfish: { slot: 'body', name: 'Clownfish costume', world: 'aquarium', map: { D: COL.b, s: COL.h, p: COL.b }, pix: [6, 4, ['.b..', 'bbb.', '.h..', '.h..', '.h..', '.h..']] },
+  bow: { slot: 'hat', name: 'Little bow', cost: 15, pix: [11, -1, ['P.P', 'PPP']] },
+  crown: { slot: 'hat', name: 'Tiny crown', cost: 45, pix: [10, -3, ['y.y.y', 'yyyyy']] },
+  bell: { slot: 'neck', name: 'Collar bell', cost: 20, pix: [9, 7, ['ggg', '.y.']] },
+  scarf: { slot: 'neck', name: 'Little scarf', cost: 25, pix: [8, 6, ['uuu', 'uuuu', '.u.']] },
+  sneakers: { slot: 'feet', name: 'Red sneakers', cost: 35, feet: COL.r },
+};
+function crumbRows(frame, wear) {
+  const pad = 6, g = [...Array(pad).fill('.'.repeat(18)), ...CRUMB[frame]].map(r => [...r]);
+  const over = ([ox, oy, rows]) => rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && g[pad + oy + y]?.[ox + x] !== undefined) g[pad + oy + y][ox + x] = ch; }));
+  ['body', 'neck', 'hat'].forEach(slot => { const it = CRUMB_ITEMS[wear[slot]]; if (it && it.pix) over(it.pix); });
+  if (CRUMB_ITEMS[wear.feet]) g[pad + 11] = g[pad + 11].map(ch => ch === 's' ? 'f' : ch);   // shoes on the bottom row of the legs
+  return g.map(r => r.join(''));
+}
+function crumbMap(wear) {
+  const map = { ...(CRUMB_ITEMS[wear.body]?.map || {}) };
+  if (CRUMB_ITEMS[wear.feet]) map.f = CRUMB_ITEMS[wear.feet].feet;
+  return map;
+}
+// (x, y) is the ground under the middle of Crumb
+function drawCrumb(x, y, face, t, moving, scale = 1, wear = S.crumbWear || {}) {
+  const img = sprite(crumbRows(moving && Math.floor(t / 110) % 2 ? 1 : 0, wear), { map: crumbMap(wear), flip: face < 0 });
+  put(img, x - img.width * scale / 2, y - img.height * scale, scale);
+}
+
+// ---------- Home ----------
+let screen = 'title';
+function showRow(id) {
+  ['pressBtns', 'homeBtns', 'levelBtns', 'closet', 'shop'].forEach(r => $('#' + r).hidden = r !== id);
+  $('#levelBtns').classList.toggle('mapmode', id === 'levelBtns' && screen === 'map');
+  $('#helpBtn').hidden = id !== 'levelBtns' || screen === 'map';
+  if (id !== 'levelBtns') { setGoal(''); help(false); $('#toast').hidden = true; }
+}
+// Decided 28 Oct: the goal shows for a few seconds when it changes, then goes
+// away; it's always at the start of the ? help bar. Kept on screen all the
+// time, it covered the world.
+let goalT;
+function setGoal(text) {
+  $('#goal').textContent = text; $('#goal').hidden = !text; $('#infoGoal').textContent = text ? `Goal: ${text}.` : '';
+  clearTimeout(goalT); if (text) goalT = setTimeout(() => $('#goal').hidden = true, 5000);
+}
+function help(open = $('#info').hidden) { $('#info').hidden = !open; if (G) { if (G.hintOn && !open) G.hintTill = performance.now() + HINT_MS; G.hintOn = open; } $('#hayBtn').hidden = !(open && G && G.world === 'farm' && S.moves.push); $('#helpBtn').setAttribute('aria-expanded', open); }
+$('#helpBtn').onclick = () => help();
+$('#hayBtn').onclick = () => resetHay();
+$('#infoClose').onclick = () => help(false);
+function bank() { $('#hBank').textContent = `🦴 ${S.bank}`; }
+function goHome(msg) {
+  screen = 'home'; G = null; showRow('homeBtns'); bank();
+  if (msg) toast(msg);
+}
+let homeWoof = 0;
+function drawHome(t) {
+  const W = VW * T, H = VH * T, floor = 108;
+  px(0, 0, W, floor, '#f6e3c4');
+  for (let x = 4; x < W; x += 12) px(x, 0, 2, floor, '#efd6b0');                   // wallpaper stripes
+  px(0, floor, W, H - floor, '#d9a86c'); px(0, floor, W, 1, LINE);
+  for (let x = 20; x < W; x += 28) px(x, floor + 1, 1, H - floor, '#b8854e');       // floorboards
+  // window
+  px(111, 15, 66, 50, LINE); px(112, 16, 64, 48, '#fffdf7'); px(115, 19, 58, 42, '#9fdcff');
+  px(155, 25, 8, 8, '#ffe680'); px(143, 19, 2, 42, '#fffdf7'); px(115, 39, 58, 2, '#fffdf7');
+  // Decided 15 Nov: toys on two shelves left of the window, trophies on two
+  // shelves to the right. It was one shelf, and with every toy and trophy the
+  // row ran across the window and off the wall.
+  const shelves = (imgs, x0, x1, ys) => {
+    let row = 0, x = x0 + 3;
+    const placed = imgs.map(img => { if (x + img.width > x1 - 3) { row++; x = x0 + 3; } const at = [x, row]; x += img.width + 3; return [img, at]; }).filter(([, [, r]]) => r < ys.length);
+    ys.forEach((y, r) => { if (!r || placed.some(([, [, rr]]) => rr === r)) { px(x0, y, x1 - x0, 5, LINE); px(x0 + 1, y + 1, x1 - x0 - 2, 3, '#7a4a2a'); px(x0 + 1, y + 1, x1 - x0 - 2, 1, '#94603a'); } });
+    placed.forEach(([img, [ix, r]]) => put(img, ix, ys[r] - img.height + 1));
+  };
+  const toys = Object.keys(TOYS).filter(k => S.toys.includes(k)).map(k => sprite(TOYS[k].pic));
+  const cups = Object.keys(PARTS).filter(w => S[w]?.trophy).map(() => sprite(TROPHY));
+  shelves(toys, 8, 104, [51, 83]);
+  if (!toys.length) text('Toys go here', 56, 46, '#b8854e');
+  if (cups.length) shelves(cups, 186, 282, [51, 83]);
+  // Bread's bed and rug
+  put(sprite(blob(70, 22, 'M', 'N', 'M')), 205, 138);
+  put(sprite(blob(64, 16, 'N', 'N', 'N')), 208, 139);
+  put(sprite(blob(112, 22, 'P', 'Q', 'P')), W / 2 - 56, 140);
+  drawBread(W / 2, 153, 3, 1, t, false);
+  drawCrumb(240, 152, -1, t, false, 2);         // Crumb, on Bread's bed
+  if (homeWoof > t) text('Woof!', W / 2 + 46, 82);
+}
+// Item pictures for the closet, each centered on a square just big enough for
+// it, so small things (the bow tie) still fill their tile. Things not found
+// yet are dark shapes.
+const HANGER = ['......g.....', '.....g.g....', '.......g....', '......g.....', '...gggggg...', '..g......g..', '.gggggggggg.'];
+const ITEM_PIC = { duck: DUCK, duckHat: DUCK_HAT, duckFeet: DUCK_FEET, bowtie: WEAR_PIX.bowtie[2], shades: WEAR_PIX.shades[2], party: WEAR_PIX.party[2], cape: WEAR_PIX.cape[2], pig: PIG, pigSnout: WEAR_PIX.pigSnout[2], pigTail: WEAR_PIX.pigTail[2], cow: COW, cowbell: WEAR_PIX.cowbell[2], horns: WEAR_PIX.horns[2], chicken: CHICKEN, comb: WEAR_PIX.comb[2], feathers: WEAR_PIX.feathers[2], cowboy: WEAR_PIX.vest[2], cowboyHat: WEAR_PIX.cowboyHat[2], bandana: WEAR_PIX.bandana[2], octopus: OCTOPUS[0], starfish: WEAR_PIX.starfish[2], pearls: WEAR_PIX.pearls[2], dino: DINOSAUR, rocketHat: WEAR_PIX.rocketHat[2], medal: WEAR_PIX.medal[2], shark: BIG_SHARK, snorkel: WEAR_PIX.snorkel[2], pirateHat: WEAR_PIX.pirateHat[2], labCoat: ['.hh.hh.', 'hhhhhhh', 'hhh.hhh', 'hhh.hhh', 'hhh.hhh'], goggles: WEAR_PIX.goggles[2], atomPin: WEAR_PIX.atomPin[2], cavePup: BIG_BONE, boneClip: WEAR_PIX.boneClip[2], toothNecklace: WEAR_PIX.toothNecklace[2] };
+const picCache = {};
+function pic(rows, dark, colors = {}) {
+  const key = rows.join('/') + dark + JSON.stringify(colors);
+  if (picCache[key]) return picCache[key];
+  const map = { ...colors }; if (dark) rows.join('').split('').forEach(ch => { if (ch !== '.') map[ch] = '#8a7258'; });
+  const img = sprite(rows, { map }), c = document.createElement('canvas'), n = Math.max(10, img.width, img.height) + 2;
+  c.width = c.height = n; c.getContext('2d').drawImage(img, (n - img.width) >> 1, (n - img.height) >> 1);
+  return picCache[key] = c.toDataURL();
+}
+let closetWho = 'bread';   // who the closet is dressing: Bread or Crumb
+const wearing = () => closetWho === 'crumb' ? (S.crumbWear = S.crumbWear || {}) : S.wear;
+function drawMirror() {
+  const w = wearing(), img = closetWho === 'crumb' ? sprite(crumbRows(0, w), { map: crumbMap(w) }) : sprite(breadRows(0, w), { map: wearMap(w) }), c = document.createElement('canvas');
+  c.width = c.height = 30; c.getContext('2d').drawImage(img, (30 - img.width) >> 1, 30 - img.height - 2);
+  $('#mirror').src = c.toDataURL(); $('#mirror').alt = closetWho === 'crumb' ? 'Crumb in the mirror' : 'Bread in the mirror';
+  document.querySelectorAll('[data-who]').forEach(b => b.setAttribute('aria-pressed', b.dataset.who === closetWho));
+}
+document.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { closetWho = b.dataset.who; openCloset(); });
+function openCloset() {
+  showRow('closet');
+  drawMirror();
+  const list = $('#closetList'); list.innerHTML = '';
+  const crumb = closetWho === 'crumb', LIST = crumb ? CRUMB_ITEMS : ITEMS, mine = crumb ? S.crumbHave : S.have;
+  // Crumb's pieces are shown on a little Crumb, since they're mostly colors
+  const picOf = (k, dark) => !k ? pic(HANGER, false) : crumb ? pic(crumbRows(0, { [LIST[k].slot]: k }), dark, crumbMap({ [LIST[k].slot]: k })) : pic(ITEM_PIC[k], dark);
+  SLOTS.forEach(([slot, label]) => {
+    const all = Object.keys(LIST).filter(k => LIST[k].slot === slot);
+    if (!all.length) return;
+    const row = document.createElement('div'); row.className = 'rack';
+    row.innerHTML = `<span class="lbl">${label}</span>`;
+    [null, ...all].forEach(k => {
+      const have = !k || mine.includes(k), on = (wearing()[slot] || null) === k;
+      const b = document.createElement('button'); b.className = 'tile' + (on ? ' on' : '') + (have ? '' : ' locked');
+      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-label', !k ? `No ${label.toLowerCase()}` : have ? LIST[k].name : 'Not found yet');
+      b.title = b.getAttribute('aria-label');
+      b.innerHTML = `<img alt="" src="${picOf(k, !have)}">`;
+      b.onclick = () => {
+        if (!have) return toast(LIST[k].cost ? `In the treat shop: 🦴 ${LIST[k].cost}` : crumb || slot !== 'body' ? `Hidden at the ${LIST[k].world}.` : `Win it at the ${LIST[k].world}.`);
+        wearing()[slot] = on ? null : k; persist(); sfx.treat(1); openCloset();
+      };
+      row.append(b);
+    });
+    list.append(row);
+  });
+}
+function openShop() {
+  showRow('shop');
+  const list = $('#shopList'); list.innerHTML = '';
+  [['For Bread', ITEMS, S.have, S.wear, 'Bread'], ['For Crumb', CRUMB_ITEMS, S.crumbHave, S.crumbWear, 'Crumb']].forEach(([head, LIST, mine, wear, who]) => {
+    const h = document.createElement('h3'); h.textContent = head; list.append(h);
+    Object.entries(LIST).filter(([, it]) => it.cost).forEach(([k, it]) => {
+      const row = document.createElement('div'); row.className = 'slot';
+      const b = document.createElement('button'); b.className = 'btn';
+      if (mine.includes(k)) { b.disabled = true; b.innerHTML = `${it.name}<small>In the closet</small>`; }
+      else {
+        b.innerHTML = `${it.name}<small>🦴 ${it.cost} treats</small>`;
+        b.onclick = () => {
+          if (S.bank < it.cost) return toast(`You need 🦴 ${it.cost - S.bank} more.`);
+          S.bank -= it.cost; mine.push(k); wear[it.slot] = k; persist(); bank(); sfx.sparkle();
+          toast(`${who} is wearing it!`); openShop();
+        };
+      }
+      row.append(b); list.append(row);
+    });
+  });
+}
+$('#closetBtn').onclick = openCloset;
+$('#shopBtn').onclick = openShop;
+document.querySelectorAll('[data-done]').forEach(b => b.onclick = () => showRow('homeBtns'));
+$('#rideBtn').onclick = () => { mapAt = 0; atStop(); };
+document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
+  if (screen === 'level') { mapAt = W.stop; atStop(); return; }   // decided 7 Nov: back onto the map, not straight home
+  goHome();
+});
+
+// ---------- The map and the car ride ----------
+// Decided 28 Oct: the car ride is the level map. Bread's car drives along the
+// road from home to a place, and home again after. New places get added as
+// they're built.
+// Decided 15 Nov: the map is a little town. A main street runs across the
+// middle, and each place sits on it or up a short side street, so the car
+// drives straight to any place instead of through every one before it (the
+// old road wound past each place in turn, and the ocean was the far end of a
+// long loop). In pixels: the main street, and for each stop where its side
+// street leaves the main street (jx) and where the car parks (at).
+const MAIN_Y = 90, MAIN = [30, 272];
+let ride = null;
+// Decided 28 Oct: you drive the map with the arrow keys, like an old game map,
+// instead of clicking places. The car stops at each place; Enter goes in.
+// Decided 7 Nov: no buttons or words on the map. The pad (arrow keys, the
+// stick, or the cross pad) points the way, and the car drives to the next
+// place the road heads off in that direction; Paw (or Space, or Enter) goes in.
+const STOPS = [{ name: 'home', go: 'Go home', jx: 47, at: [47, 78] }, { name: 'pond', go: 'Go to the pond', world: 'pond', jx: 119, at: [119, 78] }, { name: 'farm', go: 'Go to the farm', world: 'farm', needs: 'pond', jx: 103, at: [103, 100] },
+  { name: 'aquarium', go: 'Go to the aquarium', world: 'aquarium', needs: 'coop', needName: 'farm', jx: 223, at: [223, 78] }, { name: 'museum', go: 'Go to the museum', world: 'museum', needs: 'aquarium', jx: 166, at: [166, 100] }, { name: 'ocean', go: 'Go to the ocean', world: 'ocean', needs: 'museum', jx: 252, at: [252, 152] }];   // the farm and the museum sit just off the main street
+let mapAt = 0;
+// Decided 15 Nov, the middle kid tester's ask: drive the car yourself. The
+// pad (arrows, stick or cross pad, or a finger held on the map) steers it
+// anywhere there's road, including along the beach sand. Each place has a
+// driveway with a parking spot; pull in and the button says Go in.
+let mapCar = null, mapNear = -1;
+function atStop(msg) {
+  screen = 'map'; showRow('levelBtns');
+  mapCar = { x: STOPS[mapAt].at[0], y: STOPS[mapAt].at[1], face: mapCar ? mapCar.face : 1, moving: false }; mapNear = mapAt;
+  if (msg) toast(msg);
+}
+const onRoad = (x, y) => { roadPic(); const X = Math.round(x), Y = Math.round(y); return X >= 0 && Y >= 0 && X < VW * T && Y < VH * T && roadMask[Y * VW * T + X] > 0; };
+function stepMapCar(dt) {
+  const c = mapCar; if (!c) return;
+  let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { dx = stick.x; dy = stick.y; }
+  if (!dx && !dy && goal) { const gx = goal.x * T - c.x, gy = goal.y * T - c.y, gl = Math.hypot(gx, gy); if (gl > 3) { dx = gx / gl; dy = gy / gl; } }
+  const m = Math.hypot(dx, dy); c.moving = m > .2;
+  if (c.moving) {
+    const v = 80 * dt / Math.max(1, m), nx = c.x + dx * v, ny = c.y + dy * v;
+    if (onRoad(nx, c.y)) c.x = nx; else if (Math.abs(dx) > .3) { for (const o of [-3, 3]) if (onRoad(nx, c.y + o)) { c.y += o * .3; break; } }   // slide round a corner
+    if (onRoad(c.x, ny)) c.y = ny; else if (Math.abs(dy) > .3) { for (const o of [-3, 3]) if (onRoad(c.x + o, ny)) { c.x += o * .3; break; } }
+    if (Math.abs(dx) > .2) c.face = dx > 0 ? 1 : -1;
+  }
+  const was = mapNear; mapNear = STOPS.findIndex(st => Math.hypot(st.at[0] - c.x, st.at[1] - c.y) < 12);
+  if (mapNear >= 0) { mapAt = mapNear; if (mapNear !== was) { const st = STOPS[mapNear]; if (st.needs && !S[st.needs].beat) toast(`Find Crumb at the ${st.needName || st.needs} first.`); else sfx.tick(); } }
+}
+function mapGo() {
+  if (screen !== 'map' || mapNear < 0) return;
+  const st = STOPS[mapNear];
+  if (st.needs && !S[st.needs].beat) return toast(`Find Crumb at the ${st.needName || st.needs} first.`);
+  if (st.world) startWorld(st.world); else goHome();
+}
+// Decided 15 Nov: the road was drawn a whole tile at a time and looked
+// blocky. Now it's a dirt road 13 pixels wide drawn pixel by pixel, with a darker edge and a few pebbles. It never changes, so it's
+// drawn once and kept.
+let roadImg = null, roadMask = null;
+function roadPic() {
+  if (roadImg) return roadImg;
+  const W = VW * T, H = VH * T, on = new Uint8Array(W * H), r = 6.3;
+  const lines = [[[MAIN[0], MAIN_Y], [MAIN[1], MAIN_Y]], ...STOPS.map(st => [[st.jx, MAIN_Y], st.at])];   // the main street and the side streets
+  for (const [[ax, ay], [bx, by]] of lines) for (let i = 0, n = Math.ceil(Math.hypot(bx - ax, by - ay)) * 2; i <= n; i++) {
+    const X = ax + (bx - ax) * i / n, Y = ay + (by - ay) * i / n;
+    for (let dy = -7; dy <= 7; dy++) for (let dx = -7; dx <= 7; dx++) {
+      if (dx * dx + dy * dy > r * r) continue;
+      const a = Math.round(X + dx), b = Math.round(Y + dy);
+      if (a >= 0 && b >= 0 && a < W && b < H) on[b * W + a] = 1;
+    }
+  }
+  STOPS.forEach(st => { const [px0, py0] = st.at; for (let dy = -9; dy <= 9; dy++) for (let dx = -10; dx <= 10; dx++) if (dx * dx / 100 + dy * dy / 81 <= 1) { const a = Math.round(px0 + dx), b = Math.round(py0 + dy); if (a >= 0 && b >= 0 && a < W && b < H) on[b * W + a] = 1; } });   // a parking spot at each place
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), im = g.createImageData(W, H), hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const EDGE = hex('#c9a86a'), FILL = hex('#ecd6a0'), PEB = hex('#d4bb82');
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (!on[y * W + x]) continue;
+    const edge = !on[y * W + x - 1] || !on[y * W + x + 1] || !on[(y - 1) * W + x] || !on[(y + 1) * W + x];
+    const col = edge ? EDGE : (x * 7 + y * 13) % 29 === 0 ? PEB : FILL, k = (y * W + x) * 4;
+    im.data.set([...col, 255], k);
+  }
+  g.putImageData(im, 0, 0);
+  g.fillStyle = '#fff6ea'; for (let x = MAIN[0] + 8; x < MAIN[1] - 8; x += 12) g.fillRect(x, MAIN_Y, 5, 1);   // a dashed line down the middle of the main street
+  for (let y = 151; y <= 157; y++) for (let x = 6; x < W - 6; x++) if (!on[y * W + x]) on[y * W + x] = 2;   // the beach sand can be driven on too (drawn by the beach, not as road)
+  roadMask = on;
+  return roadImg = c;
+}
+function drawMap(t) {
+  const W = VW * T, H = VH * T;
+  for (let y = 0; y < VH; y++) for (let x = 0; x < VW; x++) put(grassTile(vary(x + 40, y, 6)), x * T, y * T);   // the same painted grass as in the worlds
+  put(roadPic(), 0, 0);
+  // home: walls, a stepped roof, a door and a window (up the side street at the left end)
+  cx.save(); cx.translate(0, -68);
+  px(25, 113, 44, 34, LINE); px(26, 114, 42, 32, '#fff1d6');
+  for (let i = 0; i < 12; i++) { px(21 + i * 2, 113 - i * 2, 52 - i * 4, 2, LINE); px(23 + i * 2, 113 - i * 2, 48 - i * 4, 2, '#c0623b'); }
+  for (let y = 118; y < 145; y += 4) px(26, y, 42, 1, '#ead9b8');                                   // siding
+  px(26, 114, 42, 2, '#d9c4a0');                                                                    // the shadow under the eaves
+  for (let i = 0; i < 12; i++) { px(23 + i * 2, 114 - i * 2, 48 - i * 4, 1, '#a8502f'); px(23 + i * 2, 113 - i * 2, 3, 1, '#e08a5e'); }   // shingle rows, lit on the left
+  px(42, 127, 10, 19, LINE); px(43, 128, 8, 18, '#7a4a2a'); px(43, 128, 1, 18, '#94603a'); px(45, 130, 4, 5, '#5e3319'); px(45, 137, 4, 5, '#5e3319'); px(49, 136, 1, 1, COL.y);   // the door, its panels and knob
+  px(30, 121, 9, 9, LINE); px(31, 122, 7, 7, '#9fdcff'); px(31, 122, 7, 2, '#c4ecff'); px(34, 122, 1, 7, '#fff1d6'); px(31, 125, 7, 1, '#fff1d6'); px(32, 123, 1, 1, '#ffffff');   // the window
+  px(29, 130, 11, 2, '#a8502f'); px(29, 130, 11, 1, '#c0623b');                                     // its sill
+  cx.restore();
+  // the pond, up its side street
+  cx.save(); cx.translate(-110, -6);
+  put(sprite(blob(64, 36, 'W', 'V', 'l')), 197, 46);
+  [[212, 56], [236, 64]].forEach(([dx, dy], i) => put(sprite(DUCK, { flip: Math.floor(t / 1600 + i) % 2 === 1 }), dx + Math.round(Math.sin(t / 900 + i) * 4), dy));
+  for (let i = 0; i < 5; i++) { px(190 + i * 3, 44, 1, 10, '#3f8a5c'); px(189 + i * 3, 42, 3, 4, LINE); px(190 + i * 3, 43, 1, 2, '#7a4a2a'); }
+  pips(['pond'], 272, 82);
+  cx.restore();
+  // the farm: a red barn, a fence and a pig, on the main street
+  cx.save(); cx.translate(-150, -10);
+  { const X = 236, Y = 116;
+    px(X, Y + 6, 34, 24, LINE); px(X + 1, Y + 7, 32, 22, '#c0392b'); for (let i = 0; i < 9; i++) px(X - 2 + i * 2, Y + 6 - i, 38 - i * 4, 1, LINE);
+    for (let i = 0; i < 8; i++) px(X + 1 + i * 2, Y + 6 - i, 32 - i * 4, 1, '#8e2a20');
+    for (let i = 3; i < 32; i += 4) { px(X + 1 + i, Y + 7, 1, 22, '#8e2a20'); px(X + i, Y + 7, 1, 22, '#d0493a'); }   // boards
+    for (let i = 0; i < 8; i++) px(X + 1 + i * 2, Y + 6 - i, 2, 1, '#c0392b');                                              // the roof's lit edge
+    px(X + 1, Y + 27, 32, 2, '#8e2a20');
+    px(X + 12, Y + 16, 10, 13, LINE); px(X + 13, Y + 17, 8, 12, '#a8302f');                                                   // the door with its white X
+    px(X + 13, Y + 17, 8, 1, '#fff1d6'); px(X + 13, Y + 28, 8, 1, '#fff1d6'); px(X + 13, Y + 17, 1, 12, '#fff1d6'); px(X + 20, Y + 17, 1, 12, '#fff1d6');
+    for (let i = 0; i < 6; i++) { px(X + 14 + i, Y + 18 + i * 2, 1, 2, '#fff1d6'); px(X + 19 - i, Y + 18 + i * 2, 1, 2, '#fff1d6'); }
+    px(X + 14, Y + 8, 6, 5, LINE); px(X + 15, Y + 9, 4, 3, '#e8c35a'); px(X + 15, Y + 9, 4, 1, '#f5dc8a');                   // the hayloft window
+    for (let i = 0; i < 4; i++) px(X - 22 + i * 6, Y + 20, 2, 10, LINE);
+    px(X - 22, Y + 23, 20, 1, LINE); px(X - 22, Y + 27, 20, 1, LINE);
+    put(sprite(PIG, { flip: Math.floor(t / 2000) % 2 === 1 }), X - 20, Y + 19);
+    if (!S.pond.beat) { px(X + 11, Y - 4, 12, 10, LINE); px(X + 12, Y - 3, 10, 8, COL.y); px(X + 13, Y - 9, 8, 1, LINE); px(X + 13, Y - 9, 1, 6, LINE); px(X + 20, Y - 9, 1, 6, LINE); }
+    else pips(['farm', 'barn', 'coop', 'ring'], X + 40, Y + 30, 'coop');   // beside the barn: the farm's four parts together; Crumb is found at the coop
+  }
+  cx.restore();
+  // the aquarium: a blue building with a wave along the top and a big fish window, up its side street
+  cx.save(); cx.translate(-46, 38);
+  { const X = 236, Y = 4;
+    px(X, Y + 4, 44, 30, LINE); px(X + 1, Y + 5, 42, 28, '#5a7fb0');
+    for (let k = 0; k < 6; k++) { px(X + 1, Y + 8 + k * 4, 42, 1, '#46689a'); for (let i = (k % 2) * 4; i < 42; i += 8) px(X + 1 + i, Y + 9 + k * 4, 1, 3, '#46689a'); }   // tiles on the wall
+    for (let i = 0; i < 6; i++) { px(X + 1 + i * 7, Y + 4 - (i % 2) * 2, 7, 3, LINE); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 5, 2, COL.l); px(X + 2 + i * 7, Y + 5 - (i % 2) * 2, 2, 1, '#ffffff'); }   // the wavy roof
+    px(X + 4, Y + 10, 18, 12, LINE); px(X + 5, Y + 11, 16, 10, COL.W); px(X + 5, Y + 11, 16, 3, '#7fc8ee'); px(X + 5, Y + 19, 16, 2, '#e3c48e'); px(X + 6, Y + 12, 2, 1, '#ffffff'); put(sprite(FISH, { flip: Math.floor(t / 1400) % 2 === 1 }), X + 9 + Math.round(Math.sin(t / 700) * 3), Y + 14);
+    px(X + 27, Y + 17, 12, 16, LINE); px(X + 28, Y + 18, 10, 15, '#2b3a5c'); px(X + 32, Y + 18, 1, 15, LINE);   // the doors
+    if (!S.coop.beat) { px(X + 27, Y + 9, 12, 10, LINE); px(X + 28, Y + 10, 10, 8, COL.y); px(X + 29, Y + 5, 8, 1, LINE); px(X + 29, Y + 5, 1, 6, LINE); px(X + 36, Y + 5, 1, 6, LINE); }
+    else pips(['aquarium'], X + 49, Y + 34);   // beside it, on the right
+  }
+  cx.restore();
+  // the museum: steps, columns and a pointed roof, on the main street
+  cx.save(); cx.translate(118, 102);
+  { const X = 26, Y = 4;
+    {
+      for (let i = 0; i < 12; i++) { px(X - 2 + i * 2, Y + 10 - i, 48 - i * 4, 1, LINE); px(X + i * 2, Y + 10 - i, 44 - i * 4, 1, '#efe3cf'); }   // the roof
+      px(X - 2, Y + 10, 48, 4, LINE); px(X - 1, Y + 11, 46, 2, '#d9c7a8');
+      for (let i = 0; i < 9; i++) px(X + 6 + i * 2, Y + 7 - Math.min(i, 8 - i) * .6, 1, 1, '#d9c7a8');                             // a line along the roof's face
+      for (let i = 0; i < 5; i++) { px(X + 2 + i * 9, Y + 14, 6, 16, LINE); px(X + 3 + i * 9, Y + 14, 4, 16, '#fff6ea'); px(X + 3 + i * 9, Y + 14, 1, 16, '#ffffff'); px(X + 6 + i * 9, Y + 14, 1, 16, '#d9c7a8'); px(X + 2 + i * 9, Y + 14, 6, 2, '#d9c7a8'); }   // columns, lit on the left
+      px(X - 4, Y + 30, 52, 4, LINE); px(X - 3, Y + 31, 50, 2, '#d9c7a8');
+      put(sprite(DINOSAUR), X + 18, Y + 18);
+      if (!S.aquarium.beat) { px(X + 16, Y + 16, 12, 10, LINE); px(X + 17, Y + 17, 10, 8, COL.y); px(X + 18, Y + 12, 8, 1, LINE); px(X + 18, Y + 12, 1, 6, LINE); px(X + 25, Y + 12, 1, 6, LINE); }
+      else pips(['museum'], X + 54, Y + 34);   // beside the steps
+      if (S.museum.beat) { drawTimeDoor(X + 72, Y + 33, t, true); pips(['jungle'], X + 87, Y + 34); pips(['lab'], X - 7, Y + 34); }   // and the science lab's flag, on the left   // the time door to Dino Land, once the museum is done
+    }
+  }
+  cx.restore();
+  // the ocean: a strip of beach and sea along the bottom, with a shark fin
+  { const X = 0, Y = 150, w = VW * T;
+    px(X, Y, w, 26, '#f0d9a0'); for (let i = 0; i < w; i += 7) px(X + i, Y + 3 + (i % 3), 2, 1, '#d9bf85');
+    px(X, Y + 12, w, 14, '#3a8fd8'); px(X, Y + 11, w, 1, LINE);
+    px(X, Y + 12, w, 1, '#d7f1ff'); for (let i = 6; i < w; i += 24) px(X + i, Y + 18 + (Math.floor(t / 900 + i) % 2), 6, 1, '#5aa6e4');   // foam along the shore, soft ripples
+    const fx = X + 120 + Math.round(Math.sin(t / 1200) * 60); put(sprite(FIN, { flip: Math.cos(t / 1200) < 0 }), fx, Y + 15); px(fx - 4, Y + 19, 12, 1, COL.h);
+    if (!S.museum.beat) { const Lx = 258, Ly = Y + 2; px(Lx, Ly, 12, 10, LINE); px(Lx + 1, Ly + 1, 10, 8, COL.y); px(Lx + 2, Ly - 4, 8, 1, LINE); px(Lx + 2, Ly - 4, 1, 6, LINE); px(Lx + 9, Ly - 4, 1, 6, LINE); }
+    else pips(['ocean'], 270, Y + 10);
+  }
+  // trees, for a nicer drive
+  [[24, 124], [268, 44], [272, 118], [178, 36]].forEach(([x, y]) => { px(x - 2, y + 4, 5, 9, LINE); px(x - 1, y + 4, 3, 9, '#7a4a2a'); put(leafy(20, 16, x % 3), x - 10, y - 10); });
+  const c = mapCar || { x: STOPS[0].at[0], y: STOPS[0].at[1], face: 1 };
+  drawCar(c.x, c.y + 6, c.face, c.moving ? t : 0);
+}
+// Decided 28 Oct: no check marks or words on the map (no names either; the
+// pictures say what each place is, like an old game map). Under each place, five
+// little paw prints, one per piece: gold for found, dark for still hidden.
+// All five found shows the trophy instead.
+// Decided 15 Nov: the paw prints cluttered the map, so each place has one
+// mark instead: a red flag once Crumb has been found there, and the trophy
+// once everything there is found (at the farm, all four parts). The pieces
+// themselves are on the end-of-trip tally.
+const FLAG = ['trrrr..', 'trrrrrr', 'trrrrr.', 'trRrr..', 't......', 't......', 't......', 't......', 't......', 't......'];
+function pips(ws, x, y, found = ws[0]) {   // (x, y): the ground the mark stands on
+  if (ws.every(w => S[w]?.trophy)) put(sprite(TROPHY), x - 5, y - 10);
+  else if (S[found]?.beat) put(sprite(FLAG), x - 1, y - 10);
+}
+const ease = x => x < .5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
+// ---------- The pond ----------
+let LW = 36, LH = 22;                         // a world's size, in tiles; set when a world starts (the open farm is twice as wide)
+// Decided 28 Oct, from the kid designer: every world is a trip. Bread's puppy
+// friend Crumb rides along and runs off when they get there; you get through
+// the world to find Crumb, then bring Crumb back to the car. No timer, and
+// nothing locks behind you: a gate, once opened, stays open. The pond: a
+// fence with a locked gate (a squirrel has the key) splits the park; Crumb is
+// stuck on a floating dock in the middle of the pond, so Bread swims out. The hedge mazes on the
+// sides are for exploring; that's where the extras hide.
+// F is fence, G the gate, H hedge, d dock, b a bush to hide in.
+// what stops everyone: border, trees, hedges, fences, corn, the fence with a
+// hole not dug yet, hay, the barn. The gate stops Bread until it's open, and
+// water stops everyone but Bread (and Crumb).
+const BLOCK = '#THFCXhBKRPLAaNQOYgEJ1234', SOLID_LAND = BLOCK + 'Gwvz';
+// water to swim in: the pond's (w), and at the ocean the shallows (w), deep
+// water (v) and the breaking waves (z). Under the water Bread can only go
+// where it's deep, and the sea's jellyfish stay in the deep water.
+const WATER = 'wvz', UNDER_SOLID = BLOCK + 'GSpdwxo.', SEA_ONLY = UNDER_SOLID;
+let G = null, W = null;
+const breadSolid = () => G && G.under ? UNDER_SOLID : G && G.gateOpen ? BLOCK : BLOCK + 'G';
+function seeded(n) { return () => (n = (n * 16807) % 2147483647) / 2147483647; }
+// The left maze; the right one is its mirror. The top 13 rows sit beside the
+// pond, the last 6 below the fence, where the key squirrel hides.
+const MAZE = [
+  '.b....H.', '.HHHH...', '.H....H.', '.H.HHHH.', '.H.H....', '...H.HHH', 'HHHH.H..', 'b....H.H', '.HHH.H.H', '.H...H..',
+  '.H.HHHH.', '.H.H....', 'bH......',
+  '.HHH.H..', '.H......', '.H.HHHH.', '.H.H....', '...H.HH.', 'b..H....',
+];
+const POND = (() => {
+  const r = seeded(11), m = [];
+  // Decided 5 Nov: the pond is bigger, to fit the singing frogs, and runs off
+  // the east edge of the park; the hedge maze by the pond is only on the west
+  // side now (it was a 7 by 4 oval with a maze on each side)
+  const pcx = 18, pcy = 7, rx = 8, ry = 4.6;
+  const e = (x, y, a) => (x + .5 > pcx ? 0 : ((x + .5 - pcx) / (rx + a)) ** 2) + ((y + .5 - pcy) / (ry + a)) ** 2;
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 1; y < 14; y++) for (let x = 1; x < LW - 1; x++) {
+    if (e(x, y, 0) < 1) m[y][x] = 'w';
+    else if (e(x, y, .9) < 1 && (x < pcx - 2 || y < pcy - 1) && r() < .7) m[y][x] = 'r';
+    else if (e(x, y, 2.1) < 1 && e(x, y, 1.3) >= 1) m[y][x] = 'p';
+  }
+  // the little floating dock out in the middle that Crumb gets stuck on
+  for (const y of [4, 5]) for (let x = 16; x <= 19; x++) m[y][x] = 'd';
+  // a short dock from the shore, so it's a swim out to the floating one
+  let ybot = 0; for (let y = 0; y < 14; y++) if (m[y][17] === 'w') ybot = y;
+  for (const x of [17, 18]) for (let y = ybot - 1; y <= ybot; y++) m[y][x] = 'd';
+  // the fence across the park, with the gate on the path
+  for (let x = 1; x < LW - 1; x++) m[14][x] = x === 17 || x === 18 ? 'G' : 'F';
+  // the path from the car up through the gate to the pond
+  for (let y = ybot + 1; y < LH - 1; y++) for (const x of [17, 18]) if (m[y][x] === '.') m[y][x] = 'p';
+  MAZE.forEach((row, j) => { const y = j < 13 ? 1 + j : 2 + j; [...row].forEach((ch, c) => { for (const x of j < 13 ? [1 + c] : [1 + c, LW - 2 - c]) if (m[y][x] === '.') m[y][x] = ch; }); });
+  for (let y = 1; y < LH - 1; y++) for (let x = 10; x < LW - 10; x++)
+    if (m[y][x] === '.' && e(x, y, 3) >= 1 && Math.abs(x - 17.5) > 3 && r() < .06) m[y][x] = 'T';
+  // soft dirt: nothing to do until Bread learns to dig at the farm
+  for (const [x, y] of [[12, 17], [26, 2]]) if (m[y][x] === '.') m[y][x] = 'x';
+  const reeds = [], bushes = [];
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) { if (m[y][x] === 'r') reeds.push([x, y]); if (m[y][x] === 'b' && y < 14) bushes.push([x + .5, y + .5]); }
+  reeds.sort((a, b) => a[0] - b[0]);
+  return {
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], gate: [18, 14.5], run: [[18, 13], [22, 12.5]], crumbAt: [22, 12.5],   // decided 7 Nov: Crumb waits by the mama duck
+    // where the pieces hide: the end of the dock, deep in the reeds, and the
+    // rubber duck out in the pond, so you have to swim for it
+    spots: { duckHat: [18, ybot - 1 + .5], duckFeet: [reeds[0][0] + .5, reeds[0][1] + .5], rubberDuck: [23.5, 7.5] },
+    goldSpots: bushes,                       // the dead ends of the mazes by the pond
+    crumbSpots: { duckling: [1.5, 20.5] },   // in the bush at the bottom of the left maze
+  };
+})();
+// The farm (decided 28 Oct with the kid designer: the pig costume, and the
+// move is digging). Crumb digs under the farmyard fence into a corn maze; the
+// hole is too small for Bread until the big pig in the muddy pen shows her how
+// to dig. C is corn, m mud, x soft dirt to dig, X the fence where Crumb dug,
+// h hay, B the barn.
+const FARM = (() => {
+  const r = seeded(7), m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  // the corn maze: paths on the odd squares, carved from the hole outward
+  for (let y = 1; y <= 11; y++) for (let x = 1; x <= 34; x++) m[y][x] = 'C';
+  const seen = new Set(['9,11']), stack = [[9, 11]]; m[11][9] = '.';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= 1 && a <= 33 && b >= 1 && b <= 11 && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = '.'; m[(y + ny) / 2][(x + nx) / 2] = '.'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  // a few extra gaps, so there's more than one way round
+  for (let y = 1; y <= 11; y++) for (let x = 2; x <= 32; x++) if (m[y][x] === 'C' && r() < .1 && ((m[y][x - 1] === '.' && m[y][x + 1] === '.') || (m[y - 1]?.[x] === '.' && m[y + 1]?.[x] === '.'))) m[y][x] = '.';
+  // Crumb ends up in the farthest corner of the maze
+  const dist = { '9,11': 0 }, q = [[9, 11]];
+  while (q.length) { const [x, y] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const k = (x + a) + ',' + (y + b); if (m[y + b]?.[x + a] === '.' && !(k in dist)) { dist[k] = dist[x + ',' + y] + 1; q.push([x + a, y + b]); } }); }
+  const ends = Object.keys(dist).map(k => k.split(',').map(Number)).filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => m[y + b][x + a] === 'C').length === 3).sort((a, b) => dist[b] - dist[a] || a[0] - b[0]);
+  const crumbAt = ends[0], picks = ends.slice(1).filter((e, i) => i % 2 === 0);
+  // the fence across the farm, with the spot where Crumb dug under it
+  for (let x = 1; x < LW - 1; x++) m[12][x] = x === 9 ? 'X' : 'F';
+  // the farmyard: the path from the car, the barn, hay, and the pig pen
+  for (let y = 13; y < LH - 1; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (let y = 14; y <= 16; y++) for (let x = 2; x <= 7; x++) m[y][x] = 'B';
+  for (const [x, y] of [[9, 15], [10, 15], [12, 18], [3, 19], [33, 20]]) m[y][x] = 'h';
+  for (let x = 22; x <= 31; x++) { m[14][x] = 'F'; m[19][x] = 'F'; }
+  for (let y = 14; y <= 19; y++) { m[y][31] = 'F'; if (y < 16 || y > 17) m[y][22] = 'F'; }
+  for (let y = 15; y <= 18; y++) for (let x = 23; x <= 30; x++) if (((x + .5 - 27) / 3.3) ** 2 + ((y + .5 - 16.5) / 1.6) ** 2 < 1) m[y][x] = 'm';
+  for (const [x, y] of [[13, 14], [6, 19]]) m[y][x] = 'x';
+  const tail = picks.at(-1), dug = picks.slice(0, Math.min(3, picks.length - 1));   // dead ends: mounds to dig, and one for the tail
+  for (const [x, y] of dug) m[y][x] = 'x';
+  for (const [x, y] of [[15, 19], [20, 15], [1 + 34, 13]]) if (m[y]?.[x] === '.') m[y][x] = 'T';
+  const mounds = []; for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if (m[y][x] === 'x') mounds.push([x, y]);
+  const chicken = picks[0];
+  return {
+    m, start: [18, LH - 2.6], car: [18, LH - 1.4], hole: [9.5, 12.5], run: [[18, 13.4], [9.5, 13.4], [9.5, 12.2]],
+    crumbAt: [crumbAt[0] + .5, crumbAt[1] + .5], pen: [23, 15, 30, 18], pig: [26.5, 16.5],
+    // where the pieces hide: the snout in the mud, the tail at a maze dead end,
+    // the rubber chicken buried in one mound and the gold paw in another
+    spots: { pigSnout: [28.5, 16.5], pigTail: [tail[0] + .5, tail[1] + .5] },
+    chickenMound: chicken, goldSpots: mounds.filter(([x, y]) => x !== chicken[0] || y !== chicken[1]),
+  };
+})();
+// The barn (decided 3 Nov: the testers wanted to go inside the barn, and a
+// dairy cow level). Decided the same evening, after they played it: the barn
+// is part of the farm, not a stop of its own on the road, so the farm is one
+// open map. The barn and its pasture sit east of the farmyard, through a gap
+// in the fence by the car. This builds the barn's half; FARM_OPEN joins it on.
+// The barn's jobs, from the testers: hay blocks the barn doors and the cows
+// are out, so Bread pushes the hay clear and herds the cows into their stalls;
+// the barn cats are stuck up in the hayloft and the mice run wild, so Bread
+// gets the ladder out of the tack room (a hay puzzle) and pushes it under the
+// loft, and the cats climb down and chase the mice off. The dairy cow by the
+// doors teaches Bread to push. The roof hides the inside until Bread walks in.
+// K is the barn wall, n its floor, L the hayloft, R a stall rail, P a hay bale
+// Bread can push, A the ladder (pushed like a bale), a the ladder once it's up.
+const BARN = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === 0 || x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 1; y <= 12; y++) for (let x = 4; x <= 31; x++) m[y][x] = y === 1 || y === 12 || x === 4 || x === 31 ? 'K' : 'n';
+  for (let x = 5; x <= 30; x++) m[2][x] = 'L';                                    // the hayloft along the back wall
+  m[12][17] = m[12][18] = 'P';                                                     // hay in the doors
+  // three stalls on the left, open on their right side
+  for (let x = 5; x <= 9; x++) { m[5][x] = 'R'; m[8][x] = 'R'; }
+  // the feed pen, with a bale in its gate
+  for (let y = 3; y <= 6; y++) m[y][13] = 'R';
+  for (let x = 13; x <= 17; x++) m[6][x] = 'R';
+  for (let y = 3; y <= 5; y++) m[y][17] = 'R';
+  m[4][17] = 'P';
+  // the tack room, with a bale in its door and the ladder inside
+  for (let x = 23; x <= 30; x++) m[6][x] = 'K';
+  for (let y = 6; y <= 11; y++) m[y][23] = 'K';
+  m[9][23] = 'P'; m[9][27] = 'A';
+  for (const [x, y] of [[30, 7], [30, 11], [24, 11], [20, 3], [21, 3], [21, 4]]) m[y][x] = 'h';
+  // the pasture: the path to the barn doors and along to the farmyard, trees and bushes
+  for (let y = 13; y < LH - 1; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (let x = 0; x <= 18; x++) m[LH - 2][x] = 'p';
+  m[LH - 3][0] = m[LH - 2][0] = 'p';                                               // the gap to the farmyard
+  for (const [x, y] of [[2, 14], [34, 16], [9, 18], [27, 19], [6, 15]]) m[y][x] = 'T';
+  for (const [x, y] of [[33, 19], [33, 14], [12, 14]]) m[y][x] = 'b';
+  const hay = []; for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) if ('PA'.includes(m[y][x])) hay.push([x, y, m[y][x]]);
+  return {
+    m, hay, rect: [4, 1, 31, 12], dairy: [21.5, 14.6],
+    stalls: [[5, 3, 9, 4], [5, 6, 9, 7], [5, 9, 9, 11]], cows: [[25, 16], [29.5, 18], [12.5, 17.5]], cats: [[19.5, 2.4], [26.5, 2.4]],
+    // where the pieces hide: the cowbell in the tack room, the horns in the
+    // feed pen, the milk bottle under a bush in the pasture
+    spots: { cowbell: [24.5, 7.5], horns: [14.5, 3.5], milk: [33.5, 19.5] },
+    goldSpots: [[15.5, 5.5], [29.5, 9.5], [33.5, 14.5]],
+  };
+})();
+// The chicken coop (decided 3 Nov from the testers): Crumb runs off and hides
+// up on the roost in the coop, and the hens' eggs are scattered all over. Bread
+// carries the eggs back one at a time, each to the nest of its color (a
+// sorting puzzle), and when every nest is full Crumb hops down. Some eggs need
+// Bread's moves: one under a hay bale (push), one buried (dig), one on a
+// little island in the duck pond (swim), one under a bush. N is a nest, Q the
+// roost, w the pond.
+const COOP = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === 0 || y === LH - 1 || x === LW - 1 ? '#' : '.'); }
+  // the chicken run, fenced, with its gate on the path
+  for (let x = 3; x <= 22; x++) { m[3][x] = x === 20 || x === 21 ? 'p' : 'F'; m[16][x] = 'F'; }
+  for (let y = 3; y <= 16; y++) { m[y][3] = 'F'; m[y][22] = 'F'; }
+  // the coop: nests down its left wall, the roost along the back
+  for (let y = 5; y <= 10; y++) for (let x = 6; x <= 16; x++) m[y][x] = y === 5 || y === 10 || x === 6 || x === 16 ? 'K' : 'n';
+  m[10][11] = m[10][12] = 'n';
+  m[6][7] = m[7][7] = m[8][7] = 'N';
+  for (let x = 11; x <= 15; x++) m[6][x] = 'Q';
+  // the path from the farmyard down into the run and to the coop door
+  for (let y = 0; y <= 12; y++) for (const x of [20, 21]) m[y][x] = 'p';
+  for (let x = 12; x <= 21; x++) m[12][x] = 'p';
+  m[11][11] = m[11][12] = 'p';
+  // the duck pond, with an island in it
+  for (let y = 7; y <= 14; y++) for (let x = 25; x <= 33; x++) if (((x + .5 - 29.5) / 4.6) ** 2 + ((y + .5 - 11) / 3.6) ** 2 < 1) m[y][x] = 'w';
+  m[11][29] = '.';
+  m[8][18] = 'P';                                                                  // a bale with an egg under it
+  m[18][27] = 'x';                                                                 // soft dirt with an egg in it
+  for (const [x, y] of [[30, 4], [33, 19], [2, 19], [8, 19]]) m[y][x] = 'b';
+  for (const [x, y] of [[26, 2], [14, 19], [24, 18], [33, 2]]) m[y][x] = 'T';
+  return {
+    m, rect: [6, 5, 16, 10], nests: [[7, 6, 'white'], [7, 7, 'brown'], [7, 8, 'blue']], roost: [13.5, 6.4], down: [13.5, 8.5],
+    eggs: [[5.5, 13.5, 'white'], [19.5, 14.5, 'brown'], [18.5, 8.5, 'blue', 'bale'], [27.5, 18.5, 'white', 'dig'], [29.5, 11.5, 'blue'], [30.5, 4.5, 'brown']],
+    run: [4, 4, 21, 15],
+    spots: { comb: [14.5, 8.5], feathers: [4.5, 4.5], goldEgg: [8.5, 19.5] },
+    goldSpots: [[33.5, 19.5], [2.5, 19.5]],
+  };
+})();
+const CY = 22;   // where the coop's half starts, below the farmyard
+// The horse ring (decided 3 Nov from the testers: herd the loose pony back,
+// then a barrel race like Rodeo). It's below the barn: the barn's path runs
+// straight down to the ring's gate, and there's a gap through to the coop.
+// The pony runs from Bread like the cows; once it's in the ring, Bread hops
+// on and rides a cloverleaf round the three barrels and back out the gate,
+// on the clock. Knocking a barrel just bumps. O is a barrel, s the ring's sand.
+const RING = (() => {
+  const m = [];
+  for (let y = 0; y < LH; y++) { m.push([]); for (let x = 0; x < LW; x++) m[y].push(x === LW - 1 || y === LH - 1 ? '#' : '.'); }
+  for (let y = 4; y <= 17; y++) for (let x = 6; x <= 29; x++) m[y][x] = y === 4 || y === 17 || x === 6 || x === 29 ? 'F' : 's';
+  m[4][17] = m[4][18] = 's';                                                       // the gate
+  for (let y = 0; y <= 3; y++) m[y][17] = m[y][18] = 'p';
+  for (const [x, y] of [[12, 13], [23, 13], [17, 7]]) m[y][x] = 'O';
+  for (const [x, y] of [[2, 3], [33, 6], [3, 19], [31, 20], [2, 10]]) m[y][x] = 'T';
+  for (const [x, y] of [[33, 19], [1, 20], [33, 2]]) m[y][x] = 'b';
+  m[18][19] = 'x';
+  return {
+    m, ring: [7, 5, 28, 16], gate: [17.5, 4.5], barrels: [[12.5, 13.5], [23.5, 13.5], [17.5, 7.5]], pony: [32.5, 12.5],
+    spots: { cowboyHat: [33.5, 2.5], bandana: [3.5, 14.5], horseshoe: [1.5, 20.5] },
+    goldSpots: [[33.5, 19.5], [19.5, 18.5]],
+  };
+})();
+// The open farm: the farm (corn, farmyard, pig pen) on the left, the barn on
+// the right. The little barn block in the farmyard goes, since the real barn
+// is next door, and a path runs along the bottom from the car to the barn.
+const BX = 36;   // where the barn's half starts
+const FARM_OPEN = (() => {
+  const m = [...FARM.m.map((r, y) => [...r, ...BARN.m[y]]), ...COOP.m.map((r, y) => [...r, ...RING.m[y]])];
+  m[21][20] = m[21][21] = 'p';                                                    // the way down to the coop, by the car
+  m[21][BX + 17] = m[21][BX + 18] = 'p';                                          // the barn's path down to the ring
+  m[CY + 18][35] = m[CY + 19][35] = '.';                                          // a gap from the coop to the ring
+  for (let y = 14; y <= 16; y++) for (let x = 2; x <= 7; x++) m[y][x] = '.';
+  for (let y = 1; y < LH - 1; y++) if (m[y][BX] === '#') m[y][BX] = '.';         // one fence between the halves, not two
+  m[20][33] = '.';
+  for (let x = 19; x <= 35; x++) m[20][x] = 'p';
+  m[19][35] = 'p';
+  const at = ([x, y]) => [x + BX, y], down = ([x, y]) => [x, y + CY], both = ([x, y]) => [x + BX, y + CY];
+  return {
+    ...FARM, m,
+    // Crumb runs down past the car to the coop and up onto the roost
+    run: [[20.5, 20.5], [20.5, 33.5], [12, 34], [12, 31]], crumbAt: down(COOP.roost), piglet: FARM.crumbAt,
+    spots: { ...FARM.spots, ...Object.fromEntries(Object.entries(BARN.spots).map(([k, v]) => [k, at(v)])), ...Object.fromEntries(Object.entries(COOP.spots).map(([k, v]) => [k, down(v)])), ...Object.fromEntries(Object.entries(RING.spots).map(([k, v]) => [k, both(v)])) },
+    coopGold: COOP.goldSpots.map(down), ringGold: RING.goldSpots.map(both),
+    // Crumb's costumes: in the pig pen, the tack room, the feed pen, the coop and the ring's meadow
+    crumbSpots: { piglet: [23.5, 18.5], kitten: at([29.5, 8.5]), mouse: at([16.5, 3.5]), chick: down([8.5, 9.5]), foal: both([20.5, 1.5]) },
+    ring: { box: [RING.ring[0] + BX, RING.ring[1] + CY, RING.ring[2] + BX, RING.ring[3] + CY], gate: both(RING.gate), barrels: RING.barrels.map(both), pony: both(RING.pony) },
+    coop: { rect: [COOP.rect[0], COOP.rect[1] + CY, COOP.rect[2], COOP.rect[3] + CY], nests: COOP.nests.map(([x, y, c]) => [x, y + CY, c]), down: down(COOP.down),
+      eggs: COOP.eggs.map(([x, y, c, hide]) => [x, y + CY, c, hide]), run: [COOP.run[0], COOP.run[1] + CY, COOP.run[2], COOP.run[3] + CY], door: [11.5, 11.4 + CY] },
+    barnGold: BARN.goldSpots.map(at),
+    barn: { rect: [BARN.rect[0] + BX, BARN.rect[1], BARN.rect[2] + BX, BARN.rect[3]], hay: BARN.hay.map(([x, y, c]) => [x + BX, y, c]), dairy: at(BARN.dairy),
+      stalls: BARN.stalls.map(([a, b, c, d]) => [a + BX, b, c + BX, d]), cows: BARN.cows.map(at), cats: BARN.cats.map(at), loftY: 2, door: [17.5 + BX, 14] },
+  };
+})();
+const FB = FARM_OPEN.barn;
+const inBarn = (x, y) => { const [x0, y0, x1, y1] = FB.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
+const FC = FARM_OPEN.coop, FR = FARM_OPEN.ring;
+const inCoop = (x, y) => { const [x0, y0, x1, y1] = FC.rect; return G.world === 'farm' && x >= x0 && x <= x1 && y >= y0 && y <= y1; };
+const indoors = (x, y) => inBarn(x, y) || inCoop(x, y);
+// The aquarium (decided 10 Nov, the next world on the plan: the octopus, and
+// the move is sniffing). One trip, a job at a time, like the pond. Crumb runs
+// in and squeezes under the door of the dark room at the back. The octopus in
+// her tank by the left wall teaches Bread to sniff, climbs out, and plays a
+// shell game for the door key; sniffing makes the shell with the key puff. In
+// the dark room Bread only sees a little way around her, so sniffing shows
+// the way to Crumb. Y is the aquarium wall (rock in the dark room), g tank
+// glass, n the floor, k kelp in a pot (things hide in it), G the dark room's
+// door.
+const AQUA = (() => {
+  const r = seeded(5), m = [];
+  for (let y = 0; y < 22; y++) { m.push([]); for (let x = 0; x < 36; x++) m[y].push(y <= 17 ? (x === 0 || x === 35 || y === 0 || y === 17 ? 'Y' : 'n') : x === 0 || x === 35 || y === 21 ? '#' : '.'); }
+  // the big shark tank along the back of the hall, and two round jelly tanks
+  for (let y = 1; y <= 3; y++) for (let x = 1; x <= 16; x++) m[y][x] = 'g';
+  for (const [x, y] of [[4, 6], [5, 6], [4, 7], [5, 7], [11, 6], [12, 6], [11, 7], [12, 7]]) m[y][x] = 'g';
+  // the walls round the dark room, with its door onto the lobby
+  for (let y = 1; y <= 10; y++) m[y][17] = 'Y';
+  for (let x = 17; x <= 34; x++) m[10][x] = x === 26 ? 'G' : 'Y';
+  // the dark room is a maze of rocks, carved from the door outward (paths on
+  // every other square), with a few extra gaps so there's more than one way round
+  const X0 = 18, Y0 = 1, cw = 17, ch = 9, start = [26, 9];
+  for (let y = Y0; y < Y0 + ch; y++) for (let x = X0; x < X0 + cw; x++) m[y][x] = 'Y';
+  const seen = new Set([start + '']), stack = [start]; m[9][26] = 'n';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= X0 && a < X0 + cw && b >= Y0 && b < Y0 + ch && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = 'n'; m[(y + ny) / 2][(x + nx) / 2] = 'n'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  for (let y = Y0 + 1; y < Y0 + ch - 1; y++) for (let x = X0 + 1; x < X0 + cw - 1; x++) if (m[y][x] === 'Y' && r() < .12 && ((m[y][x - 1] === 'n' && m[y][x + 1] === 'n') || (m[y - 1][x] === 'n' && m[y + 1][x] === 'n'))) m[y][x] = 'n';
+  // its dead ends, farthest from the door first: Crumb, the pearls, then the
+  // gold paw print. Far means both ways: a dead end can be a long walk round
+  // yet sit just behind one rock from the door, where Crumb looked close enough
+  // to touch (seen in the first test), so dead ends at least 6 squares away in
+  // a straight line come first.
+  const dist = { [start]: 0 }, q = [start];
+  while (q.length) { const [x, y] = q.shift(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const k = (x + a) + ',' + (y + b); if (m[y + b][x + a] === 'n' && y + b < 10 && !(k in dist)) { dist[k] = dist[x + ',' + y] + 1; q.push([x + a, y + b]); } }); }
+  const ends = Object.keys(dist).map(k => k.split(',').map(Number)).filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => m[y + b][x + a] !== 'n').length === 3);
+  const far = ([x, y]) => dist[x + ',' + y] + (Math.hypot(x - start[0], y - start[1]) >= 6 ? 1000 : 0);
+  ends.sort((a, b) => far(b) - far(a) || a[0] - b[0]);
+  const mid = ([x, y]) => [x + .5, y + .5];
+  // the lobby: the octopus tank by the left wall, the touch pool on the right, kelp in pots
+  for (let y = 11; y <= 13; y++) for (let x = 1; x <= 6; x++) m[y][x] = 'g';
+  for (let y = 11; y <= 16; y++) for (let x = 22; x <= 33; x++) if (((x + .5 - 27.5) / 4.6) ** 2 + ((y + .5 - 13.5) / 2.4) ** 2 < 1) m[y][x] = 'w';
+  for (const [x, y] of [[1, 9], [2, 9], [16, 4], [1, 16], [34, 11], [20, 16], [14, 9]]) m[y][x] = 'k';
+  // the doors, and the path out to the car; grass, trees and soft dirt outside
+  m[17][17] = m[17][18] = 'n';
+  for (let y = 18; y <= 20; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (const [x, y] of [[3, 19], [10, 18], [26, 19], [32, 18]]) m[y][x] = 'T';
+  for (const [x, y] of [[6, 20], [30, 20]]) m[y][x] = 'x';
+  return {
+    m, start: [18, 19.4], car: [18, 20.6], door: [26.5, 10.5], dark: [18, 1, 34, 9],
+    run: [[18, 13], [26.5, 12], [26.5, 10.4]], crumbAt: mid(ends[0]),
+    octo: [3.5, 12.4], octoOut: [7.5, 14.1], shells: [[5.5, 15.6], [7.5, 15.6], [9.5, 15.6]],
+    // where the pieces hide: the starfish in the touch pool (a swim), the
+    // pearls at the end of the dark room, the toy fish in the kelp by the hall
+    spots: { starfish: [27.5, 13.5], pearls: mid(ends[1]), toyFish: [1.5, 9.5] },
+    goldSpots: ends.slice(2, 5).map(mid),
+    crumbSpots: { clownfish: [16.5, 4.5] },   // in the kelp by the shark tank
+    tanks: [[1, 1, 16, 3, 'shark'], [4, 6, 5, 7, 'jelly'], [11, 6, 12, 7, 'jelly']],
+  };
+})();
+// The museum (decided 14 Nov, the middle kid tester's pick for next: before
+// the ocean). The big hall has the dinosaur skeleton on its stand; it wakes
+// up, roars and teaches Bread to jump. Crumb has gone past the velvet rope into
+// the space room and climbed the planet model; jumping the rope gets Bread in,
+// and walking the lines between the stars on the floor draws a dog in the sky,
+// and Crumb hops down. E is a stone stand (the planet in the space room), J a
+// velvet rope (only jumping gets over it), g a glass case.
+const MUSE = (() => {
+  const m = [];
+  for (let y = 0; y < 22; y++) { m.push([]); for (let x = 0; x < 36; x++) m[y].push(y <= 17 ? (x === 0 || x === 35 || y === 0 || y === 17 ? 'Y' : 'n') : x === 0 || x === 35 || y === 21 ? '#' : '.'); }
+  for (let x = 2; x <= 5; x++) m[1][x] = 'g'; for (let x = 17; x <= 20; x++) m[1][x] = 'g'; for (let y = 6; y <= 8; y++) m[y][1] = 'g';   // cases of fossils and gems
+  for (let y = 4; y <= 6; y++) for (let x = 8; x <= 14; x++) m[y][x] = 'E';                         // the dinosaur's stand
+  for (let y = 1; y <= 10; y++) m[y][23] = 'Y';                                                     // the space room, with a rope across its way in
+  for (let x = 23; x <= 34; x++) m[11][x] = x === 28 || x === 29 ? 'J' : 'Y';
+  m[7][28] = m[7][29] = 'E';                                                                        // the planet model
+  for (let x = 1; x <= 4; x++) m[12][x] = 'J'; for (let y = 12; y <= 16; y++) m[y][5] = 'J';         // a roped-off corner
+  for (const x of [25, 26, 27, 30, 31, 32]) m[13][x] = 'g';                                         // the gift shop's cases
+  for (const [x, y] of [[7, 16], [16, 16], [22, 10], [34, 12]]) m[y][x] = 'k';
+  m[17][17] = m[17][18] = 'n';
+  for (let y = 18; y <= 20; y++) for (const x of [17, 18]) m[y][x] = 'p';
+  for (const [x, y] of [[3, 19], [10, 18], [26, 19], [32, 18]]) m[y][x] = 'T';
+  for (const [x, y] of [[6, 20], [30, 20]]) m[y][x] = 'x';
+  return {
+    m, start: [18, 19.4], car: [18, 20.6], dino: [11.5, 8.2], rope: [28.5, 12.4], space: [24, 1, 34, 10],
+    run: [[18, 12.5], [28.5, 12.5], [28.5, 10]], crumbAt: [28.9, 6.7], down: [28.9, 9.4],
+    // the stars on the space room floor, and the lines between them: a dog
+    // (nose, head, shoulder, rump, tail, front foot, back foot)
+    stars: [[33, 3], [31.5, 2], [30.5, 4.6], [26.5, 4.6], [25, 2.4], [30.8, 8.6], [26.4, 8.6]],
+    edges: [[0, 1], [1, 2], [0, 2], [2, 3], [3, 4], [2, 5], [3, 6]],
+    // where the pieces hide: the rocket hat in the space room, the medal
+    // behind the rope in the corner (a jump), the toy rocket in the gift shop
+    spots: { rocketHat: [33.5, 9.5], medal: [2.5, 14.5], toyRocket: [33.5, 15.5] },
+    goldSpots: [[1.5, 16.5], [24.5, 1.5], [21.5, 2.5]],
+    crumbSpots: { astronaut: [24.5, 9.5] },
+    timeDoor: [20.5, 5.2],
+    rocket: [32.6, 9],
+    labDoor: [3.5, 10.6],    // the science lab's door, in the hall; it opens once the museum is done       // the rocket ride in the space room; the stars wake it up   // in the hall; it wakes up once the museum is done
+  };
+})();
+// The ocean (decided 15 Nov: the next stop after the museum, the plan's
+// shark and diving). The car parks on the beach; the sea is above it. A reef
+// of rocks runs across the water with one gap, where big waves break and push
+// Bread back to the beach. Past the reef is a lagoon with a little island,
+// where Crumb surfed out to. The shark circling in the open sea teaches Bread
+// to dive, and under the water the waves don't push. S is sand, w the
+// shallows, v deep water, z the waves, Y rock, d the pier, P the palm tree.
+const OCEAN = (() => {
+  const m = [];
+  for (let y = 0; y < 22; y++) {
+    m.push([]);
+    for (let x = 0; x < 36; x++) m[y].push(x === 0 || x === 35 || y === 0 || y === 21 ? 'Y' : y <= 6 ? 'v' : y <= 8 ? (x >= 15 && x <= 20 ? 'z' : 'Y') : y <= 14 ? 'v' : y <= 16 ? 'w' : 'S');
+  }
+  for (let y = 3; y <= 4; y++) for (let x = 16; x <= 19; x++) m[y][x] = 'S';   // the island
+  m[3][19] = 'P';
+  for (const [x, y] of [[5, 3], [6, 3], [28, 4], [31, 2], [30, 11], [31, 11], [3, 10], [24, 13]]) m[y][x] = 'Y';   // rocks in the water
+  for (let y = 11; y <= 16; y++) m[y][8] = 'd';                                   // the pier
+  for (const [x, y] of [[5, 19], [30, 19]]) m[y][x] = 'x';                       // soft sand to dig
+  for (const [x, y, c] of [[12, 18, '1'], [6, 17, '2'], [29, 18, '3'], [31, 17, '4']]) m[y][x] = c;   // the sandcastle's blocks, scattered up the beach
+  return {
+    m, start: [18, 19.4], car: [18, 20.6],
+    run: [[18, 16], [17.5, 9.5], [17.5, 5.2]], crumbAt: [17.4, 3.9],
+    shark: [12.5, 11.8], gap: [17.5, 8.4], board: [11.5, 2.5], ship: [3.5, 12.5],
+    // where the pieces hide: the snorkel on the lagoon floor and the pirate hat
+    // in the sunken ship (both a dive), the conch shell up the beach
+    spots: { snorkel: [25.5, 2.5], pirateHat: [4.4, 12.6], conch: [33.5, 18.5] },
+    deep: ['snorkel', 'pirateHat', 'turtle'],
+    goldSpots: [[1.5, 19.5], [33.5, 1.5], [33.5, 13.5]],
+    crumbSpots: { turtle: [27.5, 10.5] },
+    castle: [[23, 17, '1'], [26, 17, '4'], [24, 18, '2'], [25, 18, '3']],   // where each sandcastle block goes: towers at the back, the wall and the gate in front                                           // on the sea floor
+  };
+})();
+// Dino Land (decided 15 Nov: the time door, from the 28 Oct plan). Once the
+// museum is done, the time door in the dinosaur's hall glows; going through
+// it is a trip of its own. Crumb dashes ahead across the river and climbs a
+// long-neck dinosaur. The long-neck is hungry: find three big ferns (one in a
+// ring of fallen logs, a jump; one across the river; one at the end of a
+// leafy maze, a sniff) and feed it, and it lowers its head so Crumb can slide
+// down. Then back to the time door. There's a fossil pit to dig in, little
+// raptors for baddies, and a volcano smoking at the top. J is a fallen log
+// (jump it), E solid ground under the volcano and the long-neck.
+const JUNGLE = (() => {
+  const r = seeded(11), m = [];
+  for (let y = 0; y < 22; y++) { m.push([]); for (let x = 0; x < 36; x++) m[y].push(x === 0 || x === 35 || y === 0 || y === 21 ? 'T' : y === 8 || y === 9 ? 'w' : '.'); }
+  for (let y = 10; y <= 20; y++) for (const x of [17, 18]) m[y][x] = 'p';                                  // the path from the time door to the river
+  m[21][17] = m[21][18] = 'E';
+  for (let x = 22; x <= 28; x++) m[1][x] = 'E'; for (let x = 23; x <= 27; x++) m[2][x] = 'E';               // the volcano's foot
+  m[4][18] = m[4][19] = m[4][20] = 'E';                                                                   // the long-neck's feet
+  // the leafy maze in the north-west, carved from its way in
+  const X0 = 1, Y0 = 1, cw = 9, ch = 7;
+  for (let y = Y0; y < Y0 + ch; y++) for (let x = X0; x < X0 + cw; x++) m[y][x] = 'H';
+  const start = [9, 7], seen = new Set([start + '']), stack = [start]; m[7][9] = '.';
+  while (stack.length) {
+    const [x, y] = stack.at(-1), next = [[2, 0], [-2, 0], [0, 2], [0, -2]].map(([a, b]) => [x + a, y + b]).filter(([a, b]) => a >= X0 && a < X0 + cw && b >= Y0 && b < Y0 + ch && !seen.has(a + ',' + b));
+    if (!next.length) { stack.pop(); continue; }
+    const [nx, ny] = next[Math.floor(r() * next.length)];
+    m[ny][nx] = '.'; m[(y + ny) / 2][(x + nx) / 2] = '.'; seen.add(nx + ',' + ny); stack.push([nx, ny]);
+  }
+  const far = [...seen].map(k => k.split(',').map(Number)).sort((a, b) => Math.hypot(b[0] - 9, b[1] - 7) - Math.hypot(a[0] - 9, a[1] - 7))[0];
+  // a ring of fallen logs in the south-east, with a fern inside
+  for (let x = 26; x <= 31; x++) { m[13][x] = 'J'; m[18][x] = 'J'; } for (let y = 14; y <= 17; y++) { m[y][26] = 'J'; m[y][31] = 'J'; }
+  // the fossil pit in the south-west: tar and mounds to dig
+  for (const [x, y] of [[4, 13], [5, 13], [4, 14], [9, 16], [10, 16], [9, 17]]) m[y][x] = 'm';
+  const mounds = [[3, 16], [6, 15], [8, 13], [7, 18], [11, 14]];
+  mounds.forEach(([x, y]) => m[y][x] = 'x');
+  // jungle trees and bushes, clear of the paths and places
+  const keep = (x, y) => (x >= 15 && x <= 21) || (y >= 7 && y <= 10) || (x >= 25 && x <= 32 && y >= 12) || (x <= 12 && y >= 11) || (x <= 10 && y <= 7) || (x >= 21 && x <= 29 && y <= 3) || (x >= 29 && y <= 4);
+  for (let i = 0; i < 40; i++) { const x = 1 + Math.floor(r() * 34), y = 1 + Math.floor(r() * 19); if (m[y][x] === '.' && !keep(x, y)) m[y][x] = i % 3 ? 'T' : 'b'; }
+  const mid = ([x, y]) => [x + .5, y + .5];
+  return {
+    m, start: [18, 18.4], car: [18, 20.4], run: [[18, 15], [18, 10], [18.6, 6.2]], crumbAt: [18.56, 2.9],
+    neck: [18.5, 4.6], slide: [[18.56, 2.9], [17.6, 3.4], [16.6, 4.6]],   // drawn twice as big, so Crumb sits high on its back
+    ferns: [[28.5, 15.5], [31.5, 2.5], mid(far)],
+    fossilMound: mounds[3], volcano: [25, 2],
+    spots: { boneClip: [33.5, 19.5], toothNecklace: [1.5, 9.5 + 2] },
+    goldSpots: mounds.filter((p, i) => i !== 3).slice(0, 2).map(mid).concat([[33.5, 6.5]]),
+    crumbSpots: { triceratops: [12.5, 2.5] },
+  };
+})();
+// ---------- The science lab (decided 15 Nov, the middle kid tester's idea) ----------
+// Once the museum is done, a lab door in the museum's hall opens. Crumb runs
+// in, knocks the experiments over and ends up covered in green slime. At the
+// lab bench the beakers are all mixed up: pour the top layer from one beaker
+// into another (onto the same color, or into an empty one) until every
+// beaker holds one color. The beaker that comes out clean and clear is the
+// cure; take it to Crumb and the slime washes off. The deal is always
+// solvable (checked when it's made). No clock, no limit on pours.
+const LAB = (() => {
+  const m = [];
+  for (let y = 0; y < 11; y++) { m.push([]); for (let x = 0; x < 18; x++) m[y].push(x === 0 || x === 17 || y === 0 || y === 10 ? 'Y' : 'n'); }
+  for (let x = 7; x <= 10; x++) m[2][x] = 'E';                      // the bench with the mixed-up beakers
+  for (let x = 1; x <= 3; x++) m[5][x] = 'E'; for (let x = 13; x <= 16; x++) m[2][x] = 'E';   // side benches
+  m[10][8] = m[10][9] = 'n';                                        // the door back to the museum
+  return {
+    m, start: [9, 8.6], car: [9, 9.9], run: [[9, 7], [12, 6.5], [14.5, 7.4]], crumbAt: [14.5, 7.4],
+    bench: [8.9, 3.7],
+    spots: { goggles: [2.5, 4.4], atomPin: [16.5, 9.5], testTube: [15.5, 1.6] },
+    goldSpots: [[1.5, 9.5], [16.5, 4.5], [5.5, 1.5]],
+    crumbSpots: { slime: [1.5, 1.5] },
+  };
+})();
+const LIQ = { g: '#7ed957', m: '#a07bc4', o: '#ff8a1f', c: '#e9fbff' };   // slime green, purple, orange, and the clear cure
+const CAP = 3;
+const tubeKey = tubes => tubes.map(t => t.join('')).join('|');
+function canPour(tubes, a, b) {
+  const A = tubes[a], B = tubes[b];
+  return a !== b && A.length && B.length < CAP && (!B.length || B.at(-1) === A.at(-1));
+}
+function pourInto(tubes, a, b) {                 // moves every unit of the top color that fits
+  const A = tubes[a], B = tubes[b], col = A.at(-1);
+  while (A.length && A.at(-1) === col && B.length < CAP) B.push(A.pop());
+}
+const labSolved = tubes => tubes.every(t => !t.length || (t.length === CAP && t.every(c => c === t[0])));
+function labMoves(tubes) {                       // fewest pours to solve, or -1 if it can't be done
+  const seen = new Set([tubeKey(tubes)]), q = [[tubes, 0]];
+  while (q.length) {
+    const [ts, d] = q.shift(); if (labSolved(ts)) return d;
+    for (let a = 0; a < ts.length; a++) for (let b = 0; b < ts.length; b++) if (canPour(ts, a, b)) {
+      const n = ts.map(t => [...t]); pourInto(n, a, b); const k = tubeKey(n);
+      if (!seen.has(k)) { seen.add(k); q.push([n, d + 1]); }
+    }
+  }
+  return -1;
+}
+function labDeal() {                             // four colors, three of each, in four beakers, and two empty
+  for (;;) {
+    const units = [...'gggmmmoooccc'].sort(() => Math.random() - .5), tubes = [0, 1, 2, 3].map(i => units.slice(i * CAP, i * CAP + CAP));
+    tubes.push([], []);
+    const n = labMoves(tubes);
+    if (n >= 5 && !tubes.some(t => t.length === CAP && t.every(c => c === t[0]))) return tubes;   // nothing sorted to start with, the cure least of all
+  }
+}
+function openBench() {
+  const L = G.lab; L.open = true; L.cur = 0; L.sel = -1; L.padT = .3; sfx.blub();
+  toast('Pour the beakers until each is one color.');
+}
+function stepBench(dt, dx, dy) {
+  const L = G.lab; L.padT -= dt;
+  if (goal && !L.tapLock) {                      // a tap on a beaker picks it
+    L.tapLock = true; const i = L.tubes.findIndex((t, k) => Math.abs(benchX(k) / T - goal.x) < .8);
+    if (i >= 0) { L.cur = i; pourAction(); } else if (goal.y > VH - 2) closeBench();
+  }
+  if (!goal) L.tapLock = false;
+  if (L.padT > 0) return;
+  if (Math.abs(dx) > .6) { L.cur = (L.cur + Math.sign(dx) + L.tubes.length) % L.tubes.length; L.padT = .22; sfx.tick(); }
+  else if (dy > .6) closeBench();
+  else if (dy < -.6) { L.tubes = L.start.map(t => [...t]); L.sel = -1; L.padT = .5; sfx.shell(); toast('Back to the start.'); }
+}
+function closeBench() { const L = G.lab; L.open = false; L.sel = -1; G.bread.y = LAB.bench[1] + .6; }
+function pourAction() {
+  const L = G.lab;
+  if (L.sel < 0) { if (L.tubes[L.cur].length) { L.sel = L.cur; sfx.paw(); } return; }
+  if (L.sel === L.cur) { L.sel = -1; return; }
+  if (!canPour(L.tubes, L.sel, L.cur)) { sfx.nope(); L.sel = -1; return; }
+  pourInto(L.tubes, L.sel, L.cur); L.sel = -1; sfx.splash();
+  if (labSolved(L.tubes)) {
+    L.open = false; L.done = true; sfx.win();
+    hold(BEAKER_CURE, 'The cure!', () => stage('cure', 'Take it to Crumb!'));
+  }
+}
+const benchX = k => (VW * T) / 2 + (k - (G.lab.tubes.length - 1) / 2) * 34;
+const BEAKER_CURE = ['.gggg.', '.g..g.', '.g..g.', 'gllllg', 'glhllg', 'gllllg', '.gggg.'];
+function drawBench(t) {
+  const L = G.lab, W = VW * T, H = VH * T;
+  px(0, 0, W, H, '#e9eef3'); for (let x = 0; x < W; x += 16) px(x, 0, 1, H, '#dce3ea');   // the lab wall
+  px(0, 118, W, 58, '#8a93a6'); px(0, 118, W, 3, '#b8c0cc'); px(0, 121, W, 1, LINE);          // the bench top
+  L.tubes.forEach((tube, k) => {
+    const X = Math.round(benchX(k)) - 11, lift = L.sel === k ? 8 : 0, Y = 72 - lift;
+    tube.forEach((c, i) => { const y = Y + 40 - (i + 1) * 12; px(X + 2, y, 18, 12, LIQ[c]); px(X + 2, y, 18, 2, c === 'c' ? '#ffffff' : '#ffffff'); if (c === 'c' && (Math.floor(t / 200) + i) % 3 === 0) px(X + 6 + i * 3, y + 5, 2, 2, '#ffffff'); });
+    px(X, Y - 4, 2, 46, LINE); px(X + 20, Y - 4, 2, 46, LINE); px(X, Y + 42, 22, 2, LINE); px(X - 2, Y - 4, 4, 2, LINE); px(X + 20, Y - 4, 4, 2, LINE);   // the glass
+    px(X + 3, Y, 1, 34, '#ffffff');
+    if (k === L.cur) drawArrow(X + 11, Y - 14 + (Math.floor(t / 300) % 2), Math.PI / 2);   // which beaker the pad is on
+  });
+  text('▲ start over   ▼ step away', W / 2, H - 6, '#3b3f52');
+}
+function stepLab(b, dt) {
+  const c = G.crumb;
+  if (G.stage === 'find' && c.mode === 'wait' && Math.hypot(c.x - b.x, c.y - b.y) < 3) stage('mix', 'Crumb is covered in slime!');
+  if (G.stage === 'mix' && !G.lab.open && Math.hypot(LAB.bench[0] - b.x, LAB.bench[1] - b.y) < 1.1 && (G.lab.cool || 0) <= 0) openBench();
+  G.lab.cool = Math.max(0, (G.lab.cool || 0) - dt); if (G.lab.open) G.lab.cool = 1;
+  if (G.stage === 'cure' && Math.hypot(c.x - b.x, c.y - b.y) < 1.3) {
+    G.cured = true; sfx.sparkle(); burst(c.x, c.y - .3, '#e9fbff'); stage('find', 'Crumb is clean!');
+  }
+}
+function drawLabTile(c, x, y, X, Y) {
+  const is = (ch, i, j) => G.m[j]?.[i] === ch;
+  if (c === 'Y') return put(wallTile('muse', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
+  put(squaresTile('aqua', 0), X, Y);
+  if (c === 'E') {                               // a lab bench: a gray top and cupboard doors
+    px(X, Y + 2, T, T - 2, LINE); px(X, Y + 3, T, 4, '#b8c0cc'); px(X, Y + 3, T, 1, '#d6dce4'); px(X, Y + 7, T, 8, '#8a93a6');
+    if (!is('E', x - 1, y)) px(X, Y + 2, 1, T - 2, LINE); if (!is('E', x + 1, y)) px(X + T - 1, Y + 2, 1, T - 2, LINE);
+    px(X + 7, Y + 9, 1, 5, '#5e6578'); px(X + 5, Y + 10, 1, 2, '#d6dce4'); px(X + 10, Y + 10, 1, 2, '#d6dce4');
+  }
+}
+function drawLab(t) {
+  // beakers and flasks on the benches, bubbling
+  const glass = (X, Y, col, k) => { px(X, Y, 6, 9, LINE); px(X + 1, Y + 3, 4, 5, col); px(X + 1, Y, 4, 1, '#e9eef3'); if ((Math.floor(t / 300) + k) % 3 === 0) px(X + 2, Y + 1 - (Math.floor(t / 150) % 2), 1, 1, col); };
+  [[13, 2, LIQ.m], [14, 2, LIQ.o], [15, 2, LIQ.g], [16, 2, LIQ.m], [1, 5, LIQ.o], [2, 5, LIQ.g], [3, 5, LIQ.c]].forEach(([x, y, col], k) => glass(x * T + 5, y * T - 6, col, k));
+  if (!G.lab.done) { const L = G.lab; L.tubes.forEach((tube, k) => { const X = 7 * T + 4 + k * 9, Y = 2 * T - 8; px(X, Y, 6, 10, LINE); tube.forEach((c, i) => px(X + 1, Y + 8 - i * 3, 4, 3, LIQ[c])); }); }   // the mixed-up beakers on the bench
+  else { const X = 8.5 * T, Y = 2 * T - 10; put(sprite(BEAKER_CURE), X - 3, Y); }
+  // the slime: a puddle round Crumb, and drips on Crumb until the cure
+  const c = G.crumb;
+  if (!G.cured) { put(sprite(blob(30, 10, 'L', 'G', 'L')), LAB.crumbAt[0] * T - 15, LAB.crumbAt[1] * T + 1); }
+  // the lab door at the bottom, back to the museum
+  { const X = 8 * T, Y = 10 * T; px(X, Y - 2, 32, 4, LINE); px(X + 1, Y - 1, 30, 2, '#b8c0cc'); }
+}
+function drawSlime(c, t) {                      // drips over Crumb, drawn after Crumb
+  if (G.cured) return;
+  const X = c.x * T, Y = c.y * T + 5;
+  [[-6, -13, 4], [-1, -16, 6], [4, -12, 3], [-8, -6, 3], [6, -7, 2]].forEach(([dx, dy, h], i) => { px(X + dx, Y + dy, 3, h + (Math.floor(t / 400 + i) % 2), '#7ed957'); px(X + dx, Y + dy, 1, 1, '#c6f5a8'); });
+}
+const inSpace = (x, y) => { const [x0, y0, x1, y1] = MUSE.space; return G && G.world === 'museum' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
+const inDark = (x, y) => { const [x0, y0, x1, y1] = AQUA.dark; return G && G.world === 'aquarium' && x >= x0 && x < x1 + 1 && y >= y0 && y < y1 + 1; };
+const tileAt = (x, y) => G.m[Math.floor(y)]?.[Math.floor(x)] ?? '#';
+const solidAt = (x, y, set) => set.includes(tileAt(x, y));
+function hits(x, y, r, set) { return solidAt(x - r, y - r, set) || solidAt(x + r, y - r, set) || solidAt(x - r, y + r, set) || solidAt(x + r, y + r, set); }
+function move(o, dx, dy, r, set = SOLID_LAND) { if (!hits(o.x + dx, o.y, r, set)) o.x += dx; if (!hits(o.x, o.y + dy, r, set)) o.y += dy; }
+function randOpen(minD = 0, kinds = '.p', ok = () => true) {   // ok(x, y) narrows where
+  for (let i = 0; i < 500; i++) {
+    const x = 1 + Math.floor(Math.random() * (LW - 2)), y = 1 + Math.floor(Math.random() * (LH - 2));
+    if (kinds.includes(G.m[y][x]) && ok(x, y) && Math.hypot(x + .5 - W.map.start[0], y + .5 - W.map.start[1]) >= minD) return [x + .5, y + .5];
+  }
+  return [5.5, 5.5];
+}
+// A world can have sections, each with its own five pieces (decided 3 Nov: the
+// open farm, where the corn and pig pen and the barn each count on their own,
+// and the end of the trip adds up each one and the whole farm).
+const secs = () => W.sections || [{ key: W.key, name: W.Name, costume: W.costume }];
+const secOf = k => (W.sections || []).find(s => PARTS[s.key].some(([p]) => p === k))?.key || W.key;
+function startWorld(key) {
+  W = WORLDS[key]; const M = W.map;
+  LW = M.m[0].length; LH = M.m.length;
+  secs().forEach(s => { if (!S[s.key]) S[s.key] = {}; });
+  screen = 'level'; showRow('levelBtns');
+  G = { world: key, m: M.m.map(r => [...r]), bread: { x: M.start[0], y: M.start[1], face: 1, dx: 1, dy: 0, moving: false }, trip: 0, treats: [], sq: [], fl: [], ducks: [], hens: [], piglets: [], pig: null, cows: [], cow: null, fx: [], pops: [], woofT: 0, pawT: 0, hp: HP, ouch: 0, caught: { sq: 0, fl: 0 }, done: false, cam: { x: 0, y: 0 }, carHint: 0,
+    stage: '', key: null, hasKey: false, gateOpen: false, holeDug: false, lost: 0, digT: 0, muddy: 0,
+    // Crumb hops out of the car and runs off
+    crumb: { x: M.start[0] + .8, y: M.start[1], face: 1, mode: 'run', wp: 0, t: 0, itch: 0, yip: 0 } };
+  const add = (n, v) => { for (let i = 0; i < n; i++) { const [x, y] = randOpen(2, W.open || '.p', W.treatOk); G.treats.push({ x, y, v }); } };
+  // Decided 15 Nov: fewer treats (there were 31 everywhere, which crowded the
+  // ground, and the small rooms most). Now about half as many in a full-size
+  // world, and fewer still in a small room, by how big the place is.
+  const k = Math.min(1, LW * LH / 792); add(Math.round(10 * k), 1); add(Math.round(4 * k), 2); add(Math.max(1, Math.round(2 * k)), 5);
+  // the gold paw print: in a bush at the pond, buried in a mound at the farm
+  const gold = M.goldSpots[Math.floor(Math.random() * M.goldSpots.length)];
+  if (W.buriedGold) G.goldMound = gold; else G.treats.push({ x: gold[0], y: gold[1], v: 10 });
+  if (M.barnGold) { const [x, y] = M.barnGold[Math.floor(Math.random() * M.barnGold.length)]; G.treats.push({ x, y, v: 10, sec: 'barn' }); }
+  if (M.ringGold) { const [x, y] = M.ringGold[Math.floor(Math.random() * M.ringGold.length)]; G.treats.push({ x, y, v: 10, sec: 'ring' }); }
+  if (M.coopGold) { const [x, y] = M.coopGold[Math.floor(Math.random() * M.coopGold.length)]; G.treats.push({ x, y, v: 10, sec: 'coop' }); }
+  G.sparkles = Object.entries(M.spots).map(([k, [x, y]]) => ({ k, x, y, sec: secOf(k) })).filter(sp => !S[sp.sec][sp.k])
+    .concat(Object.entries(M.crumbSpots || {}).filter(([k]) => !S.crumbHave.includes(k)).map(([k, [x, y]]) => ({ k, x, y, crumb: true })));
+  W.setup();
+  hudLevel(); showDig();
+  // Decided 5 Nov: the help bar no longer opens by itself; the testers who
+  // skip words had to close it before they could play. It's behind ? and H.
+}
+const WORLDS = {
+  pond: {
+    key: 'pond', name: 'pond', Name: 'Pond', map: POND, stop: 1, costume: 'duck', pic: DUCK, baddies: 'Squirrels caught', soil: 5,
+    goals: {
+      key: 'Catch the squirrel with the key', getKey: 'Pick up the key', gate: 'Take the key to the gate',
+      ducks: 'Herd the ducklings into the pond', frogs: 'Bark the frogs’ song back', find: 'Swim out to Crumb', back: 'Bring Crumb to the car',
+    },
+    setup() {
+      // one squirrel has the gate key and hides in a maze below the fence; the
+      // others are up by the pond
+      const side = Math.random() < .5;
+      { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x > 26 : x < 9)); G.sq.push({ x, y, a: 0, t: 0, stun: 0, key: true }); }
+      { const [x, y] = randOpen(4, '.', (x, y) => y > 14 && (side ? x < 9 : x > 26)); G.sq.push({ x, y, a: 0, t: 0, stun: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, '.', (x, y) => y < 14 && (i % 2 ? x > 26 : x < 9)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0 }); }
+      for (let i = 0; i < 7; i++) { const [x, y] = randOpen(5, '.p', (x, y) => i < 3 ? y > 14 : y < 14); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(0, 'w', (x, y) => y < 14); G.ducks.push({ x, y, a: Math.random() * 6, quack: 0 }); }
+      // the mama duck in her pond, and her four ducklings loose in the park
+      G.mama = { x: 22, y: 11.2, quack: 0 }; G.ducksHome = 0;
+      setupFrogs();
+      G.ducklings = [0, 1, 2, 3].map(() => { const [x, y] = randOpen(4, '.p', (x, y) => y < 14 && Math.hypot(x + .5 - 22, y + .5 - 11.2) > 5); return { x, y, a: Math.random() * 6, t: Math.random() * 5, peep: 0, scared: 0, dodge: 0, home: null, face: 1 }; });
+      stage('key', 'Crumb ran off under the gate!');
+    },
+    step(b, dt) {
+      stepDucklings(b, dt);
+      stepFrogs(b, dt);
+      if (G.key && Math.hypot(G.key.x - b.x, G.key.y - b.y) < .6) { G.key = null; G.hasKey = true; hold(GATE_KEY, 'The gate key!'); stage('gate'); }
+      if (G.hasKey && !G.gateOpen && Math.hypot(POND.gate[0] - b.x, POND.gate[1] - b.y) < 1.6) {
+        G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(POND.gate[0], POND.gate[1]);
+        stage('ducks', 'The gate is open! Crumb is with the mama duck.');
+      }
+    },
+    reached: () => G.song?.state === 'won',
+    target() {
+      if (G.stage === 'key') return G.sq.find(s => s.key);
+      if (G.stage === 'getKey') return G.key;
+      if (G.stage === 'gate') return { x: POND.gate[0], y: POND.gate[1] };
+      if (G.stage === 'ducks') return G.ducklings.filter(d => !d.home).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
+      if (G.stage === 'frogs') return G.song.state === 'listen' ? G.frogs[G.song.seq[G.song.i]] : { x: 14.3, y: 7.6 };
+    },
+  },
+  museum: {
+    key: 'museum', name: 'museum', Name: 'Museum', map: MUSE, stop: 4, costume: 'dino', pic: DINOSAUR, baddies: 'Toy robots caught', noFleas: true, soil: 2, open: 'n',
+    goals: { dino: 'Find the dinosaur', rope: 'Jump over the rope', stars: 'Walk the lines between the stars', rocket: 'Get in the rocket', back: 'Bring Crumb to the car' },
+    setup() {
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(4, 'n', (x, y) => !inSpace(x, y) && y > 7 && y < 17 && x > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, robot: true }); }
+      G.dino = { t: 0, awake: 0 };
+      G.stars = { cur: -1, lit: MUSE.edges.map(() => false), done: false };
+      stage('dino', 'Crumb ran past the rope!');
+    },
+    step(b, dt) { stepMuseum(b, dt); },
+    reached: () => G.moonDone,
+    target() {
+      if (G.stage === 'dino') return { x: MUSE.dino[0], y: MUSE.dino[1] };
+      if (G.stage === 'rope') return { x: MUSE.rope[0], y: MUSE.rope[1] };
+      if (G.stage === 'stars') { const i = nextStar(); return { x: MUSE.stars[i][0], y: MUSE.stars[i][1] }; }
+      if (G.stage === 'rocket') return { x: MUSE.rocket[0], y: MUSE.rocket[1] };
+    },
+  },
+  ocean: {
+    key: 'ocean', name: 'ocean', Name: 'Ocean', map: OCEAN, stop: 5, costume: 'shark', pic: BIG_SHARK, baddies: 'Crabs and jellyfish caught', noFleas: true, soil: 2, open: 'S',
+    goals: { shark: 'Swim out to the shark', waves: 'Dive under the waves', island: 'Swim to Crumb', board: 'Dive for the surfboard', find: 'Bring the board to Crumb', back: 'Bring Crumb to the car' },
+    setup() {
+      // crabs on the beach, jellyfish in the deep water (one in the lagoon)
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(4, 'S', (x, y) => y > 16); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crab: true }); }
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, 'v', (x, y) => i ? y > 9 && Math.hypot(x - 12.5, y - 11.8) > 4 : y < 6 && x > 22); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, jelly: true, sea: true }); }
+      G.shark = { x: OCEAN.shark[0] + 2.6, y: OCEAN.shark[1], a: 0, face: 1 };
+      G.under = false; G.boardUp = false; G.bubT = 0;
+      stage('shark', 'Crumb surfed out past the waves!');
+    },
+    step(b, dt) { stepOcean(b, dt); },
+    reached: () => G.boardUp,
+    target() {
+      if (G.stage === 'shark') return G.shark;
+      if (G.stage === 'waves') return { x: OCEAN.gap[0], y: OCEAN.gap[1] };
+      if (G.stage === 'island') return G.crumb;
+      if (G.stage === 'board') return { x: OCEAN.board[0], y: OCEAN.board[1] };
+    },
+  },
+  jungle: {
+    key: 'jungle', name: 'Dino Land', Name: 'Dino Land', map: JUNGLE, stop: 4, costume: 'cavePup', pic: BIG_BONE, baddies: 'Raptors caught', noFleas: true, soil: 2, open: '.p',
+    exit: { ask: 'Go back through the time door?', go: '🚪 Go through' },   // no car here: the trip ends at the time door
+    goals: { find: 'Find Crumb', ferns: 'Find three big ferns', feed: 'Feed the long-neck', down: 'Get Crumb', back: 'Take Crumb to the time door' },
+    setup() {
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(6, '.', (x, y) => y > 10 && !(x <= 12 && y >= 11)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, raptor: true }); }
+      G.ferns = JUNGLE.ferns.map(([x, y]) => ({ x, y, got: false }));
+      G.neck = { fed: false, t: 0, slide: 0 };
+      stage('find', 'Crumb ran through the time door!');
+    },
+    step(b, dt) { stepJungle(b, dt); },
+    reached: () => G.neck.slide >= 1,
+    target() {
+      if (G.stage === 'ferns') return G.ferns.filter(f => !f.got).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
+      if (G.stage === 'feed') return { x: JUNGLE.neck[0] - 1.9, y: JUNGLE.neck[1] + .4 };
+    },
+  },
+  lab: {
+    key: 'lab', name: 'science lab', Name: 'Science lab', map: LAB, stop: 4, costume: 'labCoat', pic: BEAKER_CURE, baddies: 'Lab mice caught', noFleas: true, soil: 2, open: 'n',
+    exit: { ask: 'Go back to the museum?', go: '🚪 Go back' },
+    goals: { find: 'Find Crumb', mix: 'Mix the cure at the bench', cure: 'Take the cure to Crumb', back: 'Take Crumb to the door' },
+    setup() {
+      for (let i = 0; i < 2; i++) { const [x, y] = randOpen(3, 'n', (x, y) => y > 3 && y < 9); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, mouse: true }); }
+      G.lab = { tubes: labDeal(), open: false }; G.lab.start = G.lab.tubes.map(t => [...t]); G.cured = false;
+      stage('find', 'Crumb ran into the science lab!');
+    },
+    step(b, dt) { stepLab(b, dt); },
+    reached: () => G.cured,
+    target() {
+      if (G.stage === 'mix') return { x: LAB.bench[0], y: LAB.bench[1] };
+      if (G.stage === 'cure') return G.crumb;
+    },
+  },
+  aquarium: {
+    key: 'aquarium', name: 'aquarium', Name: 'Aquarium', map: AQUA, stop: 3, costume: 'octopus', pic: OCTOPUS[0], baddies: 'Crabs and jellyfish caught', noFleas: true, soil: 2, open: 'n', treatOk: (x, y) => !(x < 12 && y > 13),   // no treats by the shells
+    goals: { octo: 'Find the octopus', shells: 'Paw the shell with the key', door: 'Take the key to the dark room', find: 'Sniff out Crumb in the dark', back: 'Bring Crumb to the car' },
+    setup() {
+      // crabs in the hall and the lobby (not on the octopus's corner), jellyfish in the dark room
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(4, 'n', (x, y) => !inDark(x, y) && y > 3 && y < 17 && !(x < 12 && y > 12)); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crab: true }); }
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, 'n', (x, y) => inDark(x, y) && Math.hypot(x - 26, y - 9) > 3); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, jelly: true }); }
+      G.octo = { x: AQUA.octo[0], y: AQUA.octo[1], t: 0, out: 0 };
+      G.shells = null;
+      const FISH_COL = [COL.b, COL.y, COL.P, COL.r];
+      G.fish = AQUA.tanks.flatMap(([x0, y0, x1, y1, kind]) => [...Array(kind === 'shark' ? 7 : 2)].map((_, i) => ({
+        kind: kind === 'jelly' ? 'jelly' : i < 2 ? 'shark' : 'fish', col: FISH_COL[i % 4], box: [x0, y0, x1, y1],
+        x: x0 + .5 + Math.random() * (x1 - x0), y: y0 + .6 + (kind === 'jelly' ? .4 : i < 2 ? .9 : Math.random() * (y1 - y0)), v: (kind === 'jelly' ? .15 : .7 + Math.random() * .8) * (i % 2 ? 1 : -1), t: Math.random() * 9 })));
+      stage('octo', 'Crumb ran into the dark room!');
+    },
+    step(b, dt) { stepAquarium(b, dt); },
+    paw: b => pawShell(b),
+    reached: () => G.gateOpen,
+    target() {
+      if (G.stage === 'octo') return { x: AQUA.octo[0], y: AQUA.octo[1] + 1.8 };
+      if (G.stage === 'shells') { const s = G.shells; return s && s.state === 'pick' ? { x: s.pos[s.key][0], y: s.pos[s.key][1] } : G.octo; }
+      if (G.stage === 'door') return { x: AQUA.door[0], y: AQUA.door[1] + .6 };
+    },
+  },
+  farm: {
+    key: 'farm', name: 'farm', Name: 'Farm', map: FARM_OPEN, stop: 2, costume: 'pig', pic: PIG, baddies: 'Crows and mice caught', soil: 2, buriedGold: true, open: '.pn',
+    sections: [{ key: 'farm', name: 'Corn and pig pen', costume: 'pig' }, { key: 'barn', name: 'Barn', costume: 'cow' }, { key: 'coop', name: 'Chicken coop', costume: 'chicken' }, { key: 'ring', name: 'Horse ring', costume: 'cowboy' }],
+    goals: { find: 'Find Crumb at the chicken coop', eggs: 'Put the eggs back in the nests', down: 'Find Crumb', back: 'Bring Crumb to the car' },
+    setup() {
+      for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.', (x, y) => x < BX && y < 12 && Math.hypot(x - 9, y - 11) > 5); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, crow: true }); }
+      for (let i = 0; i < 6; i++) { const [x, y] = randOpen(4, '.p', (x, y) => i < 3 ? y > 12 && x < 22 : x < BX && y < 12); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+      G.pig = { x: FARM.pig[0], y: FARM.pig[1], a: 0, t: 0, oink: 0 };
+      G.piglets = [0, 1].map(i => ({ x: FARM.pig[0] - 1 - i, y: FARM.pig[1] + .4, t: i }));
+      for (let i = 0; i < 3; i++) { const [x, y] = randOpen(3, '.', (x, y) => y > 12 && y < 21 && x < 21); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0, box: [1, 13, BX - 2, 20] }); }
+      // Decided 3 Nov: Crumb hides at the coop now, so the corn has a lost
+      // piglet instead, and the goose stands guard next to it
+      if (!S.farm.piglet) G.piglet = { x: FARM.crumbAt[0], y: FARM.crumbAt[1], t: 0 };
+      const [cx0, cy0] = FARM.crumbAt, spot = [[0, 1], [1, 0], [-1, 0], [0, -1], [0, 2], [2, 0], [-2, 0], [0, -2]].map(([a, b]) => [cx0 + a, cy0 + b]).find(([x, y]) => !SOLID_LAND.includes(tileAt(x, y))) || [cx0, cy0];
+      G.goose = { x: spot[0], y: spot[1], home: spot, hp: 3, stun: 0, hitT: 0, honk: 0, t: 0, face: -1 };
+      setupBarn(); setupCoop(); setupRing();
+      stage('find', 'Crumb ran off to the chicken coop!');
+    },
+    step(b, dt) {
+      const pg = G.pig, [x0, y0, x1, y1] = FARM.pen;
+      pg.t += dt; pg.oink -= dt; pg.a += (Math.random() - .5) * 2 * dt;
+      if (Math.sin(pg.t * .7) > 0) { pg.x = Math.max(x0 + .5, Math.min(x1 + .5, pg.x + Math.cos(pg.a) * .6 * dt)); pg.y = Math.max(y0 + .5, Math.min(y1 + .5, pg.y + Math.sin(pg.a) * .6 * dt)); }
+      G.piglets.forEach((l, i) => { l.t += dt; const tx = pg.x - 1 - i * .8, ty = pg.y + .4; l.x += (tx - l.x) * Math.min(1, dt * 2); l.y += (ty - l.y) * Math.min(1, dt * 2); });
+      const near = Math.hypot(pg.x - b.x, pg.y - b.y) < 1.8;
+      if (near && pg.oink <= 0) { pg.oink = 3; sfx.oink(); G.pops.push({ x: pg.x, y: pg.y - .8, txt: 'Oink!', t: 0, c: LINE }); }
+      if (near && !S.moves.dig) { S.moves.dig = true; persist(); showDig(); hold(MOUND, 'The pig taught Bread to dig!'); }
+      if (!G.cornSeen && G.piglet && b.x < BX && b.y < 15 && b.y > 12.5) { G.cornSeen = true; toast('A piglet is lost in the corn!'); }
+      const pl = G.piglet;
+      if (pl && G.holeDug && !G.goose && Math.hypot(pl.x - b.x, pl.y - b.y) < 1.4) {
+        G.piglet = null; G.piglets.push({ x: pg.x - 2.6, y: pg.y + .4, t: 2 }); burst(pl.x, pl.y); sfx.oink();
+        if (!S.farm.beat) { S.farm.beat = true; S.farm.piglet = true; if (!S.have.includes('pig')) S.have.push('pig'); persist(); hold(PIGLET, 'The piglet ran home! You won the pig costume!'); }
+        else { S.farm.piglet = true; persist(); toast('The piglet ran home!'); }
+      }
+      stepGoose(b, dt);
+      stepBarn(b, dt);
+      stepCoop(b, dt);
+      stepRing(b, dt);
+      G.hens.forEach(h => {
+        h.t += dt; h.cluck -= dt;
+        const d = Math.hypot(h.x - b.x, h.y - b.y);
+        if (d < 2) { h.a = Math.atan2(h.y - b.y, h.x - b.x); if (h.cluck <= 0) { h.cluck = 2.5; sfx.cluck(); } } else h.a += (Math.random() - .5) * 3 * dt;
+        const v = d < 2 ? 2.2 : Math.sin(h.t) > .2 ? .6 : 0, ox = h.x, oy = h.y;
+        move(h, Math.cos(h.a) * v * dt, Math.sin(h.a) * v * dt, .25);
+        if (v && ox === h.x && oy === h.y) h.a += 2;
+        const [hx0, hy0, hx1, hy1] = h.box;                                       // hens stay in their yard
+        if (h.x < hx0 || h.x > hx1 || h.y < hy0 || h.y > hy1) { h.x = Math.max(hx0, Math.min(hx1, h.x)); h.y = Math.max(hy0, Math.min(hy1, h.y)); h.a += Math.PI; }
+      });
+    },
+    reached: () => G.eggsDone,
+    target() {
+      if (G.stage !== 'eggs') return;
+      if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); return { x: n[0] + .5, y: n[1] + .5 }; }
+      return G.eggs.filter(e => !e.got && !G.carry && eggOut(e)).sort((a, c) => Math.hypot(a.x - G.bread.x, a.y - G.bread.y) - Math.hypot(c.x - G.bread.x, c.y - G.bread.y))[0];
+    },
+  },
+};
+// ---------- The aquarium ----------
+function stepAquarium(b, dt) {
+  const o = G.octo; o.t += dt;
+  G.fish.forEach(f => { f.t += dt; f.x += f.v * dt; const [x0, , x1] = f.box; if (f.x < x0 + .4 || f.x > x1 + .6) { f.v = -f.v; f.x = Math.max(x0 + .4, Math.min(x1 + .6, f.x)); } });
+  // Bread at the octopus's glass: she teaches sniffing (the first time), then climbs out
+  if (G.stage === 'octo' && Math.hypot(AQUA.octo[0] - b.x, AQUA.octo[1] + 1.8 - b.y) < 2.4) {
+    G.stage = 'hi'; sfx.blub(); G.pops.push({ x: o.x, y: o.y - .6, txt: 'Blub!', t: 0, c: LINE });
+    const out = () => { o.out = .001; stage('shells', 'The octopus has the key!'); };
+    if (!S.moves.sniff) { S.moves.sniff = true; persist(); showDig(); hold(OCTOPUS[0], 'The octopus taught Bread to sniff!', out); }
+    else out();
+  }
+  if (o.out > 0 && o.out < 1) {               // up over the glass and down onto the floor
+    o.out = Math.min(1, o.out + dt / 1.2); const k = o.out, [ax, ay] = AQUA.octo, [bx, by] = AQUA.octoOut;
+    o.x = ax + (bx - ax) * k; o.y = ay + (by - ay) * k - Math.sin(k * Math.PI) * 1.5;
+    if (o.out >= 1) G.shells = shellRound(3);
+  }
+  if (G.shells) stepShells(dt);
+  if (G.hasKey && !G.gateOpen && Math.hypot(AQUA.door[0] - b.x, AQUA.door[1] + .6 - b.y) < 1.6) {
+    G.gateOpen = true; G.hasKey = false; sfx.gate(); burst(AQUA.door[0], AQUA.door[1]);
+    stage('find', 'The door is open! It’s dark in there.');
+  }
+}
+// The octopus's shell game (decided 10 Nov). She shows the key, tucks it
+// under a shell and swaps the shells about; Bread paws the one she thinks has
+// it. A wrong shell is empty, the octopus blubs, and she shows the key again
+// with one swap fewer (never under 2). No clock, no penalty. Sniffing makes
+// the right shell puff, which is how she teaches it.
+function shellRound(swaps) { return { pos: AQUA.shells.map(p => [...p]), slot: [0, 1, 2], key: Math.floor(Math.random() * 3), state: 'show', t: 0, swaps, n: swaps, sw: null, lift: -1 }; }
+function stepShells(dt) {
+  const s = G.shells; s.t += dt;
+  if (s.state === 'show') { s.lift = s.key; if (s.t > 1.8) { s.state = 'swap'; s.t = 0; s.lift = -1; } }
+  else if (s.state === 'swap') {
+    if (!s.sw) {
+      if (!s.swaps) { s.state = 'pick'; G.octo.wave = 1; return; }
+      const a = Math.floor(Math.random() * 3), c = (a + 1 + Math.floor(Math.random() * 2)) % 3;
+      s.sw = { a, c, t: 0, from: [[...s.pos[a]], [...s.pos[c]]] }; sfx.shell();
+    }
+    const w = s.sw; w.t = Math.min(1, w.t + dt / .8); const k = ease(w.t);
+    s.pos[w.a] = [w.from[0][0] + (w.from[1][0] - w.from[0][0]) * k, w.from[0][1] - Math.sin(k * Math.PI) * .7];
+    s.pos[w.c] = [w.from[1][0] + (w.from[0][0] - w.from[1][0]) * k, w.from[1][1] + Math.sin(k * Math.PI) * .5];
+    if (w.t >= 1) { s.sw = null; s.swaps--; }
+  } else if (s.state === 'lift' && s.t > 1) {
+    if (s.lift === s.key) { s.state = 'won'; s.lift = -1; G.hasKey = true; burst(s.pos[s.key][0], s.pos[s.key][1]); hold(GATE_KEY, 'The door key!', () => stage('door')); }
+    else { s.state = 'show'; s.t = 0; s.n = Math.max(2, s.n - 1); s.swaps = s.n; }
+  }
+}
+function pawShell(b) {
+  const s = G.shells; if (!s || s.state !== 'pick') return false;
+  const i = [0, 1, 2].map(i => [i, Math.hypot(s.pos[i][0] - b.x, s.pos[i][1] - b.y)]).filter(([, d]) => d < 1.5).sort((a, c) => a[1] - c[1])[0]?.[0];
+  if (i === undefined) return false;
+  s.state = 'lift'; s.lift = i; s.t = 0; G.pawT = performance.now() + 250; sfx.paw();
+  if (i !== s.key) { sfx.nope(); G.pops.push({ x: G.octo.x, y: G.octo.y - .6, txt: 'Blub!', t: 0, c: LINE }); }
+  return true;
+}
+// Decided 10 Nov: sniffing, learned from the octopus. Bread sniffs the air and
+// little puffs of smell float along the way to whatever she's after (the same
+// thing the edge arrow points at), round the walls rather than through them,
+// and over any hidden piece close by. It's how to find Crumb in the dark room.
+function scentPath(tx, ty) {
+  const b = G.bread, sx = Math.floor(b.x), sy = Math.floor(b.y), ex = Math.floor(tx), ey = Math.floor(ty), solid = breadSolid();
+  const prev = new Map([[sx + ',' + sy, null]]), q = [[sx, sy]];
+  while (q.length) {
+    const [x, y] = q.shift(); if (x === ex && y === ey) break;
+    for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + a, ny = y + c, k = nx + ',' + ny;
+      if (prev.has(k) || nx < 0 || ny < 0 || nx >= LW || ny >= LH || (solid.includes(G.m[ny][nx]) && !(nx === ex && ny === ey))) continue;
+      prev.set(k, [x, y]); q.push([nx, ny]);
+    }
+  }
+  if (!prev.has(ex + ',' + ey)) return [[b.x, b.y], [tx, ty]];
+  const path = []; for (let p = [ex, ey]; p; p = prev.get(p[0] + ',' + p[1])) path.unshift([p[0] + .5, p[1] + .5]);
+  return path;
+}
+function sniff() {
+  if (screen !== 'level' || !G || G.done || G.sniffT > performance.now()) return;
+  if (!S.moves.sniff) return toast("Bread can't sniff yet.");
+  const b = G.bread, now = performance.now(); G.sniffT = now + 900; sfx.sniff();
+  G.pops.push({ x: b.x + b.face * .7, y: b.y - .5, txt: 'Sniff!', t: 0, c: LINE });
+  const puffs = [], tg = stageTarget();
+  if (tg) {
+    const path = scentPath(tg.x, tg.y);
+    path.forEach(([x, y], i) => { if (i && i <= 26 && (i % 2 === 0 || i === path.length - 1)) puffs.push({ x, y, at: now + i * 45, col: COL.b }); });
+    if (path.length <= 27) for (let k = 1; k <= 3; k++) puffs.push({ x: tg.x + (k - 2) * .3, y: tg.y, at: now + path.length * 45 + k * 350, col: COL.b });   // the smell is strongest where it's coming from
+  }
+  G.sparkles.forEach(sp => { if (Math.hypot(sp.x - b.x, sp.y - b.y) < 6) puffs.push({ x: sp.x, y: sp.y - .2, at: now + 250, col: COL.y }); });
+  G.scent = puffs;
+}
+function drawScent() {
+  const now = performance.now();
+  (G.scent || []).forEach(p => { const age = (now - p.at) / 1000; if (age < 0 || age > 3.2) return; put(sprite(WISP, { map: { h: p.col } }), p.x * T - 3 + Math.round(Math.sin(age * 4 + p.x * 3) * 2), p.y * T - 10 - age * 5, 2); });
+}
+// the aquarium's own tiles: blue walls, pale tiled floor, tank glass, kelp pots,
+// the dark room's rocks and sandy floor, and its door
+function drawAquaTile(c, x, y, X, Y) {
+  const dark = inDark(x + .5, y + .5), is = (ch, i, j) => G.m[j]?.[i] === ch;
+  if (c === 'Y') return put(dark ? rockTile('cave', edgeMask(x, y, (i, j) => is('Y', i, j)), vary(x, y, 3)) : wallTile('aqua', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
+  put(dark ? caveTile(vary(x, y, 3)) : squaresTile('aqua', 0), X, Y);
+  if (c === 'g') put(tankTile(edgeMask(x, y, (i, j) => is('g', i, j)), vary(x, y, 3)), X, Y);   // the fish swim behind the glass
+  if (c === 'k') { px(X + 4, Y + 10, 8, 6, LINE); px(X + 5, Y + 11, 6, 4, '#b8773a'); }   // the pot; the kelp is drawn over things
+  if (c === 'G') {
+    if (G.gateOpen) { px(X, Y, 2, T, LINE); px(X + T - 2, Y, 2, T, LINE); }
+    else { px(X, Y, T, T, LINE); px(X + 1, Y + 1, T - 2, T - 1, '#7a8aa8'); px(X + 3, Y + 3, T - 6, 3, '#9aaac6'); px(X + 5, Y + 8, 6, 5, LINE); px(X + 6, Y + 9, 4, 3, COL.y); }   // a steel door with a gold lock
+  }
+}
+function drawAquarium(t) {
+  G.fish.forEach(f => {                       // inside the tanks, clipped to the glass
+    const [x0, y0, x1, y1] = f.box; cx.save(); cx.beginPath(); cx.rect(x0 * T + 2, y0 * T + 2, (x1 - x0 + 1) * T - 4, (y1 - y0 + 1) * T - 6); cx.clip();
+    const img = f.kind === 'shark' ? sprite(SHARK, { flip: f.v < 0 }) : f.kind === 'jelly' ? sprite(JELLY[Math.floor(t / 400 + f.t) % 2]) : sprite(FISH, { flip: f.v < 0, map: { b: f.col } });
+    const fy = f.kind === 'jelly' ? f.y + Math.sin(f.t * 1.5) * .5 : f.y + Math.sin(f.t * 2) * .15;
+    put(img, f.x * T - img.width / 2, fy * T - img.height / 2); cx.restore();
+  });
+  const o = G.octo, img = sprite(OCTOPUS[Math.floor(t / (o.wave ? 160 : 400)) % 2]);
+  if (!o.out) { cx.save(); cx.beginPath(); cx.rect(1 * T + 2, 11 * T + 2, 6 * T - 4, 3 * T - 6); cx.clip(); }
+  put(img, o.x * T - 7, o.y * T - 9 + (Math.floor(t / 500) % 2));
+  if (!o.out) cx.restore();
+  const s = G.shells;
+  if (s) s.pos.forEach((p, i) => { const up = s.lift === i ? 12 : 0; if (up && i === s.key) put(sprite(GATE_KEY), p[0] * T - 4, p[1] * T - 2); put(sprite(SHELL, { map: { c: COL.w, s: COL.Q } }), p[0] * T - 10, p[1] * T - 9 - up, 2); });   // drawn double size, so they don't look like treats
+}
+// Decided 10 Nov: the dark room is dark. From outside it's all black but the
+// glowing jellyfish; inside, Bread sees a little way round her. The dark is
+// drawn in blocks of 4 pixels, with a speckled ring at the edge, so it stays 8-bit.
+function drawDark(b, t) {
+  const [x0, y0, x1, y1] = AQUA.dark, inside = b.x >= x0 && b.x < x1 + 1 && b.y >= y0 && b.y < y1 + 1.7, R = 2.7, cam = G.cam;
+  const ax = Math.max(x0 * T, Math.floor(cam.x) * T), bx = Math.min((x1 + 1) * T, (Math.floor(cam.x) + VW + 1) * T), ay = Math.max(y0 * T, Math.floor(cam.y) * T), by = Math.min((y1 + 1) * T, (Math.floor(cam.y) + VH + 1) * T);
+  for (let y = ay; y < by; y += 4) for (let x = ax; x < bx; x += 4) {
+    const d = inside ? Math.hypot((x + 2) / T - b.x, (y + 2) / T - (b.y - .4)) : 99;
+    if (d < R || (d < R + .7 && (x / 4 + y / 4) % 2)) continue;
+    px(x, y, 4, 4, '#0b0f1e');
+  }
+  G.sq.forEach(j => { if (j.jelly) drawSquirrel(j, t); });
+}
+// ---------- The sandcastle (decided 15 Nov, the middle kid tester's idea) ----------
+// On the ocean's beach a sandcastle is drawn in the sand: four spots, each
+// the shape of a block (a big tower, a wall, the gate, a tower with a flag).
+// The four blocks are scattered up the beach; Bread pushes them into their
+// spots, straight pushes like the hay in the barn. Blocks only slide over
+// sand and never into the bottom row or the end columns, so one can't get
+// stuck where Bread can't reach round it. The finished castle puts up its
+// flag, pays a few treats, and wins Crumb's crab costume the first time.
+const SANDC = { hi: '#f4dfae', base: '#e6c88a', lo: '#c9a86a', line: '#8a6a3a' };
+function castleTile(kind, ghost) {
+  return paint('castle' + kind + ghost, T, T, (set, fill) => {
+    const C = ghost ? { hi: '#d9bf85', base: '#d9bf85', lo: '#d9bf85', line: '#c9a86a' } : SANDC;
+    const block = (x, y, w, h) => { fill(x, y, w, h, C.line); if (!ghost) { fill(x + 1, y + 1, w - 2, h - 2, C.base); fill(x + 1, y + 1, w - 2, 1, C.hi); fill(x + w - 2, y + 1, 1, h - 2, C.lo); } else fill(x + 1, y + 1, w - 2, h - 2, '#f0d9a0'); };
+    if (kind === '1' || kind === '4') {          // a tower with battlements (4 also flies a flag)
+      block(2, 4, 12, 12); for (const bx of [2, 6, 10]) block(bx, 1, 4, 4);
+      if (!ghost) { fill(7, 8, 2, 3, C.line); set(7, 8, '#5e4a30'); }
+      if (kind === '4' && !ghost) { fill(7, -1, 1, 3, C.line); }
+    } else if (kind === '2') {                   // a stretch of wall, with sand bricks
+      block(0, 5, 16, 11); for (const bx of [0, 5, 10]) block(bx + 1, 2, 4, 4);
+      if (!ghost) for (const [x, y] of [[3, 9], [9, 9], [6, 12], [12, 12]]) fill(x, y, 3, 1, C.lo);
+    } else {                                     // the gate, with an arched door
+      block(1, 3, 14, 13); for (const bx of [1, 6, 11]) block(bx, 0, 4, 4);
+      if (!ghost) { fill(5, 8, 6, 8, '#5e4a30'); fill(6, 7, 4, 1, '#5e4a30'); fill(6, 9, 1, 6, '#3b2a1a'); }
+    }
+  });
+}
+const CRAB_HAT = ['r...r', 'rr.rr'];
+function stepCastle() {
+  if (G.castleDone || !OCEAN.castle.every(([x, y, c]) => G.m[y][x] === c)) return;
+  G.castleDone = true; sfx.win();
+  OCEAN.castle.forEach(([x, y]) => burst(x + .5, y + .5, COL.y));
+  for (let i = 0; i < 5; i++) G.treats.push({ x: 22.5 + i, y: 19.6, v: i % 2 ? 2 : 1 });
+  if (!S.crumbHave.includes('crab')) {
+    S.crumbHave.push('crab'); persist();
+    const w = { body: 'crab' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The sandcastle is done! For Crumb: the crab costume!');
+  } else toast('The sandcastle is done!');
+}
+function drawCastle(t) {
+  // the outline in the sand for each spot still empty, and a flag once it's done
+  OCEAN.castle.forEach(([x, y, c]) => { if (G.m[y][x] !== c) { cx.globalAlpha = .55; put(castleTile(c, true), x * T, y * T); cx.globalAlpha = 1; } });
+  if (G.castleDone) { const [fx, fy] = OCEAN.castle.find(p => p[2] === '4'); const X = fx * T + 7, Y = fy * T - 10, k = Math.floor(t / 250) % 2; px(X, Y, 1, 11, LINE); px(X + 1, Y, 6, 3, COL.r); px(X + 1, Y + 3, 4 + k, 1, COL.r); }
+  // a bucket and spade by the castle, and a starfish on the sand
+  { const X = 21 * T + 3, Y = 18 * T + 6; px(X, Y, 8, 8, LINE); px(X + 1, Y + 1, 6, 6, COL.u); px(X + 1, Y + 1, 6, 1, '#7fa8f0'); px(X + 2, Y - 2, 4, 1, LINE); px(X + 1, Y - 1, 1, 2, LINE); px(X + 6, Y - 1, 1, 2, LINE);
+    px(X + 10, Y - 3, 1, 9, LINE); px(X + 9, Y + 5, 3, 3, COL.r); }
+  put(sprite(['..b..', 'bbbbb', '.bbb.', '.b.b.']), 13 * T + 4, 20 * T + 4);
+}
+// ---------- The ocean ----------
+function stepOcean(b, dt) {
+  stepCastle();
+  const sh = G.shark; sh.a += dt * .45;           // the shark swims round and round in the open sea
+  const nx = OCEAN.shark[0] + Math.cos(sh.a) * 2.6, ny = OCEAN.shark[1] + Math.sin(sh.a) * 1.1;
+  sh.face = nx > sh.x ? 1 : -1; sh.x = nx; sh.y = ny;
+  // Bread swims up to the shark: it teaches diving (the first time)
+  if (G.stage === 'shark' && b.swim && Math.hypot(sh.x - b.x, sh.y - b.y) < 2.4) {
+    G.stage = 'hi'; sfx.blub(); G.pops.push({ x: sh.x, y: sh.y - .8, txt: 'Splash!', t: 0, c: LINE });
+    const next = () => stage('waves', 'Crumb is past the waves!');
+    if (!S.moves.dive) { S.moves.dive = true; persist(); showDig(); hold(BIG_SHARK, 'The shark taught Bread to dive!', next); }
+    else next();
+  }
+  // the waves push Bread back toward the beach, unless she's under them
+  if (!G.under && tileAt(b.x, b.y) === 'z' && !G.hold) {
+    move(b, 0, 3.8 * dt, .3, breadSolid());
+    G.waveT = (G.waveT || 0) - dt;
+    if (G.waveT <= 0) { G.waveT = 1.4; sfx.wave(); for (let i = 0; i < 8; i++) G.fx.push({ x: b.x + (Math.random() - .5), y: b.y - .3, vx: (Math.random() - .5) * 3, vy: -1 - Math.random() * 2, t: 0, c: COL.h }); }
+    if (!G.waveTip) { G.waveTip = true; toast(S.moves.dive ? 'Big waves! Dive under them.' : 'Big waves! Ask the shark?'); }
+  }
+  if (G.stage === 'waves' && b.y < 6.8) stage('island', 'Past the waves!');
+  if (G.stage === 'island' && Math.hypot(G.crumb.x - b.x, G.crumb.y - b.y) < 2) stage('board', 'Crumb’s surfboard sank!');
+  if (G.stage === 'board' && G.under && Math.hypot(OCEAN.board[0] - b.x, OCEAN.board[1] - b.y) < 1) {
+    G.boardUp = true; G.under = false; sfx.surface(); burst(b.x, b.y);
+    hold(SURFBOARD, 'Crumb’s surfboard!', () => stage('find'));
+  }
+  // bubbles while she's under
+  if (G.under) { G.bubT -= dt; if (G.bubT <= 0) { G.bubT = .3; G.fx.push({ x: b.x + b.face * .4, y: b.y - .5, vx: (Math.random() - .5) * .4, vy: -1.6, t: 0, c: COL.l }); } }
+}
+// Decided 15 Nov: diving, learned from the shark (B or the Dive button). In
+// deep water Bread dives under and swims along the sea floor, where the waves
+// can't push her and things on the bottom can be picked up; diving again
+// comes back up. No air to run out: she stays under as long as she likes.
+function dive() {
+  if (screen !== 'level' || !G || G.done || G.hold || G.jump) return;
+  if (!S.moves.dive) return toast("Bread can't dive yet.");
+  const b = G.bread;
+  if (G.under) { G.under = false; sfx.surface(); for (let i = 0; i < 10; i++) G.fx.push({ x: b.x, y: b.y - .2, vx: (Math.random() - .5) * 3, vy: -1 - Math.random(), t: 0, c: [COL.l, COL.h][i % 2] }); return; }
+  if (!b.swim) return toast('Dive in deep water.');
+  if (hits(b.x, b.y, .3, UNDER_SOLID)) return toast('Too shallow here.');
+  G.under = true; sfx.dive(); G.bubT = 0;
+}
+// the ocean's tiles: sand, shallows, deep water (the sea floor when Bread is
+// under), the waves, rocks and the pier
+function drawSeaTile(c, x, y, X, Y, t) {
+  const at = (i, j) => G.m[j]?.[i] ?? 'Y', under = G.under;
+  const sand = () => put(sandBeach(vary(x, y, 6)), X, Y);
+  const sea = deep => {
+    if (under && deep) {                      // the sea floor
+      put(seabedTile(vary(x, y, 5)), X, Y);
+      if ((x * 11 + y * 3) % 7 === 0) for (let i = 0; i < 2; i++) { const kx = X + 5 + i * 4 + (Math.floor(t / 700 + x + i) % 2); px(kx, Y + 4 + i * 2, 2, 12 - i * 2, i ? COL.G : COL.L); }   // seaweed
+      return;
+    }
+    put(seaTile(deep, vary(x, y, 4)), X, Y);
+    if (vary(x, y, 6) === 0) px(X + 5, Y + 7 + (Math.floor(t / 900 + x) % 2), 5, 1, deep ? '#5aa6e4' : '#a6dff5');   // a soft ripple, now and then
+  };
+  if ('1234'.includes(c)) { sand(); put(castleTile(c, false), X, Y); return; }   // a sandcastle block
+  if (c === 'S' || c === 'x' || c === 'o' || c === 'P') {
+    sand();
+    if ('wvz'.includes(at(x, y - 1))) { px(X, Y, T, 2, COL.h); px(X + ((x * 5) % 9), Y + 2, 4, 1, COL.h); }   // foam along the water's edge
+    if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);
+    if (c === 'o') { px(X + 3, Y + 7, 10, 6, LINE); px(X + 4, Y + 8, 8, 4, '#8a6a3a'); }
+    return;
+  }
+  if (c === 'w' || c === 'v') {
+    sea(c === 'v');
+    if (c === 'w' && at(x, y + 1) === 'S') { const o = Math.floor(t / 600) % 2; px(X, Y + T - 3 - o, T, 1, COL.h); }   // little waves rolling onto the sand
+    if (c === 'v' && !under && at(x, y + 1) === 'w') px(X, Y + T - 1, T, 1, '#5aaee6');
+    return;
+  }
+  if (c === 'z') {                            // the breaking waves: white crests rolling toward the beach
+    sea(true); if (under) { if ((x + Math.floor(t / 300)) % 3 === 0) px(X + 6, Y + 6, 2, 2, COL.l); return; }
+    const k = (Math.floor(t / 180) + y * 3) % T;
+    px(X, Y + k, T, 3, COL.h); px(X + 2, Y + k - 2, T - 4, 2, '#cfeeff'); px(X + ((x * 3) % 7), Y + (k + 8) % T, 6, 1, COL.h);
+    return;
+  }
+  if (c === 'd') {                            // the pier's planks, on posts
+    sea(true); if (under) { px(X + 2, Y, 3, T, '#5e3319'); px(X + 11, Y, 3, T, '#5e3319'); return; }
+    put(plankTile((at(x, y - 1) === 'd' ? 0 : 1) | 2 | 8, false), X, Y);
+    return;
+  }
+  // rock: on sand or in the water, a gray boulder with a light top
+  if ('SxoP'.includes(at(x, y - 1)) || 'SxoP'.includes(at(x, y + 1)) || y === LH - 1) sand(); else sea(true);
+  put(rockTile('sea', edgeMask(x, y, (i, j) => at(i, j) === 'Y'), vary(x, y, 3)), X, Y);
+}
+function drawOcean(t) {
+  const b = G.bread, cam = G.cam, under = G.under;
+  if (under) { cx.globalAlpha = .35; px(cam.x * T - T, cam.y * T - T, (VW + 2) * T, (VH + 2) * T, '#0b3d6e'); cx.globalAlpha = 1; }   // the surface world goes dim
+  // things on the sea floor show faintly from up top, and clearly from under
+  cx.globalAlpha = under ? 1 : .35;
+  { const [sx, sy] = OCEAN.ship, X = sx * T, Y = sy * T;   // the sunken ship, on its side, its mast broken
+    px(X - 14, Y - 2, 46, 12, LINE); px(X - 13, Y - 1, 44, 10, '#6b4226'); for (let i = 0; i < 44; i += 6) px(X - 13 + i, Y - 1, 1, 10, '#4e2f1a');
+    px(X - 13, Y - 1, 44, 2, '#8a5a34'); px(X + 4, Y + 2, 6, 5, '#1d1410');   // a hole in its side
+    px(X + 10, Y - 20, 3, 18, LINE); px(X + 11, Y - 19, 1, 16, '#8a5a34'); px(X + 13, Y - 18, 9, 7, '#d8cbb0'); }
+  if (!G.boardUp) put(sprite(SURFBOARD), OCEAN.board[0] * T - 8, OCEAN.board[1] * T - 2);
+  cx.globalAlpha = 1;
+  // the shark: all of it under the water, only its fin and a shadow from up top
+  const sh = G.shark, img = sprite(BIG_SHARK, { flip: sh.face < 0 });
+  if (under) put(img, sh.x * T - 16, sh.y * T - 6);
+  else { cx.globalAlpha = .3; put(sprite(BIG_SHARK, { flip: sh.face < 0, map: { g: '#1d4f80', h: '#1d4f80' } }), sh.x * T - 16, sh.y * T - 4); cx.globalAlpha = 1;
+    put(sprite(FIN, { flip: sh.face < 0 }), sh.x * T - 3 - sh.face * 2, sh.y * T - 8); px(sh.x * T - 8, sh.y * T - 3, 16, 1, COL.h); }
+  // the palm tree on the island, and beach umbrellas
+  { const X = 19 * T, Y = 3 * T;
+    for (let i = 0; i < 6; i++) px(X + 6 + Math.round(Math.sin(i / 2) * 2), Y + 12 - i * 3, 4, 4, i % 2 ? '#8a5a34' : '#a8743f');
+    [[-9, -1], [-6, -4], [0, -5], [6, -4], [9, -1]].forEach(([dx, dy]) => { px(X + 8 + dx - 4, Y - 6 + dy, 8, 3, '#2e6b45'); px(X + 8 + dx - 3, Y - 6 + dy, 6, 1, COL.L); });
+    px(X + 6, Y - 3, 2, 2, '#6b4226'); px(X + 9, Y - 2, 2, 2, '#6b4226'); }
+  [[10, 18], [3, 18]].forEach(([ux, uy], i) => { const X = ux * T, Y = uy * T; px(X + 7, Y - 6, 2, 18, LINE);
+    for (let k = 0; k < 5; k++) { px(X - 6 + k * 4, Y - 10 + Math.abs(k - 2), 4, 5 - Math.abs(k - 2), k % 2 ? COL.h : i ? COL.u : COL.r); } px(X - 7, Y - 10, 30, 1, LINE); });
+  drawCastle(t);
+  // jellyfish, over the dim
+  G.sq.forEach(j => { if (j.jelly) drawSquirrel(j, t); });
+  // the surfboard, once found, floats along beside Bread
+  if (G.boardUp && G.crumb.mode === 'wait') put(sprite(SURFBOARD, { flip: b.face < 0 }), b.x * T - 8 - b.face * 10, b.y * T + 2);
+}
+// ---------- Dino Land ----------
+function stepJungle(b, dt) {
+  const n = G.neck; n.t += dt;
+  const [nx, ny] = JUNGLE.neck;
+  if (G.stage === 'find' && G.crumb.mode === 'wait' && Math.hypot(nx - b.x, ny + .6 - b.y) < 3.6) stage('ferns', 'Crumb is up on the long-neck! It looks hungry.');
+  G.ferns.forEach(f => {
+    if (f.got || Math.hypot(f.x - b.x, f.y - b.y) > .7) return;
+    f.got = true; burst(f.x, f.y, COL.L);
+    const left = G.ferns.filter(o => !o.got).length;
+    hold(FERN, left ? 'A big fern!' : 'Three big ferns!', () => { if (!left) stage('feed', 'Take them to the long-neck!'); });
+  });
+  if (G.stage === 'feed' && !n.fed && Math.hypot(nx - 1.9 - b.x, ny + .4 - b.y) < 2.6) {
+    n.fed = true; sfx.roar(); G.pops.push({ x: nx - 1.4, y: ny - .2, txt: 'Munch!', t: 0, c: LINE });
+    toast('The long-neck put its head down!');
+  }
+  if (n.fed && n.slide < 1) {                    // Crumb slides down the long-neck's neck
+    n.slide = Math.min(1, n.slide + dt / 1.6);
+    const P = JUNGLE.slide, k = n.slide * (P.length - 1), i = Math.min(P.length - 2, Math.floor(k)), f = k - i, c = G.crumb;
+    c.x = P[i][0] + (P[i + 1][0] - P[i][0]) * f; c.y = P[i][1] + (P[i + 1][1] - P[i][1]) * f; c.face = -1;
+    if (n.slide >= 1) { sfx.squeak(); stage('down', 'Wheee! Crumb slid down!'); }
+  }
+}
+// a fallen log: shaded bark, lying the way the logs run
+function logTile(vert) {
+  return paint('log' + vert, T, T, (set, fill, r) => {
+    const L = '#4a2c18';
+    if (!vert) { fill(0, 4, T, 10, L); fill(0, 5, T, 2, '#a8743f'); fill(0, 7, T, 5, '#8a5a34'); fill(0, 12, T, 1, '#6b4226'); for (let i = 0; i < 4; i++) fill(Math.floor(r() * 12), 8 + Math.floor(r() * 3), 3, 1, '#6b4226'); fill(0, 14, T, 1, GRASS.dark); }
+    else { fill(3, 0, 10, T, L); fill(4, 0, 2, T, '#a8743f'); fill(6, 0, 5, T, '#8a5a34'); fill(11, 0, 1, T, '#6b4226'); for (let i = 0; i < 4; i++) fill(7 + Math.floor(r() * 3), Math.floor(r() * 12), 1, 3, '#6b4226'); fill(13, 0, 1, T, GRASS.dark); }
+  });
+}
+// the time door: a stone arch with a swirl of color inside when it's awake
+function drawTimeDoor(cx0, groundY, t, on) {
+  const X = Math.round(cx0 - 11), Y = Math.round(groundY - 28);
+  px(X, Y, 22, 28, LINE); px(X + 1, Y + 1, 20, 27, '#7d8091'); px(X + 1, Y + 1, 20, 2, '#a7aab8'); px(X + 1, Y + 1, 2, 27, '#a7aab8');
+  for (let i = 0; i < 4; i++) px(X + 3 + i * 5, Y + 2, 1, 2, '#666979');
+  px(X + 4, Y + 5, 14, 23, LINE);
+  const C = on ? ['#7b4fa0', '#a07bc4', '#5ad1e0', '#e8a0bf'] : ['#2b2b33', '#3a3a44', '#2b2b33', '#3a3a44'];
+  for (let k = 0; k < 6; k++) px(X + 5 + k, Y + 6 + k, 12 - k * 2, 22 - k * 2, C[(k + (on ? Math.floor(t / 150) : 0)) % 4]);
+  if (on) { const s = Math.floor(t / 200) % 3; px(X + 7 + s * 3, Y + 9 + s * 4, 1, 1, '#ffffff'); px(X + 14 - s * 2, Y + 20 - s * 3, 1, 1, '#ffffff'); }
+}
+function drawJungle(t) {
+  // the volcano at the top, smoking
+  { const [vx, vy] = JUNGLE.volcano, X = vx * T + 8, Y = vy * T + 10;
+    for (let i = 0; i < 30; i++) { const w = 12 + i * 3.4; px(X - w / 2, Y - 30 + i, w, 1, i < 3 ? '#e04848' : i % 7 === 0 ? '#5e4a40' : '#7a6458'); px(X - w / 2, Y - 30 + i, 2, 1, '#4a3a30'); px(X + w / 2 - 2, Y - 30 + i, 2, 1, '#4a3a30'); }
+    px(X - 6, Y - 31, 12, 2, '#ffd23f'); px(X - 3, Y - 26, 2, 10, '#e04848'); px(X + 2, Y - 24, 2, 8, '#ff8a1f');   // lava at the top, running down
+    for (let k = 0; k < 3; k++) { const a = (t / 900 + k / 3) % 1; put(sprite(blob(10, 8, 'g', 'g', 'h')), X - 5 + Math.sin(a * 6 + k) * 4, Y - 36 - a * 28); } }
+  // the ferns still to find
+  G.ferns.forEach(f => { if (!f.got) put(sprite(FERN), f.x * T - 5, f.y * T - 6 + (Math.floor(t / 500 + f.x) % 2)); });
+  // the long-neck, Crumb up on its back until it's fed
+  { const [nx, ny] = JUNGLE.neck, n = G.neck, img = sprite(n.fed ? LONGNECK.down : LONGNECK.up);
+    put(img, nx * T - 36, ny * T - 46 + (Math.floor(t / 900) % 2 && !n.fed ? 2 : 0), 2); }   // twice as big: it's a giant
+  // the time door, where the trip started
+  drawTimeDoor(JUNGLE.car[0] * T, (JUNGLE.car[1] + .4) * T, t, true);
+}
+// ---------- The rocket ride to the moon ----------
+// Decided 15 Nov, the middle kid tester's idea: in the museum's space room
+// Crumb is stuck up on the moon, and Bread flies there in the rocket ride,
+// zapping asteroids on the way (an asteroid shoot). Walking the star lines
+// wakes the rocket up. The ride fills the screen: the pad steers, the action
+// button zaps. An asteroid that bumps the rocket only wobbles it (no lost
+// bones, no losing, no clock); the moon just keeps getting closer.
+const RIDE_ROCKET = ['.....rr.....', '....rrrr....', '...rrrrrr...', '...hhhhhh...', '..hhhllhhh..', '..hhl..lhh..', '..hhl..lhh..', '..hhhllhhh..', '..hhhhhhhh..', '..hhrhhrhh..', '..hhhhhhhh..', '.rhhhhhhhhr.', 'rrhhhhhhhhrr', 'rr.hhhhhh.rr', 'r...gggg...r'];
+const FLAME = [['...yyyy...', '....yy....'], ['..yyeeyy..', '...yyyy...', '....yy....']];
+const FLIGHT_S = 30;                             // seconds to the moon
+function startFlight() {
+  const r = seeded(Math.floor(Math.random() * 1e6) + 1);
+  G.flight = { p: 0, ship: { x: VW / 2, y: VH - 2.4, bonk: 0 }, rocks: [], shots: [], spawn: 1, t: 0, shotT: 0,
+    stars: [...Array(45)].map(() => ({ x: r() * VW, y: r() * VH, s: .5 + r() * 2.5 })) };
+  G.zapped = G.zapped || 0; sfx.start(); toast('Zap the asteroids! Fly to the moon.');
+}
+function zap() {
+  const f = G.flight; if (!f || f.shotT > 0) return;
+  f.shotT = .22; sfx.zap(); f.shots.push({ x: f.ship.x, y: f.ship.y - .9 });
+}
+function stepFlight(dt, dx, dy) {
+  const f = G.flight, s = f.ship; f.t += dt; f.shotT -= dt; s.bonk = Math.max(0, s.bonk - dt);
+  if (!dx && !dy && goal) { const gx = goal.x - s.x, gy = goal.y - s.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }   // a finger held on the screen steers too
+  const m = Math.hypot(dx, dy); if (m > .1) { s.x += dx / Math.max(1, m) * 7 * dt; s.y += dy / Math.max(1, m) * 5 * dt; }
+  s.x = Math.max(.8, Math.min(VW - .8, s.x)); s.y = Math.max(VH * .45, Math.min(VH - 1.2, s.y));
+  f.p = Math.min(1, f.p + dt / FLIGHT_S);
+  f.stars.forEach(st => { st.y += st.s * dt * 2; if (st.y > VH) { st.y -= VH; st.x = Math.random() * VW; } });
+  // asteroids drift down at the rocket, more as the moon gets close
+  f.spawn -= dt;
+  if (f.spawn <= 0 && f.p < .93) { f.spawn = Math.max(.45, 1.1 - f.p * .6); const big = Math.random() < .35; f.rocks.push({ x: 1 + Math.random() * (VW - 2), y: -1, vx: (Math.random() - .5) * 1.2, vy: 2.2 + Math.random() * 1.6 + f.p, r: big ? .7 : .45, a: Math.random() * 6 }); }
+  f.shots.forEach(sh => sh.y -= 13 * dt); f.shots = f.shots.filter(sh => sh.y > -1);
+  f.rocks.forEach(k => { k.x += k.vx * dt; k.y += k.vy * dt; k.a += dt; });
+  f.rocks = f.rocks.filter(k => {
+    const hit = f.shots.find(sh => Math.hypot(sh.x - k.x, sh.y - k.y) < k.r + .3);
+    if (hit) { f.shots.splice(f.shots.indexOf(hit), 1); G.zapped++; sfx.boom(); flightBurst(k.x, k.y); return false; }
+    if (s.bonk <= 0 && Math.hypot(s.x - k.x, s.y - .2 - k.y) < k.r + .55) { s.bonk = 1; sfx.ouch(); flightBurst(k.x, k.y); return false; }   // a bump: the rocket wobbles, that's all
+    return k.y < VH + 1;
+  });
+  f.fx = (f.fx || []).filter(p => (p.t += dt, p.x += p.vx * dt, p.y += p.vy * dt, p.t < .6));
+  if (f.p >= 1 && !f.landed) {                   // at the moon: Crumb hops in, and the rocket lands back in the space room
+    f.landed = true;
+    const c = G.crumb, w = S.crumbWear || {}, [rx, ry] = MUSE.rocket;
+    hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'Crumb hopped in!', () => {
+      G.flight = null; G.moonDone = true;
+      G.bread.x = rx - 1.3; G.bread.y = ry + .3; G.bread.face = -1;
+      c.x = rx - .4; c.y = ry + .3; c.mode = 'follow'; G.trail = []; sfx.found();
+      stage('back', 'Back from the moon!');
+    });
+  }
+}
+function flightBurst(x, y) { const f = G.flight; f.fx = f.fx || []; for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 3; f.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, c: ['#c9c9d4', '#ffd23f', '#ffffff'][i % 3] }); } }
+function drawFlight(t) {
+  const f = G.flight, s = f.ship, W = VW * T, H = VH * T;
+  px(0, 0, W, H, '#0b0f2a');
+  f.stars.forEach(st => px(st.x * T, st.y * T, st.s > 2 ? 2 : 1, st.s > 2 ? 2 : 1, st.s > 1.5 ? '#fff6ea' : '#8a92c0'));
+  // the moon, growing as the rocket gets close; Crumb waves from the top of it
+  const R = Math.round((6 + f.p * 40) / 2) * 2, mx = W / 2, my = 6 + f.p * 40, GRAY = { D: '#9a9aa6' };
+  put(sprite(blob(R * 2, R * 2, 'g', 'D', 'h'), { map: GRAY }), mx - R, my - R);
+  [[-.4, -.15, .2], [.35, .1, .14], [-.1, .5, .12]].forEach(([a, b, k]) => { const cr = Math.max(2, Math.round(R * k)) * 2; put(sprite(blob(cr, cr, 'D', 'D', 'D'), { map: GRAY }), mx + a * R - cr / 2, my + b * R - cr / 2); });   // round craters
+  if (f.p > .4) drawCrumb(mx + 3, my + R * .35, -1, t, Math.floor(t / 300) % 2 === 0);   // Crumb, waving from the moon
+  f.rocks.forEach(k => { const d = Math.round(k.r * 2 * T); put(sprite(blob(d, d - 2, 'g', 'D', 'h'), { map: { D: '#6b6b78' } }), k.x * T - d / 2, k.y * T - d / 2); px(k.x * T - 2 + Math.round(Math.sin(k.a) * 2), k.y * T - 1, 2, 2, '#6b6b78'); });
+  f.shots.forEach(sh => { px(sh.x * T - 1, sh.y * T - 4, 2, 7, '#ffd23f'); px(sh.x * T - 1, sh.y * T - 4, 2, 2, '#ffffff'); });
+  (f.fx || []).forEach(p => px(p.x * T, p.y * T, 2, 2, p.c));
+  const wob = s.bonk > 0 ? Math.round(Math.sin(t / 30) * 2) : 0, X = Math.round(s.x * T - 6 + wob), Y = Math.round(s.y * T - 10);
+  put(sprite(FLAME[Math.floor(t / 90) % 2]), X + 1, Y + 15);
+  put(sprite(RIDE_ROCKET), X, Y);
+  put(sprite(CAR_HEAD, { map: wearMap(S.wear) }), X + 3, Y + 3);   // Bread in the window
+  // how far to the moon: a little track down the right side
+  px(W - 8, 12, 3, H - 40, '#2b2b44'); px(W - 8, 12 + (H - 40) * (1 - f.p) - 2, 3, 4, '#ffd23f'); put(sprite(blob(8, 8, 'g', 'D', 'h')), W - 11, 3);
+}
+// ---------- The museum ----------
+function stepMuseum(b, dt) {
+  const d = G.dino; d.t += dt;
+  // Bread at the dinosaur's stand: it wakes up and roars, and teaches jumping (the first time)
+  if (G.stage === 'dino' && Math.hypot(MUSE.dino[0] - b.x, MUSE.dino[1] - b.y) < 2.8) {
+    G.stage = 'hi'; d.awake = 1; sfx.roar(); G.pops.push({ x: 11.5, y: 3.2, txt: 'ROAR!', t: 0, c: COL.r });
+    const next = () => stage('rope', 'Crumb went past the rope!');
+    if (!S.moves.jump) { S.moves.jump = true; persist(); showDig(); hold(DINO_BONES, 'The dinosaur taught Bread to jump!', next); }
+    else next();
+  }
+  if (G.stage === 'rope' && inSpace(b.x, b.y)) stage('stars', 'Stars on the floor!');
+  stepStars(b);
+  if (G.stage === 'rocket' && Math.hypot(MUSE.rocket[0] - b.x, MUSE.rocket[1] - b.y) < 1.3) { G.stage = 'flying'; startFlight(); }
+  { const [lx, ly] = MUSE.labDoor;               // the science lab's door
+    if (Math.hypot(lx - b.x, ly + .3 - b.y) < .8 && !G.done && !G.hold) {
+      if (S.museum.beat) { G.done = true; sfx.gate(); toast('The science lab!'); setTimeout(() => startWorld('lab'), 500); }
+      else if (!G.labTip) { G.labTip = true; toast('The science lab is shut.'); }
+    } }
+  // the time door: asleep until the museum is done, then it takes Bread to Dino Land
+  const [tx, ty] = MUSE.timeDoor, near = Math.hypot(tx - b.x, ty + .3 - b.y) < .8;
+  if (near && !G.done && !G.hold) {
+    if (S.museum.beat) { G.done = true; sfx.sparkle(); burst(tx, ty - .8, COL.M); toast('Whoosh!'); setTimeout(() => startWorld('jungle'), 700); }
+    else if (!G.doorTip) { G.doorTip = true; toast('The time door is asleep.'); }
+  }
+}
+// Decided 14 Nov: the star puzzle. Stars on the space room floor, with faint
+// lines between some of them. Walking from a star to one it's joined to lights
+// that line; walking anywhere else just starts from the new star (no penalty,
+// and lit lines stay lit), so any order works. All the lines lit draws a dog,
+// and Crumb hops down off the planet.
+function stepStars(b) {
+  const s = G.stars; if (!s || s.done) return;
+  const i = MUSE.stars.findIndex(([x, y]) => Math.hypot(x - b.x, y - b.y) < .6);
+  if (i < 0 || i === s.cur) return;
+  const prev = s.cur; s.cur = i;
+  const e = MUSE.edges.findIndex(([a, c]) => (a === prev && c === i) || (a === i && c === prev));
+  if (e >= 0 && !s.lit[e]) { s.lit[e] = true; sfx.star(s.lit.filter(Boolean).length); burst(MUSE.stars[i][0], MUSE.stars[i][1], COL.y); }
+  else sfx.tick();
+  if (s.lit.every(Boolean)) {
+    s.done = true; G.starsDone = true; sfx.sparkle(); MUSE.stars.forEach(([x, y]) => burst(x, y, COL.y));
+    hold(STAR, 'The stars woke up the rocket!', () => stage('rocket', 'Crumb is stuck on the moon!'));
+  }
+}
+// the star to go to next: one joined to the star Bread is on by a line not lit
+// yet, or else the nearest star that still has an unlit line
+function nextStar() {
+  const s = G.stars, b = G.bread, open = MUSE.edges.filter((e, k) => !s.lit[k]);
+  const fromHere = open.find(([a, c]) => a === s.cur || c === s.cur);
+  if (fromHere) return fromHere[0] === s.cur ? fromHere[1] : fromHere[0];
+  const ends = [...new Set(open.flat())];
+  return ends.sort((a, c) => Math.hypot(MUSE.stars[a][0] - b.x, MUSE.stars[a][1] - b.y) - Math.hypot(MUSE.stars[c][0] - b.x, MUSE.stars[c][1] - b.y))[0] ?? 0;
+}
+// Decided 14 Nov: jumping, learned from the museum's dinosaur (V or the Jump
+// button). Bread hops two squares the way she's facing. She can hop over a
+// velvet rope, but not over fences, hay, walls or anything else, so the gate
+// key at the pond and the farm's puzzles still matter. Where two squares on
+// isn't clear she hops one, or just hops on the spot.
+function jump() {
+  if (screen !== 'level' || !G || G.done || G.jump || G.riding || G.hold) return;
+  if (!S.moves.jump) return toast("Bread can't jump yet.");
+  const b = G.bread; if (b.swim) return;
+  const [dx, dy] = Math.abs(b.dx) >= Math.abs(b.dy) ? [Math.sign(b.dx) || b.face, 0] : [0, Math.sign(b.dy)];
+  const solid = breadSolid(), over = (x, y) => { const c = tileAt(x, y); return c === 'J' || !solid.includes(c); };
+  let to = [b.x, b.y];
+  // over a rope, land in the middle of the square past it (decided 15 Nov: two
+  // squares on could still overlap the rope's row, and the hop did nothing)
+  const past = [dx ? Math.floor(b.x + dx) + dx + .5 : b.x, dy ? Math.floor(b.y + dy) + dy + .5 : b.y];
+  if (tileAt(b.x + dx, b.y + dy) === 'J' && !hits(past[0], past[1], .3, solid)) to = past;
+  else if (over(b.x + dx, b.y + dy) && !hits(b.x + dx * 2, b.y + dy * 2, .3, solid)) to = [b.x + dx * 2, b.y + dy * 2];
+  else if (!hits(b.x + dx, b.y + dy, .3, solid)) to = [b.x + dx, b.y + dy];
+  G.jump = { from: [b.x, b.y], to, t: 0 }; sfx.jump();
+}
+function drawMuseTile(c, x, y, X, Y) {
+  const sp = inSpace(x + .5, y + .5), is = (ch, i, j) => G.m[j]?.[i] === ch;
+  if (c === 'Y') return put(wallTile('muse', edgeMask(x, y, (i, j) => is('Y', i, j))), X, Y);
+  if (sp) { px(X, Y, T, T, '#1d2440'); if ((x * 7 + y * 13) % 5 === 0) px(X + (x * 5) % 13 + 1, Y + (y * 7) % 13 + 1, 1, 1, '#fff6ea'); }   // the space room: dark, with specks of stars
+  else put(squaresTile('muse', vary(x, y, 4)), X, Y);                                                                               // marble floor
+  if (c === 'E' && !sp) {                     // the stone stand
+    put(wallTile('stone', edgeMask(x, y, (i, j) => is('E', i, j))), X, Y);
+  }
+  if (c === 'g') {                            // a glass case with a fossil or a gem in it
+    px(X + 1, Y + 2, T - 2, T - 2, LINE); px(X + 2, Y + 3, T - 4, T - 7, '#d6eef5'); px(X + 2, Y + T - 4, T - 4, 3, '#8a5a3a');
+    if ((x + y) % 2) { px(X + 4, Y + 7, 8, 2, '#fff6ea'); px(X + 3, Y + 6, 2, 4, '#fff6ea'); px(X + 11, Y + 6, 2, 4, '#fff6ea'); }
+    else { px(X + 6, Y + 5, 4, 4, COL.m); px(X + 7, Y + 5, 1, 1, COL.h); }
+    px(X + 3, Y + 4, 1, 3, COL.h);
+  }
+  if (c === 'J') {                            // a velvet rope on brass posts
+    const across = is('J', x - 1, y) || is('J', x + 1, y) || !(is('J', x, y - 1) || is('J', x, y + 1));
+    if (across) { for (const pxx of [X + 1, X + T - 3]) { px(pxx - 1, Y + 4, 4, 11, LINE); px(pxx, Y + 5, 2, 9, '#d9a520'); } px(X + 3, Y + 7, T - 6, 1, LINE); px(X + 3, Y + 8, T - 6, 2, COL.R); px(X + 5, Y + 10, T - 10, 1, COL.R); }
+    else { px(X + 6, Y + 1, 4, 5, LINE); px(X + 7, Y + 2, 2, 3, '#d9a520'); px(X + 7, Y + 6, 2, T - 6, COL.R); px(X + 6, Y + 6, 1, T - 6, LINE); px(X + 9, Y + 6, 1, T - 6, LINE); }
+  }
+  if (c === 'k') { px(X + 4, Y + 10, 8, 6, LINE); px(X + 5, Y + 11, 6, 4, '#b8773a'); }
+}
+// a dotted or solid line from star to star, in pixels
+function starLine([ax, ay], [bx, by], lit, t) {
+  const n = Math.ceil(Math.hypot(bx - ax, by - ay) * T / 2);
+  for (let k = 1; k < n; k++) { if (!lit && k % 3) continue; const x = (ax + (bx - ax) * k / n) * T, y = (ay + (by - ay) * k / n) * T; px(x - 1, y - 1, 2, 2, lit ? COL.y : '#5a6a9a'); }
+}
+function drawMuseum(t) {
+  drawTimeDoor(MUSE.timeDoor[0] * T, MUSE.timeDoor[1] * T, t, !!S.museum.beat);
+  { const X = Math.round(MUSE.labDoor[0] * T - 10), Y = Math.round(MUSE.labDoor[1] * T - 26), open = !!S.museum.beat;   // the lab door: white, with a beaker on it
+    px(X, Y, 20, 26, LINE); px(X + 1, Y + 1, 18, 25, open ? '#3b3f52' : '#e9eef3'); if (!open) { px(X + 2, Y + 2, 16, 23, '#d6dce4'); px(X + 15, Y + 13, 2, 2, LINE); }
+    put(sprite(BEAKER_CURE, { map: { l: open ? LIQ.g : '#9fdcff' } }), X + 7, Y - 9); }
+  const d = G.dino, up = d.awake ? Math.round(Math.abs(Math.sin(d.t * 6)) * 3) : 0;
+  put(sprite(DINO_BONES, { flip: true }), 11.5 * T - 28, 6 * T + 8 - 30 - up, 2);   // standing on its stand (the first try drew it above the stand, off screen), looking toward the door
+  const s = G.stars;
+  MUSE.edges.forEach(([a, c], k) => starLine(MUSE.stars[a], MUSE.stars[c], s.lit[k], t));
+  MUSE.stars.forEach(([x, y], i) => put(sprite(STAR, { map: { h: s.done || MUSE.edges.some(([a, c], k) => s.lit[k] && (a === i || c === i)) ? COL.y : '#9fb4e0' } }), x * T - 2 - (i === s.cur ? 1 : 0), y * T - 2 - (i === s.cur ? 1 : 0), i === s.cur ? 1.4 : 1));
+  // the moon model (decided 15 Nov; it was a ringed planet); Crumb is stuck on top of it
+  put(sprite(blob(22, 18, 'g', 'D', 'h'), { map: { D: '#9a9aa6' } }), 29 * T - 11, 7 * T - 4);
+  put(sprite(blob(6, 5, 'D', 'D', 'D'), { map: { D: '#9a9aa6' } }), 29 * T - 7, 7 * T + 1); put(sprite(blob(4, 4, 'D', 'D', 'D'), { map: { D: '#9a9aa6' } }), 29 * T + 3, 7 * T + 4);
+  // the rocket ride: its flame flickers once the stars have woken it up
+  { const [rx, ry] = MUSE.rocket, X = rx * T - 6, Y = ry * T - 10, on = G.stage === 'rocket';
+    if (on) put(sprite(FLAME[Math.floor(t / 90) % 2]), X + 1, Y + 15);
+    put(sprite(RIDE_ROCKET), X, Y); }
+}
+// ---------- The ducklings, at the pond ----------
+// Decided 5 Nov: the mama duck's four ducklings are loose in the lower park.
+// They run from Bread like the cows (and scatter from a bark), so she herds
+// them back to the duck pond; one that reaches the water swims to its mama and
+// stays (decided the same day: at first it had to reach her, and ducklings
+// that swam in at the far edge got chased out again). A duckling
+// backed into a corner darts off sideways, so none get stuck. All four home
+// pays a few treats, and the first time it's a held-up moment.
+const DUCK_HOME = [[20.8, 10.5], [23.2, 10.5], [20.9, 11.6], [23.1, 11.6]];
+function stepDucklings(b, dt) {
+  if (!G.ducklings) return;
+  const m = G.mama, near = Math.hypot(m.x - b.x, m.y - b.y) < 3, out = G.ducksHome < 4;
+  m.quack -= dt;
+  if (near && out && m.quack <= 0) { m.quack = 3; sfx.quack(); G.pops.push({ x: m.x, y: m.y - .9, txt: 'Quack!', t: 0, c: LINE }); }
+  if (near && out && !G.mamaSeen && G.stage === 'ducks') { G.mamaSeen = true; toast('Her ducklings ran off! Herd them into the pond.'); }
+  const barked = G.woofT > performance.now();
+  G.ducklings.forEach(d => {
+    d.t += dt; d.peep -= dt; d.scared -= dt; d.dodge -= dt;
+    if (d.home) { d.x += (d.home[0] - d.x) * Math.min(1, dt * 1.5); d.y += (d.home[1] - d.y) * Math.min(1, dt * 1.5); return; }
+    const dist = Math.hypot(d.x - b.x, d.y - b.y);
+    if (barked && dist < 4.5) d.scared = 1;
+    let a = d.a, v = Math.sin(d.t * 1.3) > .3 ? .6 : 0;
+    if (d.dodge > 0) v = 2.6;
+    else if (dist < 2.4 || d.scared > 0) {
+      a = d.a = Math.atan2(d.y - b.y, d.x - b.x) + (Math.random() - .5) * .4; v = d.scared > 0 ? 3.2 : 2.4;
+      if (d.peep <= 0) { d.peep = 1.8; sfx.squeak(); G.pops.push({ x: d.x, y: d.y - .7, txt: 'Peep!', t: 0, c: LINE }); }
+    } else d.a += (Math.random() - .5) * 3 * dt;
+    const ox = d.x, oy = d.y;
+    move(d, Math.cos(a) * v * dt, Math.sin(a) * v * dt, .2, BLOCK + 'G');
+    if (Math.abs(d.x - ox) > .001) d.face = d.x > ox ? 1 : -1;
+    if (v > 1 && d.dodge <= 0 && Math.hypot(d.x - ox, d.y - oy) < v * dt * .3) { d.a = a + (Math.random() < .5 ? 1 : -1) * Math.PI / 2; d.dodge = .5; }
+    if (d.y < 14 && tileAt(d.x, d.y) === 'w') {                                 // in the big pond: home, and it swims to its mama
+      d.home = DUCK_HOME[G.ducksHome++]; sfx.quack(); burst(d.x, d.y);
+      if (G.ducksHome < 4) toast(`${G.ducksHome} duckling${G.ducksHome > 1 ? 's' : ''} home!`); else ducksDone();
+    }
+  });
+}
+// Decided 7 Nov: the trip goes one job at a time. With the ducklings home,
+// Crumb swims out to a lily pad in the middle of the frogs.
+function ducksDone() {
+  [[-1, 1.3], [0, 1.5], [1, 1.3]].forEach(([dx, dy]) => G.treats.push({ x: G.mama.x + dx, y: G.mama.y + dy, v: 2 }));
+  const next = () => { const c = G.crumb; c.mode = 'swim'; c.to = [14.3, 7.6]; stage('frogs', 'Crumb swam out to the frogs!'); };
+  if (!S.pond.ducklings) { S.pond.ducklings = true; persist(); hold(DUCKLING, 'The ducklings are home!', next); }
+  else { sfx.win(); next(); }
+}
+// ---------- The frog song, at the pond ----------
+// Decided 5 Nov, the testers' idea: four frogs sit on lily pads in the big
+// pond, each its own color with its own note. Swim near and they croak a short
+// tune, one frog at a time; Bread repeats it by barking at the frogs in the
+// same order, and each frog croaks back. Three rounds, the same tune growing a
+// note each time. A wrong frog gets a low croak and the tune plays again;
+// there's no penalty. The whole song wins Crumb's frog costume. Only swimming
+// is needed, so it works on the first trip.
+// Decided 7 Nov, after a tester found it hard: the rounds are 2, 3 and 4
+// notes (they were 3, 4 and 5), the tune is slower, a bark reaches the
+// nearest frog from farther away, the frogs hop together when it's your turn,
+// a right frog sparkles, and if nobody barks for a while the tune plays again.
+const FROGS = [
+  { x: 11.9, y: 7.6, note: 523, col: '#ff8fb1' },
+  { x: 14.3, y: 6.0, note: 659, col: '#ffd23f' },
+  { x: 16.7, y: 7.6, note: 784, col: '#7fe0ff' },
+  { x: 14.3, y: 9.2, note: 1047, col: '#ff8a1f' },
+];
+function setupFrogs() {
+  G.frogs = FROGS.map(f => ({ ...f, litT: 0, badT: 0, hopT: 0 }));
+  G.bigFrog = { x: 13.5, y: 2.5, litT: 0 };   // on the reeds by the north shore: bark at it to hear the tune again
+  G.song = { state: 'idle', seq: [0, 1, 2, 3].map(() => Math.floor(Math.random() * 4)), len: 2, i: 0, t: 0, k: -1, wait: 0 };
+}
+function croak(f) { f.litT = .45; sfx.croak(f.note); }
+function stepFrogs(b, dt) {
+  const s = G.song; if (!s) return;
+  s.t += dt; G.frogs.forEach(f => { f.litT -= dt; f.badT -= dt; f.hopT -= dt; }); G.bigFrog.litT -= dt;
+  const near = G.frogs.some(f => Math.hypot(f.x - b.x, f.y - b.y) < 3);
+  if (s.state === 'idle' && near && G.stage === 'frogs') {
+    if (!G.frogSeen) { G.frogSeen = true; toast('Ribbit! Bark at the frogs to sing their song back.'); }
+    s.state = 'play'; s.t = 0; s.k = -1;
+  }
+  if (s.state === 'play') {                  // the frogs sing the tune, one note at a time
+    const k = Math.floor((s.t - 1.2) / 1);
+    if (s.t > 1.2 && k !== s.k && k < s.len) { s.k = k; croak(G.frogs[s.seq[k]]); }
+    if (s.t > 1.2 + s.len) { s.state = 'listen'; s.i = 0; s.t = 0; G.frogs.forEach(f => f.hopT = .35); }   // they all hop: your turn
+  }
+  if (s.state === 'listen' && s.t > 7 && near) { s.state = 'play'; s.t = 0; s.k = -1; }   // nobody barked for a while: the tune again
+  if (s.state === 'wait' && s.t > s.wait) { s.state = near ? 'play' : 'idle'; s.t = 0; s.k = -1; }
+}
+// a bark next to a frog makes it croak; while the frogs are listening, it
+// counts as the next note of the song
+function barkFrog(b) {
+  const s = G.song; if (!s || s.state === 'won') return;
+  const f = G.frogs.reduce((a, o) => Math.hypot(o.x - b.x, o.y - b.y) < Math.hypot(a.x - b.x, a.y - b.y) ? o : a), big = G.bigFrog;
+  const bd = Math.hypot(big.x - b.x, big.y - b.y);
+  if (bd < 2.4 && bd < Math.hypot(f.x - b.x, f.y - b.y)) {   // the big frog: the tune again, from the start
+    big.litT = .5; sfx.croak(392);
+    if (G.stage === 'frogs' && s.state !== 'play') { s.state = 'play'; s.t = 0; s.k = -1; s.i = 0; }
+    return;
+  }
+  if (Math.hypot(f.x - b.x, f.y - b.y) > 2.6 || s.state === 'play') return;
+  croak(f);
+  if (s.state !== 'listen') return;
+  if (G.frogs.indexOf(f) === s.seq[s.i]) {
+    burst(f.x, f.y - .3); s.t = 0;
+    if (++s.i < s.len) return;
+    if (s.len === 4) return frogsWon();
+    s.len++; s.state = 'wait'; s.t = 0; s.wait = 1.5; sfx.catch();
+    G.pops.push({ x: 14.3, y: 5.6, txt: 'Ribbit!', t: 0, c: LINE });
+  } else {
+    f.badT = .7; s.state = 'wait'; s.t = 0; s.wait = 1.6;
+    setTimeout(() => sfx.nope(), 250);
+    G.pops.push({ x: f.x, y: f.y - .6, txt: 'Croak!', t: 0, c: COL.r });
+  }
+}
+function frogsWon() {
+  G.song.state = 'won'; burst(14.3, 7.5);
+  [[-1, -2.2], [0, -2.4], [1, -2.2]].forEach(([dx, dy]) => G.treats.push({ x: 14.3 + dx, y: 7.5 + dy, v: 2 }));
+  const next = () => stage('find', 'The frogs sang!');
+  if (!S.crumbHave.includes('frog')) { S.crumbHave.push('frog'); persist(); const w = { body: 'frog' }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), 'The frogs sang! For Crumb: the frog costume!', next); }
+  else { sfx.win(); next(); }
+}
+// ---------- The barn, on the open farm ----------
+const CAT = [
+  ['........o.o', '........ooo', 'o.......ono', '.o.oooooooo', '..ooooooo..', '..o.o..o.o.'],
+  ['........o.o', '........ooo', '.o......ono', 'o..oooooooo', '..ooooooo..', '...o.o.o.o.'],
+];
+function setupBarn() {
+  const [x0, , x1] = FB.rect, inside = (x, y) => x >= x0 + 6 && x <= x0 + 18 && y >= 7 && y <= 11;
+  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, 'n', inside); G.sq.push({ x, y, a: Math.random() * 6, t: Math.random() * 9, stun: 0, mouse: true }); }
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(4, '.', (x, y) => x > BX && y > 13); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+  G.cows = FB.cows.map(([x, y], i) => ({ x, y, a: Math.random() * 6, t: i * 3, moo: 0, face: -1, scared: 0, home: null }));
+  G.cow = { x: FB.dairy[0], y: FB.dairy[1], moo: 0, t: 0 };
+  G.cats = FB.cats.map(([x, y], i) => ({ x, y, mode: 'stuck', t: i, meow: i * 1.3, face: i ? -1 : 1 }));
+  G.cowsHome = 0; G.catsDown = false; G.barnSeen = false;
+}
+// Cows walk away from Bread when she comes close, and trot off from a bark, so
+// she herds them the way a corgi would: get behind a cow and it goes the other
+// way. A cow that walks into an empty stall stays there.
+function stepBarn(b, dt) {
+  if (!G.cows) return;
+  const [rx0, ry0, rx1, ry1] = FB.rect;
+  if (!G.barnSeen && b.x > BX + 1) { G.barnSeen = true; if (G.cowsHome < 3) toast('The cows are out! Herd them into the barn.'); }
+  if (!G.loftSeen && inBarn(b.x, b.y) && !G.catsDown) { G.loftSeen = true; toast('Meow! The cats are stuck up in the loft.'); }
+  // the dairy cow by the doors teaches Bread to push
+  const dc = G.cow, near = Math.hypot(dc.x - b.x, dc.y - b.y) < 2.2;
+  dc.t += dt; dc.moo -= dt;
+  if (near && dc.moo <= 0) { dc.moo = 3.5; sfx.moo(); G.pops.push({ x: dc.x, y: dc.y - 1, txt: 'Moo!', t: 0, c: LINE }); }
+  if (near && !S.moves.push) { S.moves.push = true; persist(); showDig(); hold(HAY_PIC, 'The cow taught Bread to push!'); }
+  G.cows.forEach(c => {
+    c.t += dt; c.moo -= dt; c.scared -= dt;
+    if (c.home) { c.x += (c.home[0] - c.x) * Math.min(1, dt * 3); c.y += (c.home[1] - c.y) * Math.min(1, dt * 3); c.face = -1; return; }
+    const d = Math.hypot(c.x - b.x, c.y - b.y);
+    if (d < 2 && c.moo <= 0) { c.moo = 4; sfx.moo(); G.pops.push({ x: c.x, y: c.y - 1, txt: 'Moo!', t: 0, c: LINE }); }
+    let ax, ay, v;
+    if (d < 2.6 || c.scared > 0) { ax = (c.x - b.x) / (d || 1); ay = (c.y - b.y) / (d || 1); v = c.scared > 0 ? 2.8 : 1.6; }
+    else { c.a += (Math.random() - .5) * 1.5 * dt; ax = Math.cos(c.a); ay = Math.sin(c.a); v = Math.sin(c.t * .5) > .6 ? .4 : 0; }
+    const ox = c.x, oy = c.y;
+    move(c, ax * v * dt, ay * v * dt, .45);
+    if (c.x < BX + 1.5) c.x = BX + 1.5;                                           // cows stay on the barn's side
+    if (v && ox === c.x && oy === c.y) c.a += 2;
+    if (Math.abs(c.x - ox) > .001) c.face = c.x > ox ? 1 : -1;
+    const st = FB.stalls.find(([a, bb, cc, dd]) => c.x > a && c.x < cc + 1 && c.y > bb && c.y < dd + 1 && !G.cows.some(o => o.home && o.home.st === a + ',' + bb));
+    if (st) {
+      const [a, bb, cc, dd] = st; c.home = [(a + cc + 1) / 2, (bb + dd + 1) / 2 + .3]; c.home.st = a + ',' + bb;
+      G.cowsHome++; sfx.moo(); burst(c.x, c.y);
+      toast(G.cowsHome < 3 ? `${G.cowsHome} cow${G.cowsHome > 1 ? 's' : ''} home!` : 'The cows are home!');
+      barnDone();
+    }
+  });
+  // the cats: stuck on the loft until the ladder is up, then down to chase mice
+  G.cats.forEach((k, i) => {
+    k.t += dt; k.meow -= dt;
+    if (k.mode === 'stuck') {
+      if (k.meow <= 0 && Math.hypot(k.x - b.x, k.y - b.y) < 7 && inBarn(b.x, b.y)) { k.meow = 3 + i; sfx.meow(); G.pops.push({ x: k.x, y: k.y - .8, txt: 'Meow!', t: 0, c: LINE }); }
+      if (G.ladder) k.mode = 'climb';
+      return;
+    }
+    const go = (tx, ty, v) => { const dx = tx - k.x, dy = ty - k.y, l = Math.hypot(dx, dy); if (l < .1) return true; const s = Math.min(l, v * dt); k.x += dx / l * s; k.y += dy / l * s; if (Math.abs(dx) > .05) k.face = dx > 0 ? 1 : -1; return false; };
+    if (k.mode === 'climb') { const [lx, ly] = G.ladder; if (Math.abs(k.x - lx - .5) > .15) go(lx + .5, k.y, 2.5); else { k.x = lx + .5; if (go(lx + .5, ly + 1.4, 2)) k.mode = 'hunt'; } return; }
+    const mice = G.sq.filter(s => s.mouse);
+    if (!mice.length) return;
+    const tg = mice.reduce((a, m) => Math.hypot(m.x - k.x, m.y - k.y) < Math.hypot(a.x - k.x, a.y - k.y) ? m : a);
+    go(tg.x, tg.y, 3.4);                                                            // cats hop over rails and hay
+    k.x = Math.max(rx0 + 1.3, Math.min(rx1 - .3, k.x)); k.y = Math.max(ry0 + 2.3, Math.min(ry1 - .2, k.y));
+    if (Math.hypot(tg.x - k.x, tg.y - k.y) < .5) {
+      G.sq = G.sq.filter(s => s !== tg); G.caught.sq++; sfx.catch(); burst(tg.x, tg.y, '#c9c9d4');
+      G.pops.push({ x: tg.x, y: tg.y, txt: 'Got it!', t: 0, c: LINE });
+      if (!G.sq.some(s => s.mouse)) toast('The cats chased off the mice!');
+    }
+  });
+}
+// the ladder reached the loft: the cats climb down
+function ladderUp(x, y) {
+  G.m[y][x] = 'a'; G.ladder = [x, y]; G.catsDown = true; sfx.gate();
+  burst(x + .5, y); toast('The cats can climb down!');
+  barnDone();
+}
+function barnDone() {
+  if (G.cowsHome < 3 || !G.catsDown || G.barnWon) return;
+  G.barnWon = true;
+  if (!S.barn.beat) { S.barn.beat = true; if (!S.have.includes('cow')) S.have.push('cow'); persist(); setTimeout(() => G && hold(COW, 'The barn is fixed! You won the cow costume!'), 900); }
+  else toast('The barn is all fixed!');
+}
+// Decided 3 Nov: the hay can get stuck in a corner, so the help bar has a
+// button that puts the barn's loose bales (and the ladder, if it isn't up
+// yet) back where they started.
+function resetHay() {
+  if (!G || G.world !== 'farm') return;
+  const b = G.bread;
+  for (let y = 0; y < LH; y++) for (let x = BX; x < LW; x++) if ('PA'.includes(G.m[y][x])) G.m[y][x] = inBarn(x, y) ? 'n' : '.';
+  FB.hay.forEach(([x, y, c]) => { if (c === 'A' && G.ladder) return; G.m[y][x] = c; });
+  if (hits(b.x, b.y, .3, BLOCK)) { b.x = FB.door[0]; b.y = FB.door[1]; }
+  sfx.push(); toast('The hay is back where it started.'); help(false);
+}
+// ---------- The chicken coop, on the open farm ----------
+const eggOut = e => !e.hide || (e.hide === 'bale' && G.m[Math.floor(e.y)][Math.floor(e.x)] !== 'P');
+function setupCoop() {
+  G.eggs = FC.eggs.map(([x, y, col, hide]) => ({ x, y, col, hide, got: false }));
+  G.nests = {}; G.carry = null; G.eggsDone = false;
+  const [x0, y0, x1, y1] = FC.run;
+  for (let i = 0; i < 4; i++) { const [x, y] = randOpen(0, '.p', (x, y) => x > x0 && x < x1 && y > FC.rect[3] && y < y1); G.hens.push({ x, y, a: Math.random() * 6, t: Math.random() * 5, cluck: 0, box: [x0 + .3, FC.rect[3] + 1.3, x1 + .7, y1 + .7] }); }
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(4, '.', (x, y) => y > CY + 1 && x > 23 && x < BX); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+}
+function stepCoop(b, dt) {
+  if (!G.eggs) return;
+  if (!G.coopSeen && b.y > CY + 1.5 && b.x < BX && !G.eggsDone) { G.coopSeen = true; stage('eggs', 'Crumb is up on the roost, and the eggs are everywhere!'); }
+  if (G.stage === 'eggs' && !G.carry && !G.hiddenTip && G.eggs.every(e => e.got || !eggOut(e))) { G.hiddenTip = true; toast('The last eggs are hidden. Try pushing hay, or digging!'); }
+  // pick up an egg (one at a time), carry it to the nest of its color
+  if (!G.carry) {
+    const e = G.eggs.find(e => !e.got && eggOut(e) && Math.hypot(e.x - b.x, e.y - b.y) < .7);
+    if (e) { G.carry = e; e.got = true; sfx.treat(2); G.pops.push({ x: b.x, y: b.y - .8, txt: 'An egg!', t: 0, c: LINE }); }
+  } else {
+    const n = FC.nests.find(([x, y]) => Math.hypot(x + .5 - b.x, y + .5 - b.y) < 1.4);
+    if (n && n[2] === G.carry.col) {
+      const k = n[0] + ',' + n[1]; G.nests[k] = (G.nests[k] || 0) + 1; G.carry = null; sfx.cluck(); burst(n[0] + .5, n[1] + .5);
+      const left = G.eggs.filter(e => !e.got).length + (G.carry ? 1 : 0);
+      if (!left) eggsDone(); else G.pops.push({ x: n[0] + .5, y: n[1] - .2, txt: 'Cluck!', t: 0, c: LINE });
+    } else if (n && G.wrongAt !== n) { G.wrongAt = n; sfx.cluck(); G.pops.push({ x: n[0] + .5, y: n[1] - .2, txt: 'Not here!', t: 0, c: COL.r }); }
+    if (!n) G.wrongAt = null;
+  }
+}
+function eggsDone() {
+  G.eggsDone = true; const c = G.crumb; [c.x, c.y] = FC.down; c.mode = 'wait'; sfx.yip();
+  if (!S.coop.beat) { S.coop.beat = true; if (!S.have.includes('chicken')) S.have.push('chicken'); persist(); hold(CHICKEN, 'The eggs are back! You won the chicken costume!', () => stage('down', 'Crumb hopped down!')); }
+  else stage('down', 'The eggs are back! Crumb hopped down!');
+}
+// ---------- The horse ring, on the open farm ----------
+const inRing = (x, y) => { const [x0, y0, x1, y1] = FR.box; return x > x0 && x < x1 + 1 && y > y0 && y < y1 + 1; };
+function setupRing() {
+  G.pony = { x: FR.pony[0], y: FR.pony[1], t: 0, face: -1, scared: 0, a: 0, home: false, neigh: 0 };
+  G.riding = false; G.race = null;
+  for (let i = 0; i < 3; i++) { const [x, y] = randOpen(4, '.', (x, y) => x > BX + 1 && y > CY + 1 && !inRing(x, y)); G.fl.push({ x, y, h: 0, hop: null, wait: Math.random(), stun: 0 }); }
+}
+function stepRing(b, dt) {
+  const po = G.pony; if (!po) return;
+  po.t += dt; po.neigh -= dt; po.scared -= dt;
+  if (!G.ringSeen && b.x > BX && b.y > CY && !po.home) { G.ringSeen = true; toast('The pony got loose! Herd it into the ring.'); }
+  if (G.riding) {                                                                  // Bread rides; the pony goes where she goes
+    [po.x, po.y] = [b.x, b.y]; po.face = b.face;
+    const r = G.race;
+    if (r) {
+      r.t += dt;
+      FR.barrels.forEach((br, i) => {
+        if (r.done[i]) return;
+        const d = Math.hypot(b.x - br[0], b.y - br[1]), a = Math.atan2(b.y - br[1], b.x - br[0]);
+        if (d < 3.2) { if (r.last[i] !== null) { let da = a - r.last[i]; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; r.turn[i] += da; } r.last[i] = a; }
+        else { r.last[i] = null; r.turn[i] = 0; }
+        if (Math.abs(r.turn[i]) > 5) { r.done[i] = true; sfx.catch(); burst(br[0], br[1]); if (r.done.every(Boolean)) toast('Now ride out the gate!'); }
+      });
+      if (r.done.every(Boolean) && b.y < FR.gate[1] + .2 && Math.abs(b.x - FR.gate[0] - .5) < 1.6) finishRace();
+    }
+    return;
+  }
+  const d = Math.hypot(po.x - b.x, po.y - b.y);
+  if (d < 2.5 && po.neigh <= 0) { po.neigh = 4; sfx.neigh(); G.pops.push({ x: po.x, y: po.y - 1.3, txt: 'Neigh!', t: 0, c: LINE }); }
+  if (po.home) {
+    if (d < 1.6) { G.riding = true; G.race = { t: 0, done: [false, false, false], turn: [0, 0, 0], last: [null, null, null] }; sfx.gate(); toast('Hop on! Go round each barrel, then out the gate.'); }
+    return;
+  }
+  let ax, ay, v;
+  if (d < 3 || po.scared > 0) { ax = (po.x - b.x) / (d || 1); ay = (po.y - b.y) / (d || 1); v = po.scared > 0 ? 3.4 : 2; }
+  else { po.a += (Math.random() - .5) * 2 * dt; ax = Math.cos(po.a); ay = Math.sin(po.a); v = Math.sin(po.t * .6) > .5 ? .6 : 0; }
+  const ox = po.x, oy = po.y;
+  move(po, ax * v * dt, ay * v * dt, .45);
+  po.x = Math.max(BX + 1.5, po.x); po.y = Math.max(CY + .8, po.y);                // the pony stays on its own side of the farm
+  if (v && ox === po.x && oy === po.y) po.a += 2;
+  if (Math.abs(po.x - ox) > .001) po.face = po.x > ox ? 1 : -1;
+  if (inRing(po.x, po.y) && po.y > FR.gate[1] + 1.5) { po.home = true; sfx.neigh(); burst(po.x, po.y); toast('The pony is back in the ring! Walk up to it to ride.'); }
+}
+function finishRace() {
+  const r = G.race, time = Math.round(r.t * 10) / 10, best = S.ring.best;
+  G.riding = false; G.race = null; const po = G.pony; po.x = FR.gate[0] + 2; po.y = FR.gate[1] + 2; G.bread.y = FR.gate[1] - .6;
+  if (!best || time < best) S.ring.best = time;
+  if (!S.ring.beat) { S.ring.beat = true; if (!S.have.includes('cowboy')) S.have.push('cowboy'); persist(); hold(sprite(PONY[0], { map: HORSE_PAL }), `${time} seconds! You won the cowboy costume!`); }
+  else { persist(); toast(best && time >= best ? `${time} seconds! Best: ${best}.` : `${time} seconds! A new best!`); sfx.win(); }
+}
+// Decided 3 Nov: pushing, learned from the dairy cow. Walking into a hay bale
+// for a moment slides it one tile, if the tile past it is empty floor. Only
+// straight pushes, the way old adventure games do it, so a bale goes where
+// you'd expect.
+const HAY_PIC = ['yyyyyyyyyyyy', 'yytYYYYYtYYy', 'yytyyyyytyyy', 'yytYYYYYtYYy', 'yytyyyyytyyy', 'YYtYYYYYtYYY'];
+function tryPush(b, dx, dy, dt) {
+  const ax = Math.abs(dx) > .7 ? Math.sign(dx) : 0, ay = !ax && Math.abs(dy) > .7 ? Math.sign(dy) : 0;
+  const tx = Math.floor(b.x + ax * .6), ty = Math.floor(b.y + ay * .6);
+  const what = G.m[ty]?.[tx];
+  if ((!ax && !ay) || !'PA1234'.includes(what || '.')) { G.pushT = 0; return; }
+  if (!S.moves.push) { if (!G.pushTip) { G.pushTip = true; toast('Too heavy. Ask the cow?'); } return; }
+  G.pushT = (G.pushT || 0) + dt; if (G.pushT < .3) return;
+  G.pushT = 0;
+  const nx = tx + ax, ny = ty + ay, c = G.crumb;
+  const sandOk = G.world === 'ocean' && G.m[ny]?.[nx] === 'S' && ny < LH - 2 && nx > 1 && nx < LW - 2;   // sandcastle blocks slide over sand, never into the bottom row or the end columns
+  if (!(G.world === 'ocean' ? sandOk : '.pn'.includes(G.m[ny]?.[nx])) || (Math.floor(c.x) === nx && Math.floor(c.y) === ny)) { if (!G.stuckTip) { G.stuckTip = true; toast("It won't go that way."); } return; }
+  G.m[ny][nx] = what; G.m[ty][tx] = G.world === 'ocean' ? 'S' : indoors(tx, ty) ? 'n' : '.'; sfx.push();
+  if (what === 'A' && G.m[ny - 1]?.[nx] === 'L') ladderUp(nx, ny);
+  for (let i = 0; i < 10; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 1.5; G.fx.push({ x: tx + .5, y: ty + .8, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: ['#e8c35a', '#c9a03a', '#fff1d6'][i % 3] }); }
+}
+// The boss goose. It waddles after Bread when she comes close and goes back to
+// Crumb when she leaves; bumping it costs a bone. A bark makes it stop and stare
+// for a moment, and a paw then counts as a hit. Three hits and it flaps off.
+function stepGoose(b, dt) {
+  const g = G.goose; if (!g) return;
+  g.t += dt; g.honk -= dt; g.hitT -= dt;
+  const d = Math.hypot(g.x - b.x, g.y - b.y);
+  if (G.holeDug && !G.gooseSeen && d < 6) { G.gooseSeen = true; toast('A big goose is guarding the piglet!'); }
+  if (d < 5 && g.honk <= 0) { g.honk = 2.2; sfx.honk(); G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'HONK!', t: 0, c: LINE }); }
+  if (g.stun > 0) { g.stun -= dt; return; }
+  const [tx, ty] = d < 4.5 && G.holeDug ? [b.x, b.y] : g.home, dx = tx - g.x, dy = ty - g.y, l = Math.hypot(dx, dy);
+  if (l > .3) { const v = d < 4.5 ? 2.3 : 1.4; move(g, dx / l * v * dt, dy / l * v * dt, .35); if (Math.abs(dx) > .1) g.face = dx > 0 ? 1 : -1; g.moving = true; } else g.moving = false;
+  if (d < .9 && G.ouch <= 0 && !G.done) hurt(g);
+}
+function hitGoose() {
+  const g = G.goose, b = G.bread;
+  if (!g || g.stun <= 0 || g.hitT > 0 || Math.hypot(g.x - b.x, g.y - b.y) > 2.2) return false;
+  g.hp--; g.hitT = .6; g.stun = 0; sfx.honk(); burst(g.x, g.y - .5);
+  const d = Math.hypot(g.x - b.x, g.y - b.y) || 1; move(g, (g.x - b.x) / d * 1.2, (g.y - b.y) / d * 1.2, .35);
+  if (g.hp > 0) { G.pops.push({ x: g.x, y: g.y - 1.4, txt: 'Honk!', t: 0, c: COL.r }); return true; }
+  G.goose = null; sfx.catch(); toast('The goose ran off!');
+  return true;
+}
+function drawGoose(t) {
+  const g = G.goose, img = sprite(GOOSE[g.moving && Math.floor(t / 160) % 2 ? 1 : 0], { flip: g.face < 0 }), k = 1.5;
+  put(img, g.x * T - img.width * k / 2, g.y * T - img.height * k + 2, k);
+  if (g.stun > 0) text('!', g.x * T, g.y * T - img.height * k - 2);
+  for (let i = 0; i < 3; i++) px(g.x * T - 7 + i * 5, g.y * T + 4, 4, 2, i < g.hp ? COL.r : COL.g);   // how many hits it has left
+}
+// The goal changes as you go; the arrow at the screen edge points the way
+// after a while (straight away for the way back to the car).
+// One line on screen at a time: a short story message when there is one,
+// otherwise the goal. The goal is always in the ? help bar.
+function stage(st, msg) { G.stage = st; G.lost = 0; setGoal(W.goals[st]); if (msg) { $('#goal').hidden = true; toast(`${msg} ${W.goals[st]}.`); } }
+function stageTarget() {
+  if (G.stage === 'find' || G.stage === 'down') return G.crumb;
+  if (G.stage === 'back') return { x: W.map.car[0], y: W.map.car[1] };
+  return W.target();
+}
+// Decided 28 Oct: digging, learned from the farm pig. It works next to soft
+// dirt (treats, the rubber chicken, the gold paw at the farm) and on the
+// fence where Crumb dug under. Back at the pond there's soft dirt waiting.
+function showDig() { $('#pushHelp').hidden = !S.moves.push; $('#sniffBtn').hidden = !S.moves.sniff; $('#sniffHelp').hidden = !S.moves.sniff; ['#digBtn', '#digHelp', '#jumpBtn', '#jumpHelp', '#diveBtn', '#diveHelp'].forEach(q => $(q).hidden = true); }   // dig, jump and dive are on the action button now
+function digSpot() {
+  const b = G.bread; let best = null, bd = 1.5;
+  for (let y = Math.floor(b.y) - 1; y <= Math.floor(b.y) + 1; y++) for (let x = Math.floor(b.x) - 1; x <= Math.floor(b.x) + 1; x++) {
+    const c = G.m[y]?.[x]; if (c !== 'x' && c !== 'X') continue;
+    const d = Math.hypot(x + .5 - b.x, y + .5 - b.y); if (d < bd) { bd = d; best = [x, y]; }
+  }
+  return best;
+}
+// Decided 15 Nov, after Bread had six move buttons: one action button, like
+// the A button on a Nintendo controller. It does what fits where Bread is:
+// paw a baddie in reach, dig on soft dirt, dive in deep water (and come back
+// up), jump a rope she's facing, and otherwise paw. The button's label shows
+// what it will do (decided 15 Nov: no arrow over Bread; the kids don't need it). Bark and Sniff keep buttons of
+// their own; Z, X and V still dig and jump on a keyboard.
+function ropeAhead() {
+  const b = G.bread, [dx, dy] = Math.abs(b.dx) >= Math.abs(b.dy) ? [Math.sign(b.dx) || b.face, 0] : [0, Math.sign(b.dy)];
+  return tileAt(b.x + dx * .8, b.y + dy * .8) === 'J' || tileAt(b.x + dx * 1.3, b.y + dy * 1.3) === 'J';
+}
+function actionNow() {
+  if (screen !== 'level' || !G || G.done) return 'paw';
+  const b = G.bread;
+  if (G.flight) return 'shoot';
+  if (G.lab && G.lab.open) return 'pour';
+  if (G.riding) return 'off';
+  if (G.under) return 'up';
+  if (pawTarget() || (G.shells && G.shells.state === 'pick')) return 'paw';
+  if (S.moves.dig && digSpot()) return 'dig';
+  if (S.moves.dive && b.swim && !hits(b.x, b.y, .3, UNDER_SOLID)) return 'dive';
+  if (S.moves.jump && !b.swim && ropeAhead()) return 'jump';
+  return 'paw';
+}
+function act() {
+  if (screen !== 'level') return paw();
+  const a = actionNow();
+  if (a === 'pour') pourAction(); else if (a === 'shoot') zap(); else if (a === 'dig') dig(); else if (a === 'dive' || a === 'up') dive(); else if (a === 'jump') jump(); else paw();
+}
+const ACT_LABEL = { paw: '🐾 Paw', off: '🐾 Hop off', up: '⬆️ Up', dig: '⛏️ Dig', dive: '🤿 Dive', jump: '🦘 Jump', shoot: '💥 Zap', pour: '🧪 Pour', go: '🚪 Go in', drive: '🚗 Drive' };
+let shownAct = '';
+function showAct() {                           // the action button says what it will do
+  const a = screen === 'level' ? actionNow() : screen === 'map' ? (mapNear >= 0 ? 'go' : 'drive') : 'paw';
+  if (a !== shownAct) { shownAct = a; $('#pawBtn').textContent = ACT_LABEL[a]; }
+  return a;
+}
+function dig() {
+  if (screen !== 'level' || !G || G.done || G.digT > 0) return;
+  if (!S.moves.dig) return toast("Bread can't dig yet.");
+  const spot = digSpot();
+  if (!spot) return toast('No soft dirt here.');
+  const [x, y] = spot; G.digT = .5; sfx.dig();
+  for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: x + .5, y: y + .5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: ['#8a4f2a', '#b8773a', '#5a3a22'][i % 3] }); }
+  if (G.m[y][x] === 'X') { G.m[y][x] = 'u'; G.holeDug = true; toast('Bread dug under!'); return; }
+  G.m[y][x] = 'o';
+  const egg = (G.eggs || []).find(e => e.hide === 'dig' && Math.floor(e.x) === x && Math.floor(e.y) === y);
+  if (egg) { egg.hide = null; toast('An egg!'); return; }
+  const at = M => M && M[0] === x && M[1] === y;
+  if (at(W.map.fossilMound) && !S.jungle.fossil) { S.jungle.fossil = true; S.toys.push('fossil'); persist(); hold(AMMONITE, 'A fossil!'); return; }
+  if (at(W.map.chickenMound) && !S.farm.chicken) { S.farm.chicken = true; S.toys.push('chicken'); persist(); hold(CHICKEN, 'A rubber chicken!'); return; }
+  if (at(G.goldMound)) { G.treats.push({ x: x + .5, y: y + .5, v: 10 }); toast('Something shiny!'); return; }
+  G.treats.push({ x: x + .2, y: y + .5, v: W.soil }, { x: x + .8, y: y + .5, v: W.soil }); toast('Treats!');
+}
+// Decided 28 Oct: no "how many are left" counters on screen. The tally at the
+// end counts everything up instead, one line at a time.
+function hudLevel() { bank(); }
+const keys = {};
+let goal = null;
+// Decided 28 Oct: Bread has a health bar of 5 bones. Running into a squirrel or
+// flea that isn't frozen costs one, which is why the bark comes first. Running
+// out isn't losing: Bread is tired, keeps her treats, and can try again.
+const HP = 5;
+function hurt(o) {
+  const b = G.bread; G.hp--; G.ouch = 1.5; sfx.ouch(); goal = null;
+  const d = Math.hypot(b.x - o.x, b.y - o.y) || 1;
+  move(b, (b.x - o.x) / d * .9, (b.y - o.y) / d * .9, .3, breadSolid());
+  G.pops.push({ x: b.x, y: b.y - .6, txt: 'Ouch!', t: 0, c: COL.r });
+  if (G.hp <= 0) { G.done = true; setTimeout(tiredWorld, 700); }
+}
+function askHome() {
+  G.asked = true; G.ask = true; stick.on = false; $('#toast').hidden = true;
+  $('#card').innerHTML = `<h2>${W.exit ? W.exit.ask : 'Get in the car?'}</h2><div class="row"><button class="btn" id="stayBtn">Not yet</button><button class="btn go" id="homeGo">${W.exit ? W.exit.go : '🚗 Get in'}</button></div>`;
+  $('#cover').hidden = false; $('#homeGo').focus();
+  $('#stayBtn').onclick = () => { $('#cover').hidden = true; G.ask = false; };
+  $('#homeGo').onclick = () => {
+    $('#cover').hidden = true; G.ask = false;
+    G.done = true; G.crumb.mode = 'home'; sfx.squeak(); setGoal('');
+    if (S[W.key].beat || W.sections) setTimeout(finishWorld, 500);
+    else setTimeout(() => hold(W.pic, `You won the ${ITEMS[W.costume].name.toLowerCase()}!`, finishWorld), 300);
+  };
+}
+function tiredWorld() {
+  setGoal(''); help(false);
+  $('#card').innerHTML = `<h2>Bread is all tired out!</h2><p class="big">${G.trip > 1 ? `She keeps the ${G.trip} treats she found.` : G.trip ? 'She keeps the treat she found.' : 'She needs a little rest.'}</p><p>Tip: bark first, so they freeze. Then catch them with your paw.</p><div class="row"><button class="btn go" id="again">Try again</button><button class="btn" id="homeRide">🚗 Map</button></div>`;
+  $('#cover').hidden = false;
+  $('#again').onclick = () => { $('#cover').hidden = true; startWorld(W.key); };
+  $('#homeRide').onclick = () => { $('#cover').hidden = true; mapAt = W.stop; atStop(); };
+}
+// Decided 28 Oct: special finds get a moment. Bread stops, holds the find up
+// over her head, and a short rising tune plays, the way adventure games show
+// off a big find. Treats don't get it, so it stays special.
+function hold(rows, msg, then) {
+  G.hold = { img: Array.isArray(rows) ? sprite(rows) : rows, until: performance.now() + 1800, then }; goal = null;
+  sfx.found(); toast(msg);
+}
+function stepLevel(dt, t) {
+  const b = G.bread;
+  if (G.ask) return;
+  if (G.hold) {
+    if (performance.now() < G.hold.until) { G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6)); G.pops = G.pops.filter(p => (p.t += dt, p.t < .9)); return; }
+    const then = G.hold.then; G.hold = null; if (then) then();
+    return;
+  }
+  let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0);
+  let dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { dx = stick.x; dy = stick.y; }
+  if (G.flight) { stepFlight(dt, dx, dy); return; }
+  if (G.lab && G.lab.open) { stepBench(dt, dx, dy); return; }   // the rocket ride to the moon fills the screen
+  if (!dx && !dy && goal) { const gx = goal.x + G.cam.x - b.x, gy = goal.y + G.cam.y - b.y, gl = Math.hypot(gx, gy); if (gl > .2) { dx = gx / gl; dy = gy / gl; } }
+  const m = Math.hypot(dx, dy);
+  G.shake = Math.max(0, (G.shake || 0) - dt); G.digT = Math.max(0, G.digT - dt); G.muddy = Math.max(0, G.muddy - dt);
+  b.moving = m > .1 && !G.done && !G.shake && !G.digT;
+  // mud: slow, and Bread comes out muddy for a while
+  const inMud = tileAt(b.x, b.y) === 'm';
+  if (inMud && !b.mud) { sfx.splat(); G.muddy = 5; }
+  b.mud = inMud; if (inMud) G.muddy = Math.max(G.muddy, 3);
+  if (G.jump) {                              // mid-hop: from where she was to where she lands
+    const j = G.jump; j.t = Math.min(1, j.t + dt / .45); b.moving = true;
+    b.x = j.from[0] + (j.to[0] - j.from[0]) * j.t; b.y = j.from[1] + (j.to[1] - j.from[1]) * j.t;
+    if (j.t >= 1) G.jump = null;
+  } else if (b.moving) { const sp = G.riding ? 6.4 : b.swim ? 2.6 : tileAt(b.x, b.y) === 'm' ? 2.8 : 4.2; dx /= m; dy /= m; b.dx = dx; b.dy = dy; move(b, dx * sp * dt, dy * sp * dt, .3, breadSolid()); if (Math.abs(dx) > .2) b.face = dx > 0 ? 1 : -1; tryPush(b, dx, dy, dt); } else G.pushT = 0;
+  if (G.riding && !G.race?.done.every(Boolean)) { const [x0, y0, x1, y1] = FR.box; b.x = Math.max(x0 + .7, Math.min(x1 + .3, b.x)); b.y = Math.max(y0 + .7, Math.min(y1 + .3, b.y)); }   // ride inside the ring till the barrels are done
+  // the trail Crumb follows home
+  if (G.crumb.mode === 'follow') { const l = G.trail.at(-1); if (!l || Math.hypot(l.x - b.x, l.y - b.y) > .2) G.trail.push({ x: b.x, y: b.y }); }
+  // into the pond and out again, with a good shake
+  const wet = WATER.includes(tileAt(b.x, b.y));
+  if (wet !== !!b.swim) {
+    b.swim = wet;
+    for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2; G.fx.push({ x: b.x, y: b.y - .2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, t: 0, c: [COL.l, COL.W, COL.h][i % 3] }); }
+    if (wet) { sfx.splash(); if (!G.swam) { G.swam = true; toast('Splash!'); } }
+    else { sfx.shake(); G.shake = .7; G.pops.push({ x: b.x, y: b.y - .6, txt: 'Shake!', t: 0, c: COL.V }); }
+  }
+  // treats
+  G.treats = G.treats.filter(tr => {
+    if (Math.hypot(tr.x - b.x, tr.y - b.y) > .5) return true;
+    S.bank += tr.v; G.trip += tr.v; sfx.treat(tr.v); G.pops.push({ x: tr.x, y: tr.y, txt: '+' + tr.v, t: 0, c: TREAT_COL[tr.v] });
+    persist(); hudLevel();
+    if (tr.v === 10) { S[tr.sec || W.key].gold = true; burst(tr.x, tr.y); hold(GOLD_PAW, 'Gold paw print! +10'); }
+    return false;
+  });
+  // hidden sparkles
+  G.sparkles = G.sparkles.filter(sp => {
+    if (Math.hypot(sp.x - b.x, sp.y - b.y) > .6) return true;
+    if (W.map.deep && W.map.deep.includes(sp.k) && !G.under) return true;   // on the sea floor: dive for it
+    if (sp.crumb) {                          // one of Crumb's costumes
+      S.crumbHave.push(sp.k); persist(); burst(sp.x, sp.y);
+      const w = { body: sp.k }; hold(sprite(crumbRows(0, w), { map: crumbMap(w) }), `For Crumb: the ${CRUMB_ITEMS[sp.k].name.toLowerCase()}!`);
+      return false;
+    }
+    S[sp.sec][sp.k] = true;
+    if (TOYS[sp.k]) { S.toys.push(sp.k); hold(TOYS[sp.k].pic, `A ${TOYS[sp.k].name}!`); }
+    else { S.have.push(sp.k); hold(ITEM_PIC[sp.k], `${ITEMS[sp.k].name}!`); }
+    persist(); burst(sp.x, sp.y); return false;
+  });
+  // squirrels run from Bread and zig-zag; a bark makes them freeze
+  G.sq.forEach(s => {
+    s.t += dt;
+    if (s.stun > 0) { s.stun -= dt; return; }
+    if (s.jelly) {                            // jellyfish just drift about
+      s.a += (Math.random() - .5) * 1.5 * dt; const ox = s.x, oy = s.y;
+      move(s, Math.cos(s.a) * .5 * dt, Math.sin(s.a) * .5 * dt, .3, s.sea ? SEA_ONLY : SOLID_LAND);
+      if (ox === s.x && oy === s.y) s.a += 2;
+      return;
+    }
+    const d = Math.hypot(s.x - b.x, s.y - b.y);
+    let ax, ay, v;
+    if (d < 3.5) { const ux = (s.x - b.x) / d, uy = (s.y - b.y) / d, z = Math.sin(s.t * 7) * .8; ax = ux - uy * z; ay = uy + ux * z; v = 3.3; }
+    else { s.a += (Math.random() - .5) * 4 * dt; ax = Math.cos(s.a); ay = Math.sin(s.a); v = Math.sin(s.t * 1.3) > .3 ? 0 : 1.3; }
+    const l = Math.hypot(ax, ay) || 1, ox = s.x, oy = s.y;
+    move(s, ax / l * v * dt, ay / l * v * dt, .25);
+    if (v && ox === s.x && oy === s.y) s.a += 2;
+    s.face = s.x > ox ? 1 : s.x < ox ? -1 : s.face || 1;
+  });
+  // fleas hop about, faster when Bread is close
+  G.fl.forEach(f => {
+    if (f.on) { f.x = G.crumb.x + f.on; f.y = G.crumb.y - .3; f.h = 0; return; }
+    if (f.stun > 0) { f.stun -= dt; if (!f.hop) return; }
+    if (f.hop) {
+      f.hop.t += dt / .45; const k = Math.min(1, f.hop.t);
+      f.x = f.hop.x0 + (f.hop.x1 - f.hop.x0) * k; f.y = f.hop.y0 + (f.hop.y1 - f.hop.y0) * k; f.h = Math.sin(k * Math.PI);
+      if (k >= 1) {
+        f.hop = null; f.h = 0; f.wait = .5 + Math.random() * .9;
+        // landing on Crumb: Crumb sits and scratches until Bread paws it off
+        const c = G.crumb;
+        if (c.mode === 'follow' && !c.swim && Math.hypot(f.x - c.x, f.y - c.y) < .7) { f.on = (Math.random() - .5) * .5; c.itch++; G.pops.push({ x: c.x, y: c.y - .7, txt: 'Itchy!', t: 0, c: COL.m }); if (c.itch === 1) toast('Paw the flea off Crumb!'); }
+      }
+      return;
+    }
+    f.wait -= dt * (Math.hypot(f.x - b.x, f.y - b.y) < 2.5 ? 2.5 : 1);
+    if (f.wait > 0) return;
+    const c = G.crumb, toC = c.mode === 'follow' && !c.swim && Math.hypot(c.x - f.x, c.y - f.y) < 3;
+    for (let i = 0; i < 8; i++) {
+      const a = toC && i < 4 ? Math.atan2(c.y - f.y, c.x - f.x) + (Math.random() - .5) * .6 : Math.random() * 6.28, r = .8 + Math.random() * 1.2, x1 = f.x + Math.cos(a) * r, y1 = f.y + Math.sin(a) * r;
+      if ('.prbmxon'.includes(tileAt(x1, y1))) { f.hop = { x0: f.x, y0: f.y, x1, y1, t: 0 }; break; }
+    }
+    if (!f.hop) f.wait = .3;
+  });
+  G.ouch -= dt;
+  if (G.ouch <= 0 && !G.done && !G.jump) {
+    const by = G.sq.find(s => s.stun <= 0 && Math.hypot(s.x - b.x, s.y - b.y) < .6) || G.fl.find(f => !f.on && f.stun <= 0 && f.h < .3 && Math.hypot(f.x - b.x, f.y - b.y) < .5);
+    if (by) hurt(by);
+  }
+  G.lost += dt;
+  // this world's own steps (the gate key, the farm pig), then Crumb
+  W.step(b, dt);
+  if (!S.moves.dig && !G.digTip && digSpot()) { G.digTip = true; toast(W.key === 'farm' ? 'Soft dirt. Ask the pig?' : "Soft dirt. Bread can't dig yet."); }
+  stepCrumb(dt);
+  const car = W.map.car;
+  // Decided 2 Nov: the car asks first. Walking past it with Crumb ended the trip
+  // straight away, even when the kids wanted to keep looking around.
+  const atCar = Math.hypot(car[0] - b.x, car[1] - b.y) < 2;
+  if (G.stage === 'back' && !G.done && !G.asked && atCar && Math.hypot(car[0] - G.crumb.x, car[1] - G.crumb.y) < 2.6 && !G.crumb.itch) askHome();
+  if (G.asked && Math.hypot(car[0] - b.x, car[1] - b.y) > 3.5) G.asked = false;
+  // ducks paddle, and quack at Bread
+  G.ducks.forEach(d => {
+    d.quack -= dt; d.a += (Math.random() - .5) * 2 * dt;
+    const near = Math.hypot(d.x - b.x, d.y - b.y) < 2.3;
+    if (near && d.quack <= 0) { sfx.quack(); d.quack = 3; d.a = Math.atan2(d.y - b.y, d.x - b.x); }
+    const v = near ? 1.4 : .5, nx = d.x + Math.cos(d.a) * v * dt, ny = d.y + Math.sin(d.a) * v * dt;
+    if (tileAt(nx, ny) === 'w') { d.x = nx; d.y = ny; } else d.a += 2;
+  });
+  // the car at the bottom
+  if (Math.abs(b.y - W.map.car[1]) < 1 && Math.abs(b.x - W.map.car[0]) < 2 && G.carHint <= 0 && !G.done && !W.exit) { G.carHint = 8; toast('The car. Go home any time.'); }
+  G.carHint -= dt;
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .6));
+  G.pops = G.pops.filter(p => (p.t += dt, p.t < .9));
+}
+const TREAT_COL = { 1: '#b8773a', 2: '#e0474c', 5: '#3a8fe0', 10: '#f5b700' };
+function burst(x, y, col) { ['#ffd23f', '#ff8fb1', '#7fe0ff', '#9be27a', '#ffffff'].forEach(c => { for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, c: col && i % 2 ? col : c }); } }); }
+function bark() {
+  if (screen === 'home') { homeWoof = performance.now() + 700; sfx.bark(); return; }
+  if (screen !== 'level' || !G || G.done || G.woofT > performance.now()) return;
+  G.woofT = performance.now() + 700; sfx.bark();
+  const b = G.bread;
+  [...G.sq, ...G.fl].forEach(o => { if (Math.hypot(o.x - b.x, o.y - b.y) < 4.5) o.stun = 1.6; });
+  if (G.goose && Math.hypot(G.goose.x - b.x, G.goose.y - b.y) < 4.5) G.goose.stun = 1.3;
+  if (G.frogs) barkFrog(b);
+}
+$('#barkBtn').addEventListener('pointerdown', e => { e.preventDefault(); bark(); });
+// Crumb: runs off at the start (up the path and under the gate), waits on the
+// floating dock, yipping, then follows Bread back. Crumb can't be hurt or lost; a
+// flea only makes Crumb stop and scratch.
+function stepCrumb(dt) {
+  const c = G.crumb, b = G.bread; c.t += dt;
+  const go = (tx, ty, v) => { const d = Math.hypot(tx - c.x, ty - c.y); if (d < .05) return d; const k = Math.min(1, v * dt / d), ox = c.x; c.x += (tx - c.x) * k; c.y += (ty - c.y) * k; if (Math.abs(c.x - ox) > .001) c.face = c.x > ox ? 1 : -1; return d; };
+  c.moving = false;
+  if (c.mode === 'run') {                    // the dash at the start; then Crumb is out of sight, where Crumb ends up
+    c.moving = true;
+    const [tx, ty] = W.map.run[c.wp];
+    if (go(tx, ty, 5.5) < .1 && ++c.wp >= W.map.run.length) { c.mode = 'wait'; [c.x, c.y] = W.map.crumbAt; }
+  } else if (c.mode === 'swim') {             // out to the lily pad among the frogs
+    c.moving = true; c.swim = tileAt(c.x, c.y) === 'w';
+    if (go(c.to[0], c.to[1], 2.4) < .1) { c.mode = 'wait'; c.swim = false; }
+  } else if (c.mode === 'wait') {
+    c.yip -= dt;
+    if (c.yip <= 0 && Math.hypot(c.x - b.x, c.y - b.y) < 9) { c.yip = 2.5; sfx.yip(); G.pops.push({ x: c.x, y: c.y - .7, txt: 'Yip!', t: 0, c: LINE }); }
+    if (W.reached() && Math.hypot(c.x - b.x, c.y - b.y) < 1.4) { c.mode = 'follow'; G.trail = []; sfx.found(); burst(c.x, c.y); stage('back', 'You found Crumb!'); }
+  } else if (c.mode === 'follow') {
+    c.swim = WATER.includes(tileAt(c.x, c.y));
+    if (c.itch) return;
+    // Decided 28 Oct: Crumb walks the trail Bread left, like followers in old
+    // adventure games. Heading straight for Bread, Crumb got stuck on the corn
+    // maze walls and the fence.
+    const tr = G.trail;
+    if (tr.length > 60) tr.splice(0, tr.length - 60);   // fallen far behind: catch up
+    while (tr.length && Math.hypot(tr[0].x - c.x, tr[0].y - c.y) < .15) tr.shift();
+    if (tr.length && Math.hypot(b.x - c.x, b.y - c.y) > 1.2) {
+      c.moving = true;
+      const p = tr[0], d = Math.hypot(p.x - c.x, p.y - c.y), v = tr.length > 10 ? 6 : 4.4, k = Math.min(1, v * dt / d);
+      if (Math.abs(p.x - c.x) > .01) c.face = p.x > c.x ? 1 : -1;
+      c.x += (p.x - c.x) * k; c.y += (p.y - c.y) * k;
+    }
+  }
+}
+// Decided 28 Oct, after play-tests: lining the paw up by hand was tricky, so it
+// now aims itself at the nearest squirrel or flea in reach. White corners show
+// which one that is.
+function pawTarget() {
+  const b = G.bread; let best = null, bd = 2.2;
+  [...G.sq, ...G.fl.filter(f => !f.on || G.crumb.itch)].forEach(o => { const d = Math.hypot(o.x - b.x, o.y - b.y); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
+// Decided 28 Oct: Bread gets two moves. The bark freezes everything nearby, and
+// the paw swipe is what catches. Before this, walking into a baddie caught it,
+// so there was nothing to press but Bark. The paw reaches about two tiles in
+// front of Bread, the way she last walked, so a frozen squirrel is easy to get.
+function paw() {
+  if (screen === 'map') return mapGo();
+  if (screen !== 'level' || !G || G.done || G.pawT > performance.now()) return;
+  if (G.riding) { G.riding = false; G.race = null; G.pony.home = true; G.pony.x = G.bread.x + 1.8; G.pawT = performance.now() + 900; toast('Bread hopped off.'); return; }
+  if (W.paw && W.paw(G.bread)) return;      // the world's own use for the paw (the octopus's shells)
+  const b = G.bread, tg = pawTarget(); G.pawT = performance.now() + 250; sfx.paw();
+  if (tg) { const d = Math.hypot(tg.x - b.x, tg.y - b.y) || 1; b.dx = (tg.x - b.x) / d; b.dy = (tg.y - b.y) / d; if (Math.abs(b.dx) > .2) b.face = b.dx > 0 ? 1 : -1; }
+  const hx = b.x + b.dx * .9, hy = b.y + b.dy * .9;
+  const hit = o => o === tg || Math.hypot(o.x - hx, o.y - hy) < 1.1 || Math.hypot(o.x - b.x, o.y - b.y) < .7;
+  let last = null;
+  G.sq = G.sq.filter(s => { if (!hit(s)) return true; last = s; G.caught.sq++; if (s.key) { G.key = { x: s.x, y: s.y }; stage('getKey', 'It dropped the key!'); } G.pops.push({ x: s.x, y: s.y, txt: 'Got it!', t: 0, c: LINE }); burst(s.x, s.y, '#c08a5a'); return false; });
+  G.fl = G.fl.filter(f => { if (!hit(f)) return true; last = f; G.caught.fl++; if (f.on) { G.crumb.itch = Math.max(0, G.crumb.itch - 1);  } G.pops.push({ x: f.x, y: f.y, txt: 'Got it!', t: 0, c: LINE }); burst(f.x, f.y, '#9b6cd8'); return false; });
+  if (!last) { hitGoose(); return; }
+  sfx.catch(); hudLevel();
+}
+$('#pawBtn').addEventListener('pointerdown', e => { e.preventDefault(); act(); });
+$('#digBtn').addEventListener('pointerdown', e => { e.preventDefault(); dig(); });
+$('#sniffBtn').addEventListener('pointerdown', e => { e.preventDefault(); sniff(); });
+$('#jumpBtn').addEventListener('pointerdown', e => { e.preventDefault(); jump(); });
+$('#diveBtn').addEventListener('pointerdown', e => { e.preventDefault(); dive(); });
+// The stick, like Math Force's. Decided 28 Oct the cross became a pad you slide
+// a thumb on; decided 2 Nov, after more play-tests, it's a round stick: Bread
+// walks the way it's pushed, any direction. Lifting the thumb stops her.
+const stick = RDG.stick('#pad', '#knob');
+// pinch and double-tap zoom are blocked while playing a world (seen 2 Nov, as in Rodeo)
+RDG.noZoom(() => screen === 'level' && G && !G.done && !G.ask, ['#pad', '#barkBtn', '#pawBtn', '#digBtn', '#sniffBtn', '#jumpBtn', '#diveBtn']);
+
+function drawTreat(x, y, v, t) {
+  if (v === 10) { put(sprite(GOLD_PAW), x - 4, y - 4); twinkle(x + 5, y - 5, t); return; }
+  put(sprite(BONE, { map: { c: TREAT_COL[v] } }), x - 5, y - 2);
+}
+function drawSquirrel(s, t) {
+  const f = s.face || 1, frame = s.stun > 0 ? 0 : Math.floor(s.t * 8) % 2;
+  if (s.raptor) { put(sprite(RAPTOR[frame], { flip: f < 0 }), s.x * T - 6, s.y * T - 7); if (s.stun > 0) text('!', s.x * T, s.y * T - 10); return; }
+  if (s.robot) { put(sprite(ROBOT[frame], { flip: f < 0 }), s.x * T - 5, s.y * T - 9); if (s.stun > 0) text('!', s.x * T, s.y * T - 12); return; }
+  if (s.crab || s.jelly) {
+    const img = sprite((s.crab ? CRAB : JELLY)[s.jelly ? Math.floor(s.t * 2) % 2 : frame]), lift = s.jelly ? 6 + Math.round(Math.sin(s.t * 3) * 2) : 0;
+    put(img, s.x * T - img.width / 2, s.y * T - img.height + 3 - lift);
+    if (s.stun > 0) text('!', s.x * T, s.y * T - 12 - lift);
+    return;
+  }
+  put(sprite((s.crow ? CROW : s.mouse ? MOUSE : SQUIRREL)[frame], { flip: f < 0 }), s.x * T - (s.mouse ? 5 : 6), s.y * T - (s.crow ? 10 : s.mouse ? 4 : 8) - (frame && s.stun <= 0 ? 1 : 0));
+  if (s.stun > 0) text('!', s.x * T, s.y * T - 10);
+  if (s.key) put(sprite(GATE_KEY), s.x * T - 4, s.y * T - 17 - (Math.floor(t / 250) % 2));   // the squirrel with the gate key
+}
+function drawFlea(f, t) {
+  put(sprite(FLEA), f.x * T - 4, f.y * T - 4 - f.h * 8);
+  if (f.stun > 0) text('!', f.x * T, f.y * T - 8);
+}
+// A fence running up and down the screen is seen end on: one rail with the
+// tops of the posts along it. Decided 2 Nov, after a tester pointed out that the
+// side fences were drawn front on, the same as the ones running across.
+function sideFence(X, Y, wood) { put(sideFenceTile(wood === '#fffaf0' ? 'white' : 'wood'), X, Y); }
+// ---------- Tiles, 16-bit ----------
+// Decided 15 Nov: the tiles are hand-painted pixel by pixel in the 16-bit
+// style instead of flat blocks: grass with tufts and light specks, paths with
+// pebbles and a grassy lip, water with a dark rim and a light foam line,
+// shaded pickets, leafy hedges and tree tops. Each tile is painted once into a
+// 16 x 16 canvas and kept; a few variants per kind, picked by where it is, so
+// the ground doesn't repeat.
+const tileCache = new Map();
+function paint(key, w, h, fn) {
+  if (tileCache.has(key)) return tileCache.get(key);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), set = (x, y, col) => { if (x < 0 || y < 0 || x >= w || y >= h) return; g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  const fill = (x, y, a, b, col) => { g.fillStyle = col; g.fillRect(x, y, a, b); };
+  fn(set, fill, seeded(key.split('').reduce((a, ch) => a * 31 + ch.charCodeAt(0) | 0, 7) >>> 0 || 1));
+  tileCache.set(key, c);
+  return c;
+}
+const vary = (x, y, n) => (((x * 73856093) ^ (y * 19349663)) >>> 0) % n;
+const GRASS = { hi: '#b4e39a', base: '#8fd17a', mid: '#79bd66', dark: '#5ea352' };
+function grassTile(v) {
+  return paint('grass' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, GRASS.base);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 14) + 1, y = Math.floor(r() * 12) + 2; fill(x, y, 2, 1, GRASS.mid); }   // soft patches
+    for (let i = 0; i < 2 + v % 2; i++) {    // little tufts of blades
+      const x = Math.floor(r() * 12) + 1, y = Math.floor(r() * 11) + 3;
+      set(x, y, GRASS.dark); set(x + 2, y - 1, GRASS.dark); set(x + 1, y, GRASS.mid); set(x, y + 1, GRASS.mid); set(x + 1, y + 1, GRASS.dark); set(x + 2, y, GRASS.mid); set(x + 2, y + 1, GRASS.mid); set(x + 1, y - 1, GRASS.hi);
+    }
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), GRASS.hi);   // light specks
+  });
+}
+const PATH = { hi: '#f6e5b8', base: '#ecd6a0', dark: '#d4bb82', peb: '#bfa26c', lip: '#c9a86a' };
+// mask: which sides are NOT path (1 up, 2 right, 4 down, 8 left); there the grass lips over the edge
+function pathTile(v, mask) {
+  return paint('path' + v + '/' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, PATH.base);
+    for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), PATH.dark);
+    if (v % 2 === 0) { const x = Math.floor(r() * 11) + 3, y = Math.floor(r() * 9) + 4; set(x, y, PATH.hi); set(x + 1, y, PATH.dark); set(x, y + 1, PATH.dark); set(x + 1, y + 1, PATH.peb); }   // a pebble
+    if (v % 3 === 0) { const x = Math.floor(r() * 12) + 2, y = Math.floor(r() * 10) + 3; set(x, y, PATH.peb); set(x + 1, y, PATH.hi); }
+    const lip = (pts) => pts.forEach(([x, y, c]) => set(x, y, c));
+    for (let i = 0; i < T; i++) {
+      const bump = (i * 7 + v) % 5 === 0 ? 1 : 0;
+      if (mask & 1) lip([[i, 0, GRASS.base], [i, 1, bump ? GRASS.mid : PATH.lip]]);
+      if (mask & 4) lip([[i, T - 1, GRASS.base], [i, T - 2, bump ? GRASS.base : PATH.lip]]);
+      if (mask & 8) lip([[0, i, GRASS.base], [1, i, bump ? GRASS.mid : PATH.lip]]);
+      if (mask & 2) lip([[T - 1, i, GRASS.base], [T - 2, i, bump ? GRASS.base : PATH.lip]]);
+    }
+    // round off the outside corners, so a path turns rather than steps
+    const corner = (fx, fy) => [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [0, 2], [0, 3], [1, 1]].forEach(([a, b]) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, GRASS.base));
+    const cornerLip = (fx, fy) => [[4, 1], [2, 2], [1, 4], [3, 1], [1, 3]].forEach(([a, b]) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, PATH.lip));
+    if ((mask & 9) === 9) { corner(0, 0); cornerLip(0, 0); }
+    if ((mask & 3) === 3) { corner(1, 0); cornerLip(1, 0); }
+    if ((mask & 12) === 12) { corner(0, 1); cornerLip(0, 1); }
+    if ((mask & 6) === 6) { corner(1, 1); cornerLip(1, 1); }
+  });
+}
+const WATERC = { foam: '#d7f1ff', light: '#8fd3f5', base: '#5bb8e8', deep: '#4aa8dc', rim: '#2e7ab0' };
+function waterTile(v, mask) {                  // mask: sides that are bank, not water
+  return paint('water' + v + '/' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, WATERC.base);
+    for (let i = 0; i < 3; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 14) + 1; fill(x, y, 3 + Math.floor(r() * 3), 1, WATERC.deep); }
+    if (mask & 1) { fill(0, 0, T, 1, WATERC.rim); fill(0, 1, T, 1, WATERC.foam); fill(0, 2, T, 1, WATERC.light); }
+    if (mask & 4) { fill(0, T - 2, T, 1, WATERC.deep); fill(0, T - 1, T, 1, WATERC.rim); }
+    if (mask & 8) { fill(0, 0, 1, T, WATERC.rim); fill(1, mask & 1 ? 1 : 0, 1, T, WATERC.light); }
+    if (mask & 2) { fill(T - 1, 0, 1, T, WATERC.rim); fill(T - 2, mask & 1 ? 1 : 0, 1, T, WATERC.deep); }
+    if (mask & 1) fill(0, 0, T, 1, WATERC.rim);
+    // round the bank's outside corners: grass in the corner, the rim curving round it
+    const corner = (fx, fy) => {
+      const P = (a, b, c) => set(fx ? T - 1 - a : a, fy ? T - 1 - b : b, c);
+      [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [0, 2], [0, 3]].forEach(([a, b]) => P(a, b, GRASS.base));
+      [[4, 0], [2, 1], [3, 1], [1, 2], [1, 3], [0, 4]].forEach(([a, b]) => P(a, b, WATERC.rim));
+      [[4, 1], [2, 2], [1, 4]].forEach(([a, b]) => P(a, b, fy ? WATERC.deep : WATERC.foam));
+    };
+    if ((mask & 9) === 9) corner(0, 0); if ((mask & 3) === 3) corner(1, 0); if ((mask & 12) === 12) corner(0, 1); if ((mask & 6) === 6) corner(1, 1);
+  });
+}
+function plankTile(mask, sideLine) {           // a dock: wood planks with grain and nail heads
+  return paint('plank' + mask + sideLine, T, T, (set, fill, r) => {
+    for (let y = 0; y < T; y += 4) { fill(0, y, T, 3, '#b07a46'); fill(0, y, T, 1, '#c99460'); fill(0, y + 3, T, 1, '#8d5c30'); }
+    for (let i = 0; i < 5; i++) fill(Math.floor(r() * 12), Math.floor(r() * 4) * 4 + 1, 3, 1, '#9c6a3a');
+    for (let y = 1; y < T; y += 4) { set(2, y, '#5e3319'); set(13, y, '#5e3319'); }
+    const L = '#4a2c18';
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L); if (mask & 1) fill(0, 0, T, 1, L); if (sideLine) fill(0, T - 1, T, 1, L);
+  });
+}
+// a picket fence seen front on; wood is 'white' or 'wood' (the gate)
+const FENCE = { white: { hi: '#ffffff', base: '#f4ecdc', lo: '#d8cbb0', line: '#6b5646' }, wood: { hi: '#d9a066', base: '#b07a46', lo: '#8d5c30', line: '#4a2c18' } };
+function fenceTile(kind) {
+  const f = FENCE[kind];
+  return paint('fence' + kind, T, T, (set, fill) => {
+    fill(0, 15, T, 1, GRASS.dark);                                                    // its shadow on the grass
+    fill(0, 6, T, 1, f.line); fill(0, 7, T, 1, f.hi); fill(0, 8, T, 1, f.lo); fill(0, 9, T, 1, f.line);   // the rail
+    for (let i = 0; i < 3; i++) {
+      const sx = 1 + i * 5;
+      fill(sx, 4, 5, 11, f.line); set(sx + 2, 2, f.line); fill(sx + 1, 3, 3, 1, f.line);
+      set(sx + 2, 3, f.hi); fill(sx + 1, 4, 1, 10, f.hi); fill(sx + 2, 4, 1, 10, f.base); fill(sx + 3, 4, 1, 10, f.lo);
+      fill(sx + 1, 13, 3, 1, f.lo);
+    }
+  });
+}
+function sideFenceTile(kind) {                  // the same fence seen end on: one rail, with post tops
+  const f = FENCE[kind];
+  return paint('sidefence' + kind, T, T, (set, fill) => {
+    fill(6, 0, 1, T, f.line); fill(7, 0, 1, T, f.hi); fill(8, 0, 1, T, f.lo); fill(9, 0, 1, T, f.line);
+    for (const py of [1, 9]) { fill(5, py, 6, 6, f.line); fill(6, py + 1, 4, 1, f.hi); fill(6, py + 2, 4, 2, f.base); fill(6, py + 4, 4, 1, f.lo); fill(10, py + 2, 1, 4, GRASS.dark); }
+  });
+}
+const LEAF = { out: '#1f4a30', dark: '#2e6b45', base: '#3f8a5c', light: '#5aa772', hi: '#7fc48f' };
+// a leafy round shape (tree tops, bushes): bumpy edge, lit from the top left, in clumps
+function leafy(w, h, seed = 1) {
+  return paint('leafy' + w + 'x' + h + '/' + seed, w, h, (set, fill, r) => {
+    const cx0 = w / 2, cy0 = h / 2, clump = [...Array(64)].map(() => r());
+    const inside = (x, y) => { const dx = (x + .5 - cx0) / (w / 2 - 1), dy = (y + .5 - cy0) / (h / 2 - 1), a = Math.atan2(dy, dx); return dx * dx + dy * dy < (1 - .1 * Math.abs(Math.sin(a * 4 + seed))) ** 2; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (!inside(x, y)) { if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => inside(x + a, y + b))) set(x, y, LEAF.out); continue; }
+      const dx = (x + .5 - cx0) / (w / 2), dy = (y + .5 - cy0) / (h / 2), lit = -dx * .55 - dy * .85 + (clump[(Math.floor(x / 3) * 7 + Math.floor(y / 3) * 3) % 64] - .5) * .7;
+      set(x, y, lit > .55 ? LEAF.hi : lit > .15 ? LEAF.light : lit > -.4 ? LEAF.base : LEAF.dark);
+    }
+  });
+}
+function hedgeTile(mask) {                      // mask: sides with no hedge (outline there)
+  return paint('hedge' + mask, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, LEAF.base);
+    for (let i = 0; i < 9; i++) {            // clumps of leaves: a lit top, a shaded bottom
+      const x = Math.floor(r() * 14) - 1, y = Math.floor(r() * 13);
+      fill(x + 1, y, 3, 1, LEAF.light); set(x + 1, y, LEAF.hi); fill(x, y + 1, 5, 1, LEAF.base); fill(x + 1, y + 2, 3, 1, LEAF.dark);
+    }
+    for (let y = 9; y < T; y++) for (let x = 0; x < T; x++) if ((x + y) % 3 === 0 || y > 12) set(x, y, LEAF.dark);
+    // a bumpy leafy edge where the hedge ends, rather than a straight line
+    if (mask & 4) for (let x = 0; x < T; x++) { const b = x % 5 === 0 ? 1 : 0; fill(x, T - 3 - b, 1, 2, '#1f4a30'); set(x, T - 1 - b, '#173a26'); if (b) set(x, T - 1, GRASS.dark); }
+    if (mask & 8) for (let y = 0; y < T; y++) { const b = y % 5 === 2; set(0, y, b ? GRASS.base : '#173a26'); if (b) set(1, y, '#173a26'); }
+    if (mask & 2) for (let y = 0; y < T; y++) { const b = y % 5 === 2; set(T - 1, y, b ? GRASS.base : '#173a26'); if (b) set(T - 2, y, '#173a26'); }
+  });
+}
+function hedgeTop(mask) {                       // the hedge's top, drawn over things behind it
+  return paint('hedgetop' + mask, T, 8, (set, fill, r) => {
+    fill(0, 2, T, 6, LEAF.base);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 13); fill(x, 4 + Math.floor(r() * 3), 3, 1, LEAF.light); }
+    for (let x = 0; x < T; x++) {            // a row of round leafy bumps along the top
+      const k = x % 4, top = mask & 1 ? (k === 1 || k === 2 ? 1 : 2) : 2;
+      if (mask & 1) set(x, top - 1, '#173a26');
+      set(x, top, k === 1 ? LEAF.hi : LEAF.light); if (top === 1) set(x, 2, LEAF.light);
+      if (k === 3) set(x, 3, LEAF.base);
+    }
+    if (mask & 8) fill(0, 1, 1, 7, '#173a26'); if (mask & 2) fill(T - 1, 1, 1, 7, '#173a26');
+  });
+}
+function trunkTile() {
+  return paint('trunk', T, T, (set, fill) => {
+    fill(5, 3, 6, 13, '#4a2c18'); fill(6, 3, 1, 12, '#a8743f'); fill(7, 3, 2, 12, '#7a4a2a'); fill(9, 3, 1, 12, '#5e3319');
+    set(7, 8, '#5e3319'); set(8, 11, '#5e3319'); fill(3, 15, 10, 1, GRASS.dark); fill(4, 14, 1, 1, '#4a2c18'); fill(11, 14, 1, 1, '#4a2c18');   // roots and shadow
+  });
+}
+function reedsTile(f) {                        // three cattails: stems with a leaf, shaded brown heads
+  return paint('reeds' + f, T, 20, (set, fill) => {
+    [[3, 4], [8, 1], [13, 5]].forEach(([x, top], i) => {
+      const sx = x + (f && i !== 1 ? 1 : 0);
+      fill(sx, top + 6, 1, 20 - top - 6, '#3f8a5c'); set(sx - 1, top + 12, '#5aa772'); set(sx - 2, top + 11, '#5aa772');   // the stem and a leaf
+      fill(sx - 1, top, 3, 7, '#4a2c18'); fill(sx, top + 1, 1, 5, '#7a4a2a'); set(sx, top + 1, '#a8743f'); set(sx, top - 1, '#3f8a5c');
+    });
+  });
+}
+// the farm's own tiles: plank floors, red barn boards, hay, the ring's sand
+function floorTile(v) {
+  return paint('floor' + v, T, T, (set, fill, r) => {
+    for (let y = 0; y < T; y += 5) { fill(0, y, T, 4, '#c9925a'); fill(0, y, T, 1, '#d9a66e'); fill(0, y + 4, T, 1, '#8d5c30'); }
+    for (let y = 0; y < T; y += 5) { const jx = (Math.floor(r() * 12) + y * 3) % 14 + 1; fill(jx, y, 1, 4, '#8d5c30'); set(jx + 1, y, '#d9a66e'); }   // board ends
+    for (let i = 0; i < 4; i++) fill(Math.floor(r() * 12), Math.floor(r() * 3) * 5 + 2, 3, 1, '#b8814c');                            // grain
+    if (v === 0) { const x = 4 + Math.floor(r() * 8), y = Math.floor(r() * 3) * 5 + 1; set(x, y + 1, '#7a4a2a'); set(x + 1, y + 1, '#8d5c30'); }   // a knot
+  });
+}
+function boardsTile(mask, roof) {               // red barn boards, up and down, with a light top where the wall starts
+  return paint('boards' + mask + roof, T, T, (set, fill) => {
+    for (let x = 0; x < T; x += 4) { fill(x, 0, 4, T, '#a8302f'); fill(x, 0, 1, T, '#c0392b'); fill(x + 3, 0, 1, T, '#7a1f18'); }
+    for (const y of [5, 11]) for (let x = 1; x < T; x += 4) set(x + 1, y, '#5a1610');   // nail heads
+    const L = '#3a120c';
+    if (mask & 1) { fill(0, 0, T, roof ? 3 : 4, roof ? '#fff1d6' : '#c0392b'); fill(0, roof ? 3 : 4, T, 1, roof ? '#d8cbb0' : '#e05a48'); fill(0, 0, T, 1, L); }
+    if (mask & 4) { fill(0, T - 2, T, 1, '#6e1a14'); fill(0, T - 1, T, 1, L); }
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L);
+  });
+}
+function haleTile(tied) {                        // a hay bale: straw rows, lit top, shaded front
+  return paint('hay' + tied, T, T, (set, fill, r) => {
+    const O = '#6b4a14';
+    fill(0, 2, T, T - 2, O); fill(1, 3, T - 2, T - 4, '#e8c35a'); fill(1, 3, T - 2, 2, '#f5dc8a'); fill(1, T - 3, T - 2, 1, '#c9a03a');
+    for (let y = 6; y < T - 3; y += 3) for (let x = 1; x < T - 1; x++) if ((x + y) % 4) set(x, y, '#d4ad48');
+    for (let i = 0; i < 6; i++) set(1 + Math.floor(r() * 14), 4 + Math.floor(r() * 9), r() < .5 ? '#f5dc8a' : '#b8902e');
+    if (tied) for (const tx of [4, 11]) { fill(tx, 3, 1, T - 4, '#7a4a2a'); set(tx, 3, '#a8743f'); }
+  });
+}
+function sandTile(v) {
+  return paint('sand' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#e3c48e');
+    for (let i = 0; i < 5; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#cfae74');
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#f0d9a8');
+    if (v % 3 === 0) { const x = 3 + Math.floor(r() * 9), y = 3 + Math.floor(r() * 9); fill(x, y, 3, 1, '#cfae74'); fill(x, y + 2, 3, 1, '#cfae74'); set(x, y + 1, '#cfae74'); set(x + 2, y + 1, '#cfae74'); }   // a hoof print
+  });
+}
+function railTile() {                            // a stall rail, front on: two shaded boards on two posts
+  return paint('rail', T, T, (set, fill) => {
+    const L = '#4a2c18';
+    for (const y of [5, 11]) { fill(0, y, T, 1, L); fill(0, y + 1, T, 1, '#d9a066'); fill(0, y + 2, T, 1, '#b07a46'); fill(0, y + 3, T, 1, L); }
+    for (const sx of [1, 12]) { fill(sx, 3, 4, 13, L); fill(sx + 1, 4, 1, 11, '#d9a066'); fill(sx + 2, 4, 1, 11, '#8d5c30'); }
+  });
+}
+function loftTile() {                            // the hayloft, up high: loose hay on boards with a beam along the front
+  return paint('loft', T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#c9a03a');
+    for (let i = 0; i < 14; i++) { const x = Math.floor(r() * 14), y = Math.floor(r() * 10); fill(x, y, 3, 1, r() < .5 ? '#e8c35a' : '#f5dc8a'); }
+    fill(0, T - 5, T, 1, '#4a2c18'); fill(0, T - 4, T, 1, '#a8743f'); fill(0, T - 3, T, 2, '#7a4a2a'); fill(0, T - 1, T, 1, '#4a2c18');
+  });
+}
+// ---------- 16-bit tiles for the aquarium, the museum and the ocean ----------
+const edgeMask = (x, y, same) => (same(x, y - 1) ? 0 : 1) | (same(x + 1, y) ? 0 : 2) | (same(x, y + 1) ? 0 : 4) | (same(x - 1, y) ? 0 : 8);
+// a wall seen from above: bricks, with a lit cap where the wall's top shows
+function wallTile(kind, mask) {
+  const P = { aqua: { base: '#33466e', hi: '#3f5684', lo: '#26354f', mortar: '#1e2a42', cap: '#5a7fb0', capHi: '#8fb0d8', capLo: '#46689a' },
+              stone: { base: '#9a9387', hi: '#b3ada1', lo: '#7d776c', mortar: '#5e5950', cap: '#c9c2b5', capHi: '#e4ded2', capLo: '#a8a195' },
+              muse: { base: '#7a4a3a', hi: '#94604c', lo: '#5e3328', mortar: '#4a2820', cap: '#d9c7a8', capHi: '#efe3cf', capLo: '#b8a483' } }[kind];
+  return paint('wall' + kind + mask, T, T, (set, fill) => {
+    fill(0, 0, T, T, P.mortar);
+    for (let row = 0; row < 4; row++) for (let i = -1; i < 3; i++) {   // bricks in a running bond
+      const bx = i * 8 + (row % 2) * 4, by = row * 4;
+      fill(bx, by, 7, 3, P.base); fill(bx, by, 7, 1, P.hi); fill(bx + 6, by, 1, 3, P.lo);
+    }
+    const L = '#14101a';
+    if (mask & 1) { fill(0, 0, T, 5, P.cap); fill(0, 1, T, 1, P.capHi); fill(0, 4, T, 1, P.capLo); fill(0, 0, T, 1, L); fill(0, 5, T, 1, L); }
+    if (mask & 4) fill(0, T - 1, T, 1, L);
+    if (mask & 8) fill(0, 0, 1, T, L); if (mask & 2) fill(T - 1, 0, 1, T, L);
+  });
+}
+// floors of square tiles: the aquarium's pale blue, the museum's marble with veins
+function squaresTile(kind, v) {
+  const P = { aqua: ['#dbe6f1', '#cbd9e8', '#b4c4d8', '#eef4fa'], muse: ['#efe3cf', '#e4d4b8', '#cdb994', '#fbf4e6'] }[kind];
+  return paint('squares' + kind + v, T, T, (set, fill, r) => {
+    for (const [ox, oy] of [[0, 0], [8, 0], [0, 8], [8, 8]]) {
+      fill(ox, oy, 8, 8, P[2]); fill(ox, oy, 7, 7, (ox + oy) % 16 ? P[1] : P[0]); set(ox + 1, oy + 1, P[3]); set(ox + 2, oy + 1, P[3]); set(ox + 1, oy + 2, P[3]);
+    }
+    if (kind === 'muse') for (let i = 0; i < 2; i++) { let x = Math.floor(r() * 14), y = Math.floor(r() * 14); for (let k = 0; k < 4; k++) { set(x, y, '#d6c4a2'); x += 1; y += r() < .5 ? 1 : 0; } }   // veins in the marble
+  });
+}
+function caveTile(v) {                          // the aquarium's dark room: a sandy floor
+  return paint('cave' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#3b4f73');
+    for (let i = 0; i < 5; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .5 ? '#566c94' : '#304262');
+  });
+}
+// a rock, from above: a lit top face, shaded sides, a dark outline where it ends
+function rockTile(kind, mask, v) {
+  const P = { cave: ['#4c5268', '#3a3f52', '#2c3040', '#666c84'], sea: ['#a7aab8', '#7d8091', '#666979', '#c4c7d2'] }[kind];
+  return paint('rock' + kind + mask + '/' + v, T, T, (set, fill, r) => {
+    const t = mask & 1 ? 2 : 0, b = mask & 4 ? 1 : 0, l = mask & 8 ? 1 : 0, rr = mask & 2 ? 1 : 0;
+    fill(l, t, T - l - rr, T - t - b, P[1]);
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 12) + 1, y = Math.floor(r() * 10) + 3; fill(x, y, 3, 2, P[2]); set(x, y, P[0]); }   // cracks and bumps
+    if (mask & 1) { fill(l, 2, T - l - rr, 3, P[0]); fill(l + 1, 2, T - l - rr - 2, 1, P[3]); fill(0, 1, T, 1, '#1d1a24'); }
+    if (mask & 4) { fill(l, T - 3, T - l - rr, 2, P[2]); fill(0, T - 1, T, 1, '#1d1a24'); }
+    if (mask & 8) fill(0, t, 1, T - t, '#1d1a24'); if (mask & 2) fill(T - 1, t, 1, T - t, '#1d1a24');
+    if ((mask & 9) === 9) set(1, 2, '#1d1a24');
+    if ((mask & 3) === 3) set(T - 2, 2, '#1d1a24');
+  });
+}
+// a fish tank: water lighter at the top, sand along the bottom, a frame and a shine
+function tankTile(mask, v) {
+  return paint('tank' + mask + '/' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#5bb8e8'); if (mask & 1) fill(0, 0, T, 6, '#7fc8ee'); if (mask & 4) fill(0, 6, T, 10, '#4aa8dc');   // lighter near the top of the tank, darker near the bottom
+    for (let i = 0; i < 2; i++) { const x = Math.floor(r() * 13), y = Math.floor(r() * 9) + 3; set(x, y, '#d7f1ff'); set(x + 1, y - 2, '#bfe8ff'); }   // bubbles
+    if (mask & 4) { fill(0, T - 5, T, 4, '#e3c48e'); fill(0, T - 5, T, 1, '#f0d9a8'); set(3 + v * 3, T - 3, '#cfae74'); fill(0, T - 2, T, 1, '#cfae74'); }
+    const F = '#2b3a5c';
+    if (mask & 1) { fill(0, 0, T, 2, F); fill(0, 2, T, 1, '#d7f1ff'); }
+    if (mask & 4) fill(0, T - 1, T, 1, F);
+    if (mask & 8) { fill(0, 0, 2, T, F); fill(2, 3, 1, T - 6, '#bfe8ff'); }
+    if (mask & 2) fill(T - 2, 0, 2, T, F);
+    if (v === 1) { set(5, 5, '#ffffff'); set(6, 4, '#ffffff'); set(4, 6, '#ffffff'); }   // a shine on the glass
+  });
+}
+function sandBeach(v) {                         // the ocean's beach
+  return paint('beach' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#f0d9a0');
+    for (let i = 0; i < 6; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .6 ? '#d9bf85' : '#fbeccb');
+    if (v === 2) { const x = 3 + Math.floor(r() * 9), y = 4 + Math.floor(r() * 8); fill(x, y, 3, 1, '#ffffff'); set(x + 1, y - 1, '#f4a6a0'); }   // a little shell
+    if (v === 4) { for (let i = 0; i < 4; i++) set(3 + i * 2, 8 + (i % 2), '#d9bf85'); }   // ripples in the sand
+  });
+}
+function seaTile(deep, v) {                     // open water from up top: darker deep, lighter shallows, a few soft streaks
+  return paint('sea' + deep + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, deep ? '#3a8fd8' : '#7fd0ef');
+    for (let i = 0; i < 3; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 15); fill(x, y, 3 + Math.floor(r() * 3), 1, deep ? '#3483cc' : '#8fd8f2'); }
+    if (!deep) for (let i = 0; i < 2; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#c9b98a');   // sand showing through
+  });
+}
+function seabedTile(v) {                        // the sea floor, seen when Bread is under
+  return paint('seabed' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#2f6c8f');
+    for (let i = 0; i < 6; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .5 ? '#3f86a8' : '#285d7c');
+    if (v === 1 || v === 4) { const x = 3 + Math.floor(r() * 8); fill(x, 14, 4, 2, '#5a6878'); fill(x + 1, 13, 2, 1, '#788698'); }   // a pebble
+  });
+}
+function mudTile(v) {
+  return paint('mud' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#7a5a3a');
+    for (let i = 0; i < 4; i++) { const x = Math.floor(r() * 12), y = Math.floor(r() * 13); fill(x, y, 3 + Math.floor(r() * 2), 2, '#5f4428'); set(x, y, '#4e3720'); }
+    for (let i = 0; i < 3; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#94704a');
+  });
+}
+function cornGround(v) {
+  return paint('cornground' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#b98a4e');
+    for (const y of [4, 11]) { fill(0, y, T, 1, '#a0743c'); fill(0, y + 1, T, 1, '#cfa36a'); }
+    for (let i = 0; i < 4; i++) set(Math.floor(r() * T), Math.floor(r() * T), '#a0743c');
+  });
+}
+function drawLevel(t) {
+  if (G.flight) return drawFlight(t);
+  if (G.lab && G.lab.open) return drawBench(t);   // the beaker puzzle fills the screen
+  const b = G.bread, cam = G.cam;
+  cam.x = Math.max(0, Math.min(LW - VW, b.x - VW / 2)); cam.y = Math.max(0, Math.min(LH - VH, b.y - VH / 2));
+  cx.save(); cx.translate(-Math.round(cam.x * T), -Math.round(cam.y * T));
+  const x0 = Math.floor(cam.x), y0 = Math.floor(cam.y), x1 = Math.min(LW, x0 + VW + 2), y1 = Math.min(LH, y0 + VH + 2);
+  const wet = (x, y) => 'wd'.includes(G.m[y]?.[x] ?? '.');
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.m[y][x], X = x * T, Y = y * T;
+    if (G.world === 'ocean') drawSeaTile(c, x, y, X, Y, t);
+    else if (G.world === 'aquarium' && c !== 'w' && y <= 17) drawAquaTile(c, x, y, X, Y);
+    else if (G.world === 'lab') drawLabTile(c, x, y, X, Y);
+    else if (G.world === 'museum' && y <= 17) drawMuseTile(c, x, y, X, Y);
+    else if (c === 'w' || c === 'd') {
+      put(waterTile(vary(x, y, 4), (wet(x, y - 1) ? 0 : 1) | (wet(x + 1, y) ? 0 : 2) | (wet(x, y + 1) ? 0 : 4) | (wet(x - 1, y) ? 0 : 8)), X, Y);
+      if (vary(x, y, 6) === 0) px(X + 5, Y + 7 + (Math.floor(t / 900 + x) % 2), 5, 1, '#7cc6ee');   // now and then a soft ripple, bobbing (decided 15 Nov: the white ones looked like sparkles)
+      if (c === 'd') { const isD = (i, j) => G.m[j]?.[i] === 'd'; put(plankTile((isD(x, y - 1) ? 0 : 1) | (isD(x + 1, y) ? 0 : 2) | (isD(x - 1, y) ? 0 : 8), G.m[y + 1]?.[x] === 'w'), X, Y); }
+    } else if (indoors(x, y)) {              // inside the barn or the coop: plank floor, walls, stall rails, hay
+      put(floorTile(vary(x, y, 3)), X, Y);
+      const isK = (i, j) => G.m[j]?.[i] === 'K';
+      if (c === 'K') put(boardsTile((isK(x, y - 1) ? 0 : 1) | (isK(x + 1, y) ? 0 : 2) | (isK(x, y + 1) ? 0 : 4) | (isK(x - 1, y) ? 0 : 8), false), X, Y);
+      if (c === 'R') {
+        const rail = (i, j) => 'RK'.includes(G.m[j]?.[i] ?? '.');
+        if ((rail(x, y - 1) || rail(x, y + 1)) && !rail(x - 1, y) && !rail(x + 1, y)) sideFence(X, Y, '#b07a46');
+        else put(railTile(), X, Y);
+      }
+      if (c === 'N') { const col = EGG_COL[FC.nests.find(n => n[0] === x && n[1] === y)?.[2]] || '#fffaf0', n = (G.nests || {})[x + ',' + y] || 0;   // a nest box, its egg color painted on the front
+        px(X + 1, Y + 3, T - 2, T - 4, LINE); px(X + 2, Y + 4, T - 4, T - 6, '#8a4f2a'); px(X + 2, Y + 4, T - 4, 4, '#e8c35a');
+        for (let i = 0; i < 2; i++) { const ex = X + 3 + i * 6, ey = Y + 8; if (i < n) { px(ex, ey - 1, 4, 5, LINE); px(ex + 1, ey, 2, 3, col); } else { px(ex, ey, 4, 4, LINE); px(ex + 1, ey + 1, 2, 2, '#5e3319'); } }
+        px(X + T - 4, Y + 4, 3, 3, LINE); px(X + T - 3, Y + 5, 1, 1, col); }
+      if (c === 'Q') { px(X, Y + 6, T, 3, LINE); px(X, Y + 7, T, 1, '#b07a46'); if (x % 2) { px(X + 6, Y + 9, 2, 7, LINE); } }   // the roost: a pole up high
+      if (c === 'L') put(loftTile(), X, Y);   // the hayloft, up high
+      if (c === 'A' || c === 'a') { const top = c === 'a' ? Y - 10 : Y + 1; px(X + 3, top, 2, Y + T - 1 - top, LINE); px(X + 11, top, 2, Y + T - 1 - top, LINE); for (let ry = top + 2; ry < Y + T - 1; ry += 4) px(X + 3, ry, 10, 2, '#b07a46'); px(X + 4, top, 1, Y + T - 1 - top, '#d9a066'); px(X + 12, top, 1, Y + T - 1 - top, '#d9a066'); }   // the ladder
+      if (c === 'h' || c === 'P') put(haleTile(c === 'P'), X, Y);   // hay; a loose bale is tied with twine
+    } else if (c === 'C') {                  // corn rows on dirt; the tall stalks are drawn later, over things
+      put(cornGround(vary(x, y, 3)), X, Y);
+    } else if (c === 'm') {                  // mud
+      put(mudTile(vary(x, y, 3)), X, Y);
+      px(X + 9 + (Math.floor(t / 600 + x) % 2), Y + 5, 2, 1, '#a07c56');
+    } else if (c === 's' || c === 'O') {     // the horse ring's sand, and its barrels
+      put(sandTile(vary(x, y, 6)), X, Y);
+      if (c === 'O') { const i = FR.barrels.findIndex(([bx, by]) => Math.floor(bx) === x && Math.floor(by) === y), done = G.race && G.race.done[i];
+        put(sprite(BARREL, { map: done ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), X + 1, Y - 1, 2); }   // drawn double size, so it reads next to the pony
+    } else if (c === 'p') {
+      const pth = (i, j) => (G.m[j]?.[i] ?? 'p') === 'p';
+      put(pathTile(vary(x, y, 6), (pth(x, y - 1) ? 0 : 1) | (pth(x + 1, y) ? 0 : 2) | (pth(x, y + 1) ? 0 : 4) | (pth(x - 1, y) ? 0 : 8)), X, Y);
+    } else {
+      put(grassTile(vary(x, y, 6)), X, Y);
+      if (c === '#' && (x === 0 || x === LW - 1 || (G.m[y - 1]?.[x] === '#' && G.m[y][x - 1] !== '#' && G.m[y][x + 1] !== '#')) && y > 0 && y < LH - 1) sideFence(X, Y, '#fffaf0');
+      else if (c === '#') put(fenceTile('white'), X, Y);   // white picket fence
+      if (c === 'T') put(trunkTile(), X, Y);
+      if (c === 'J') put(logTile(G.m[y - 1]?.[x] === 'J' || G.m[y + 1]?.[x] === 'J'), X, Y);   // a fallen log, at Dino Land
+      if (c === 'x') put(sprite(MOUND), X + 3, Y + 9);                     // soft dirt
+      if (c === 'o') { px(X + 3, Y + 7, 10, 6, '#4a2c18'); px(X + 4, Y + 8, 8, 4, '#2a1a10'); px(X + 4, Y + 11, 8, 1, '#3b2a1a'); px(X + 1, Y + 11, 3, 2, '#8a4f2a'); px(X + 1, Y + 11, 2, 1, '#b8773a'); px(X + 12, Y + 11, 3, 2, '#8a4f2a'); px(X + 12, Y + 11, 2, 1, '#b8773a'); }   // a dug hole
+      if (c === 'h') put(haleTile(false), X, Y);   // a hay bale
+      if (c === 'B') {                        // the red barn
+        const isB = (i, j) => G.m[j]?.[i] === 'B';
+        put(boardsTile((isB(x, y - 1) ? 0 : 1) | (isB(x + 1, y) ? 0 : 2) | (isB(x, y + 1) ? 0 : 4) | (isB(x - 1, y) ? 0 : 8), true), X, Y);
+      }
+      const fenceAt = (i, j) => 'FXuG'.includes(G.m[j]?.[i] ?? '.');
+      if (c === 'F' && (fenceAt(x, y - 1) || fenceAt(x, y + 1)) && !fenceAt(x - 1, y) && !fenceAt(x + 1, y)) sideFence(X, Y, '#fffaf0');
+      else if (c === 'F' || c === 'X' || c === 'u' || (c === 'G' && !G.gateOpen)) {   // fences; the park gate is wooden, with a lock
+        put(fenceTile(c === 'G' ? 'wood' : 'white'), X, Y);
+        if (c === 'X') { px(X + 5, Y + 12, 6, 3, '#1d1410'); px(X + 2, Y + 13, 3, 2, '#8a4f2a'); px(X + 11, Y + 13, 3, 2, '#8a4f2a'); }   // where Crumb squeezed under
+        if (c === 'u') { px(X + 2, Y + 9, 12, 7, '#1d1410'); px(X, Y + 13, 3, 3, '#8a4f2a'); px(X + 13, Y + 13, 3, 3, '#8a4f2a'); }     // dug out, big enough for Bread
+        if (c === 'G' && x === 17) { px(X + 13, Y + 6, 6, 6, LINE); px(X + 14, Y + 7, 4, 4, COL.y); px(X + 14, Y + 4, 4, 1, LINE); px(X + 14, Y + 4, 1, 3, LINE); px(X + 17, Y + 4, 1, 3, LINE); px(X + 15, Y + 8, 2, 2, LINE); }
+      }
+      if (c === 'G' && G.gateOpen && x === 17) { px(X, Y + 2, 2, 13, LINE); px(X + 2 * T - 2, Y + 2, 2, 13, LINE); }   // just the posts once it's open
+      if (c === 'H') {                        // a clipped hedge; its top is drawn later, over things behind it
+        const isH = (i, j) => G.m[j]?.[i] === 'H';
+        put(hedgeTile((isH(x + 1, y) ? 0 : 2) | (isH(x, y + 1) ? 0 : 4) | (isH(x - 1, y) ? 0 : 8)), X, Y);
+      }
+    }
+  }
+  // Decided 5 Nov: the testers saw the three stalls as one big pen, so each
+  // stall has its own straw bed and a feed box at the back
+  if (G.world === 'farm' && G.cows) FB.stalls.forEach(([a, bb, cc, dd]) => {
+    const X = a * T + 2, Y = bb * T + 2, w = (cc - a) * T - 4, h = (dd - bb + 1) * T - 4;
+    px(X, Y, w, h, LINE); px(X + 1, Y + 1, w - 2, h - 2, '#e8c35a');
+    for (let i = 3; i < w - 4; i += 5) for (let j = 3; j < h - 2; j += 6) px(X + 1 + i, Y + j + (i % 3), 3, 1, '#c9a03a');
+    px(a * T, Y + h / 2 - 4, 6, 9, LINE); px(a * T + 1, Y + h / 2 - 3, 4, 7, '#8a4f2a'); px(a * T + 1, Y + h / 2 - 3, 4, 2, '#9be27a');
+  });
+  if (G.octo) drawAquarium(t);
+  if (G.dino) drawMuseum(t);
+  if (G.world === 'ocean') drawOcean(t);
+  if (G.world === 'jungle') drawJungle(t);
+  else if (G.world === 'lab') drawLab(t);
+  else drawCar(W.map.car[0] * T, (W.map.car[1] + 1.2) * T, 1, 0, false);   // parked, waiting
+  G.treats.forEach(tr => drawTreat(tr.x * T, tr.y * T, tr.v, t));
+  (G.eggs || []).forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: EGG_COL[e.col] } }), e.x * T - 3, e.y * T - 3 - (Math.floor(t / 400 + e.x) % 2)); });
+  if (G.piglet) put(sprite(PIGLET, { flip: Math.floor(t / 900) % 2 === 1 }), G.piglet.x * T - 4, G.piglet.y * T - 3 + (Math.floor(t / 300) % 2));
+  if (G.key) { put(sprite(GATE_KEY), G.key.x * T - 4, G.key.y * T - 3 - (Math.floor(t / 200) % 2) * 2); twinkle(G.key.x * T + 6, G.key.y * T - 5, t); }
+  // Crumb (hidden while dashing off and once safe in the car)
+  { const c = G.crumb, cy = c.y * T + 5, wig = c.itch ? (Math.floor(t / 70) % 2 ? 1 : -1) : 0;
+    if (c.mode !== 'home') {
+      const surf = G.world === 'ocean' && c.mode !== 'wait' && WATER.includes(tileAt(c.x, c.y));   // at the ocean Crumb rides the surfboard
+      if (surf) { put(sprite(SURFBOARD, { flip: c.face < 0 }), c.x * T - 8, cy - 4 + (Math.floor(t / 300) % 2)); drawCrumb(c.x * T, cy - 3, c.face, t, false); }
+      else {
+      if (c.swim) { cx.save(); cx.beginPath(); cx.rect(c.x * T - 12, cy - 30, 24, 26); cx.clip(); }
+      drawCrumb(c.x * T + wig, cy + (c.swim ? 2 : 0), c.face, t, c.moving || c.mode === 'run');
+      if (c.swim) { cx.restore(); px(c.x * T - 9, cy - 4, 6, 1, COL.l); px(c.x * T + 3, cy - 4, 6, 1, COL.l); }
+      }
+    } }
+  if (G.world === 'lab' && G.crumb.mode !== 'home') drawSlime(G.crumb, t);
+  if (G.pig) {                               // the farm pig and her piglets, and the hens
+    put(sprite(PIG, { flip: Math.cos(G.pig.a) < 0 }), G.pig.x * T - 7, G.pig.y * T - 7);
+    G.piglets.forEach(l => put(sprite(PIGLET, { flip: l.x > G.pig.x }), l.x * T - 4, l.y * T - 3 + (Math.floor(t / 300 + l.t) % 2)));
+  }
+  G.cows.forEach(c => put(sprite(COW, { flip: c.face < 0 }), c.x * T - 10, c.y * T - 9 + (Math.floor(t / 600 + c.t) % 2 && Math.sin(c.t * .5) > .4 ? -1 : 0)));
+  (G.cats || []).forEach(k => put(sprite(CAT[k.mode === 'stuck' ? 0 : Math.floor(t / 140) % 2], { flip: k.face < 0 }), k.x * T - 6, k.y * T - 6));
+  if (G.cow) { put(sprite(COW), G.cow.x * T - 10, G.cow.y * T - 9); px(G.cow.x * T + 6, G.cow.y * T - 1, 3, 3, LINE); px(G.cow.x * T + 7, G.cow.y * T, 1, 1, COL.y); }   // the dairy cow, with her bell
+  G.hens.forEach(h => put(sprite(CHICKEN, { flip: Math.cos(h.a) < 0 }), h.x * T - 5, h.y * T - 6 - (Math.floor(t / 200 + h.t) % 2)));
+  G.ducks.forEach(d => put(sprite(DUCK, { flip: Math.cos(d.a) < 0 }), d.x * T - 7, d.y * T - 6 + (Math.floor(t / 400 + d.a) % 2)));
+  if (G.frogs) {                             // the lily pads and the four frogs
+    put(sprite(blob(24, 13, 'L', 'G', 'q')), 14.3 * T - 12, 7.6 * T - 3);   // Crumb's pad, in the middle
+    { const c = G.crumb; if (c.mode === 'wait' && Math.hypot(c.x - 14.3, c.y - 7.6) < .3) drawCrumb(c.x * T, c.y * T + 5, c.face, t, false); }
+    { const g = G.bigFrog, up = g.litT > 0 ? 3 : 0; put(sprite(FROG), g.x * T - 14, g.y * T - 13 - up, 2.2); if (g.litT > 0) { px(g.x * T - 6, g.y * T - 1 - up, 12, 6, LINE); px(g.x * T - 5, g.y * T - up, 10, 4, COL.h); } }
+    G.frogs.forEach(f => {
+      const X = f.x * T, Y = f.y * T, up = f.litT > 0 || f.hopT > 0 ? 3 : 0;
+      put(sprite(blob(24, 13, 'L', 'G', 'q')), X - 12, Y - 3);
+      put(sprite(FROG, { map: { L: f.badT > 0 ? COL.g : f.col } }), X - 10, Y - 11 - up, 1.5);   // drawn bigger, so each color reads
+      if (f.litT > 0) { px(X - 4, Y - 1 - up, 8, 5, LINE); px(X - 3, Y - up, 6, 3, COL.h); }   // the croak puffs its throat out
+    });
+    const s = G.song, done = s.state === 'won' ? 3 : s.len - 2;
+    for (let i = 0; i < 3; i++) { px(14.3 * T - 10 + i * 8, 4.3 * T, 6, 6, LINE); px(14.3 * T - 9 + i * 8, 4.3 * T + 1, 4, 4, i < done ? COL.y : '#3b2a1a'); }   // the rounds sung so far
+  }
+  if (G.mama) {                              // the mama duck and her ducklings
+    put(sprite(DUCK), G.mama.x * T - 7, G.mama.y * T - 6 + (Math.floor(t / 400) % 2));
+    G.ducklings.forEach(d => put(sprite(DUCKLING, { flip: d.face < 0 }), d.x * T - 4, d.y * T - 4 - (Math.floor(t / 300 + d.t) % 2)));
+  }
+  G.fl.forEach(f => drawFlea(f, t));
+  G.sq.forEach(s => { if (!s.jelly) drawSquirrel(s, t); });   // the jellyfish go over the dark, so they glow
+  if (G.goose) drawGoose(t);
+  const tg = !G.done && pawTarget();
+  if (tg) {                                  // white corners on whoever the paw will reach
+    const X = Math.round(tg.x * T), Y = Math.round(tg.y * T) - 2, o = 7 + (Math.floor(t / 250) % 2);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { px(X + a * o - (a > 0 ? 2 : 0), Y + c * o, 3, 1, COL.h); px(X + a * o, Y + c * o - (c > 0 ? 2 : 0), 1, 3, COL.h); });
+  }
+  if (G.pony && !G.riding) { const po = G.pony, img = sprite(PONY[po.home && Math.hypot(po.x - b.x, po.y - b.y) > 3 ? 0 : Math.floor(t / 120) % 4], { map: HORSE_PAL, flip: po.face < 0 }); put(img, po.x * T - img.width / 2, po.y * T - img.height + 4); }
+  if (G.riding) {                            // Bread up on the pony
+    const f = b.moving ? Math.floor(t / 90) % 4 : 0, img = sprite(PONY[f], { map: HORSE_PAL, flip: b.face < 0 }), head = sprite(CAR_HEAD, { map: wearMap(S.wear), flip: b.face < 0 });
+    const X = b.x * T - img.width / 2, Y = b.y * T - img.height + 4;
+    put(img, X, Y); put(head, b.face > 0 ? X + 12 : X + img.width - 12 - head.width, Y - 2);
+  } else if (!(G.ouch > 0 && Math.floor(t / 90) % 2)) {
+    // swimming, only her head and back show above the water; shaking, she wiggles
+    const by = b.y * T + 7, wig = G.shake ? (Math.floor(t / 50) % 2 ? 1 : -1) : 0;
+    const clip = b.swim && !G.under;      // under the water, all of her shows
+    if (clip) { cx.save(); cx.beginPath(); cx.rect(b.x * T - 16, by - 40, 32, 33); cx.clip(); }
+    const dw = G.digT ? (Math.floor(t / 60) % 2 ? 1 : -1) : 0;    // digging, she scrabbles
+    drawBread(b.x * T + wig + dw, by + (b.swim ? 2 : 0) - (G.jump ? Math.round(Math.sin(G.jump.t * Math.PI) * 12) : 0), 1, b.face, t, b.moving && !G.hold);
+    if (G.muddy && !b.swim) [[-7, -9], [-2, -6], [4, -10], [-5, -4], [2, -4]].forEach(([dx, dy], i) => { if (i < 2 + G.muddy) px(b.x * T + dx * b.face, by + dy, 2, 2, '#6b4a2a'); });   // muddy spots
+    if (clip) { cx.restore(); const o = Math.floor(t / 250) % 2; px(b.x * T - 13 - o, by - 7, 9, 1, COL.l); px(b.x * T + 4 + o, by - 7, 9, 1, COL.l); }
+  }
+  if (G.carry && !G.hold) put(sprite(EGG, { map: { e: EGG_COL[G.carry.col] } }), b.x * T + b.face * 11 - 3, b.y * T - 4);   // the egg in her mouth
+  if (G.woofT > performance.now()) text('Woof!', b.x * T + b.face * 14, b.y * T - 18);
+  if (G.pawT > performance.now()) put(sprite(CLAW, { flip: b.face < 0 }), (b.x + b.dx * .9) * T - 8, (b.y + b.dy * .9) * T - 6);   // the swipe
+  // tree tops, bushes and reeds go over everything, so things can hide behind them
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.m[y][x], X = x * T, Y = y * T;
+    if (c === 'T') put(leafy(26, 22, vary(x, y, 3)), X - 5, Y - 15);
+    if (c === 'b') put(leafy(20, 16, vary(x, y, 3) + 3), X - 2, Y);
+    if (c === 'k') for (let i = 0; i < 3; i++) { const kx = X + 3 + i * 4 + (Math.floor(t / 600 + x + i) % 2); px(kx - 1, Y - 7 + i * 2, 4, 19 - i * 2, LINE); px(kx, Y - 6 + i * 2, 2, 17 - i * 2, i % 2 ? COL.G : COL.L); }   // kelp
+    if (c === 'C') { for (let i = 0; i < 3; i++) { const sx = X + 2 + i * 5 + (Math.floor(t / 900 + x + i) % 2); px(sx, Y - 8, 2, T + 6, '#4f8f3a'); px(sx - 2, Y - 4 + i, 2, 1, '#79bd66'); px(sx + 2, Y - 1 - i, 2, 1, '#79bd66'); px(sx, Y - 10, 2, 2, COL.y); } }
+    if (c === 'H') { const isH = (i, j) => G.m[j]?.[i] === 'H'; put(hedgeTop((isH(x, y - 1) ? 0 : 1) | (isH(x + 1, y) ? 0 : 2) | (isH(x - 1, y) ? 0 : 8)), X, Y - 7); }
+    if (c === 'r') put(reedsTile(Math.floor(t / 700 + x) % 2), X, Y - 4);   // cattails, swaying a little
+  }
+  G.sparkles.forEach(sp => twinkle(sp.x * T, sp.y * T, t));    // sparkles show through, so they can be found
+  // the roofs hide the insides until Bread goes in the door (drawn after the
+  // sparkles: the first barn showed the pieces inside on top of the roof)
+  if (G.world === 'farm') [[FB.rect, BX + 17, ['#8e2a20', '#a8302f', '#c0392b']], [FC.rect, 11, ['#5e3319', '#7a4a2a', '#b07a46']]].forEach(([[x0, y0, x1, y1], door, [dark, mid, light]]) => {
+    if (b.x > x0 && b.x < x1 + 1 && b.y > y0 && b.y < y1 + .9) return;
+    const X = x0 * T, Y = y0 * T - 8, w = (x1 - x0 + 1) * T, h = (y1 - y0) * T - 2;
+    px(X - 2, Y - 1, w + 4, h + 2, LINE); px(X - 1, Y, w + 2, h, dark);
+    for (let j = 4; j < h; j += 6) for (let i = (j / 6 % 2) * 6; i < w; i += 12) px(X - 1 + i, Y + j, 10, 2, mid);
+    px(X - 1, Y + h / 2 - 1, w + 2, 3, light); px(X - 1, Y + h / 2 - 2, w + 2, 1, LINE);
+    const fy = Y + h, fw = (y1 + 1) * T - fy;   // the front wall, with the doors
+    px(X - 2, fy, w + 4, fw, LINE); px(X - 1, fy + 1, w + 2, fw - 2, light); for (let i = 3; i < w; i += 6) px(X + i, fy + 1, 1, fw - 2, dark);
+    const dx = door * T; px(dx - 2, fy, 2 * T + 4, fw, LINE); px(dx, fy + 1, 2 * T, fw - 1, '#3b2a1a'); px(dx - 1, fy, 2 * T + 2, 2, '#fff1d6');
+  });
+  if (G.octo) drawDark(b, t);
+  if (G.scent) drawScent();
+  if (!G.hold && !G.done) drawHints(b, t);
+  if (G.hold) {                              // Bread and the find she holds up go over the trees too
+    if (!b.swim) drawBread(b.x * T, b.y * T + 7, 1, b.face, t, false);
+    const im = G.hold.img, hx = b.x * T - im.width / 2, hy = Math.max(cam.y * T + 2, b.y * T - 26 - im.height);
+    put(im, hx, hy); twinkle(hx - 5, hy + 2, t); twinkle(hx + im.width + 5, hy + 2, t + 240);
+  }
+  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+  G.pops.forEach(p => text(p.txt, p.x * T, p.y * T - 10 - p.t * 12, p.c));
+  cx.restore();
+  if (G.race) {                              // the clock for the barrel race, and a mark for each barrel
+    const tx = VW * T / 2; px(tx - 40, VH * T - 14, 80, 12, LINE);
+    text(`${G.race.t.toFixed(1)}s`, tx - 12, VH * T - 4, COL.h);
+    G.race.done.forEach((d, i) => put(sprite(BARREL, { map: d ? { r: '#3f8a5c', R: '#2e6b45' } : {} }), tx + 10 + i * 9, VH * T - 13));
+  }
+  // the health bar sits bottom-left, clear of the buttons and pills on top;
+  // a used-up bone goes dim
+  const hy = VH * T - 11;
+  px(2, hy, HP * 11 + 3, 9, LINE);
+  for (let i = 0; i < HP; i++) put(sprite(HP_BONE, { map: { h: i < G.hp ? COL.h : '#6b5442' } }), 3 + i * 11, hy + 2);
+  // Decided 15 Nov: no arrow at the screen's edge pointing to the goal any more
+  // (the kids don't need it); the ? hint still flashes the next thing.
+}
+// Decided 5 Nov, after a play-test with a player who skips the words: the ?
+// button (or H) makes the thing to go to light up and flash, while the help
+// bar is open and for a few seconds after it closes. It shows the nest for the
+// egg Bread carries, the loose eggs (drawn over the bushes while they flash,
+// so the one under a bush shows), and in the barn the ladder for the stuck
+// cats and the empty stalls; at the pond, the duck pond while ducklings are
+// out, and the frogs (or the next frog to bark at). It flashed by itself after 15 s at first, but then it flashed all
+// through herding the cows; arrows, rings and picture bubbles were tried the
+// same day and dropped as too much.
+const HINT_MS = 5000;
+function drawArrow(X, Y, a) {                // the tip is 9 px ahead of X, Y
+  cx.save(); cx.translate(Math.round(X), Math.round(Y)); cx.rotate(a);
+  cx.fillStyle = LINE; cx.beginPath(); cx.moveTo(9, 0); cx.lineTo(-6, -7); cx.lineTo(-6, 7); cx.closePath(); cx.fill();
+  cx.fillStyle = COL.h; cx.beginPath(); cx.moveTo(6, 0); cx.lineTo(-4, -5); cx.lineTo(-4, 5); cx.closePath(); cx.fill();
+  cx.restore();
+}
+function flashTile(x, y, col) { cx.globalAlpha = .7; px(x * T, y * T, T, T, col); cx.globalAlpha = 1; }
+function drawHints(b, t) {
+  if (!(G.hintOn || G.hintTill > performance.now()) || Math.floor(t / 350) % 2) return;
+  if (G.ducklings && G.stage === 'ducks') { cx.globalAlpha = .6; G.ducklings.filter(d => !d.home).forEach(d => px(d.x * T - 8, d.y * T - 8, 16, 14, COL.h)); cx.globalAlpha = 1; }   // the ducklings still loose
+  if (G.song && G.song.state !== 'won' && G.stage === 'frogs') {
+    const next = G.song.state === 'listen' ? [G.frogs[G.song.seq[G.song.i]]] : G.frogs;
+    cx.globalAlpha = .6; next.forEach(f => px(f.x * T - 12, f.y * T - 12, 24, 17, COL.h)); cx.globalAlpha = 1;
+  }
+  if (G.world === 'aquarium' || G.world === 'museum' || G.world === 'ocean' || G.world === 'jungle' || G.world === 'lab') { const tg = stageTarget(); if (tg) { cx.globalAlpha = .6; px(tg.x * T - 8, tg.y * T - 10, 16, 16, COL.h); cx.globalAlpha = 1; } return; }   // the octopus, the right shell, the door, Crumb
+  if (G.world !== 'farm') return;
+  if (G.eggs && G.stage === 'eggs') {
+    if (G.carry) { const n = FC.nests.find(n => n[2] === G.carry.col); flashTile(n[0], n[1], COL.y); }
+    else G.eggs.forEach(e => { if (!e.got && eggOut(e)) put(sprite(EGG, { map: { e: COL.y } }), e.x * T - 3, e.y * T - 3); });
+  }
+  if (G.cats && !G.ladder && inBarn(b.x, b.y)) {
+    const [x0, y0, x1, y1] = FB.rect;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (G.m[y][x] === 'A') flashTile(x, y, COL.y);
+  }
+  if (G.cows && G.cowsHome < 3 && inBarn(b.x, b.y)) FB.stalls.forEach(([a, bb, cc, dd]) => {   // the empty stalls
+    if (G.cows.some(o => o.home && o.home.st === a + ',' + bb)) return;
+    cx.globalAlpha = .6; px(a * T + 2, bb * T + 2, (cc - a) * T - 4, (dd - bb + 1) * T - 4, COL.h); cx.globalAlpha = 1;
+  });
+}
+// Decided 28 Oct: the end of a world is a tally that counts up line by line,
+// with a tick for each number, and finishes on how much of the world is
+// complete. Each of a world's five pieces is 20%.
+function finishWorld() {
+  setGoal(''); help(false);
+  const w = S[W.key], first = !w.beat && !W.sections, costume = ITEMS[W.costume].name.toLowerCase();
+  if (!W.sections) { w.beat = true; if (!S.have.includes(W.costume)) S.have.push(W.costume); }   // sectioned worlds win theirs along the way
+  // each section counts on its own, and the whole world is all of them together
+  const SS = secs(), every = SS.flatMap(sc => PARTS[sc.key].map(([k, n]) => ({ sc, k, n, got: !!S[sc.key][k] })));
+  let newTrophy = false;
+  SS.forEach(sc => { const o = S[sc.key]; if (PARTS[sc.key].every(([k]) => o[k]) && !o.trophy) { o.trophy = true; newTrophy = true; } });
+  persist();
+  const pctOf = list => Math.round(list.filter(p => p.got).length / list.length * 100);
+  const pct = pctOf(every);
+  const rows = [[W.baddies, G.caught.sq], ...(W.noFleas ? [] : [['Fleas caught', G.caught.fl]]), ...(G.zapped ? [['Asteroids zapped', G.zapped]] : []), ['Treats found', G.trip], ['Health left', G.hp, ` / ${HP}`],
+    ...(SS.length > 1 ? SS.map(sc => [sc.name, pctOf(every.filter(p => p.sc === sc)), '%']) : []),
+    ...(S.ring && S.ring.best && W.key === 'farm' ? [['Best barrel race', Math.round(S.ring.best), ' s']] : [])];
+  // the pieces as pictures: found in color, still hidden as dark shapes
+  const piecePic = p => p.k === 'beat' ? ITEM_PIC[p.sc.costume] : p.k === 'gold' ? GOLD_PAW : TOYS[p.k] ? TOYS[p.k].pic : ITEM_PIC[p.k];
+  const parts = every.map(p => `<span class="tile${p.got ? ' on' : ' locked'}" role="img" aria-label="${p.got ? p.n : 'Not found yet'}" title="${p.got ? p.n : 'Not found yet'}"><img alt="" src="${pic(piecePic(p), !p.got)}"></span>`).join('');
+  const after = newTrophy ? '🏆 You found everything there! A trophy for the shelf.' : '';
+  $('#card').innerHTML = `<h2>Crumb is safe!</h2>${first ? `<p class="big">You won the ${costume}!</p>` : ''}`
+    + rows.map(([l, , end = '']) => `<p class="trow"><span>${l}</span><b><span>0</span>${end}</b></p>`).join('')
+    + `<p class="big pct">${W.Name} complete: <b>0%</b></p><p class="pct">${after}</p><div class="found">${parts}</div>`;
+  $('#cover').hidden = false;
+  const card = $('#card'), trows = [...card.querySelectorAll('.trow')], pcts = [...card.querySelectorAll('.pct')];
+  const count = (el, to, step, fmt, done) => {
+    let n = 0;
+    const go = () => {
+      if (!card.isConnected) return;
+      n = Math.min(to, n + step); el.textContent = fmt(n); sfx.tick();
+      if (n < to) setTimeout(go, 45); else setTimeout(done, 380);
+    };
+    if (to <= 0) { el.textContent = fmt(0); setTimeout(done, 380); } else go();
+  };
+  const row = i => {
+    if (!card.isConnected) return;
+    if (i < rows.length) { trows[i].classList.add('on'); const to = rows[i][1]; count(trows[i].querySelector('b span'), to, Math.max(1, Math.ceil(to / 12)), n => n, () => row(i + 1)); return; }
+    pcts.forEach(p => p.classList.add('on'));
+    count(pcts[0].querySelector('b'), pct, 4, n => n + '%', () => { sfx.win(); if (newTrophy) sfx.sparkle(); endLeave = leave; setTimeout(leave, 2600); });
+  };
+  setTimeout(() => row(0), 400);
+  // Decided 7 Nov: no button at the end. After the tally the card goes by
+  // itself (or with any key or tap), and you're on the map at this place.
+  let gone = false;
+  const leave = () => { if (gone) return; gone = true; endLeave = null; $('#cover').hidden = true; mapAt = W.stop; atStop(first ? `Try on the ${costume} at home!` : ''); };
+}
+let endLeave = null;
+$('#cover').addEventListener('pointerdown', () => endLeave && endLeave());
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (endLeave && !$('#cover').hidden) { e.preventDefault(); endLeave(); return; }
+  if (screen === 'press') { if (!e.metaKey && !e.ctrlKey && k !== 'tab') { e.preventDefault(); pressStart(); } return; }
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k) && screen !== 'title') e.preventDefault();
+  keys[k] = true;
+  if (screen === 'map' && !e.repeat) {
+    if (k === 'enter' || k === ' ') { e.preventDefault(); mapGo(); }
+    return;
+  }
+  // Decided 2 Nov: the moves sit together by the space bar, so a hand on the
+  // arrows and a hand by Space can play without looking. Space was Bark and P
+  // was Paw, which was a stretch. The old letters still work.
+  if (e.repeat) return;
+  if (k === 'shift' || k === 'b' || (k === ' ' && screen !== 'level')) bark();
+  if ((k === ' ' || k === 'p' || k === 'enter') && screen === 'level') { e.preventDefault(); act(); }
+  if (k === 'h' && screen === 'level') help();
+  if ((k === 'z' || k === 'x') && screen === 'level') dig();
+  if (k === 'c' && screen === 'level') sniff();
+  if (k === 'v' && screen === 'level') jump();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); goal = null; });
+const toView = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * VW, y: (e.clientY - r.top) / r.height * VH }; };
+cv.addEventListener('pointerdown', e => {
+  const p = toView(e);
+  if (screen === 'level' || screen === 'map') { goal = p; cv.setPointerCapture(e.pointerId); }   // a finger held on the map steers the car
+  else if (screen === 'drive' && ride) ride.t = 1;                      // tap to skip the ride
+  else if (screen === 'home') {
+    if (Math.abs(p.x - VW / 2) < 2.5 && p.y > 4.5 && p.y < 9.5) bark();   // pat Bread and she barks
+    else if (p.x > 1 && p.x < 5.6 && p.y > 2 && p.y < 3.4 && S.toys.length) sfx.squeak();
+  }
+});
+cv.addEventListener('pointermove', e => { if (goal) goal = toView(e); });
+cv.addEventListener('pointerup', () => goal = null);
+cv.addEventListener('pointercancel', () => goal = null);
+
+const TITLE = $('#card').innerHTML;
+function showTitle() {
+  screen = 'title'; G = null; ride = null; showRow(null);
+  $('#card').innerHTML = TITLE; $('#cover').hidden = false;
+  SaveFiles.mount($('#who'), { game: KEY, summary: fileSummary, onPick: (n, m) => {
+    useFile(n, m);
+    $('#cover').hidden = true; resize();
+    goHome(S.pond.beat ? `Hi, ${m.name}!` : 'This is Bread! Pat her, then go for a ride.');
+  } });
+}
+$('#whoBtn').onclick = showTitle;
+// Decided 28 Oct: the game opens like a console game. A title screen with the
+// logo, Bread and Crumb, and a blinking PRESS START; any key, button or tap
+// plays a start-up jingle, then "Pick a file". (The jingle waits for that
+// first press because browsers keep sound off until you touch the page.)
+let pressT = 0;
+function showPress() { screen = 'press'; G = null; ride = null; showRow('pressBtns'); $('#cover').hidden = true; pressT = 0; }
+function pressStart() {
+  if (screen !== 'press' || pressT) return;
+  pressT = performance.now(); sfx.start();
+  setTimeout(showTitle, 900);
+}
+function drawPress(t) {
+  const W = VW * T, H = VH * T, ground = 118;
+  px(0, 0, W, ground, '#9fdcff'); px(0, ground, W, H - ground, '#8fd17a'); px(0, ground, W, 1, '#79bd66');
+  for (let x = 6; x < W; x += 22) { px(x, ground + 9 + (x % 3) * 9, 1, 2, '#79bd66'); px(x + 2, ground + 8 + (x % 3) * 9, 1, 3, '#79bd66'); }
+  [[30, 22, 0], [190, 14, 1], [120, 30, 2]].forEach(([x, y, i]) => put(sprite(blob(30, 12, 'h', 'l', 'h')), (x + t / (90 + i * 40)) % (W + 40) - 40, y));
+  // the logo: big letters with a dark outline and a drop shadow
+  cx.textAlign = 'center'; cx.font = `24px ${PIX}`;
+  const logo = (txt, x, y, col) => { cx.fillStyle = '#7a3f12'; cx.fillText(txt, x + 2, y + 3); cx.fillStyle = LINE; for (const [a, b] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(txt, x + a, y + b); cx.fillStyle = col; cx.fillText(txt, x, y); };
+  logo('BREAD', W / 2, 58 + Math.round(Math.sin(t / 400)), COL.o);
+  cx.font = `8px ${PIX}`; cx.fillStyle = LINE; cx.fillText('THE CORGI', W / 2, 74);
+  // Bread and Crumb trotting on the spot
+  drawBread(W / 2 - 22, 152, 2, 1, t, true);
+  drawCrumb(W / 2 + 44, 152, 1, t, true, 2);
+  const flash = pressT && performance.now() - pressT < 900;
+  if (flash ? Math.floor(t / 80) % 2 : Math.floor(t / 520) % 2 === 0) text('PRESS START', W / 2, 100, flash ? COL.r : LINE);
+  text('RUBBER DUCK GAMES', W / 2, H - 4, '#3f8a5c');
+}
+document.addEventListener('pointerdown', e => { if (screen === 'press' && !e.target.closest('a')) pressStart(); });
+$('#startBtn').onclick = pressStart;
+showPress();
+
+// ---------- Main loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  if (screen === 'press') drawPress(t);
+  else if (screen === 'title' || screen === 'home') drawHome(t);
+  else if (screen === 'map') {
+    stepMapCar(dt); drawMap(t);
+  }
+  else if (screen === 'drive') {
+    ride.t = Math.min(1, ride.t + dt / ride.dur);
+    drawMap(t);
+    if (ride.t >= 1) { const then = ride.then; ride = null; then(); }
+  } else if (screen === 'level' && G) { if ($('#cover').hidden) stepLevel(dt, t); drawLevel(t); }
+  showAct();
+  snap();
+  out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, cv.width, cv.height);
+  requestAnimationFrame(loop);
+}
+resize(); bank();
+requestAnimationFrame(loop);

@@ -1,0 +1,1197 @@
+// Math Force: designed by one of our kid testers (the full design is on the
+// Rubber Duck Games board). Decided 20 Oct: the fix-the-glitch theme. Errors
+// are corrupted programs; a hit glitches them back to normal instead of
+// killing them, and the blaster is a debug blaster, not a real-world gun.
+const $ = s => document.querySelector(s);
+const rand = a => a[Math.floor(Math.random() * a.length)];
+const randInt = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- Save data ----------
+// Decided 29 Oct: three save files, like a console game (shared/files.js); each
+// file keeps its own math level, gear and Math Bucks. Sound is one setting for
+// the whole computer, with its own key.
+const KEY = 'math-force', SOUND = 'math-force-sound';
+const DEF = { bucks: 0, level: 1, wrenchTier: 0, magBonus: 0, double: false, cat: false, best: 0, shieldBonus: 0, boots: false, quad: false };
+const soundOn = () => { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
+const S = Object.assign({}, DEF, { sound: soundOn() });
+let me = null;   // the open file's number
+function useFile(n, m) {
+  me = n;
+  const data = SaveFiles.load(KEY, n) || {};
+  try { if (data.sound === false && localStorage.getItem(SOUND) === null) localStorage.setItem(SOUND, 'off'); } catch (e) { }
+  delete data.sound;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, DEF, data, { sound: soundOn() });
+  $('#whoBtn').hidden = false;
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span> ${SaveFiles.esc(m.name)}`;
+  $('#whoBtn').setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
+}
+function persist() { if (me) { const { sound, ...rest } = S; SaveFiles.save(KEY, me, rest); } }
+const saveSound = () => { try { localStorage.setItem(SOUND, S.sound ? 'on' : 'off'); } catch (e) { } };
+
+// ---------- Sound ----------
+const tone = RDG.sound({ on: () => S.sound });
+const sfx = {
+  zap() { tone(900, .08, 'square', 0, .03, 300); },
+  restore() { [523, 659, 784].forEach((f, i) => tone(f, .12, 'triangle', i * .07, .06)); },
+  clank() { tone(160, .12, 'sawtooth', 0, .06, 90); },
+  snap() { tone(400, .25, 'sawtooth', 0, .07, 60); },
+  good() { tone(660, .1, 'triangle', 0, .07); tone(990, .16, 'triangle', .09, .07); },
+  soft() { tone(240, .16, 'sine', 0, .06, 190); },
+  hurt() { tone(120, .2, 'sawtooth', 0, .06, 70); },
+  buck() { tone(1200, .06, 'triangle', 0, .04); },
+  gem() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .1, 'triangle', i * .06, .05)); },
+};
+$('#soundBtn').onclick = () => { S.sound = !S.sound; saveSound(); $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#soundBtn').textContent = S.sound ? '🔊' : '🔇';
+
+// ---------- The maze (one sector, 24 x 16 tiles) ----------
+// Slice 2 (21 Oct), from the kid designer's campaign notes: C is a cracked wall
+// you can drill through, D a doorway with a blast door, K the wire panel in the
+// secure room, G a power gate that opens when the panel is wired, $ a vault crate.
+const MAP = [
+  "########################",
+  "#P.....#.......#.......#",
+  "#......#.......#...W...#",
+  "#..##......E...D...A...#",
+  "#..##..#.......#.......#",
+  "#......#.......#.......#",
+  "###D#####C#.#####.######",
+  "#......#.......#.......#",
+  "#..E...C...W...#...E...#",
+  "#......D...............#",
+  "#..W...#.......#...A...#",
+  "###.#######.############",
+  "#......#......K#.......#",
+  "#..E.......T...G...$...#",
+  "#......#.......#.......#",
+  "########################",
+];
+const MW = 24, MH = 16;
+// The town between sectors (decided 27 Oct, the kid designer's idea: walk around
+// and go into shops instead of a shop list). Decided 27 Oct: a new town each
+// visit, bigger than the screen, with two-wide streets between the blocks and a
+// small building here or there. b is a shop with its door 1 2 3, h a house with
+// its door H, t a tree, M the statue, ; grass, , the stone square. Decided 27 Oct:
+// you come out of the warehouse you just fixed (W, door w) and find the next
+// one (door X) somewhere in town when you're ready.
+const SHOPS = {
+  1: { kind: 'tool', name: 'Tool shop', sign: 'TOOLS', col: '#c0623b', hello: 'Repairs and new wrenches.' },
+  2: { kind: 'blaster', name: 'Blaster shop', sign: 'BLASTERS', col: '#3a6fd8', hello: 'More ways to fire your math.' },
+  3: { kind: 'gear', name: 'Gear shop', sign: 'GEAR', col: '#2bb3a3', hello: 'Batteries, boots and shields.' },
+};
+const HOUSE_COLORS = ['#e07a5f', '#f2cc8f', '#81b29a', '#2bb3a3', '#9b8cff', '#e8a0bf'];
+const SOLID = '#bhHt123MXWw';
+// Decided 28 Oct: the game starts in town too. The first town has no fixed
+// warehouse; you arrive on the street at one corner and the sector 1 warehouse
+// is on the block farthest away.
+function makeTown(first = false) {
+  const bw = [0, 0, 0, 0].map(() => randInt(6, 9)), bh = [0, 0, 0].map(() => randInt(5, 7));
+  const starts = sizes => { let a = 3; return sizes.map(n => { const at = a; a += n + 2; return at; }); };
+  const bx = starts(bw), by = starts(bh);
+  const W = bx.at(-1) + bw.at(-1) + 3, H = by.at(-1) + bh.at(-1) + 3;
+  const m = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => x === 0 || y === 0 || x === W - 1 || y === H - 1 ? '#' : '.'));
+  const fill = (b, c) => { for (let y = b.y0; y < b.y0 + b.h; y++) for (let x = b.x0; x < b.x0 + b.w; x++) m[y][x] = c; };
+  const blocks = by.flatMap((y0, j) => bx.map((x0, i) => ({ x0, y0, w: bw[i], h: bh[j] }))).sort(() => Math.random() - .5);
+  // a building sits on the bottom edge of its block, with its door on the street
+  const build = (b, x, w, h, body, door) => {
+    const y = b.y0 + b.h - h, dx = x + (w >> 1);
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) m[yy][xx] = body;
+    m[y + h - 1][dx] = door;
+    return { x, y, w, h, dx };
+  };
+  const shops = [], houses = [], [plaza, done, ...others] = blocks;
+  // the next warehouse goes on the block farthest from the one you just fixed
+  const far = b => Math.hypot(b.x0 - done.x0, b.y0 - done.y0);
+  const next = others.reduce((a, b) => far(b) > far(a) ? b : a), rest = others.filter(b => b !== next);
+  const warehouse = (b, door) => { fill(b, ';'); const w = Math.min(b.w, 7); return { ...build(b, b.x0 + randInt(0, b.w - w), w, 4, 'W', door), fixed: door === 'w' }; };
+  const warehouses = first ? [warehouse(next, 'X')] : [warehouse(done, 'w'), warehouse(next, 'X')];
+  if (first) rest.push(done);
+  fill(plaza, ',');
+  const statue = [plaza.x0 + (plaza.w >> 1) + .5, plaza.y0 + (plaza.h >> 1) + .5];
+  m[Math.floor(statue[1])][Math.floor(statue[0])] = 'M';
+  rest.forEach((b, i) => {
+    fill(b, ';');
+    if (i < 3) shops.push({ ...build(b, b.x0 + randInt(0, b.w - 5), 5, 3, 'b', String(i + 1)), shop: SHOPS[i + 1] });
+    else if (Math.random() < .85) {
+      for (let x = b.x0 + randInt(0, 1); x + 3 <= b.x0 + b.w; x += 3 + randInt(1, 3))
+        if (Math.random() < .75) houses.push({ ...build(b, x, 3, 2, 'h', 'H'), col: HOUSE_COLORS[randInt(0, HOUSE_COLORS.length - 1)] });
+    }
+    for (let k = randInt(1, 3); k--;) { const x = b.x0 + randInt(0, b.w - 1), y = b.y0 + randInt(0, b.h - 3); if (m[y][x] === ';') m[y][x] = 't'; }
+  });
+  // you start on the street outside the warehouse you just fixed (or, the first
+  // time, on the street below the block you arrive at)
+  const out = warehouses[0];
+  const start = first ? [done.x0 + (done.w >> 1) + .5, done.y0 + done.h + 1] : [out.dx + .5, out.y + out.h + 1];
+  const sx = Math.floor(start[0]), sy = first ? done.y0 + done.h : out.y + out.h;
+  // everything you can walk to from the start, for the gem and the Errors who live here
+  const seen = new Set([sx + ',' + sy]), open = [[sx, sy]];
+  while (open.length) {
+    const [x, y] = open.pop();
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, c]) => { const k = (x + a) + ',' + (y + c); if (!seen.has(k) && !SOLID.includes(m[y + c]?.[x + a] ?? '#')) { seen.add(k); open.push([x + a, y + c]); } });
+  }
+  const reach = [...seen].map(k => k.split(',').map(Number));
+  const corners = reach.filter(([x, y]) => m[y][x] === ';' && [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, c]) => SOLID.includes(m[y + c][x + a])).length >= 2);
+  const away = corners.filter(([x, y]) => Math.hypot(x - start[0], y - start[1]) > 12), nooks = away.length ? away : corners;
+  const gem = nooks[randInt(0, nooks.length - 1)];
+  // patches of glitch; the biggest sits on the next warehouse, where it started,
+  // so following the purple leads you there
+  const nw = warehouses.at(-1);
+  const blight = [{ x: nw.dx + .5, y: nw.y + nw.h / 2, r: 8 }, ...shuffle(blocks).slice(0, 4).map(b => ({ x: b.x0 + b.w / 2, y: b.y0 + b.h / 2, r: randInt(3, 5) }))];
+  return { tiles: m, W, H, shops, houses, warehouses, statue, start, reach, first, blight, gem: gem && { x: gem[0] + .5, y: gem[1] + .5 } };
+}
+const GEM_COLORS = ['#ff4d6d', '#5fe07a', '#41a9ff', '#b16cff', '#ffc93c'];
+// The live tiles change as walls are drilled and the gate opens; doors open and close.
+const tile = (x, y) => (G?.tiles ? G.tiles[y]?.[x] : MAP[y]?.[x]) ?? '#';
+const wall = (x, y) => {
+  const c = tile(x, y);                      // off the map counts as '#'
+  return c === 'C' || c === 'G' || SOLID.includes(c) || (c === 'D' && !!G?.closed?.has(x + ',' + y));
+};
+const SECURE = { x0: 8, y0: 12, x1: 14, y1: 14 };   // the room with the terminal
+const find = (ch, map = MAP) => { const out = []; map.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) out.push([x + .5, y + .5]); })); return out; };
+const START = find('P')[0], TERMINAL = find('T')[0], PANEL = find('K')[0], CRATE = find('$')[0];
+
+// ---------- Math, with difficulty that adapts ----------
+const LEVELS = [
+  { n: 1, name: 'Level 1', eg: 'like 7 + 5' },
+  { n: 2, name: 'Level 2', eg: 'like 34 + 27, 4 × 5' },
+  { n: 3, name: 'Level 3', eg: 'like 8 × 7, 3/4 of 20, −3 + 8' },
+  { n: 4, name: 'Level 4', eg: 'like √64, 2x + 4 = 12, 25% of 60' },
+];
+function quick(level) {
+  const L = level, r = Math.random();
+  if (L === 1) { const a = randInt(1, 12), b = randInt(1, 9); return r < .6 ? [`${a} + ${b}`, a + b] : [`${a + b} − ${b}`, a]; }
+  if (L === 2) {
+    if (r < .4) { const a = randInt(11, 59), b = randInt(11, 39); return [`${a} + ${b}`, a + b]; }
+    if (r < .7) { const a = randInt(30, 99), b = randInt(11, a - 5); return [`${a} − ${b}`, a - b]; }
+    const a = randInt(2, 5), b = randInt(2, 10); return [`${a} × ${b}`, a * b];
+  }
+  const neg = n => n < 0 ? `−${-n}` : `${n}`;
+  if (L === 3) {
+    // Middle-school reloads from the design: fractions of a number and negatives.
+    if (r < .4) { const a = randInt(3, 12), b = randInt(3, 12); return [`${a} × ${b}`, a * b]; }
+    if (r < .55) { const a = randInt(3, 12), b = randInt(3, 12); return [`${a * b} ÷ ${a}`, b]; }
+    if (r < .78) { const [n, d] = rand([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [1, 5], [2, 5], [3, 5], [4, 5]]), m = d * randInt(2, 9); return [`${n}/${d} of ${m}`, n * m / d]; }   // simplified fractions only
+    const a = randInt(-9, 9), b = randInt(1, 12);
+    return Math.random() < .5 ? [`${neg(a)} + ${b}`, a + b] : [`${neg(a)} − ${b}`, a - b];
+  }
+  // High-school reloads: square roots and quick algebra too.
+  if (r < .2) { const a = randInt(12, 49), b = randInt(3, 9); return [`${a} × ${b}`, a * b]; }
+  if (r < .4) { const p = rand([10, 25, 50, 20]), n = rand([20, 40, 60, 80, 120, 200]); return [`${p}% of ${n}`, p * n / 100]; }
+  if (r < .6) { const a = randInt(2, 15); return [`√${a * a}`, a]; }
+  if (r < .85) { const x = randInt(1, 12), a = randInt(2, 6), b = randInt(1, 20); return [`${a}x + ${b} = ${a * x + b}, x`, x]; }
+  const a = randInt(4, 15); return [`${a}²`, a * a];
+}
+// Bigger problems for the secure terminal. Each comes with a picture.
+function bigTask(level) {
+  const kind = level <= 1 ? 'perimeter' : level === 2 ? rand(['perimeter', 'area']) : level === 3 ? rand(['perimeter', 'area', 'percent']) : rand(['area', 'percent', 'volume']);
+  if (kind === 'perimeter' || kind === 'area') {
+    const w = randInt(3, level <= 1 ? 9 : 14), h = randInt(2, level <= 1 ? 7 : 11);
+    const pic = rectPic(w, h);
+    return kind === 'perimeter'
+      ? { q: `Perimeter of the wall section?`, a: 2 * (w + h), pic, why: `${w} + ${h} + ${w} + ${h} = ${2 * (w + h)}` }
+      : { q: `Area of the floor panel?`, a: w * h, pic, why: `${w} × ${h} = ${w * h}` };
+  }
+  if (kind === 'percent') {
+    const p = rand([10, 20, 25, 50, 75]), n = rand([40, 60, 80, 120, 160, 200]);
+    return { q: `Shields are ${p}% charged. Full is ${n}. How much charge?`, a: p * n / 100, pic: '', why: `${p}% of ${n} = ${p * n / 100}` };
+  }
+  const l = randInt(2, 8), w = randInt(2, 6), h = randInt(2, 5);
+  return { q: `Volume of the supply crate (${l} × ${w} × ${h})?`, a: l * w * h, pic: '', why: `${l} × ${w} × ${h} = ${l * w * h}` };
+}
+function rectPic(w, h) {
+  const k = Math.min(18, 200 / Math.max(w, h)), W = w * k, H = h * k;
+  return `<svg width="${W + 70}" height="${H + 50}" viewBox="-35 -25 ${W + 70} ${H + 50}" aria-hidden="true">
+    <rect width="${W}" height="${H}" fill="rgba(65,227,255,.15)" stroke="#41e3ff" stroke-width="3"/>
+    <text x="${W / 2}" y="-8" fill="#e8f1ff" font-size="16" text-anchor="middle" font-family="Lexend">${w}</text>
+    <text x="-10" y="${H / 2 + 5}" fill="#e8f1ff" font-size="16" text-anchor="end" font-family="Lexend">${h}</text></svg>`;
+}
+const hist = [];   // last answers: { ok, ms }
+function record(ok, ms) {
+  hist.push({ ok, ms }); if (hist.length > 8) hist.shift();
+  if (hist.length < 8) return;
+  const acc = hist.filter(h => h.ok).length / 8, avg = hist.reduce((s, h) => s + h.ms, 0) / 8;
+  if (acc >= .875 && avg < 6500 && S.level < 4) { hist.length = 0; askLevelUp(); }
+  else if (acc < .5 && S.level > 1) { hist.length = 0; S.level--; persist(); toast(`Math eased to ${LEVELS[S.level - 1].name}`); hud(); }
+}
+
+// ---------- Game state ----------
+const cv = $('#cv'), cx = cv.getContext('2d');
+let T = 1;                 // tile size in canvas pixels
+let G = null;              // the running sector
+const keys = {};
+const touchMode = matchMedia('(pointer: coarse)').matches;
+
+function wrenchMax() { return [6, 9, 12, 12][S.wrenchTier]; }
+function shieldMax() { return 3 + S.shieldBonus; }
+function magMax() { return 6 + S.magBonus; }
+
+function newSector(n) {
+  const errs = [];
+  if (n === 1) {
+    find('E').forEach(([x, y]) => errs.push(makeErr(x, y, false)));
+    find('A').forEach(([x, y]) => errs.push(makeErr(x, y, true)));
+  } else {
+    const floor = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if ('#CGDK$T'.indexOf(c) < 0 && !(x >= 16 && y >= 12) && Math.hypot(x + .5 - START[0], y + .5 - START[1]) > 7) floor.push([x + .5, y + .5]); }));
+    // Decided 22 Oct after a kid tester reached sector 14: past sector 9 it
+    // stopped getting harder. Now the count keeps climbing (to 26), Errors get a
+    // little faster each sector, and from sector 3 every two Armored Errors
+    // become one Shooter instead (the tester's idea; tuned to one in three after the
+    // first try made most of sector 3 Shooters).
+    const count = Math.min(6 + 2 * n, 26), armored = Math.min(.2 + .1 * n, .6);
+    let nArm = 0;
+    shuffle(floor).slice(0, count).forEach(([x, y]) => {
+      const arm = Math.random() < armored;
+      if (arm && n >= 3 && ++nArm % 3 === 0) errs.push(makeErr(x, y, false, 'shooter'));
+      else errs.push(makeErr(x, y, arm));
+    });
+    const faster = Math.min(1 + .03 * (n - 1), 1.5);
+    errs.forEach(e => e.speed *= faster);
+  }
+  // One gem on the floor of each sector, in a corner away from the start.
+  const nooks = [];
+  MAP.forEach((r, y) => [...r].forEach((c, x) => {
+    if (c !== '.' || Math.hypot(x + .5 - START[0], y + .5 - START[1]) < 7) return;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => '#C'.includes(MAP[y + b]?.[x + a] ?? '#')).length >= 2) nooks.push([x + .5, y + .5]);
+  }));
+  const gem = rand(nooks);
+  const worms = [];
+  find('W').forEach(([x, y]) => { for (let i = 0; i < 5; i++) worms.push({ x: x + (Math.random() - .5) * 2, y: y + (Math.random() - .5) * 2, a: Math.random() * 6.28, t: Math.random() * 6 }); });
+  G = {
+    n, errs, worms, bolts: [], ebolts: [], fx: [], restored: [],
+    p: { x: START[0], y: START[1], aim: 0, shield: shieldMax(), hurtT: 0 },
+    ammo: magMax(), wrench: G?.wrench ?? wrenchMax(), wrenchBroken: G?.wrenchBroken ?? false,
+    swingT: 0, fireT: 0, terminalUsed: false, stats: { right: 0, asked: 0, restored: 0 },
+    tiles: MAP.map(r => [...r]), closed: new Set(), powered: false, crate: false, near: null,
+    slow: 1, dist: null, distT: 0, running: true, gem: gem && { x: gem[0], y: gem[1] },
+  };
+  setUse(null); hud();
+}
+// Decided 27 Oct, from the kid designer's sheet (HP, damage, range): Basically
+// 1 HP, hits for 1. Armed 3-4 HP, hits for 1. Ranger 2 HP, shoots for 2 from up to 8 tiles.
+function makeErr(x, y, armored, kind = 'error') {
+  if (kind === 'shooter') return { x, y, armored: false, shooter: true, hp: 2, dmg: 1, speed: 1, jit: Math.random() * 10, cool: 2 + Math.random() * 2 };
+  return { x, y, armored, hp: armored ? 3 + (Math.random() < .5) : 1, dmg: 1, speed: armored ? 1.2 : 1.7, jit: Math.random() * 10 };
+}
+// Can a Shooter see you? Walk the line between in small steps and stop at walls (and closed doors).
+function sees(a, b) {
+  const d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(d * 4);
+  for (let i = 1; i < n; i++) { const x = a.x + (b.x - a.x) * i / n, y = a.y + (b.y - a.y) * i / n; if (wall(Math.floor(x), Math.floor(y))) return false; }
+  return true;
+}
+
+// ---------- Drawing ----------
+// The maze fits the screen both ways. Decided 21 Oct: sized by width alone, a
+// small phone turned sideways got a maze taller than the screen, with the
+// controls pushed below it.
+const sideways = () => matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+function resize() {
+  const box = $('#box'), dpr = Math.min(2, devicePixelRatio || 1);
+  box.style.width = '';
+  let w = box.clientWidth;
+  const land = sideways() && touchMode;
+  if (land) w = Math.min(w, innerWidth - 2 * 128);          // room for the stick and the buttons
+  const playing = document.body.classList.contains('playing');
+  const room = innerHeight - box.getBoundingClientRect().top - (land ? 8 : touchMode ? 150 : playing ? 0 : 24);
+  let h = w * MH / MW;
+  if (h > room) { h = Math.max(140, room); w = h * MW / MH; }
+  box.style.width = w + 'px';
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  T = cv.width / MW;
+}
+addEventListener('resize', resize);
+addEventListener('orientationchange', () => setTimeout(resize, 250));
+
+function draw(t) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // floor grid and walls
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const c = G.tiles[y][x];
+    if (c === '#' || c === 'C') {
+      cx.fillStyle = '#22335f'; cx.fillRect(x * T, y * T, T, T);
+      cx.fillStyle = '#2d4378'; cx.fillRect(x * T, y * T, T, T * .2);
+      if (c === 'C') {                       // cracks you can drill through
+        cx.strokeStyle = '#ffb347'; cx.lineWidth = T * .06; cx.beginPath();
+        cx.moveTo(x * T + T * .2, y * T + T * .3); cx.lineTo(x * T + T * .45, y * T + T * .5); cx.lineTo(x * T + T * .35, y * T + T * .75);
+        cx.moveTo(x * T + T * .45, y * T + T * .5); cx.lineTo(x * T + T * .8, y * T + T * .45); cx.stroke();
+      }
+    } else if (c === 'G') {                  // power gate: hazard stripes and a bolt
+      for (let i = 0; i < 4; i++) { cx.fillStyle = i % 2 ? '#23324a' : '#ffc93c'; cx.fillRect(x * T, y * T + i * T / 4, T, T / 4); }
+      cx.fillStyle = '#fff'; cx.font = `${T * .5}px sans-serif`; cx.textAlign = 'center'; cx.fillText('⚡', x * T + T / 2, y * T + T * .68);
+    } else {
+      const sec = x >= SECURE.x0 && x <= SECURE.x1 && y >= SECURE.y0 && y <= SECURE.y1;
+      cx.fillStyle = sec ? '#132a3c' : '#0f1933'; cx.fillRect(x * T, y * T, T, T);
+      cx.strokeStyle = 'rgba(65,227,255,.06)'; cx.strokeRect(x * T, y * T, T, T);
+    }
+  }
+  // blast doors: a frame when open, a striped shutter when closed
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (G.tiles[y][x] === 'D') {
+    if (G.closed.has(x + ',' + y)) {
+      cx.fillStyle = '#6b7b8f'; cx.fillRect(x * T, y * T, T, T);
+      cx.fillStyle = '#4d5d74'; for (let i = 1; i < 4; i++) cx.fillRect(x * T, y * T + i * T / 4 - T * .03, T, T * .06);
+    } else { cx.fillStyle = '#6b7b8f'; cx.fillRect(x * T, y * T, T * .12, T); cx.fillRect(x * T + T * .88, y * T, T * .12, T); }
+  }
+  // wire panel and vault crate
+  cx.fillStyle = '#4d5d74'; roundRect(PANEL[0] * T - T * .3, PANEL[1] * T - T * .32, T * .6, T * .64, T * .08); cx.fill();
+  cx.fillStyle = G.powered ? '#5fe0a0' : '#ff5f6d'; cx.beginPath(); cx.arc(PANEL[0] * T, PANEL[1] * T - T * .1, T * .09, 0, 7); cx.fill();
+  cx.strokeStyle = '#ffc93c'; cx.lineWidth = T * .05; cx.beginPath(); cx.moveTo(PANEL[0] * T - T * .15, PANEL[1] * T + T * .15); cx.lineTo(PANEL[0] * T + T * .15, PANEL[1] * T + T * .15); cx.stroke();
+  if (!G.crate) { cx.fillStyle = '#a56a2b'; roundRect(CRATE[0] * T - T * .3, CRATE[1] * T - T * .25, T * .6, T * .5, T * .06); cx.fill(); cx.fillStyle = '#ffc93c'; cx.fillRect(CRATE[0] * T - T * .3, CRATE[1] * T - T * .04, T * .6, T * .08); }
+  // terminal
+  const clearRoom = roomClear();
+  cx.fillStyle = G.terminalUsed ? '#3a4a6a' : clearRoom ? '#5fe0a0' : '#ff5f6d';
+  roundRect(TERMINAL[0] * T - T * .35, TERMINAL[1] * T - T * .35, T * .7, T * .7, T * .12); cx.fill();
+  cx.fillStyle = '#0b1226'; cx.fillRect(TERMINAL[0] * T - T * .22, TERMINAL[1] * T - T * .2, T * .44, T * .25);
+  if (G.gem) twinkle(G.gem.x * T, G.gem.y * T, t, '#fff3b0');
+  // worms
+  G.worms.forEach(w => {
+    cx.strokeStyle = '#c6f25a'; cx.lineWidth = T * .08; cx.lineCap = 'round'; cx.beginPath();
+    for (let i = 0; i < 4; i++) { const px = (w.x - Math.cos(w.a) * i * .12) * T, py = (w.y - Math.sin(w.a) * i * .12 + Math.sin(w.t * 8 + i) * .03) * T; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }
+    cx.stroke();
+  });
+  // restored programs float up and fade
+  G.restored.forEach(r => {
+    cx.globalAlpha = Math.max(0, 1 - r.t / 1.6);
+    cx.fillStyle = '#5fe0a0'; roundRect(r.x * T - T * .22, (r.y - r.t * .5) * T - T * .3, T * .44, T * .5, T * .12); cx.fill();
+    cx.fillStyle = '#0b1226'; cx.font = `${T * .26}px Lexend`; cx.textAlign = 'center'; cx.fillText('^‿^', r.x * T, (r.y - r.t * .5) * T + T * .02);
+    cx.globalAlpha = 1;
+  });
+  // errors, drawn from the kid designer's sheet: a purple pentagon with a round
+  // face and two red triangle eyes that follow you. Armed wears grey plates and a
+  // helmet bar; Ranger carries a box gun on a black hose. They still glitch a little.
+  G.errs.forEach(e => {
+    const j = Math.sin(t / 60 + e.jit) > .7 ? (Math.random() - .5) * T * .12 : 0;
+    const ex = e.x * T + j, ey = e.y * T, r = T * (e.armored ? .34 : .3);
+    const look = Math.atan2(G.p.y - e.y, G.p.x - e.x), lx = Math.cos(look) * T * .05, ly = Math.sin(look) * T * .05;
+    cx.lineWidth = T * .035; cx.strokeStyle = '#05070f'; cx.lineJoin = 'round';
+    if (e.shooter) {
+      cx.fillStyle = '#9b5cff'; roundRect(ex - r * 1.6, ey - r * .4, r * .85, r * 1.05, r * .12); cx.fill(); cx.stroke();
+      cx.lineWidth = T * .05; cx.beginPath(); cx.moveTo(ex - r * 1.3, ey - r * .4); cx.quadraticCurveTo(ex - r * 1.2, ey - r * .9, ex - r * .7, ey - r * .4); cx.stroke(); cx.lineWidth = T * .035;
+    }
+    cx.fillStyle = '#7b2ff7'; cx.shadowColor = 'rgba(170,110,255,.9)'; cx.shadowBlur = T * .3;
+    pent(ex, ey, r); cx.fill(); cx.shadowBlur = 0; cx.stroke();
+    cx.lineWidth = T * .025; cx.beginPath(); cx.arc(ex, ey + r * .08, r * .62, 0, 7); cx.stroke();
+    if (e.armored) {
+      cx.lineWidth = T * .03; cx.fillStyle = '#b9bec6';
+      roundRect(ex - r * .55, ey - r * .95, r * 1.1, r * .22, r * .1); cx.fill(); cx.stroke();          // helmet bar
+      roundRect(ex - r * .75, ey + r * .1, r * 1.5, r * .85, r * .12); cx.fill(); cx.stroke();           // chest plates
+      cx.fillStyle = '#d8dce2'; roundRect(ex - r * .25, ey - r * .05, r * .5, r * 1.05, r * .1); cx.fill(); cx.stroke();
+    }
+    cx.fillStyle = '#ff5a3c'; cx.lineWidth = T * .02;
+    const ey0 = ey - (e.armored ? r * .25 : 0);
+    [-1, 1].forEach(s => { const x0 = ex + s * r * .28 + lx, y0 = ey0 + ly; cx.beginPath(); cx.moveTo(x0 - s * r * .12, y0 + r * .14); cx.lineTo(x0 + s * r * .1, y0 + r * .14); cx.lineTo(x0 + s * r * .02, y0 - r * .2); cx.closePath(); cx.fill(); cx.stroke(); });
+  });
+  // Shooter shots: slow green blobs
+  G.ebolts.forEach(b => { cx.fillStyle = '#5fe07a'; cx.shadowColor = '#5fe07a'; cx.shadowBlur = T * .3; cx.beginPath(); cx.arc(b.x * T, b.y * T, T * .12, 0, 7); cx.fill(); cx.shadowBlur = 0; });
+  // bolts
+  // bolts: the long light-blue blobs from the kid designer's sketches
+  G.bolts.forEach(b => { cx.fillStyle = '#5ec8f5'; cx.shadowColor = '#41e3ff'; cx.shadowBlur = T * .25; cx.beginPath(); cx.ellipse(b.x * T, b.y * T, T * .17, T * .065, Math.atan2(b.vy, b.vx), 0, 7); cx.fill(); cx.shadowBlur = 0; });
+  // sparks
+  G.fx.forEach(f => { cx.globalAlpha = Math.max(0, 1 - f.t / .4); cx.fillStyle = f.c; cx.fillRect(f.x * T, f.y * T, T * .07, T * .07); cx.globalAlpha = 1; });
+  drawPlayer(t);
+}
+function pent(x, y, r, turn = 0) {
+  cx.beginPath();
+  for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + turn + i * Math.PI * 2 / 5; cx[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r, y + Math.sin(a) * r); }
+  cx.closePath();
+}
+// a soft four-point sparkle that pulses
+function twinkle(x, y, t, col) {
+  const s = T * (.1 + .04 * Math.sin(t / 250));
+  cx.save(); cx.globalAlpha = .45 + .45 * Math.max(0, Math.sin(t / 600)); cx.fillStyle = col; cx.shadowColor = col; cx.shadowBlur = T * .3;
+  cx.beginPath(); cx.moveTo(x, y - s * 2); cx.quadraticCurveTo(x, y, x + s * 2, y); cx.quadraticCurveTo(x, y, x, y + s * 2); cx.quadraticCurveTo(x, y, x - s * 2, y); cx.quadraticCurveTo(x, y, x, y - s * 2); cx.fill();
+  cx.restore();
+}
+function roundRect(x, y, w, h, r) { cx.beginPath(); cx.roundRect ? cx.roundRect(x, y, w, h, r) : cx.rect(x, y, w, h); }
+function drawPlayer(t) {
+  const p = G.p, x = p.x * T, y = p.y * T;
+  if (p.hurtT > 0 && Math.floor(t / 90) % 2) return;     // blink while recovering
+  // Decided 27 Oct: the player is drawn from the kid designer's sketches: a round
+  // white suit, a blue visor at the front, yellow stripes on the helmet, a brown backpack behind,
+  // and a yellow blaster on the right hand. "Up" in the sketches is the way it aims.
+  // Only the first two guns are built (basic and Quad); the sketches have four more for later.
+  const line = T * .035;
+  cx.save(); cx.translate(x, y); cx.rotate(p.aim);
+  cx.lineWidth = line; cx.strokeStyle = '#05070f'; cx.lineJoin = 'round';
+  // the glow goes first, so it doesn't tint the backpack
+  cx.fillStyle = '#f4f7fb'; cx.shadowColor = 'rgba(65,227,255,.7)'; cx.shadowBlur = T * .3;
+  cx.beginPath(); cx.arc(0, 0, T * .3, 0, 7); cx.fill(); cx.shadowBlur = 0;
+  // brown backpack behind
+  cx.fillStyle = '#6b3f12'; cx.beginPath(); cx.ellipse(-T * .2, 0, T * .16, T * .36, 0, 0, 7); cx.fill(); cx.stroke();
+  // blaster on the right hand, with a little kick when it fires
+  const kick = G.fireT > 0 ? -T * .06 * G.fireT / .1 : 0;
+  // Once the Quad Blaster is bought it's the second sketch: a wider gun with two barrels.
+  if (S.quad) {
+    cx.fillStyle = '#ffd23f'; roundRect(-T * .02 + kick, T * .24, T * .4, T * .15, T * .03); cx.fill(); cx.stroke();
+    cx.fillStyle = '#fff'; [.27, .33].forEach(o => cx.fillRect(T * .06 + kick, T * o, T * .3, T * .025));
+  } else {
+    cx.fillStyle = '#ffd23f'; roundRect(-T * .02 + kick, T * .26, T * .36, T * .1, T * .03); cx.fill(); cx.stroke();
+    cx.fillStyle = '#fff'; cx.fillRect(T * .04 + kick, T * .295, T * .24, T * .03);
+  }
+  // cat ears (from the shop) sit above the visor and turn with the player
+  if (S.cat) { cx.fillStyle = '#f4f7fb'; [-1, 1].forEach(s => { cx.beginPath(); cx.moveTo(T * .26, s * T * .1); cx.lineTo(T * .44, s * T * .26); cx.lineTo(T * .16, s * T * .3); cx.fill(); cx.stroke(); }); }
+  // suit
+  cx.fillStyle = '#f4f7fb'; cx.beginPath(); cx.arc(0, 0, T * .3, 0, 7); cx.fill(); cx.stroke();
+  // yellow helmet stripes, front to back
+  cx.fillStyle = '#ffd23f'; [-.1, .06].forEach(o => { cx.fillRect(-T * .22, T * o, T * .26, T * .05); cx.strokeRect(-T * .22, T * o, T * .26, T * .05); });
+  // blue visor at the front
+  cx.fillStyle = '#5ec8f5'; cx.beginPath(); cx.ellipse(T * .14, 0, T * .1, T * .2, 0, 0, 7); cx.fill(); cx.stroke();
+  // wrench swing: the wrench sweeps across the front, left to right, with yellow swing lines
+  if (G.swingT > 0) {
+    const k = 1 - G.swingT / .2, a0 = -1.3, a = a0 + 2.6 * k;
+    cx.strokeStyle = '#ffd23f'; cx.lineWidth = T * .035; [.48, .56, .64].forEach(rr => { cx.beginPath(); cx.arc(0, 0, T * rr, Math.max(a0, a - 1.4), a); cx.stroke(); });
+    cx.rotate(a);
+    cx.fillStyle = '#9aa7b8'; cx.strokeStyle = '#05070f'; cx.lineWidth = line;
+    roundRect(T * .18, -T * .04, T * .38, T * .08, T * .03); cx.fill(); cx.stroke();
+    cx.beginPath(); cx.arc(T * .6, 0, T * .1, .7, 5.58); cx.lineTo(T * .6, 0); cx.closePath(); cx.fill(); cx.stroke();
+  }
+  cx.restore();
+}
+
+// ---------- Movement and AI ----------
+function move(o, dx, dy, r) {
+  const nx = o.x + dx; if (!hits(nx, o.y, r)) o.x = nx;
+  const ny = o.y + dy; if (!hits(o.x, ny, r)) o.y = ny;
+}
+function hits(x, y, r) { return wall(Math.floor(x - r), Math.floor(y - r)) || wall(Math.floor(x + r), Math.floor(y - r)) || wall(Math.floor(x - r), Math.floor(y + r)) || wall(Math.floor(x + r), Math.floor(y + r)); }
+// Errors find the player through the maze with a distance map, rebuilt a few times a second.
+function buildDist() {
+  const d = Array.from({ length: MH }, () => Array(MW).fill(Infinity));
+  const q = [[Math.floor(G.p.x), Math.floor(G.p.y)]]; d[q[0][1]][q[0][0]] = 0;
+  while (q.length) {
+    const [x, y] = q.shift();
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const X = x + a, Y = y + b; if (!wall(X, Y) && d[Y][X] === Infinity) { d[Y][X] = d[y][x] + 1; q.push([X, Y]); } });
+  }
+  G.dist = d;
+}
+function roomClear() { return !G.errs.some(e => e.x >= SECURE.x0 && e.x <= SECURE.x1 + 1 && e.y >= SECURE.y0 && e.y <= SECURE.y1 + 1); }
+
+function walk(dt, sdt) {
+  const p = G.p;
+  let dx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0) + stick.x;
+  let dy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0) + stick.y;
+  const m = Math.hypot(dx, dy);
+  if (m > .1) { dx /= Math.max(1, m); dy /= Math.max(1, m); const v = S.boots ? 4.8 : 4; move(p, dx * v * sdt, dy * v * sdt, .28); }
+  if (touchMode) { const tgt = nearest(); if (tgt) p.aim = Math.atan2(tgt.y - p.y, tgt.x - p.x); else if (m > .1) p.aim = Math.atan2(dy, dx); }
+  p.hurtT = Math.max(0, p.hurtT - dt); G.swingT = Math.max(0, G.swingT - dt); G.fireT = Math.max(0, G.fireT - dt);
+}
+function step(dt) {
+  if (!G.running) return;
+  const p = G.p, sdt = dt * G.slow;
+  walk(dt, sdt);
+  // errors
+  G.distT -= dt; if (G.distT <= 0 || !G.dist) { buildDist(); G.distT = .3; }
+  G.errs.forEach(e => {
+    const tx = Math.floor(e.x), ty = Math.floor(e.y), here = G.dist[ty]?.[tx] ?? Infinity;
+    if (here > 9) return;                                  // too far away to notice you
+    let best = null, bd = here;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const v = G.dist[ty + b]?.[tx + a]; if (v < bd) { bd = v; best = [tx + a + .5, ty + b + .5]; } });
+    const goal = here <= 1 ? [p.x, p.y] : best;
+    if (!goal) return;
+    const gx = goal[0] - e.x, gy = goal[1] - e.y, gl = Math.hypot(gx, gy) || 1;
+    // Shooters keep their distance and fire slow green shots when they can see you.
+    if (e.shooter) {
+      e.cool -= sdt;
+      const d = Math.hypot(p.x - e.x, p.y - e.y);
+      if (e.cool <= 0 && d < 8 && sees(e, p)) {
+        e.cool = 2.6 + Math.random();
+        const a = Math.atan2(p.y - e.y, p.x - e.x);
+        G.ebolts.push({ x: e.x, y: e.y, vx: Math.cos(a) * 4.5, vy: Math.sin(a) * 4.5, dmg: 2 }); tone(300, .12, 'square', 0, .03, 200);
+      }
+      if (d < 2) return;
+    }
+    move(e, gx / gl * e.speed * sdt, gy / gl * e.speed * sdt, .22);
+    if (G.slow > 0 && Math.hypot(e.x - p.x, e.y - p.y) < .5 && p.hurtT <= 0) hurt(e);
+  });
+  // worms wander
+  G.worms.forEach(w => { w.t += dt; w.a += (Math.random() - .5) * 3 * dt; const ox = w.x, oy = w.y; move(w, Math.cos(w.a) * .6 * sdt, Math.sin(w.a) * .6 * sdt, .1); if (ox === w.x && oy === w.y) w.a += 2; });
+  // bolts
+  G.bolts = G.bolts.filter(b => {
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (wall(Math.floor(b.x), Math.floor(b.y))) { spark(b.x, b.y, '#41e3ff', 3); return false; }
+    const e = G.errs.find(e => Math.hypot(e.x - b.x, e.y - b.y) < .32);
+    if (e) { hitErr(e, b.dmg || 1); return false; }
+    const wi = G.worms.findIndex(w => Math.hypot(w.x - b.x, w.y - b.y) < .25);
+    if (wi >= 0) { G.worms.splice(wi, 1); S.bucks++; persist(); sfx.buck(); spark(b.x, b.y, '#c6f25a', 6); toast('+1 Math Buck'); hud(); return false; }
+    return true;
+  });
+  G.ebolts = G.ebolts.filter(b => {
+    b.x += b.vx * sdt; b.y += b.vy * sdt;
+    if (wall(Math.floor(b.x), Math.floor(b.y))) { spark(b.x, b.y, '#5fe07a', 3); return false; }
+    if (Math.hypot(b.x - p.x, b.y - p.y) < .35) { if (p.hurtT <= 0) hurt(b); return false; }
+    return true;
+  });
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .4));
+  G.restored = G.restored.filter(r => (r.t += dt) < 1.6);
+  // The first time an Armored Error comes close, say how to use the wrench.
+  if (!S.armorTip && G.errs.some(e => e.armored && Math.hypot(e.x - p.x, e.y - p.y) < 2.5)) {
+    S.armorTip = true; persist();
+    toast(touchMode ? 'Armored Error! Tap Wrench when it gets close.' : 'Armored Error! Press E (or click Wrench) when it gets close.');
+    $('#tWrench').classList.remove('glow'); void $('#tWrench').offsetWidth; $('#tWrench').classList.add('glow');
+  }
+  // what's within reach for the Use button
+  const nb = nearby(), was = G.near?.kind;
+  G.near = nb;
+  if (nb?.kind !== was) { setUse(nb); if (nb) firstTip(nb); }
+  if (!G.crate && Math.hypot(p.x - CRATE[0], p.y - CRATE[1]) < .6) {
+    G.crate = true; S.bucks += 15; persist(); sfx.restore(); toast('Vault crate: +15 Math Bucks!'); hud();
+  }
+  gemCheck();
+  if (!G.errs.length && G.running) sectorClear();
+}
+function nearby() {
+  const p = G.p, px = Math.floor(p.x), py = Math.floor(p.y);
+  if (Math.hypot(p.x - TERMINAL[0], p.y - TERMINAL[1]) < .8) return { kind: 'terminal' };
+  if (Math.hypot(p.x - PANEL[0], p.y - PANEL[1]) < .9) return { kind: 'panel' };
+  for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const x = px + a, y = py + b, c = G.tiles[y]?.[x];
+    if (c === 'C') return { kind: 'drill', x, y };
+    if (c === 'D') return { kind: 'door', x, y };
+    if (c === 'G') return { kind: 'gate', x, y };
+  }
+  return null;
+}
+const USE_LABEL = { drill: '🛠 Drill', door: '🚪 Door', panel: '🔌 Wire', terminal: '💻 Terminal', gate: '⚡ Gate' };
+function setUse(nb) {
+  $('#useLbl').textContent = nb ? nb.label || USE_LABEL[nb.kind] : '🛠 Use';
+  $('#tUse').classList.toggle('ready', !!nb);
+}
+const TIPS = {
+  drill: 'Cracked wall! Drill through it for a shortcut.',
+  door: 'A blast door. Drop it to seal the hallway.',
+  panel: 'The wire panel. Measure the wire to power the vault.',
+  terminal: 'The secure terminal. A bigger problem for bigger bucks.',
+  gate: 'This gate needs power from the wire panel in the secure room.',
+  shop: 'A shop! Go in to spend your Math Bucks.',
+  statue: 'A statue. Something is written on it.',
+  house: 'A house. Knock to say hi.',
+  exit: 'The next warehouse, full of math glitches. Go in when you are ready.',
+  fixed: 'The warehouse you just fixed.',
+};
+function firstTip(nb) {
+  S.tips = S.tips || {};
+  if (S.tips[nb.kind]) return;
+  S.tips[nb.kind] = true; persist();
+  toast(`${TIPS[nb.kind]} ${touchMode ? 'Tap Use.' : 'Press F (or click Use).'}`);
+}
+function use() {
+  if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
+  const nb = G.near;
+  if (G.town) return useTown(nb);
+  if (!nb) return toast('Nothing to use here. Walk up to a cracked wall, a door, the wire panel or the terminal.');
+  if (nb.kind === 'terminal') return useTerminal();
+  if (nb.kind === 'gate') return toast(G.powered ? 'The gate is open.' : 'Locked. Wire the panel in the secure room to power it.');
+  if (nb.kind === 'door') return toggleDoor(nb);
+  if (nb.kind === 'drill') return openTask(drillTask(nb));
+  if (nb.kind === 'panel') {
+    if (G.powered) return toast('Power is already on.');
+    if (!roomClear()) return toast('Restore every Error in this room first.');
+    return openTask(wireTask());
+  }
+}
+function toggleDoor({ x, y }) {
+  const key = x + ',' + y, p = G.p;
+  if (G.closed.has(key)) { G.closed.delete(key); sfx.clank(); toast('Door up.'); G.distT = 0; return; }
+  const inWay = o => Math.floor(o.x) === x && Math.floor(o.y) === y;
+  if (inWay(p)) return toast('Step out of the doorway first.');
+  if (G.errs.some(inWay)) return toast('An Error is in the doorway!');
+  G.closed.add(key); sfx.snap(); toast('Blast door down! The hallway is sealed.'); G.distT = 0;
+}
+function nearest() {
+  let best = null, bd = 7;
+  [...G.errs, ...G.worms].forEach(o => { const d = Math.hypot(o.x - G.p.x, o.y - G.p.y); if (d < bd) { bd = d; best = o; } });
+  return best;
+}
+function spark(x, y, c, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 3; G.fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, c }); } }
+
+function hitErr(e, dmg) {
+  e.hp -= dmg; spark(e.x, e.y, '#ff4fa3', 6);
+  if (e.hp > 0) { sfx.clank(); return; }
+  G.errs.splice(G.errs.indexOf(e), 1);
+  G.restored.push({ x: e.x, y: e.y, t: 0 });
+  G.stats.restored++; S.bucks += 2; persist(); sfx.restore(); toast('Error restored! +2'); hud();
+}
+function hurt(e) {
+  const p = G.p; p.shield -= e.dmg || 1; p.hurtT = 1.5; sfx.hurt();
+  const a = Math.atan2(p.y - e.y, p.x - e.x); move(p, Math.cos(a) * .8, Math.sin(a) * .8, .28);
+  if (p.shield <= 0) {
+    // A reboot, not a game over: back to the start with full shields, nothing lost.
+    p.x = START[0]; p.y = START[1]; p.shield = shieldMax(); p.hurtT = 2; G.ebolts = []; toast('System reboot! Back at the start.');
+  }
+  hud();
+}
+
+// ---------- Actions ----------
+function fire() {
+  if (!G?.running || G.town || !$('#reload').hidden || !$('#task').hidden) return;
+  if (G.ammo <= 0) return openReload();
+  G.ammo--; sfx.zap(); G.fireT = .1;
+  const p = G.p, s = 14;
+  G.bolts.push({ x: p.x + Math.cos(p.aim) * .45, y: p.y + Math.sin(p.aim) * .45, vx: Math.cos(p.aim) * s, vy: Math.sin(p.aim) * s });
+  hud();
+  if (G.ammo <= 0) openReload();
+}
+// Quad Blaster (from the kid designer's arsenal): all four barrels at once, in a spread, for 4 charges.
+// Decided 27 Oct (kid tester: the Quad was only good if all four shots hit): each bolt does 2.
+function quad() {
+  if (!S.quad || !G?.running || G.town || !$('#reload').hidden || !$('#task').hidden) return;
+  if (G.ammo < 4) return G.ammo <= 0 ? openReload() : toast('Quad Blast needs 4 charges.');
+  G.ammo -= 4; sfx.zap(); G.fireT = .1; tone(600, .12, 'square', .03, .03, 200);
+  const p = G.p, s = 14;
+  [-.24, -.08, .08, .24].forEach(o => { const a = p.aim + o; G.bolts.push({ x: p.x + Math.cos(a) * .45, y: p.y + Math.sin(a) * .45, vx: Math.cos(a) * s, vy: Math.sin(a) * s, dmg: 2 }); });
+  hud();
+  if (G.ammo <= 0) openReload();
+}
+function swing() {
+  if (!G?.running || !$('#reload').hidden || !$('#task').hidden) return;
+  if (G.wrenchBroken) return toast('Your wrench snapped. Fix it in the shop after this sector.');
+  G.swingT = .2; sfx.clank();
+  // Decided 22 Oct (kid tester: "the wrench is overpowered, I can clear a level
+  // without a single math problem"): it hits one Error, and only cracks armor.
+  // The Error underneath still needs the blaster.
+  const p = G.p, target = G.errs.filter(e => Math.hypot(e.x - p.x, e.y - p.y) < 1.1).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+  if (!target) return;
+  if (!target.armored) { if (!S.wrenchTip) { S.wrenchTip = true; persist(); toast('The wrench only cracks armor. Use the blaster on this one!'); } return; }
+  target.armored = false; target.hp = 1; target.speed = 1.7; spark(target.x, target.y, '#9aa7b8', 12); toast('Armor off! Now blast it.');
+  if (G.wrench > 0) G.wrench--;
+  else if (S.wrenchTier === 3 && G.ammo > 0) { G.ammo--; }          // Electrical Wrench: weapon energy instead of wear
+  else if (Math.random() < .35) { G.wrenchBroken = true; sfx.snap(); toast('SNAP! The wrench broke.'); }
+  if (G.wrench === 0 && !G.wrenchBroken && S.wrenchTier < 3) toast('Wrench at its breaking point!');
+  hud();
+}
+
+// ---------- Quick reload ----------
+let RQ = null;
+function openReload() {
+  const [q, a] = quick(S.level);
+  RQ = { a, t0: performance.now(), tries: 0 };
+  // The first version only slowed the fight to 35%, and Errors still reached you
+  // while you were thinking. Now everything holds still until you answer.
+  G.slow = 0;
+  $('#rq').textContent = q + ' = ?'; $('#ra').value = ''; $('#rmsg').textContent = '';
+  const opts = new Set([a]); while (opts.size < 3) { const v = a + randInt(-6, 6); if (v !== a && (v >= 0 || a < 0)) opts.add(v); }
+  $('#rc').innerHTML = shuffle([...opts]).map((v, i) => `<button class="choice" data-v="${v}">${v}<small style="display:block;font-size:12px;color:var(--soft)">${touchMode ? '' : i + 1}</small></button>`).join('');
+  $('#reload').hidden = false;
+  if (!touchMode) setTimeout(() => $('#ra').focus(), 30);
+}
+function answerReload(v) {
+  if (!RQ) return;
+  const ok = +v === RQ.a, ms = performance.now() - RQ.t0;
+  G.stats.asked++;
+  if (ok) {
+    G.stats.right++; record(RQ.tries === 0, ms);
+    G.ammo = magMax() * (S.double ? 2 : 1); S.bucks++; persist(); sfx.good();
+    $('#reload').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); RQ = null; $('#ra').blur(); hud(); return;
+  }
+  RQ.tries++; sfx.soft();
+  if (RQ.tries >= 2) { record(false, ms); $('#rmsg').textContent = `It was ${RQ.a}. Here's a new one.`; setTimeout(openReload, 1100); }
+  else $('#rmsg').textContent = 'Not quite. Try again.';
+}
+// Answer boxes take numbers only (the terminal also allows a decimal point).
+$('#ra').oninput = () => { $('#ra').value = $('#ra').value.replace(/[^0-9-]/g, '').replace(/(?!^)-/g, ''); };   // a minus sign only at the start
+$('#ta').oninput = () => { $('#ta').value = $('#ta').value.replace(/[^0-9.]/g, ''); };
+$('#rform').onsubmit = e => { e.preventDefault(); if ($('#ra').value !== '') answerReload($('#ra').value); };
+$('#rc').onclick = e => { const b = e.target.closest('[data-v]'); if (b) answerReload(b.dataset.v); };
+
+// ---------- Drill and wire puzzles ----------
+// A 10 x 10 coordinate grid: x across from the left, y up from the bottom.
+function gridPic(mark, tappable) {
+  const P = (x, y) => [20 + x * 20, 210 - y * 20];
+  let g = '';
+  for (let i = 0; i <= 10; i++) {
+    g += `<line x1="${20 + i * 20}" y1="10" x2="${20 + i * 20}" y2="210" stroke="${i ? 'rgba(65,227,255,.25)' : '#41e3ff'}"/>`;
+    g += `<line x1="20" y1="${10 + i * 20}" x2="220" y2="${10 + i * 20}" stroke="${i === 10 ? '#41e3ff' : 'rgba(65,227,255,.25)'}"/>`;
+    g += `<text x="${20 + i * 20}" y="226" fill="#9fb2cc" font-size="11" text-anchor="middle">${i}</text><text x="8" y="${214 - i * 20}" fill="#9fb2cc" font-size="11" text-anchor="middle">${i}</text>`;
+  }
+  if (mark) { const [mx, my] = P(...mark); g += `<circle cx="${mx}" cy="${my}" r="7" fill="#ffc93c" stroke="#23324a" stroke-width="2"/><circle cx="${mx}" cy="${my}" r="2" fill="#23324a"/>`; }
+  return `<svg id="grid" width="240" height="234" viewBox="0 0 240 234" ${tappable ? 'role="img" aria-label="Tap a point on the grid"' : 'aria-hidden="true"'}>${g}<g id="gridMark"></g></svg>`;
+}
+function anglePic(deg) {
+  const r = 70, a = deg * Math.PI / 180, x2 = 40 + Math.cos(a) * r * 1.6, y2 = 120 - Math.sin(a) * r * 1.6;
+  const ax = 40 + Math.cos(a) * 34, ay = 120 - Math.sin(a) * 34;
+  return `<svg width="240" height="140" viewBox="0 0 240 140" aria-hidden="true">
+    <line x1="40" y1="120" x2="220" y2="120" stroke="#41e3ff" stroke-width="5" stroke-linecap="round"/>
+    <line x1="40" y1="120" x2="${x2}" y2="${y2}" stroke="#ffc93c" stroke-width="5" stroke-linecap="round"/>
+    <path d="M74 120 A34 34 0 0 0 ${ax} ${ay}" fill="none" stroke="#e8f1ff" stroke-width="2"/></svg>`;
+}
+function drillTask(nb) {
+  const x = randInt(1, 9), y = randInt(1, 9), win = () => { G.tiles[nb.y][nb.x] = '.'; G.distT = 0; sfx.restore(); spark(nb.x + .5, nb.y + .5, '#ffb347', 14); toast('Breached! A new shortcut.'); };
+  if (S.level >= 3 && Math.random() < .4) {
+    const deg = rand([30, 45, 60, 90, 120, 135, 150]), kind = deg < 90 ? 'acute' : deg === 90 ? 'right' : 'obtuse';
+    return { lbl: 'DRILL · ANGLE', pic: anglePic(deg), q: `The drill is set to ${deg}°. Is that angle acute, right or obtuse?`, type: 'choice', choices: ['acute', 'right', 'obtuse'], a: kind, why: 'acute is less than 90°, right is exactly 90°, obtuse is more than 90°', win, retry: () => drillTask(nb) };
+  }
+  if (S.level <= 2) return { lbl: 'DRILL · FIND THE POINT', pic: gridPic(null, true), q: `Drill where the screw is: (${x}, ${y}). Tap that point.`, type: 'tap', a: [x, y], why: `go ${x} across, then ${y} up`, win, retry: () => drillTask(nb) };
+  return { lbl: 'DRILL · READ THE POINT', pic: gridPic([x, y]), q: 'Where is the central screw? Type its coordinates (x, y).', type: 'xy', a: [x, y], why: `it's ${x} across and ${y} up, so (${x}, ${y})`, win, retry: () => drillTask(nb) };
+}
+function wireTask() {
+  const L = S.level, l = randInt(L <= 1 ? 3 : 6, L <= 1 ? 9 : L === 2 ? 20 : 40), w = randInt(L <= 1 ? 2 : 4, L <= 1 ? 6 : L === 2 ? 14 : 25);
+  const loops = L >= 4 ? 2 : 1, P = 2 * l + 2 * w;
+  // the room is drawn to its numbers: a fixed box put a 3 m side on the long
+  // edge of a 3 by 5 room (seen 2 Nov). Very thin rooms get a little height.
+  const k = Math.min(170 / l, 100 / w), rw = Math.max(18, l * k), rh = Math.max(18, w * k), x0 = 70 + (170 - rw) / 2, y0 = 25;   // room on the left for the side label
+  const pic = `<svg width="260" height="${rh + 55}" viewBox="0 0 260 ${rh + 55}" aria-hidden="true">
+    <rect x="${x0}" y="${y0}" width="${rw}" height="${rh}" fill="rgba(65,227,255,.12)" stroke="#41e3ff" stroke-width="3"/>
+    <line x1="${x0}" y1="${y0 + rh + 14}" x2="${x0 + rw}" y2="${y0 + rh + 14}" stroke="#ffc93c" stroke-width="6" stroke-dasharray="6 4"/><text x="${x0 + rw / 2}" y="${y0 + rh + 28}" fill="#e8f1ff" font-size="14" text-anchor="middle">${l} m</text>
+    <line x1="${x0 - 14}" y1="${y0}" x2="${x0 - 14}" y2="${y0 + rh}" stroke="#ffc93c" stroke-width="6" stroke-dasharray="6 4"/><text x="${x0 - 22}" y="${y0 + rh / 2 + 5}" fill="#e8f1ff" font-size="14" text-anchor="end">${w} m</text></svg>`;
+  return {
+    lbl: 'MEASURING TAPE · WIRE', pic, type: 'num', a: P * loops,
+    q: loops === 1 ? `The room is ${l} m by ${w} m. How much wire runs all the way around it?` : `The room is ${l} m by ${w} m. The wire goes around TWICE. How much wire?`,
+    why: loops === 1 ? `2 × ${l} + 2 × ${w} = ${P} m` : `2 × ${l} + 2 × ${w} = ${P}, and twice around is ${P * 2} m`,
+    win: () => { G.powered = true; G.tiles[13][15] = '.'; G.distT = 0; S.bucks += 5; persist(); sfx.restore(); toast('Power restored! The vault gate opened. +5'); hud(); },
+    retry: () => wireTask(),
+  };
+}
+let TK = null;
+function openTask(t) {
+  TK = Object.assign(t, { tries: 0 }); G.slow = 0;
+  $('#tlbl').textContent = t.lbl; $('#tpic').innerHTML = t.pic; $('#tq').textContent = t.q; $('#tmsg').textContent = '';
+  $('#ta').hidden = t.type !== 'num'; $('#txy').hidden = t.type !== 'xy'; $('#tgo').hidden = t.type === 'tap' || t.type === 'choice';
+  $('#ta').value = ''; $('#tx').value = ''; $('#ty').value = '';
+  $('#tch').innerHTML = t.type === 'choice' ? t.choices.map(c => `<button class="choice" data-c="${c}">${c}</button>`).join('') : '';
+  $('#task').hidden = false;
+  setTimeout(() => (t.type === 'num' ? $('#ta') : t.type === 'xy' ? $('#tx') : null)?.focus(), 30);
+}
+function judge(ok) {
+  const t = TK; if (!t) return;
+  if (ok) { sfx.good(); $('#tmsg').textContent = 'Correct!'; TK = null; setTimeout(() => { closeTask(); t.win(); }, 900); return; }
+  sfx.soft();
+  if (++t.tries < 2) return void ($('#tmsg').textContent = 'Not quite. Try again.');
+  // Two misses: show how, then a fresh one of the same kind. Nothing is lost.
+  $('#tmsg').textContent = `The answer was ${Array.isArray(t.a) ? `(${t.a.join(', ')})` : t.a}: ${t.why}. Here's a new one.`;
+  TK = null; setTimeout(() => { if (!$('#task').hidden) openTask(t.retry()); }, 2600);
+}
+$('#tch').onclick = e => { const b = e.target.closest('[data-c]'); if (b && TK?.type === 'choice') judge(b.dataset.c === TK.a); };
+$('#tpic').onclick = e => {
+  if (TK?.type !== 'tap') return;
+  const svg = $('#grid'), r = svg.getBoundingClientRect();
+  const sx = (e.clientX - r.left) * 240 / r.width, sy = (e.clientY - r.top) * 234 / r.height;
+  const x = clamp(Math.round((sx - 20) / 20), 0, 10), y = clamp(Math.round((210 - sy) / 20), 0, 10);
+  $('#gridMark').innerHTML = `<circle cx="${20 + x * 20}" cy="${210 - y * 20}" r="7" fill="#ffc93c"/>`;
+  judge(x === TK.a[0] && y === TK.a[1]);
+};
+$('#tx').oninput = () => { $('#tx').value = $('#tx').value.replace(/[^0-9]/g, ''); };
+$('#ty').oninput = () => { $('#ty').value = $('#ty').value.replace(/[^0-9]/g, ''); };
+
+// ---------- Secure terminal ----------
+let TQ = null;
+function useTerminal() {
+  if (G.terminalUsed) return toast('Terminal already used this sector.');
+  if (!roomClear()) return toast('Restore every Error in this room first.');
+  TQ = bigTask(S.level); TQ.tries = 0; TK = null;
+  G.slow = 0;
+  $('#tlbl').textContent = 'SECURE TERMINAL'; $('#ta').hidden = false; $('#txy').hidden = true; $('#tgo').hidden = false; $('#tch').innerHTML = '';
+  $('#tpic').innerHTML = TQ.pic; $('#tq').textContent = TQ.q; $('#ta').value = ''; $('#tmsg').textContent = '';
+  $('#task').hidden = false; setTimeout(() => $('#ta').focus(), 30);
+}
+$('#tform').onsubmit = e => {
+  e.preventDefault();
+  if (TK) {
+    const t = TK;   // judge() clears TK, so read it once
+    if (t.type === 'num' && $('#ta').value !== '') judge(+$('#ta').value === t.a);
+    else if (t.type === 'xy' && $('#tx').value !== '' && $('#ty').value !== '') judge(+$('#tx').value === t.a[0] && +$('#ty').value === t.a[1]);
+    return;
+  }
+  if (!TQ || $('#ta').value === '') return;
+  if (+$('#ta').value === TQ.a) {
+    S.bucks += 10; persist(); sfx.good(); G.terminalUsed = true;
+    $('#tmsg').textContent = `Correct! ${TQ.why}. +10 Math Bucks.`; TQ = null; hud();
+    setTimeout(closeTask, 1600);
+  } else if (++TQ.tries >= 2) {
+    sfx.soft(); G.terminalUsed = true; $('#tmsg').textContent = `The answer was ${TQ.a}: ${TQ.why}.`; TQ = null;
+  } else { sfx.soft(); $('#tmsg').textContent = 'Not quite. Check it again.'; }
+};
+function closeTask() { TK = null; $('#task').hidden = true; G.slow = 1; G.p.hurtT = Math.max(G.p.hurtT, 1); $('#ta').blur(); }
+$('#tclose').onclick = closeTask;
+
+// ---------- Level up ----------
+function askLevelUp() {
+  G.running = false;
+  $('#luText').textContent = `Almost every answer right, and fast. Want to try ${LEVELS[S.level].name} (${LEVELS[S.level].eg})?`;
+  $('#levelUp').hidden = false;
+}
+$('#luYes').onclick = () => { S.level++; persist(); $('#levelUp').hidden = true; G.running = true; hud(); toast(`Math is now ${LEVELS[S.level - 1].name}`); };
+$('#luNo').onclick = () => { $('#levelUp').hidden = true; G.running = true; };
+
+// ---------- Sector clear and shop ----------
+function sectorClear() {
+  G.running = false; S.best = Math.max(S.best, G.n); persist(); sfx.restore();
+  $('#cTitle').textContent = `Sector ${G.n} restored!`;
+  $('#cStats').textContent = `${G.stats.restored} Errors restored · ${G.stats.right} of ${G.stats.asked} reloads right${S.gems ? ` · 💎 ${S.gems}` : ''}`;
+  $('#cShop').hidden = true; $('#next').textContent = 'Go to town'; $('#clear').hidden = false;
+}
+const SHOP = [
+  { id: 'repair', shop: 'tool', name: 'Repair the wrench', cost: 5, show: () => G.wrenchBroken || G.wrench < wrenchMax(), buy: () => { G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 't1', shop: 'tool', name: 'Wrench: Metal T1 (9 uses)', cost: 15, show: () => S.wrenchTier === 0, buy: () => { S.wrenchTier = 1; G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 't2', shop: 'tool', name: 'Wrench: Metal T2 (12 uses)', cost: 30, show: () => S.wrenchTier === 1, buy: () => { S.wrenchTier = 2; G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+  { id: 'mag', shop: 'gear', name: 'Bigger battery (+3 shots)', cost: 20, show: () => S.magBonus < 9, buy: () => { S.magBonus += 3; } },
+  { id: 'double', shop: 'gear', name: 'Double Energy (1 answer = 2 batteries)', cost: 35, show: () => !S.double, buy: () => { S.double = true; } },
+  { id: 'boots', shop: 'gear', name: 'Speed boots (move faster)', cost: 25, show: () => !S.boots, buy: () => { S.boots = true; } },
+  { id: 'shield', shop: 'gear', name: 'Shield pack (+1 shield)', cost: 25, show: () => S.shieldBonus < 3, buy: () => { S.shieldBonus++; G.p.shield = shieldMax(); } },
+  { id: 'quad', shop: 'blaster', name: 'Quad Blaster (Q / right-click: 4 bolts at once)', cost: 50, show: () => !S.quad, buy: () => { S.quad = true; } },
+  { id: 'elec', shop: 'tool', name: 'Electrical Wrench (uses blaster energy, never snaps)', cost: 45, show: () => S.wrenchTier === 2, buy: () => { S.wrenchTier = 3; G.wrenchBroken = false; G.wrench = wrenchMax(); } },
+];
+function drawShop() {
+  $('#cBucks').textContent = `💰 ${S.bucks}`;
+  $('#shop').innerHTML = SHOP.filter(i => i.shop === shopKind && i.show()).map(i => `<button class="btn" data-id="${i.id}" ${S.bucks < i.cost ? 'disabled' : ''}><span>${i.name}</span><b>💰 ${i.cost}</b></button>`).join('') || '<p>Nothing left to buy. Nice!</p>';
+}
+$('#shop').onclick = e => {
+  const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
+  const it = SHOP.find(i => i.id === b.dataset.id); if (S.bucks < it.cost) return;
+  S.bucks -= it.cost; it.buy(); persist(); sfx.good(); drawShop(); hud();
+};
+$('#next').onclick = () => { $('#clear').hidden = true; if (G.town) G.running = true; else newTown(); };
+let shopKind = null;
+function openShop(shop) {
+  shopKind = shop.kind; G.running = false;
+  $('#cTitle').textContent = shop.name; $('#cStats').textContent = shop.hello;
+  $('#cShop').hidden = false; $('#next').textContent = 'Back to town';
+  drawShop(); $('#clear').hidden = false;
+}
+
+// ---------- The town ----------
+function newTown() {
+  const old = G, friends = [];
+  // the Errors restored in the sector you just cleared come to live in town
+  const town = makeTown();
+  for (let i = 0; i < Math.min(old.stats.restored, 12); i++) {
+    const [x, y] = town.reach[randInt(0, town.reach.length - 1)];
+    friends.push({ x: x + .5, y: y + .5, a: Math.random() * 6.28, t: Math.random() * 6 });
+  }
+  G = {
+    ...town, town: true, n: old.n, errs: [], worms: [], friends, bolts: [], ebolts: [], fx: [], restored: [],
+    p: { x: town.start[0], y: town.start[1], aim: 0, shield: shieldMax(), hurtT: 0 }, cam: { x: 0, y: 0 },
+    ammo: magMax(), wrench: old.wrench, wrenchBroken: old.wrenchBroken, swingT: 0, fireT: 0, spinT: 0, gift: false,
+    closed: new Set(), near: null, slow: 1, running: true, stats: old.stats, lost: 0,
+  };
+  setUse(null); hud(); toast('Back in town. Look around, visit the shops, then find the next warehouse.', 4000);
+}
+function firstTown() {
+  const town = makeTown(true);
+  G = {
+    ...town, town: true, n: 0, errs: [], worms: [], friends: [], bolts: [], ebolts: [], fx: [], restored: [],
+    p: { x: town.start[0], y: town.start[1], aim: 0, shield: shieldMax(), hurtT: 0 }, cam: { x: 0, y: 0 },
+    ammo: magMax(), wrench: wrenchMax(), wrenchBroken: false, swingT: 0, fireT: 0, spinT: 0, gift: false,
+    closed: new Set(), near: null, slow: 1, running: true, stats: { right: 0, asked: 0, restored: 0 }, lost: 0,
+  };
+  setUse(null); hud();
+}
+function foundGem(x, y) {
+  S.gems = (S.gems || 0) + 1; S.bucks += 5; persist(); sfx.gem(); hud();
+  GEM_COLORS.forEach(c => spark(x, y, c, 8));
+}
+function gemCheck() {
+  if (G.gem && Math.hypot(G.p.x - G.gem.x, G.p.y - G.gem.y) < .45) {
+    const { x, y } = G.gem; G.gem = null; foundGem(x, y); toast('You found a hidden gem! +5');
+  }
+}
+function stepTown(dt) {
+  if (!G.running) return;
+  walk(dt, dt);
+  G.lost += dt;
+  G.spinT = Math.max(0, G.spinT - dt);
+  G.friends.forEach(w => { w.t += dt; w.a += (Math.random() - .5) * 3 * dt; const ox = w.x, oy = w.y; move(w, Math.cos(w.a) * .8 * dt, Math.sin(w.a) * .8 * dt, .2); if (ox === w.x && oy === w.y) w.a += 2; });
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.t < .4));
+  gemCheck();
+  const nb = nearbyTown(), was = G.near?.label;
+  G.near = nb;
+  if (nb?.label !== was) { setUse(nb); if (nb) firstTip(nb); }
+}
+function nearbyTown() {
+  const px = Math.floor(G.p.x), py = Math.floor(G.p.y);
+  for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const c = G.tiles[py + b]?.[px + a];
+    if (SHOPS[c]) return { kind: 'shop', shop: SHOPS[c], label: '🚪 ' + SHOPS[c].name };
+    if (c === 'H') return { kind: 'house', at: [px + a + .5, py + b + .5], label: '🚪 House' };
+    if (c === 'M') return { kind: 'statue', label: '⭐ Statue' };
+    if (c === 'X') return { kind: 'exit', label: '🏭 Next warehouse' };
+    if (c === 'w') return { kind: 'fixed', label: '🏭 Fixed warehouse' };
+  }
+  return null;
+}
+const HOUSE_HELLO = ['Knock knock! A restored Error waves from behind the boards.', 'Nobody home. The door hangs off one hinge.', 'A quiet hum inside. Something in there still works.', 'A restored Error opens the door: "Thank you for fixing me!"'];
+// nobody has been restored yet in the first town
+const HOUSE_EMPTY = ['Nobody home. The windows are boarded up.', 'The walls buzz with glitches.', 'The door is stuck. Static crackles behind it.'];
+function useTown(nb) {
+  if (!nb) return toast('Walk up to a door or the statue.');
+  if (nb.kind === 'shop') return openShop(nb.shop);
+  if (nb.kind === 'house') { spark(nb.at[0], nb.at[1], '#5fe0a0', 6); sfx.gem(); return toast(rand(G.friends.length ? HOUSE_HELLO : HOUSE_EMPTY)); }
+  if (nb.kind === 'fixed') return toast('All fixed in there! The next warehouse is somewhere in town.');
+  if (nb.kind === 'exit') { newSector(G.n + 1); return toast(G.n === 1 ? 'Restore every Error in the sector!' : `Sector ${G.n}: more Errors this time`); }
+  G.spinT = 1;
+  const [sx, sy] = G.statue;
+  if (G.gift) { spark(sx, sy, '#c9b6ff', 8); return toast('"For the Errors, who were only lost."'); }
+  G.gift = true; foundGem(sx, sy);
+  toast('"For the Errors, who were only lost." The statue gave you a gem! +5', 4000);
+}
+// Decided 28 Oct, from the kid designer: the town should look infected and
+// broken down, not happy. The first town had bright lawns, round green trees,
+// lit windows and candy-colored houses; it read as a little kid's town.
+const hsh = (x, y, k = 0) => { let h = Math.imul(x + 1, 374761393) + Math.imul(y + 1, 668265263) + Math.imul(k + 1, 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function faded(hex) {                         // the old paint: grayed out and darker
+  const n = parseInt(hex.slice(1), 16), mix = (v, g) => Math.round(v * .45 + g * .55);
+  return `rgb(${mix(n >> 16, 78)},${mix(n >> 8 & 255, 76)},${mix(n & 255, 80)})`;
+}
+function crack(X, Y, r) {
+  cx.strokeStyle = 'rgba(0,0,0,.55)'; cx.lineWidth = T * .035; cx.beginPath();
+  cx.moveTo(X + T * (.1 + r), Y + T * .1); cx.lineTo(X + T * (.35 + r * .5), Y + T * .45); cx.lineTo(X + T * (.2 + r), Y + T * .7); cx.lineTo(X + T * (.45 + r), Y + T * .95);
+  cx.moveTo(X + T * (.35 + r * .5), Y + T * .45); cx.lineTo(X + T * .8, Y + T * (.4 + r)); cx.stroke();
+}
+function stains(X, Y, W, H, k) {              // water stains and soot down the walls
+  cx.fillStyle = 'rgba(0,0,0,.18)';
+  for (let i = 0; i < 3; i++) { const sx = X + hsh(k, i) * (W - T * .3); cx.fillRect(sx, Y + T * .55, T * (.12 + hsh(k, i, 2) * .2), H * (.3 + hsh(k, i, 3) * .5)); }
+}
+function brokenWindow(x, y, w, h, kind) {
+  cx.fillStyle = '#101218'; cx.fillRect(x, y, w, h);
+  if (kind === 'crack') { cx.strokeStyle = 'rgba(200,210,230,.35)'; cx.lineWidth = T * .025; cx.beginPath(); cx.moveTo(x + w * .2, y); cx.lineTo(x + w * .5, y + h * .5); cx.lineTo(x + w * .3, y + h); cx.moveTo(x + w * .5, y + h * .5); cx.lineTo(x + w, y + h * .35); cx.stroke(); }
+  if (kind === 'boards') { cx.fillStyle = '#7a5d3e'; cx.fillRect(x - w * .1, y + h * .2, w * 1.2, h * .2); cx.fillRect(x - w * .1, y + h * .6, w * 1.2, h * .2); }
+}
+function drawTown(t) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // the town is bigger than the screen, so the view follows you
+  const cam = G.cam;
+  cam.x = Math.max(0, Math.min(G.W - MW, G.p.x - MW / 2)); cam.y = Math.max(0, Math.min(G.H - MH, G.p.y - MH / 2));
+  cx.save(); cx.translate(-cam.x * T, -cam.y * T);
+  const x0 = Math.floor(cam.x), x1 = Math.min(G.W, cam.x + MW + 1), y0 = Math.floor(cam.y), y1 = Math.min(G.H, cam.y + MH + 1);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const c = G.tiles[y][x], X = x * T, Y = y * T, r = hsh(x, y);
+    if (c === '#') {                          // a broken fence and rubble around the edge
+      cx.fillStyle = '#17181d'; cx.fillRect(X, Y, T, T);
+      cx.strokeStyle = '#34363f'; cx.lineWidth = T * .04; cx.beginPath();
+      for (let k = 0; k <= 1; k += .25) { cx.moveTo(X + k * T, Y); cx.lineTo(X + T, Y + (1 - k) * T); cx.moveTo(X, Y + k * T); cx.lineTo(X + (1 - k) * T, Y + T); }
+      cx.stroke();
+      if (r < .4) { cx.fillStyle = '#3c3a38'; cx.beginPath(); cx.arc(X + T * (.2 + r), Y + T * .75, T * .16, 0, 7); cx.fill(); }
+    } else if (c === ';' || c === 't' || c === 'h' || c === 'H' || c === 'b' || SHOPS[c]) {
+      cx.fillStyle = '#2c2b22'; cx.fillRect(X, Y, T, T);              // dead lawn
+      if (c === ';' && r < .3) { cx.fillStyle = '#56523c'; cx.fillRect(X + T * .3, Y + T * .45, T * .06, T * .18); cx.fillRect(X + T * .44, Y + T * .38, T * .06, T * .25); }
+      if (c === ';' && r > .85) { cx.fillStyle = '#2a2822'; cx.beginPath(); cx.ellipse(X + T / 2, Y + T / 2, T * .35, T * .22, 0, 0, 7); cx.fill(); }
+      if (c === 't') {                        // a dead tree
+        cx.strokeStyle = '#4a3526'; cx.lineCap = 'round'; cx.lineWidth = T * .1;
+        cx.beginPath(); cx.moveTo(X + T * .5, Y + T * .92); cx.lineTo(X + T * .5, Y + T * .35); cx.stroke();
+        cx.lineWidth = T * .05; cx.beginPath();
+        cx.moveTo(X + T * .5, Y + T * .55); cx.lineTo(X + T * .25, Y + T * .3); cx.moveTo(X + T * .5, Y + T * .45); cx.lineTo(X + T * .76, Y + T * .22);
+        cx.moveTo(X + T * .5, Y + T * .38); cx.lineTo(X + T * .42, Y + T * .1); cx.moveTo(X + T * .3, Y + T * .34); cx.lineTo(X + T * .2, Y + T * .2); cx.stroke();
+        cx.lineCap = 'butt';
+      }
+    } else if (c === ',' || c === 'M') {
+      cx.fillStyle = '#44464f'; cx.fillRect(X, Y, T, T);              // cracked paving
+      cx.strokeStyle = 'rgba(0,0,0,.35)'; cx.lineWidth = T * .03; cx.strokeRect(X + 1, Y + 1, T - 2, T - 2);
+      if (r < .3) crack(X, Y, r);
+    } else {                                  // the street, cracked and potholed
+      cx.fillStyle = '#3a3c44'; cx.fillRect(X, Y, T, T);
+      if (r < .35) crack(X, Y, r);
+      else if (r > .95) { cx.fillStyle = '#141519'; cx.beginPath(); cx.ellipse(X + T / 2, Y + T / 2, T * .28, T * .18, r * 6, 0, 7); cx.fill(); }
+    }
+  }
+  // the shops, front on, with their names
+  G.shops.forEach(b => {
+    const X = b.x * T, Y = b.y * T, W = b.w * T, H = b.h * T;
+    cx.fillStyle = faded(b.shop.col); roundRect(X + T * .05, Y, W - T * .1, H, T * .08); cx.fill();
+    cx.fillStyle = 'rgba(0,0,0,.35)'; cx.fillRect(X + T * .05, Y, W - T * .1, T * .55);               // roof
+    stains(X, Y, W, H, b.x);
+    // the sign still works, mostly: it flickers
+    const flick = hsh(b.x, Math.floor(t / 90)) > .9 ? .35 : 1;
+    cx.globalAlpha = flick; cx.fillStyle = '#d8cfb0'; roundRect(X + T * .4, Y + T * .8, W - T * .8, T * .75, T * .06); cx.fill();
+    cx.fillStyle = '#05070f'; cx.font = `800 ${T * .4}px Lexend`; cx.textAlign = 'center'; cx.fillText(b.shop.sign, X + W / 2, Y + T * 1.32);
+    cx.globalAlpha = 1;
+    [X + T * .45, X + W - T * 1.05].forEach((wx, k) => brokenWindow(wx, Y + T * 1.9, T * .6, T * .6, k ? 'boards' : 'crack'));
+    const DX = b.dx * T;
+    cx.fillStyle = '#3b2414'; roundRect(DX + T * .15, Y + T * 2.05, T * .7, T * .95, T * .2); cx.fill();
+    cx.fillStyle = '#ffc93c'; cx.beginPath(); cx.arc(DX + T * .7, Y + T * 2.6, T * .06, 0, 7); cx.fill();
+  });
+  // small houses where the restored Errors live
+  G.houses.forEach(b => {
+    const X = b.x * T, Y = b.y * T, W = b.w * T, H = b.h * T, DX = b.dx * T;
+    cx.fillStyle = faded(b.col); roundRect(X + T * .1, Y + T * .25, W - T * .2, H - T * .25, T * .06); cx.fill();
+    stains(X + T * .1, Y + T * .25, W - T * .2, H - T * .25, b.x * 3 + b.y);
+    // a sagging roof, some with a hole in it
+    cx.fillStyle = '#2f2a2e'; cx.beginPath(); cx.moveTo(X, Y + T * .45); cx.lineTo(X + W / 2, Y - T * .12); cx.lineTo(X + W, Y + T * .45); cx.closePath(); cx.fill();
+    if (hsh(b.x, b.y) < .5) { cx.fillStyle = '#0d0e12'; cx.beginPath(); cx.moveTo(X + W * .55, Y + T * .05); cx.lineTo(X + W * .72, Y + T * .22); cx.lineTo(X + W * .6, Y + T * .32); cx.closePath(); cx.fill(); }
+    [X + T * .3, X + W - T * .75].forEach((wx, k) => brokenWindow(wx, Y + T * .75, T * .45, T * .45, (k + b.x) % 2 ? 'boards' : 'dark'));
+    cx.fillStyle = '#3b2414'; roundRect(DX + T * .22, Y + T * 1.25, T * .56, T * .75, T * .16); cx.fill();
+  });
+  // old warehouses: the one you fixed, and the next one with glitches glowing inside
+  G.warehouses.forEach(b => {
+    const X = b.x * T, Y = b.y * T, W = b.w * T, H = b.h * T, DX = b.dx * T;
+    cx.fillStyle = '#6d7488'; cx.fillRect(X + T * .05, Y + T * .3, W - T * .1, H - T * .3);
+    cx.strokeStyle = 'rgba(0,0,0,.18)'; cx.lineWidth = T * .04;            // metal siding
+    for (let x = X + T * .3; x < X + W - T * .1; x += T * .3) { cx.beginPath(); cx.moveTo(x, Y + T * .35); cx.lineTo(x, Y + H); cx.stroke(); }
+    cx.fillStyle = '#4b5164'; cx.beginPath(); cx.moveTo(X, Y + T * .4); cx.lineTo(X + W * .5, Y); cx.lineTo(X + W, Y + T * .4); cx.closePath(); cx.fill();   // roof
+    [X + T * .35, X + W - T * 1.05].forEach(wx => {                          // boarded-up windows
+      cx.fillStyle = '#1b2135'; cx.fillRect(wx, Y + T * .8, T * .7, T * .55);
+      cx.strokeStyle = '#a07a4a'; cx.lineWidth = T * .08; cx.beginPath(); cx.moveTo(wx, Y + T * .85); cx.lineTo(wx + T * .7, Y + T * 1.3); cx.stroke();
+    });
+    cx.fillStyle = '#05070f'; cx.font = `800 ${T * .32}px Lexend`; cx.textAlign = 'center';
+    const lit = b.fixed ? '#5fe0a0' : '#b16cff';
+    cx.fillStyle = '#fff6d8'; roundRect(X + W / 2 - T * 1, Y + T * .5, T * 2, T * .45, T * .08); cx.fill();
+    cx.fillStyle = '#05070f'; cx.fillText(b.fixed ? 'FIXED ✓' : `SECTOR ${G.n + 1}`, X + W / 2, Y + T * .84);
+    // the big roll-up door
+    cx.fillStyle = b.fixed ? '#2a3350' : '#3a2d5c'; cx.fillRect(DX - T * .45, Y + T * 1.6, T * 1.9, H - T * 1.6);
+    if (!b.fixed) { cx.save(); cx.globalAlpha = .35 + .25 * Math.sin(t / 300); cx.fillStyle = lit; cx.shadowColor = lit; cx.shadowBlur = T * .6; cx.fillRect(DX - T * .45, Y + H - T * .3, T * 1.9, T * .3); cx.restore(); }
+    cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.lineWidth = T * .04;
+    for (let y = Y + T * 1.8; y < Y + H - T * .35; y += T * .25) { cx.beginPath(); cx.moveTo(DX - T * .45, y); cx.lineTo(DX + T * 1.45, y); cx.stroke(); }
+  });
+  // the glitch is spreading through town: purple patches that flicker on the
+  // ground and creep up the walls. Each sector you fix pushes it back a little.
+  const shrink = Math.max(.4, 1 - G.n * .1), tick = Math.floor(t / 160);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    if (G.tiles[y][x] === '#') continue;
+    const k = Math.max(...G.blight.map(b => 1 - Math.hypot(x + .5 - b.x, y + .5 - b.y) / (b.r * shrink)));
+    if (k <= 0 || hsh(x, y, 7) > k * 1.3) continue;
+    const X = x * T, Y = y * T;
+    cx.fillStyle = `rgba(110,40,190,${(.12 + k * .25).toFixed(2)})`; cx.fillRect(X, Y, T, T);
+    for (let k = 0; k < 3; k++) {
+      if (hsh(x, y, tick * 3 + k) > .55) continue;
+      cx.fillStyle = k ? '#b16cff' : '#ff4dd2';
+      const sz = T * (.08 + .1 * hsh(x, y, 30 + k));
+      cx.fillRect(X + hsh(x, y, 40 + k + tick) * (T - sz), Y + hsh(x, y, 50 + k + tick) * (T - sz), sz, sz);
+    }
+    if (hsh(x, y, tick + 99) < .05) { cx.fillStyle = 'rgba(177,108,255,.5)'; cx.fillRect(X - T * .2, Y + T * hsh(x, y, tick), T * 1.4, T * .08); }
+  }
+  if (G.gem) twinkle(G.gem.x * T, G.gem.y * T, t, '#fff3b0');
+  // the statue: an Error in stone, on a step, watching you
+  const sx = G.statue[0] * T, sy = G.statue[1] * T, sr = T * .6, look = Math.atan2(G.p.y - G.statue[1], G.p.x - G.statue[0]);
+  cx.fillStyle = '#8d93a3'; roundRect(sx - T * .75, sy + T * .05, T * 1.5, T * .6, T * .1); cx.fill();
+  cx.lineWidth = T * .035; cx.strokeStyle = '#05070f'; cx.lineJoin = 'round';
+  cx.fillStyle = '#c9b6ff'; pent(sx, sy - T * .2, sr, G.spinT * Math.PI * 4 / 5 * 2); cx.fill(); cx.stroke();
+  cx.fillStyle = '#ff5a3c'; cx.lineWidth = T * .02;
+  [-1, 1].forEach(s => { const x0 = sx + s * sr * .28 + Math.cos(look) * T * .08, y0 = sy - T * .2 + Math.sin(look) * T * .08; cx.beginPath(); cx.moveTo(x0 - s * sr * .12, y0 + sr * .14); cx.lineTo(x0 + s * sr * .1, y0 + sr * .14); cx.lineTo(x0 + s * sr * .02, y0 - sr * .2); cx.closePath(); cx.fill(); cx.stroke(); });
+  if (!G.gift) twinkle(sx + T * .5, sy - T * .75, t, '#fff3b0');
+  // the restored Errors, happy and green
+  G.friends.forEach(w => {
+    const fx = w.x * T, fy = w.y * T + Math.sin(w.t * 5) * T * .03;
+    cx.fillStyle = '#5fe0a0'; cx.strokeStyle = '#05070f'; cx.lineWidth = T * .03; pent(fx, fy, T * .2); cx.fill(); cx.stroke();
+    cx.fillStyle = '#0b1226'; cx.font = `${T * .16}px Lexend`; cx.textAlign = 'center'; cx.fillText('^‿^', fx, fy + T * .05);
+  });
+  G.fx.forEach(f => { cx.globalAlpha = Math.max(0, 1 - f.t / .4); cx.fillStyle = f.c; cx.fillRect(f.x * T, f.y * T, T * .07, T * .07); cx.globalAlpha = 1; });
+  drawPlayer(t);
+  cx.restore();
+  const vg = cx.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * .35, cv.width / 2, cv.height / 2, cv.width * .7);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)');
+  cx.fillStyle = vg; cx.fillRect(0, 0, cv.width, cv.height);
+  // after a while, an arrow at the edge of the screen points the way to the
+  // next warehouse, so nobody wanders forever
+  const goal = G.warehouses.find(w => !w.fixed);
+  if (goal && G.lost > 25) {
+    const gx = (goal.dx + .5 - cam.x) * T, gy = (goal.y + goal.h - cam.y) * T, m = T;
+    if (gx < 0 || gy < 0 || gx > cv.width || gy > cv.height) {
+      const a = Math.atan2(gy - cv.height / 2, gx - cv.width / 2), bob = Math.sin(t / 200) * T * .1;
+      const ax = clamp(gx, m, cv.width - m), ay = clamp(gy, m, cv.height - m);
+      cx.save(); cx.translate(ax - Math.cos(a) * bob, ay - Math.sin(a) * bob); cx.rotate(a);
+      cx.fillStyle = '#b16cff'; cx.shadowColor = '#b16cff'; cx.shadowBlur = T * .5;
+      cx.strokeStyle = '#05070f'; cx.lineWidth = T * .06; cx.beginPath(); cx.moveTo(T * .65, 0); cx.lineTo(-T * .45, -T * .5); cx.lineTo(-T * .2, 0); cx.lineTo(-T * .45, T * .5); cx.closePath(); cx.fill(); cx.shadowBlur = 0; cx.stroke();
+      cx.restore();
+    }
+  }
+}
+
+// ---------- HUD and messages ----------
+function hud() {
+  if (!G) return;
+  $('#hShield').textContent = `🛡️ ${'■'.repeat(Math.max(0, G.p.shield))}${'□'.repeat(Math.max(0, shieldMax() - G.p.shield))}`;
+  // in town there's nothing to blast
+  $('#tQuad').hidden = !S.quad || !!G.town; $('#tFire').hidden = $('#tWrench').hidden = !!G.town;
+  $('#hAmmo').textContent = `⚡ ${G.ammo}`;
+  $('#hWrench').textContent = G.wrenchBroken ? '🔧 ✖' : `🔧 ${G.wrench}${G.wrench === 0 ? '!' : ''}`;
+  $('#hBucks').textContent = `💰 ${S.bucks}`;
+  $('#hLeft').textContent = G.town ? '🏘 Town' : `👾 ${G.errs.length}`;
+}
+let toastT;
+function toast(m, ms = m.length > 40 ? 3500 : 1800) { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms); }
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (!$('#reload').hidden) {
+    if (['1', '2', '3'].includes(k) && $('#ra').value === '') { const b = $('#rc').children[+k - 1]; if (b) { e.preventDefault(); answerReload(b.dataset.v); } }
+    return;
+  }
+  if (!$('#task').hidden || document.activeElement?.tagName === 'INPUT') return;
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys[k] = true;
+  if (k === ' ') fire();
+  if (k === 'q') quad();
+  if (k === 'e') swing();
+  if (k === 'r' && G?.running && !G.town && G.ammo < magMax()) openReload();
+  if (k === 'f' || (k === 'enter' && G?.near)) use();
+  if (k === 'escape' || k === 'p') pause();
+  if (k === 'h') help();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+cv.addEventListener('mousemove', e => {
+  if (!G) return; const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) / r.width * MW + (G.cam?.x || 0), my = (e.clientY - r.top) / r.height * MH + (G.cam?.y || 0);
+  G.p.aim = Math.atan2(my - G.p.y, mx - G.p.x);
+});
+cv.addEventListener('mousedown', e => { if (!touchMode && e.button === 0) fire(); if (!touchMode && e.button === 2) quad(); });
+cv.addEventListener('contextmenu', e => { if (S.quad) e.preventDefault(); });
+// touch: a stick on the left, buttons on the right, aiming locks on to the nearest target
+$('#touch').classList.add('on');
+// pointerdown (not click) so the button never takes focus and Space can't fire twice
+$('#tFire').addEventListener('pointerdown', e => { e.preventDefault(); fire(); });
+$('#tWrench').addEventListener('pointerdown', e => { e.preventDefault(); swing(); });
+$('#tUse').addEventListener('pointerdown', e => { e.preventDefault(); use(); });
+$('#tQuad').addEventListener('pointerdown', e => { e.preventDefault(); quad(); });
+const stick = touchMode ? RDG.stick('#stick', '#knob') : { x: 0, y: 0, id: null };
+if (touchMode) {
+  document.body.classList.add('touchdev'); $('#keys').textContent = 'Drag the stick to move. Fire aims at the nearest target. Wrench is for armored Errors. Use drills cracked walls, drops doors, and works the wire panel and terminal. Tip: turn your phone sideways for a bigger maze.';
+  // A thumb on the stick and a thumb on Fire look like a pinch to iPhone Safari,
+  // and quick taps on Fire look like a double tap, so the page zoomed mid play
+  // in Bread and Rodeo. Decided 15 Nov: every game blocks it the same way while
+  // playing (the start screen and questions can still be zoomed to read).
+  RDG.noZoom(() => document.body.classList.contains('playing') && $('#start').hidden, ['#stick', '#tFire', '#tWrench', '#tUse', '#tQuad']);
+}
+
+// ---------- Start screen ----------
+let pick = S.level;
+function drawLevels() { $('#levels').innerHTML = LEVELS.map(l => `<button class="btn${l.n === pick ? ' on' : ''}" data-n="${l.n}">${l.name}<small>${l.eg}</small></button>`).join(''); }
+$('#levels').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { pick = +b.dataset.n; drawLevels(); } };
+$('#catBtn').onclick = () => { S.cat = !S.cat; persist(); $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`; };
+$('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
+$('#go').onclick = () => { S.level = pick; persist(); $('#start').hidden = true; document.body.classList.add('playing'); resize(); firstTown(); if (!S.helpSeen) { S.helpSeen = true; persist(); help(true); } toast('The town is glitching. Find the warehouse where it started: look for the purple glow.', 5000); };
+function help(open = $('#info').hidden) {
+  $('#info').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open);
+}
+$('#helpBtn').onclick = () => help();
+$('#infoClose').onclick = () => help(false);
+// Pause: everything that isn't the game lives here.
+function pause() {
+  if (!G || $('#start').hidden === false || !$('#clear').hidden) return;
+  G.running = false;
+  $('#pInfo').textContent = `Sector ${G.n} · math ${LEVELS[S.level - 1].name} · ${G.errs.length} Errors left`;
+  $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off';
+  $('#paused').hidden = false;
+}
+$('#pauseBtn').onclick = pause;
+$('#resume').onclick = () => { $('#paused').hidden = true; G.running = true; };
+$('#pSound').onclick = () => { S.sound = !S.sound; saveSound(); $('#pSound').textContent = S.sound ? '🔊 Sound on' : '🔇 Sound off'; $('#soundBtn').textContent = S.sound ? '🔊' : '🔇'; };
+$('#pLevel').onclick = () => { $('#paused').hidden = true; document.body.classList.remove('playing'); resize(); pick = S.level; drawLevels(); $('#start').hidden = false; };
+drawLevels();
+// Picking a file comes first; the level and helmet below it are that file's.
+function showWho() {
+  if (G) G.running = false;
+  document.body.classList.remove('playing'); resize();
+  $('#paused').hidden = true; $('#clear').hidden = true;
+  $('#whoStep').hidden = false; $('#setup').hidden = true; $('#start').hidden = false;
+  SaveFiles.mount($('#who'), { game: KEY, summary: d => `Math level ${d.level || 1} · 💰 ${d.bucks || 0}`, onPick: (n, m) => {
+    useFile(n, m); pick = S.level; drawLevels();
+    $('#catBtn').textContent = `🐱 Cat-ear helmet: ${S.cat ? 'on' : 'off'}`;
+    $('#whoStep').hidden = true; $('#setup').hidden = false;
+  } });
+}
+$('#whoBtn').onclick = showWho;
+showWho();
+
+// ---------- Loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - (last || t)) / 1000); last = t;
+  if (G) { (G.town ? stepTown : step)(dt); (G.town ? drawTown : draw)(t); }
+  requestAnimationFrame(loop);
+}
+resize();
+G = null;
+firstTown(); G.running = false;           // draw the town behind the start screen
+requestAnimationFrame(loop);

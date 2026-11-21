@@ -1,0 +1,619 @@
+// Tugboat Deliveries. Decided 29 Oct, designed by the youngest kid tester (almost
+// 3, knows the arrow keys and the space bar): drive a little tugboat around one
+// harbor that fits the screen, pick up animals and crates, and take them to
+// the dock that blinks. The docks have a big number
+// with a color and a shape, because he can't read yet. Decided 2 Nov: no voice,
+// only chiptune sounds, like Bread; the pictures carry it. Nothing can go wrong: bumping things just boings, no timer, no losing.
+// 8-bit, drawn on a small canvas and scaled up with smoothing off, like Bread.
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), out = cv.getContext('2d');
+const VW = 20, VH = 12, T = 16;
+const lo = document.createElement('canvas'); lo.width = VW * T; lo.height = VH * T;
+const cx = lo.getContext('2d');
+cx.imageSmoothingEnabled = false;
+const PIX = '"Press Start 2P", monospace';
+
+// ---------- Saved progress (this browser only) ----------
+// The tugboat's name is typed in once and kept here, so the kid's name is only
+// ever on the family's own device, never on the public site.
+const KEY = 'tugboat';
+const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true, abc: 0, num: 0, partyMonth: -1 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
+// The party harbor: balloons on the tugboat, a party horn, cake and present
+// crates, bunting on the shore, and a birthday cake that gets a candle per
+// delivery. Decided 14 Nov: it shows only in the party month, which a grown-up
+// picks on the Boat name card and is kept on this device like the name, so the
+// month isn't on the public site. ?party in the address shows it any month.
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const isParty = () => S.partyMonth === new Date().getMonth() || /[?&]party\b/.test(location.search);
+const title = () => S.name ? `Tugboat ${S.name}'s Deliveries` : 'Tugboat Deliveries';
+
+// ---------- Sounds ----------
+const tone = RDG.sound({ on: () => S.sound });
+const sfx = {
+  horn: () => { tone(196, .35, 'square', 0, .06); tone(147, .45, 'square', .38, .06); },
+  boing: () => tone(300, .18, 'square', 0, .04, 600),
+  hop: () => [523, 659, 784].forEach((f, i) => tone(f, .07, 'square', i * .06, .04)),
+  cheer: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .12, 'square', i * .1, .04)),
+  sparkle: () => [988, 1319, 1568].forEach((f, i) => tone(f, .08, 'square', i * .05, .03)),
+  quack: () => { tone(620, .09, 'square', 0, .04, 420); tone(560, .12, 'square', .1, .04, 380); },
+  // the party horn: a buzzy blow up, like a paper party blower
+  party: () => { tone(330, .1, 'sawtooth', 0, .035, 440); tone(440, .38, 'sawtooth', .1, .04, 494); tone(1319, .06, 'square', .5, .02); },
+  // Happy Birthday, the first line (or both lines when the candles are blown out)
+  bday: (both) => {
+    const q = .26, n = [[392, .75], [392, .25], [440, 1], [392, 1], [523, 1], [494, 2]];
+    if (both) n.push([392, .75], [392, .25], [440, 1], [392, 1], [587, 1], [523, 2]);
+    let w = 0; n.forEach(([f, b]) => { tone(f, b * q * .9, 'square', w, .045); w += b * q; });
+  },
+  puff: () => tone(900, .35, 'triangle', 0, .03, 200),
+  start: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .08, 'square', i * .07, .04)); [1047, 1319].forEach(f => tone(f, .45, 'square', .32, .03)); },
+};
+$('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
+
+// ---------- Pixel art ----------
+const COL = {
+  k: '#1d1410', D: '#24242c', h: '#ffffff', r: '#e04848', R: '#a8302f', l: '#bfe8ff', g: '#8c8c96', y: '#ffd23f', Y: '#e0a800',
+  b: '#ff8a1f', t: '#8a4f2a', s: '#b8773a', c: '#f2d8b8', P: '#f4a6a0', Q: '#d9837d', G: '#5aa772', q: '#3f8a5c', u: '#3a6fd8', m: '#9b5cd8',
+  f: '#f6dfa6', F: '#d39a4c', W: '#5bb8e8', V: '#3a8fc0', o: '#e8913a', p: '#f7c6d8', e: '#ffe680', n: '#2b2b33', a: '#7fd36b',
+};
+const LINE = COL.k, spriteCache = new Map();
+function sprite(rows, { map = {}, flip = false, outline = true } = {}) {
+  const key = rows.join('/') + JSON.stringify(map) + flip + outline;
+  if (spriteCache.has(key)) return spriteCache.get(key);
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, grid = rows.map(r => [...r.padEnd(w, '.')]);
+  if (outline) {
+    const src = grid.map(r => r.slice());
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+      if (src[y][x] === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (src[y + b]?.[x + a] ?? '.') !== '.')) grid[y][x] = 'k';
+  }
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  grid.forEach((r, y) => r.forEach((ch, x) => { if (ch === '.') return; g.fillStyle = map[ch] || COL[ch]; g.fillRect(flip ? w - 1 - x : x, y, 1, 1); }));
+  spriteCache.set(key, c);
+  return c;
+}
+const put = (img, x, y, scale = 1) => cx.drawImage(img, Math.round(x), Math.round(y), img.width * scale, img.height * scale);
+const px = (x, y, w, h, c) => { cx.fillStyle = c; cx.fillRect(Math.round(x), Math.round(y), w, h); };
+function text(t, x, y, col = LINE, size = 8) { cx.font = `${size}px ${PIX}`; cx.textAlign = 'center'; cx.fillStyle = col; cx.fillText(t, Math.round(x), Math.round(y)); }
+const dataURL = (rows, opt) => { const s = sprite(rows, opt), c = document.createElement('canvas'), n = Math.max(s.width, s.height) + 2; c.width = c.height = n; c.getContext('2d').drawImage(s, (n - s.width) >> 1, (n - s.height) >> 1); return c.toDataURL(); };
+
+// the tugboat, facing right: a smokestack, a cabin with windows, a red hull with tires
+const TUG = ['..............DD........', '..............DD........', '..............rr........', '..............DD........', '..........hhhhhhhhh.....', '..........hllhllhlh.....', '..........hllhllhlh.....', '..........hhhhhhhhh.....', '.rrrrrrrrrrrrrrrrrrrrrr.', '..rrrgrrrrgrrrrgrrrrrrrr', '..rrrrrrrrrrrrrrrrrrrrr.', '...RRRRRRRRRRRRRRRRRRR..'];
+// the other boats, both facing right like the tugboat (flipped when they go
+// left). Decided 2 Nov: the first drawings had the sail in front of the mast
+// and no clear bow, so they looked like they were going backwards. Now the
+// sail trails behind the mast and the bow leans forward at the front, the way a real bow does.
+const SAIL = ['.........h.....', '........hh.....', '.......hhh.....', '......hhhh.....', '.....hhhhh.....', '....hhhhhh.....', '.........D.....', 'uuuuuuuuuuuuuuu', 'uuuuuuuuuuuuuu.', '.VVVVVVVVVVV...'];
+const FISHER = ['....D..........', '....D..........', '..yyyyy........', '..yllly........', 'GGGGGGGGGGGGGGG', 'GGGGGGGGGGGGGG.', '.qqqqqqqqqqq...'];
+const BUOY = [['..rr..', '.rhhr.', '.rrrr.', 'hhhhhh', 'rrrrrr'], ['......', '..rr..', '.rhhr.', '.rrrr.', 'hhhhhh']];
+const SPARKLE = [
+  ['...h...', '...h...', '...e...', 'hheeehh', '...e...', '...h...', '...h...'],
+  ['.......', '...h...', '...e...', '.heeeh.', '...e...', '...h...', '.......'],
+  ['.......', '.......', '...h...', '..heh..', '...h...', '.......', '.......'],
+];
+// passengers and cargo
+// Decided 15 Nov: crates are pale pine so they stand out on the brown docks
+const crate = top => [top, 'FFFFFFFFFFFF', 'FfffFffffFfF', 'FfffFffffFfF', 'FFFFFFFFFFFF', 'FffFfffFfffF', 'FFFFFFFFFFFF'];
+const ITEMS = [
+  { key: 'cow', name: 'the cow', her: true, rows: ['..........hh', '.........hhD', 'hhhhhhhhhhhP', 'hDDhhhDhhhh.', 'hhhhDDhhhhh.', 'hhhhhhhhhh..', '.D.D...D.D..'] },
+  { key: 'pig', name: 'the pig', her: true, rows: ['..P.......P...', '.PPPPPPPPPPP..', 'PPPPPPPPPPnPP.', 'PPPPPPPPPPPPQQ', 'PPPPPPPPPPPPQQ', '.PPPPPPPPPPPP.', '..QQ.....QQ...'] },
+  { key: 'duck', name: 'the duck', her: false, rows: ['........yyy...', '.......yyyny..', '.......yyyybb.', '.y.....yyyy...', '.yyy..yyyyyy..', '.yyyyyyyyyyy..', '..yYYYYYYYyy..', '...yyyyyyyy...'] },
+  { key: 'cat', name: 'the cat', her: false, rows: ['.D..D.......', '.DDDD.......', '.DyDy.....D.', '.DDDD....D..', '..DDDDDDDD..', '..DDDDDDDD..', '..D.D..D.D..'] },
+  { key: 'frog', name: 'the frog', her: false, rows: ['.hD...hD.', '.hh...hh.', 'aaaaaaaaa', 'aaaaaaaaa', 'aaRRRRRaa', '.aaaaaaa.', 'aa.....aa'] },
+  { key: 'apples', name: 'the apples', rows: crate('.rr.rr.rr.r.') },
+  { key: 'bananas', name: 'the bananas', rows: crate('yy.yyy.yy.yy') },
+  { key: 'fish', name: 'the fish', rows: crate('.VVu.VVu.VVu') },
+  { key: 'toys', name: 'the toys', rows: crate('rr.uu.yy.mm.') },
+];
+// party things, drawn like the rest (no emoji): a cake with candles on a plate,
+// and a blue present with a red ribbon and bow
+const PARTY_ITEMS = [
+  { key: 'cake', name: 'the cake', rows: ['...e...e...e..', '...u...r...m..', '..pppppppppp..', '.pphpphpphpphp', '.cccccccccccc.', '.rrrrrrrrrrrr.', '.cccccccccccc.', 'hhhhhhhhhhhhhh'] },
+  { key: 'present', name: 'the present', rows: ['...rr.rr...', '....rrr....', 'uuuuuruuuuu', 'uuuuuruuuuu', 'rrrrrrrrrrr', 'uuuuuruuuuu', 'uuuuuruuuuu', 'uuuuuruuuuu'] },
+];
+const BALLOON = ['.xxx.', 'xhxxx', 'xxxxx', 'xxxxx', '.xxx.', '..x..'];
+const BALLOON_COLS = ['#e04848', '#ffd23f', '#3a6fd8'];
+// docks: a big number, a color and a shape, so he can find it three ways
+const SHAPES = {
+  circle: ['..xxx..', '.xxxxx.', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '.xxxxx.', '..xxx..'],
+  square: ['xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx'],
+  triangle: ['...x...', '..xxx..', '..xxx..', '.xxxxx.', '.xxxxx.', 'xxxxxxx', 'xxxxxxx'],
+  diamond: ['...x...', '..xxx..', '.xxxxx.', 'xxxxxxx', '.xxxxx.', '..xxx..', '...x...'],
+  heart: ['.xx.xx.', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', '.xxxxx.', '..xxx..', '...x...'],
+};
+const DOCKS = [
+  { n: 1, x: 3, y: 2, col: '#e04848', color: 'red', shape: 'circle' },
+  { n: 2, x: 9, y: 2, col: '#3a6fd8', color: 'blue', shape: 'square' },
+  { n: 3, x: 15, y: 2, col: '#e0a800', color: 'yellow', shape: 'triangle' },
+  { n: 4, x: 5, y: 10, col: '#3f8a5c', color: 'green', shape: 'diamond' },
+  { n: 5, x: 13, y: 10, col: '#9b5cd8', color: 'purple', shape: 'heart' },
+];
+// each dock's pier is two tiles out into the water; the boat parks just off its end
+const upper = d => d.y < 6;   // a dock on the top shore (the rest are on the bottom)
+const berth = d => ({ x: d.x + 1, y: upper(d) ? d.y + 1.5 : d.y - .5 });
+const onPier = d => ({ x: d.x + 1, y: d.y + .5 });
+
+// ---------- The harbor ----------
+// Land along the top (two rows) and the bottom (one row); the docks stick out
+// into the water. Everything else is water to drive around.
+const land = (x, y) => y < 2 || y >= 11;
+const pier = (x, y) => DOCKS.some(d => Math.floor(y) === d.y && (Math.floor(x) === d.x || Math.floor(x) === d.x + 1));
+const solid = (x, y) => x < .2 || x > VW - .2 || land(x, y) || pier(x, y);
+const BUOYS = [{ x: 7, y: 5 }, { x: 13, y: 6.2 }, { x: 4, y: 7.6 }, { x: 17, y: 8.2 }, { x: 10.5, y: 8.6 }];
+let G = null, screen = 'press';
+function newHarbor() {
+  G = {
+    tug: { x: 10, y: 6.5, vx: 0, vy: 0, face: 1 }, job: null, wait: 0, carry: null, hop: null,
+    boats: [{ x: -2, y: 4.6, dir: 1, v: .9, img: SAIL }, { x: VW + 2, y: 7.3, dir: -1, v: .6, img: FISHER }],
+    sparkles: [], fx: [], smoke: [], bonk: 0, idle: 0,
+    party: isParty(), candles: 0, blow: 0, cakePending: false, cakeTake: false, paused: null, cakeHop: null, cakes: 0, cakeBack: 0,
+  };
+  for (let i = 0; i < 3; i++) addSparkle();
+  newJob();
+}
+function openWater(minFrom) {
+  for (let i = 0; i < 200; i++) {
+    const x = 1 + Math.random() * (VW - 2), y = 3.2 + Math.random() * 6.4;
+    if (solid(x, y) || BUOYS.some(b => Math.hypot(b.x - x, b.y - y) < 1.2)) continue;
+    if (minFrom && Math.hypot(minFrom.x - x, minFrom.y - y) < minFrom.d) continue;
+    return { x, y };
+  }
+  return { x: 10, y: 6 };
+}
+function addSparkle() { const p = openWater({ ...G.tug, d: 3 }); G.sparkles.push({ ...p, t: Math.random() * 9 }); }
+
+// ---------- Dockets ----------
+// Each docket is one thing waiting at one dock, going to another dock.
+function newJob() {
+  const pool = G.party && Math.random() < .5 ? PARTY_ITEMS : ITEMS, item = pool[Math.floor(Math.random() * pool.length)];
+  let from = DOCKS[Math.floor(Math.random() * DOCKS.length)], to;
+  do to = DOCKS[Math.floor(Math.random() * DOCKS.length)]; while (to === from);
+  G.job = { item, from, to, got: false };
+  showDocket();
+}
+function showDocket() {
+  const j = G.job, d = $('#docket');
+  if (G.cakeTake) {
+    // the cake goes onto his own boat: cake, arrow, the tugboat
+    d.hidden = false;
+    $('#dItem').src = dataURL(PARTY_ITEMS[0].rows);
+    $('#dDock').style.background = '#f7c6d8'; $('#dNum').textContent = '';
+    $('#dShape').src = dataURL(TUG);
+    d.setAttribute('aria-label', 'Take the cake onto your boat.');
+    return;
+  }
+  d.hidden = !j; if (!j) return;
+  $('#dItem').src = dataURL(j.item.rows);
+  const dock = j.got ? j.to : j.from;
+  $('#dDock').style.background = dock.col; $('#dNum').textContent = dock.n;
+  $('#dShape').src = dataURL(SHAPES[dock.shape], { map: { x: '#ffffff' } });
+  d.classList.toggle('got', false);
+  d.setAttribute('aria-label', j.got ? `Take ${j.item.name} to dock ${j.to.n}.` : `Pick up ${j.item.name} at dock ${j.from.n}.`);
+}
+
+// ---------- Playing ----------
+const keys = {};
+// Steering, for the arrow keys and the stick. Decided 17 Nov: the boat used to
+// speed up slowly and drift on after letting go, which felt mushy on the
+// phone stick next to Bread. Now it turns to the way it's pushed within a
+// moment and stops a moment after letting go, like Bread, with just a short
+// glide so it still feels like a boat. Returns the speed.
+function steer(b, ax, ay, dt) {
+  const m = Math.hypot(ax, ay), max = 3.6;
+  if (m) { ax /= m; ay /= m; }
+  const k = Math.min(1, (m ? 10 : 7) * dt);
+  b.vx += (ax * max - b.vx) * k; b.vy += (ay * max - b.vy) * k;
+  return Math.hypot(b.vx, b.vy);
+}
+function step(dt, t) {
+  const b = G.tug;
+  let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
+  if (Math.hypot(ax, ay)) G.idle = 0; else G.idle += dt;
+  const sp = steer(b, ax, ay, dt);
+  if (Math.abs(b.vx) > .2) b.face = b.vx > 0 ? 1 : -1;
+  // move, bouncing gently off land, piers, buoys and boats
+  G.bonk -= dt;
+  const r = .45, hit = (x, y) => solid(x - r, y) || solid(x + r, y) || solid(x, y - r) || solid(x, y + r * .6);
+  const nx = b.x + b.vx * dt; if (hit(nx, b.y)) { b.vx *= -.4; bonk(); } else b.x = nx;
+  const ny = b.y + b.vy * dt; if (hit(b.x, ny)) { b.vy *= -.4; bonk(); } else b.y = ny;
+  for (const o of [...BUOYS, ...G.boats]) {
+    const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy), near = o.img ? 1.1 : .75;
+    if (d < near && d > 0) { const push = (near - d); b.x += dx / d * push; b.y += dy / d * push; b.vx += dx / d * 1.5; b.vy += dy / d * 1.5; bonk(); }
+  }
+  // other boats chug along their lanes and come round again
+  G.boats.forEach(o => { o.x += o.dir * o.v * dt; if (o.x > VW + 3) o.x = -3; if (o.x < -3) o.x = VW + 3; });
+  // smoke from the stack
+  if (Math.random() < dt * (3 + sp)) G.smoke.push({ x: b.x - b.face * .1, y: b.y - 1.1, t: 0 });
+  G.smoke = G.smoke.filter(s => (s.t += dt, s.y -= dt * .6, s.x -= b.face * dt * .2, s.t < 1.4));
+  // sparkles
+  G.sparkles = G.sparkles.filter(s => {
+    s.t += dt;
+    if (Math.hypot(s.x - b.x, s.y - b.y) > .8) return true;
+    S.sparkles++; persist(); hud(); sfx.sparkle(); burst(s.x, s.y, ['#ffe680', '#ffffff', '#bfe8ff']);
+    setTimeout(() => G && addSparkle(), 2500);
+    return false;
+  });
+  // the job: pick up, then drop off
+  const j = G.job;
+  if (j && !G.hop) {
+    const at = j.got ? berth(j.to) : berth(j.from);
+    if (Math.hypot(at.x - b.x, at.y - b.y) < 1.5) {
+      if (!j.got) { G.hop = { from: onPier(j.from), to: 'boat', t: 0 }; sfx.hop(); }
+      else { G.hop = { from: 'boat', to: onPier(j.to), t: 0 }; }
+    }
+  }
+  if (G.hop) {
+    G.hop.t += dt / .6;
+    if (G.hop.t >= 1) {
+      const h = G.hop; G.hop = null;
+      if (h.to === 'boat') { j.got = true; showDocket(); }
+      else delivered();
+    }
+  }
+  // after the candles blow out, he takes the cake: it waits until he isn't
+  // carrying anything, then the docket says cake onto the tugboat
+  if (G.cakePending && !G.hop && !(G.job && G.job.got)) {
+    G.cakePending = false; G.cakeTake = true; G.paused = G.job; G.job = null; showDocket(); sfx.hop();
+  }
+  if (G.cakeTake && !G.cakeHop && Math.hypot(CAKE_BERTH.x - b.x, CAKE_BERTH.y - b.y) < 1.5) { G.cakeHop = { t: 0 }; sfx.hop(); }
+  if (G.cakeHop && (G.cakeHop.t += dt / .7) >= 1) {
+    G.cakeHop = null; G.cakeTake = false; G.cakes = Math.min(3, G.cakes + 1); G.cakeBack = 2.5;
+    sfx.bday(); confetti(b.x, b.y - 1, 30);
+    G.job = G.paused; G.paused = null; if (G.job) showDocket(); else newJob();
+  }
+  if (G.cakeBack > 0 && (G.cakeBack -= dt) <= 0) { G.cakeBack = 0; sfx.sparkle(); burst(CAKE.x + .8, CAKE.y - .8, ['#f7c6d8', '#ffffff', '#ffd23f']); }
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += (f.g ?? 3) * dt, f.t < (f.life || 1)));
+  // the shore cake: three candles lit, then a puff blows them out
+  if (G.blow && (G.blow -= dt) <= 0) {
+    G.blow = 0; G.candles = 0; G.cakePending = true; sfx.puff();
+    CAKE_CANDLES.forEach(c => { for (let i = 0; i < 3; i++) G.smoke.push({ x: CAKE.x + c / T, y: CAKE.y - .6 - i * .15, t: i * .1 }); });
+    confetti(CAKE.x + .8, CAKE.y - 1, 40);
+  }
+}
+// confetti: lots of little bits that flutter down slowly
+function confetti(x, y, n = 30) {
+  const cols = ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#9b5cd8', '#f7c6d8', '#ffffff'];
+  for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.5, t: 0, c: cols[i % cols.length], g: 2, life: 1.8, w: i % 2 ? 2 : 1 }); }
+}
+function bonk() { if (G.bonk <= 0) { G.bonk = .4; sfx.boing(); } }
+function burst(x, y, cols) { for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 2.5; G.fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, t: 0, c: cols[i % cols.length] }); } }
+function delivered() {
+  const j = G.job, p = onPier(j.to);
+  S.trips++; S.stickers.push(j.item.key); if (S.stickers.length > 60) S.stickers.shift(); persist(); hud();
+  if (G.party) {
+    // each delivery lights a candle on the shore cake; the third blows them out
+    if (!G.blow) G.candles = Math.min(3, G.candles + 1);
+    const three = G.candles === 3 && !G.blow;
+    if (three) G.blow = 3.4;
+    if (three || j.item.key === 'cake' || j.item.key === 'present') sfx.bday(three); else sfx.cheer();
+    confetti(p.x, p.y - .5);
+  } else { sfx.cheer(); burst(p.x, p.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']); }
+  G.left = { item: j.item, ...p, t: 0 };
+  G.job = null; showDocket();
+  setTimeout(() => { if (G) { G.left = null; if (G.cakeTake || G.cakeHop) G.paused = null; else newJob(); } }, 2600);
+}
+
+// ---------- The river ----------
+// Decided 2 Nov: a second level, asked for by the family. The tugboat floats
+// down a river that scrolls by on its own, and picks up letters (or numbers) in
+// order: the next one to get is shown big at the top. A wrong one floats past,
+// nothing bad. Boats to steer around (a bump boings), sparkles to collect.
+// Decided 2 Nov, after his first go: a run is the whole set, A to Z or 1 to 20,
+// from the start every time. The first runs were five long with the one he
+// needed (and the one after) floating in every second or so, which crowded the
+// river. Now one wanted letter is on the water at a time: ducks, lily pads,
+// logs and boats float by in between, and if he misses it, it comes round
+// again a few seconds later until he gets it. Wrong letters are rare.
+const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', NUMS = Array.from({ length: 20 }, (_, i) => String(i + 1));
+const TOKEN_COL = ['#e04848', '#3a6fd8', '#e0a800', '#3f8a5c', '#9b5cd8'];
+const RIVER = { top: 2.6, bot: 10.2, flow: 2.2 };
+// seconds: between other things, before the next letter after one is got, and before a missed one comes back
+const GAP = { other: [1.5, 2.3], next: [2.5, 4], again: [1.5, 3] };
+const rand = ([a, b]) => a + Math.random() * (b - a);
+function newRiver(kind) {
+  const set = kind === 'abc' ? ABC.split('') : NUMS;
+  G = {
+    mode: 'river', kind, run: set, got: 0, set,
+    tug: { x: 4, y: 6.4, vx: 0, vy: 0, face: 1 }, things: [], sparkles: [], fx: [], smoke: [], bonk: 0, scroll: 0, spawn: .8, wait: 2, done: false,
+  };
+  $('#docket').hidden = true;
+}
+function riverY() { return RIVER.top + .6 + Math.random() * (RIVER.bot - RIVER.top - 1.2); }
+function spawnThing() {
+  const y = riverY(), x = VW + 1.5, need = G.run[G.got], r = Math.random();
+  if (r < .1) { let ch; do ch = G.set[Math.floor(Math.random() * G.set.length)]; while (ch === need); G.things.push({ kind: 'token', ch, x, y }); return; }
+  if (r < .35) { G.things.push({ kind: 'boat', img: Math.random() < .5 ? SAIL : FISHER, x: x + 1, y, v: .5 + Math.random() * .6 }); return; }
+  if (r < .55) { G.things.push({ kind: 'sparkle', x, y, t: Math.random() * 9 }); return; }
+  if (r < .75) { G.things.push({ kind: 'lily', x, y, t: Math.random() * 9 }); return; }
+  if (r < .9) { G.things.push({ kind: 'duck', x, y, t: Math.random() * 9 }); return; }
+  G.things.push({ kind: 'log', x: x + 1, y });
+}
+function stepRiver(dt) {
+  const b = G.tug;
+  G.scroll += RIVER.flow * dt;
+  if (!G.done && (G.spawn -= dt) <= 0) { spawnThing(); G.spawn = rand(GAP.other); }
+  // the letter he needs: one on the water at a time, kept clear of whatever just floated in
+  if (!G.done && !G.things.some(o => o.kind === 'token' && o.ch === G.run[G.got]) && (G.wait -= dt) <= 0) {
+    G.things.push({ kind: 'token', ch: G.run[G.got], x: VW + 1.5, y: riverY() }); G.spawn = Math.max(G.spawn, .8);
+  }
+  let ax = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), ay = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0);
+  if (stick.on && Math.hypot(stick.x, stick.y) > .2) { ax = stick.x; ay = stick.y; }
+  const sp = steer(b, ax, ay, dt);
+  b.x = Math.max(1.5, Math.min(12, b.x + b.vx * dt));
+  const ny = b.y + b.vy * dt;
+  if (ny < RIVER.top + .3 || ny > RIVER.bot - .1) { b.vy *= -.4; G.bonk -= 0; bonk(); } else b.y = ny;
+  G.bonk -= dt;
+  if (Math.random() < dt * (3 + sp)) G.smoke.push({ x: b.x - .1, y: b.y - 1.1, t: 0 });
+  G.smoke = G.smoke.filter(s => (s.t += dt, s.y -= dt * .6, s.x -= dt * (.2 + RIVER.flow * .3), s.t < 1.4));
+  G.things = G.things.filter(o => {
+    o.x -= (RIVER.flow + (o.v || 0)) * dt; if (o.t !== undefined) o.t += dt;
+    if (o.x < -2) { if (o.kind === 'token' && o.ch === G.run[G.got]) G.wait = rand(GAP.again); return false; }
+    const d = Math.hypot(o.x - b.x, o.y - b.y);
+    if (o.kind === 'duck' && d < .9 && !o.q) { o.q = 1; sfx.quack(); o.v = -.6; }
+    if ((o.kind === 'boat' || o.kind === 'log') && d < 1.1 && d > 0) { const dx = b.x - o.x, dy = b.y - o.y; b.vx += dx / d * 2; b.vy += dy / d * 2; b.x += dx / d * (1.1 - d); b.y = Math.max(RIVER.top + .3, Math.min(RIVER.bot - .1, b.y + dy / d * (1.1 - d))); bonk(); }
+    if (o.kind === 'sparkle' && d < .8) { S.sparkles++; persist(); hud(); sfx.sparkle(); burst(o.x, o.y, ['#ffe680', '#ffffff', '#bfe8ff']); return false; }
+    if (o.kind === 'token' && d < .9 && !G.done && o.ch === G.run[G.got]) {
+      G.got++; G.wait = rand(GAP.next); sfx.cheer(); burst(o.x, o.y, ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']);
+      if (G.got === G.run.length) riverDone();
+      return false;
+    }
+    return true;
+  });
+  G.fx = G.fx.filter(f => (f.t += dt, f.x += f.vx * dt, f.y += f.vy * dt, f.vy += 3 * dt, f.t < 1));
+}
+function riverDone() {
+  G.done = true; S[G.kind]++; S.trips++; persist(); hud();
+  sfx.start();
+  for (let i = 0; i < 5; i++) setTimeout(() => G && burst(4 + i * 3, 5 + (i % 2), ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#ffffff']), i * 220);
+  setTimeout(() => { if (G && G.mode === 'river') showPick(G.kind); }, 2200);
+}
+function drawRiver(t) {
+  const W = VW * T, H = VH * T, top = RIVER.top * T - 6, bot = (RIVER.bot + .5) * T, off = (G.scroll * T) % (W + 40);
+  px(0, 0, W, H, COL.W);
+  for (let y = 3; y < 10; y++) for (let x = -1; x < VW + 1; x++) if ((x * 3 + y * 5) % 4 === 0) { const sx = (x * T + 3 - (G.scroll * T) % T + T) % (W + T) - T; px(sx, y * T + 8, 6, 1, COL.l); }
+  // the banks scroll past: grass with a sand edge, and trees going by
+  px(0, 0, W, top, '#8fd17a'); px(0, top - 4, W, 4, '#ecd6a0'); px(0, top, W, 1, COL.V);
+  px(0, bot, W, H - bot, '#8fd17a'); px(0, bot, W, 3, '#ecd6a0'); px(0, bot - 1, W, 1, COL.V);
+  for (let i = 0; i < 7; i++) { const x = ((i * 61 - G.scroll * T * .9) % (W + 60) + W + 60) % (W + 60) - 30; px(x + 4, top - 18, 3, 8, '#7a4a2a'); px(x, top - 28, 12, 10, '#3f8a5c'); px(x + 2, top - 31, 8, 3, '#3f8a5c'); }
+  for (let i = 0; i < 6; i++) { const x = ((i * 73 + 30 - G.scroll * T * .9) % (W + 60) + W + 60) % (W + 60) - 30; px(x, bot + 6, 1, 4, '#79bd66'); px(x + 3, bot + 5, 1, 5, '#79bd66'); }
+  // what floats by: letters on round floats, boats, sparkles
+  G.things.forEach(o => {
+    const X = o.x * T, Y = o.y * T;
+    if (o.kind === 'sparkle') return twinkle(X, Y, t + o.t * 300);
+    if (o.kind === 'lily') { px(X - 7, Y - 3, 14, 6, '#3f8a5c'); px(X - 6, Y - 4, 12, 8, '#5aa772'); px(X, Y - 4, 2, 4, COL.W); if (Math.floor(o.t) % 3 === 0) { px(X - 3, Y - 6, 3, 3, '#f7c6d8'); px(X - 2, Y - 7, 1, 1, '#ffffff'); } return; }
+    if (o.kind === 'duck') { const bb = Math.floor(t / 300 + o.t) % 2; px(X - 5, Y - 4 + bb, 10, 5, LINE); px(X - 4, Y - 3 + bb, 8, 3, COL.y); px(X - 6, Y - 8 + bb, 5, 5, LINE); px(X - 5, Y - 7 + bb, 3, 3, COL.y); px(X - 8, Y - 6 + bb, 2, 2, COL.b); px(X - 4, Y - 6 + bb, 1, 1, LINE); return; }
+    if (o.kind === 'log') { px(X - 13, Y - 4, 26, 7, LINE); px(X - 12, Y - 3, 24, 5, '#8a4f2a'); px(X - 12, Y - 3, 24, 1, '#b8773a'); px(X + 9, Y - 3, 3, 5, '#d9a066'); px(X + 10, Y - 2, 1, 3, '#8a4f2a'); return; }
+    if (o.kind === 'boat') { const img = sprite(o.img, { flip: true }); return put(img, X - img.width / 2, Y - img.height + 3 + (Math.floor(t / 400) % 2)); }
+    const bob = Math.floor(t / 350 + o.x) % 2, col = TOKEN_COL[G.set.indexOf(o.ch) % TOKEN_COL.length];
+    px(X - 9, Y - 9 + bob, 18, 18, LINE); px(X - 8, Y - 10 + bob, 16, 20, LINE); px(X - 10, Y - 8 + bob, 20, 16, LINE);
+    px(X - 8, Y - 8 + bob, 16, 16, col); px(X - 7, Y - 9 + bob, 14, 18, col); px(X - 9, Y - 7 + bob, 18, 14, col);
+    big1(o.ch, X + (o.ch.length > 1 ? 0 : 1), Y + 5 + bob);
+  });
+  // the tugboat
+  const b = G.tug, bob = Math.floor(t / 350) % 2, tug = sprite(TUG), bx = b.x * T - tug.width / 2, by = b.y * T - tug.height + 4 + bob;
+  G.smoke.forEach(s => { const r = 2 + s.t * 3; px(s.x * T - r / 2, s.y * T - r / 2, r, r, s.t < .7 ? '#e8e8ee' : '#c9c9d4'); });
+  put(tug, bx, by);
+  const o = Math.floor(t / 120) % 2; px(bx - 4 - o, by + tug.height - 2, 4, 1, COL.l);
+  G.fx.forEach(f => px(f.x * T, f.y * T, 2, 2, f.c));
+  // along the top: seven of the run at a time, got ones filled in, the next one blinking in the middle
+  const w = 22, n = 7, first = Math.max(0, Math.min(G.run.length - n, G.got - 3)), x0 = W / 2 - (n * w) / 2;
+  px(x0 - 5, 0, n * w + 8, 25, '#6fae5a');
+  G.run.slice(first, first + n).forEach((ch, j) => {
+    const i = first + j, X = x0 + j * w, got = i < G.got, next = i === G.got && !G.done, col = TOKEN_COL[G.set.indexOf(ch) % TOKEN_COL.length];
+    if (next && Math.floor(t / 300) % 2) px(X - 2, 1, 22, 22, '#ffffff');
+    px(X, 3, 18, 18, LINE); px(X + 1, 4, 16, 16, got || next ? col : '#cfe3c4');
+    if (got || next) big1(ch, X + 9 + (ch.length > 1 ? 0 : 1), 17); else text(ch, X + 9, 16, '#9fb596', 8);
+  });
+}
+// a big letter, white with a dark outline, centered on x
+function big1(ch, x, y) {
+  cx.textAlign = 'center'; cx.font = `${ch.length > 1 ? 9 : 12}px ${PIX}`;
+  cx.fillStyle = LINE; for (const [a, c] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(ch, Math.round(x + a), Math.round(y + c));
+  cx.fillStyle = '#ffffff'; cx.fillText(ch, Math.round(x), Math.round(y));
+}
+
+// ---------- Drawing ----------
+function drawHarbor(t) {
+  const W = VW * T, H = VH * T;
+  px(0, 0, W, H, COL.W);
+  for (let y = 2; y < 11; y++) for (let x = 0; x < VW; x++) if ((x * 3 + y * 5) % 4 === 0) { const o = Math.floor(t / 500 + x + y) % 4; px(x * T + 3 + o, y * T + 8, 5, 1, COL.l); }
+  // land: grass on top with a sand edge, grass along the bottom
+  px(0, 0, W, 2 * T, '#8fd17a'); px(0, 2 * T - 4, W, 4, '#ecd6a0'); px(0, 2 * T, W, 1, COL.V);
+  px(0, 11 * T, W, T, '#8fd17a'); px(0, 11 * T, W, 3, '#ecd6a0'); px(0, 11 * T - 1, W, 1, COL.V);
+  for (let x = 1; x < VW; x += 3) { px(x * T + 4, 6, 1, 3, '#79bd66'); px(x * T + 6, 5, 1, 4, '#79bd66'); }
+  // docks: a wooden pier and a sign with the number and the shape
+  DOCKS.forEach(d => {
+    const X = d.x * T, Y = d.y * T;
+    px(X, Y, 2 * T, T, '#b07a46'); for (let i = 3; i < T; i += 4) px(X, Y + i, 2 * T, 1, '#8d5c30');
+    px(X, Y, 1, T, LINE); px(X + 2 * T - 1, Y, 1, T, LINE); px(X, upper(d) ? Y + T - 1 : Y, 2 * T, 1, LINE);
+    px(X + 2, upper(d) ? Y + T : Y - 3, 2, 3, LINE); px(X + 2 * T - 4, upper(d) ? Y + T : Y - 3, 2, 3, LINE);   // posts
+    const sy = upper(d) ? 2 : 11 * T + 1, sx = X + 2;
+    px(sx - 1, sy - 1, 30, 14, LINE); px(sx, sy, 28, 12, d.col);
+    text(String(d.n), sx + 8, sy + 10, '#ffffff');
+    put(sprite(SHAPES[d.shape], { map: { x: '#ffffff' }, outline: false }), sx + 17, sy + 3);
+  });
+  if (G.party) drawParty(t);
+  // what's waiting on the pier, bobbing, with a sparkle so it's easy to spot
+  const j = G.job;
+  if (j && !j.got && !(G.hop && G.hop.to === 'boat')) { const p = onPier(j.from), img = sprite(j.item.rows); put(img, p.x * T - img.width / 2, p.y * T - img.height + 4 - (Math.floor(t / 300) % 2)); twinkle(p.x * T + 9, p.y * T - 10, t); }
+  if (G.left) { const img = sprite(G.left.item.rows); put(img, G.left.x * T - img.width / 2, G.left.y * T - img.height + 4 - (Math.floor(t / 150) % 2) * 2); }
+  // the destination dock blinks a ring when you're carrying something
+  if (j && j.got) { const d = j.to, X = d.x * T, Y = d.y * T; if (Math.floor(t / 300) % 2) { px(X - 2, Y - 2, 2 * T + 4, 2, '#ffffff'); px(X - 2, Y + T, 2 * T + 4, 2, '#ffffff'); px(X - 2, Y - 2, 2, T + 4, '#ffffff'); px(X + 2 * T, Y - 2, 2, T + 4, '#ffffff'); } }
+  // buoys, other boats, sparkles
+  BUOYS.forEach((o, i) => put(sprite(BUOY[Math.floor(t / 500 + i) % 2]), o.x * T - 3, o.y * T - 4));
+  G.boats.forEach(o => { const img = sprite(o.img, { flip: o.dir < 0 }); put(img, o.x * T - img.width / 2, o.y * T - img.height + 3 + (Math.floor(t / 400) % 2)); });
+  G.sparkles.forEach(s => twinkle(s.x * T, s.y * T, t + s.t * 300));
+  // the tugboat, with whatever it's carrying on the back deck
+  const b = G.tug, bob = Math.floor(t / 350) % 2, tug = sprite(TUG, { flip: b.face < 0 }), bx = b.x * T - tug.width / 2, by = b.y * T - tug.height + 4 + bob;
+  G.smoke.forEach(s => { const r = 2 + s.t * 3; px(s.x * T - r / 2, s.y * T - r / 2, r, r, s.t < .7 ? '#e8e8ee' : '#c9c9d4'); });
+  if (G.party) balloons(b.face > 0 ? bx + 3 : bx + tug.width - 4, by + 8, b.face, t);
+  if (j && j.got && !G.hop) { const img = sprite(j.item.rows, { flip: b.face < 0 }); put(img, b.face > 0 ? bx + 1 : bx + tug.width - img.width - 1, by + 8 - img.height + 1); }
+  put(tug, bx, by);
+  // the cakes he's taken ride on the bow, stacked up (three at most)
+  if (G.cakes) { const c = sprite(PARTY_ITEMS[0].rows, { flip: b.face < 0 }); for (let i = 0; i < G.cakes; i++) put(c, b.face > 0 ? bx + tug.width - c.width + 2 : bx - 2, by + 9 - c.height - i * 7); }
+  // ripples behind when moving
+  if (Math.hypot(b.vx, b.vy) > .5) { const o = Math.floor(t / 120) % 2; px(bx + (b.face > 0 ? -4 - o : tug.width + o), by + tug.height - 2, 4, 1, COL.l); }
+  // hopping on or off: a little arc between the pier and the boat
+  if (G.hop) {
+    const h = G.hop, from = h.from === 'boat' ? { x: b.x, y: b.y - .3 } : h.from, to = h.to === 'boat' ? { x: b.x, y: b.y - .3 } : h.to;
+    const k = h.t, x = from.x + (to.x - from.x) * k, y = from.y + (to.y - from.y) * k - Math.sin(k * Math.PI) * 1.2, img = sprite(j.item.rows);
+    put(img, x * T - img.width / 2, y * T - img.height);
+  }
+  if (G.cakeHop) {
+    const k = G.cakeHop.t, x = CAKE.x + .8 + (b.x - CAKE.x - .8) * k, y = CAKE.y + (b.y - .3 - CAKE.y) * k - Math.sin(k * Math.PI) * 1.5, img = sprite(PARTY_ITEMS[0].rows);
+    put(img, x * T - img.width / 2, y * T - img.height);
+  }
+  G.fx.forEach(f => px(f.x * T, f.y * T, f.w || 2, 2, f.c));
+}
+// three balloons tied to the back of the tugboat, swaying a little
+function balloons(ax, ay, face, t) {
+  [[-6, -21], [0, -26], [6, -20]].forEach(([dx, dy], i) => {
+    const sway = Math.round(Math.sin(t / 600 + i * 2) * 1.5), x = ax - face * 4 + dx + sway, y = ay + dy + (Math.floor(t / 450 + i) % 2);
+    const img = sprite(BALLOON, { map: { x: BALLOON_COLS[i] } });
+    // the string, a pixel at a time from the knot down to the boat
+    const kx = x + 2, ky = y + img.height, n = ay - ky;
+    for (let s = 0; s < n; s++) px(Math.round(kx + (ax - kx) * s / n), ky + s, 1, 1, LINE);
+    put(img, x, y);
+  });
+}
+// the party harbor: bunting along the top shore and the birthday cake on the grass
+const CAKE = { x: 11.6, y: 1.75 }, CAKE_CANDLES = [6, 13, 20], CAKE_BERTH = { x: 12.4, y: 2.9 };
+function drawParty(t) {
+  const W = VW * T, cols = ['#e04848', '#ffd23f', '#3a6fd8', '#7fd36b', '#9b5cd8'];
+  // the bunting: a sagging line between the signs with little flags hanging from it
+  const spans = [[0, 46], [80, 142], [272, W]];   // the cake sits in the gap between docks 2 and 3
+  spans.forEach(([a, b]) => {
+    for (let x = a; x < b; x++) { const k = (x - a) / (b - a), y = 23 + Math.round(Math.sin(k * Math.PI) * 4); px(x, y, 1, 1, LINE); }
+    for (let x = a + 4, i = 0; x < b - 4; x += 7, i++) {
+      const k = (x + 2 - a) / (b - a), y = 24 + Math.round(Math.sin(k * Math.PI) * 4), c = cols[(i + a) % cols.length];
+      px(x, y, 5, 1, c); px(x + 1, y + 1, 3, 1, c); px(x + 2, y + 2, 1, 1, c);
+    }
+  });
+  // the cake: three layers on a plate, with a candle for each delivery.
+  // Decided 14 Nov, his ask: after the candles blow out he takes the cake onto
+  // his boat (it rides on the bow), and a new one appears on the shore.
+  const X = Math.round(CAKE.x * T), Y = Math.round(CAKE.y * T);   // Y is the bottom of the plate
+  if (G.cakeHop || G.cakeBack > 0) return;
+  if (G.cakeTake && Math.floor(t / 300) % 2) { px(X - 4, Y - 30, 34, 2, '#ffffff'); px(X - 4, Y + 2, 34, 2, '#ffffff'); px(X - 4, Y - 30, 2, 34, '#ffffff'); px(X + 28, Y - 30, 2, 34, '#ffffff'); }
+  px(X - 1, Y - 2, 28, 3, LINE); px(X, Y - 1, 26, 1, '#ffffff');
+  px(X + 1, Y - 15, 24, 13, LINE); px(X + 2, Y - 14, 22, 11, '#f2d8b8'); px(X + 2, Y - 9, 22, 2, '#e04848');
+  px(X + 2, Y - 14, 22, 3, '#f7c6d8'); for (let i = 0; i < 22; i += 4) px(X + 3 + i, Y - 11, 2, 1, '#f7c6d8');
+  CAKE_CANDLES.forEach((c, i) => {
+    const cx0 = X + c, lit = i < G.candles;
+    px(cx0 - 1, Y - 22, 3, 7, LINE); px(cx0, Y - 21, 1, 6, ['#3a6fd8', '#e04848', '#9b5cd8'][i]);
+    if (lit) { const f = Math.floor(t / 140 + i) % 2; px(cx0 - f, Y - 26, 1 + f, 3, '#ffd23f'); px(cx0, Y - 25, 1, 2, '#ff8a1f'); px(cx0, Y - 27, 1, 1, '#ffffff'); }
+  });
+}
+function twinkle(x, y, t) { const f = SPARKLE[[0, 1, 2, 1][Math.floor(t / 160) % 4]]; put(sprite(f, { outline: false }), x - 3, y - 3); }
+
+// The title screen: the harbor behind, the name in big letters, PRESS START.
+let pressT = 0;
+function drawPress(t) {
+  const W = VW * T, H = VH * T;
+  px(0, 0, W, H * .55, '#9fdcff'); px(0, H * .55, W, H * .45, COL.W);
+  for (let x = 0; x < W; x += 14) px(x + (Math.floor(t / 300) % 4), H * .55 + 6 + (x % 3) * 9, 6, 1, COL.l);
+  cx.textAlign = 'center';
+  const big = (s, y, col, size) => { cx.font = `${size}px ${PIX}`; cx.fillStyle = '#7a3f12'; cx.fillText(s, W / 2 + 2, y + 2); cx.fillStyle = LINE; for (const [a, c] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) cx.fillText(s, W / 2 + a, y + c); cx.fillStyle = col; cx.fillText(s, W / 2, y); };
+  big('TUGBOAT', 38, COL.r, 22);
+  if (S.name) big(`${S.name.toUpperCase()}'S`, 58, COL.y, 12);
+  big('DELIVERIES', S.name ? 76 : 62, '#ffffff', 12);
+  const tug = sprite(TUG), x = ((t / 40) % (W + 60)) - 30;
+  put(tug, x - tug.width, H * .55 + 18 + (Math.floor(t / 350) % 2), 2);
+  put(sprite(ITEMS[0].rows), x - tug.width + 6, H * .55 + 14, 1);
+  const flash = pressT && performance.now() - pressT < 900;
+  if (flash ? Math.floor(t / 80) % 2 : Math.floor(t / 520) % 2 === 0) text('PRESS START', W / 2, 100, flash ? COL.r : LINE);
+  text('RUBBER DUCK GAMES', W / 2, H - 5, '#1f5a8a');
+}
+
+// ---------- Screens ----------
+function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#nameBtn').hidden = false; $('#pickBtn').hidden = true; }
+function pressStart() {
+  if (screen !== 'press' || pressT) return;
+  if (!S.name && !S.asked) return askName(true);
+  pressT = performance.now(); sfx.start();
+  setTimeout(play, 900);
+}
+function play() {
+  screen = 'play'; $('#nameBtn').hidden = true; $('#pickBtn').hidden = false; $('#ctrl').hidden = false; resize();
+  newHarbor(); showPick();
+}
+// Harbor or river: big buttons a grown-up can read out, and the arrow keys
+// and Space work on them too.
+function showPick(focus) {
+  $('#card').innerHTML = `<h2>Where to?</h2><div class="picks"><button class="btn" data-pick="harbor">⚓ Harbor</button><button class="btn" data-pick="abc">🔤 River A B C</button><button class="btn" data-pick="num">🔢 River 1 2 3</button></div>`;
+  $('#cover').hidden = false;
+  $('#card').querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
+    $('#cover').hidden = true; const k = btn.dataset.pick;
+    if (k === 'harbor') newHarbor(); else newRiver(k);
+  });
+  ($('#card').querySelector(`[data-pick="${focus || 'harbor'}"]`) || $('#card').querySelector('[data-pick]')).focus();
+}
+$('#pickBtn').onclick = () => { if (screen === 'play') showPick(G?.kind); };
+// Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
+function askName(thenStart) {
+  $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><label for="pm">Party month: balloons and cake in the harbor</label><select id="pm" name="pm"><option value="-1">No party</option>${MONTHS.map((m, i) => `<option value="${i}"${S.partyMonth === i ? ' selected' : ''}>${m}</option>`).join('')}</select><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
+  $('#cover').hidden = false;
+  const f = $('#card form'); f.n.focus();
+  const done = () => { S.asked = true; persist(); $('#cover').hidden = true; if (thenStart) { pressT = 0; pressStart(); } };
+  $('#skipName').onclick = done;
+  f.onsubmit = e => { e.preventDefault(); S.name = f.n.value.trim().slice(0, 16); S.partyMonth = +f.pm.value; done(); };
+}
+$('#nameBtn').onclick = () => askName(false);
+
+// ---------- Input ----------
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  const picks = [...document.querySelectorAll('#card [data-pick]')];
+  if (!$('#cover').hidden && picks.length) {
+    // on the harbor-or-river card, the arrows move between the buttons
+    const i = picks.indexOf(document.activeElement);
+    if (k === 'arrowdown' || k === 'arrowright') { e.preventDefault(); picks[(i + 1) % picks.length].focus(); }
+    if (k === 'arrowup' || k === 'arrowleft') { e.preventDefault(); picks[(i - 1 + picks.length) % picks.length].focus(); }
+    if ((k === ' ' || k === 'enter') && i < 0) { e.preventDefault(); picks[0].click(); }
+    return;
+  }
+  if (!$('#cover').hidden) return;
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (screen === 'press') { if (k === ' ' || k === 'enter' || k.startsWith('arrow')) pressStart(); return; }
+  keys[k] = true;
+  if (k === ' ' && !e.repeat) honk();
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('blur', () => Object.keys(keys).forEach(k => keys[k] = false));
+cv.addEventListener('pointerdown', () => { if (screen === 'press' && $('#cover').hidden) pressStart(); });
+function honk() {
+  if (G && G.party) { sfx.party(); confetti(G.tug.x + G.tug.face * .8, G.tug.y - .8, 12); return; }
+  sfx.horn(); if (G) for (let i = 0; i < 4; i++) G.smoke.push({ x: G.tug.x, y: G.tug.y - 1.1 - i * .15, t: i * .05 });
+}
+$('#hornBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (screen === 'play') honk(); else pressStart(); });
+// the steering stick, like Bread's: the boat goes the way it's pushed
+const stick = RDG.stick('#pad', '#knob');
+RDG.noZoom(() => screen === 'play', ['#pad', '#hornBtn']);
+
+// ---------- Screen size ----------
+// The harbor fills the window; on a touch screen it leaves room for the pad and
+// the horn (below it held upright, beside it turned sideways).
+function resize() {
+  const coarse = matchMedia('(pointer:coarse)').matches, sideways = innerWidth > innerHeight;
+  const room = { w: innerWidth - (coarse && sideways && screen === 'play' ? 2 * 8 * 16 : 0), h: innerHeight - 56 - (coarse && !sideways ? 18 * 16 : 0) };
+  let w = room.w, h = w * VH / VW; if (h > room.h) { h = room.h; w = h * VW / VH; }
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+}
+addEventListener('resize', resize);
+
+// ---------- Main loop ----------
+let last = 0;
+function loop(t) {
+  const dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
+  if (screen === 'press') drawPress(t);
+  else if (G && G.mode === 'river') { if ($('#cover').hidden) stepRiver(dt); drawRiver(t); }
+  else if (G) { if ($('#cover').hidden) step(dt, t); drawHarbor(t); }
+  out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, cv.width, cv.height);
+  requestAnimationFrame(loop);
+}
+hud(); showPress(); resize();
+requestAnimationFrame(loop);
