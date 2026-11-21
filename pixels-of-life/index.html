@@ -54,6 +54,7 @@
     <button class="btn plain" type="button" id="newBtn">New world</button>
     <button class="btn plain" type="button" id="foodBtn" aria-pressed="false">Add food</button>
     <button class="btn plain" type="button" id="poisonBtn" aria-pressed="false">Add poison</button>
+    <button class="btn plain" type="button" id="creatureBtn" aria-pressed="false">Add creature</button>
     <button class="btn plain" type="button" id="pauseBtn">Pause</button>
     <button class="btn" type="button" id="buildBtn">Build</button>
   </div>
@@ -84,11 +85,13 @@
   <p>Every cell uses a little energy all the time. A mouth eats the green food next to it. When a creature runs out of energy, it dies.</p>
   <p>When a creature is full of energy, it has a baby and gives it half. With Babies change turned up, some babies are born with one cell added, taken away or swapped.</p>
   <p>Change the sliders, or edit a copy of a creature, and watch what happens. Add food lets you drop food by tapping or dragging on the world.</p>
+  <p>Add creature puts a copy of the creature in the builder wherever you tap.</p>
   <p>Save keeps a creature on this device. Its picture shows under the builder grid; tap it to build it again.</p>
   <p>A producer cell makes energy, like a plant, so a creature with enough of them never needs to eat.</p>
+  <p>An eye cell sees a few squares around it. A creature that can move heads for food it sees, and runs from any creature with a killer cell. A killer with an eye chases the creatures it sees.</p>
   <p>A killer cell takes energy from any other creature it touches, unless it touches armor.</p>
   <p>Poison blocks are solid. A creature touching one loses energy. Add poison drops them; with it on, tapping a poison block takes it away.</p>
-  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off.</p>
+  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off, C turns Add creature on and off.</p>
   <div class="row"><button class="btn" type="button" id="helpClose">Close</button></div>
 </dialog>
 

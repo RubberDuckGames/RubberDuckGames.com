@@ -66,6 +66,7 @@ dialog p{margin:.35rem 0}
 /* Add food: tapping the world drops food instead of picking a creature */
 #foodBtn[aria-pressed="true"]{background:#2b8a3e;color:#fff;box-shadow:.25rem .25rem 0 #14461f}
 #poisonBtn[aria-pressed="true"]{background:#5f3dc4;color:#fff;box-shadow:.25rem .25rem 0 #2b1a63}
+#creatureBtn[aria-pressed="true"]{background:#0b7285;color:#fff;box-shadow:.25rem .25rem 0 #063f4a}
 .acts [aria-pressed="true"]::before{content:"✓ "}
 /* On a phone the builder scrolls; its buttons stay in view at the bottom. */
 .row.stick{position:sticky;bottom:-1.1rem;margin:0 -1.1rem -1.1rem;padding:.7rem 1.1rem;background:var(--panel);border-top:2px solid var(--line)}

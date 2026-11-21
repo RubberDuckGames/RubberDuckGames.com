@@ -17,6 +17,12 @@
 // so a killer can live by hunting.
 // His idea, 21 Nov: the producer cell makes energy for the creature itself, like
 // a plant in the sun, so a creature can live without eating (`makes` a tick).
+// His idea, 21 Nov: the eye cell lets a creature see food or its predators.
+// It works both ways (his rule, the same day): a creature with a killer cell
+// and an eye chases the nearest other creature it sees, so hunters get harder
+// to escape. Any other creature that moves and has an eye runs straight away
+// from the nearest killer it sees; seeing none, it heads for the nearest food
+// it sees. `sees` is how many squares out an eye looks.
 // PLACEHOLDER: every number below is a first guess until he gives his own.
 // The colours and drawings are placeholders too, until he picks or draws them.
 const CELLS = {
@@ -26,6 +32,7 @@ const CELLS = {
   bone:    { name: 'Bone',    says: 'Inside frame. Lets the creature grow bigger.', upkeep: 0.05, holds: 10, room: 4, color: '#efe4cc' },
   killer:  { name: 'Killer',  says: 'Takes energy from other creatures it touches. Armor stops it.', upkeep: 0.15, holds: 10, damage: 2, color: '#26282c' },
   producer: { name: 'Producer', says: 'Makes energy for the creature, like a plant.', upkeep: 0.05, holds: 10, makes: 0.15, color: '#5c940d' },
+  eye:     { name: 'Eye',     says: 'Sees food to go to and killers to run from. On a killer, it sees prey to chase.', upkeep: 0.10, holds: 10, sees: 6, color: '#4dabf7' },
   armor:   { name: 'Armor',   says: 'Outside protection. Killer cells can\'t hurt it.', upkeep: 0.10, holds: 10, color: '#62708a' },
 };
 const TYPES = Object.keys(CELLS);
@@ -77,6 +84,7 @@ function drawCell(g, t, x, y, s) {
   else if (t === 'bone') { g.fillStyle = '#8e7b55'; R(1, 2, 2, 4); R(5, 2, 2, 4); R(3, 3, 2, 2); }
   else if (t === 'killer') { g.fillStyle = '#ff6b4a'; R(0, 0, 2, 2); R(6, 0, 2, 2); R(0, 6, 2, 2); R(6, 6, 2, 2); R(3, 3, 2, 2); R(2, 2, 1, 1); R(5, 2, 1, 1); R(2, 5, 1, 1); R(5, 5, 1, 1); }
   else if (t === 'producer') { g.fillStyle = '#c0eb75'; R(3, 1, 2, 6); R(1, 3, 6, 2); g.fillStyle = '#f4fce3'; R(3, 3, 2, 2); }
+  else if (t === 'eye') { g.fillStyle = '#ffffff'; R(1, 2, 6, 4); g.fillStyle = '#10203f'; R(3, 2, 2, 4); R(2, 3, 4, 2); g.fillStyle = '#ffffff'; R(3, 3, 1, 1); }
   else if (t === 'armor') { g.fillStyle = '#c3ccdb'; R(0, 0, 8, 1); R(0, 0, 1, 8); g.fillStyle = '#39445a'; R(7, 0, 1, 8); R(0, 7, 8, 1); R(3, 3, 2, 2); }
 }
 const ICON = {};
@@ -128,8 +136,13 @@ function newWorld(cols, rows) {
 function makeCreature(cells, x, y, gen) {
   const c = { id: nextId++, cells: norm(cells), x, y, dir: rnd(4), age: 0, gen, kids: 0, energy: 0 };
   c.w = Math.max(...c.cells.map(p => p.x)) + 1; c.h = Math.max(...c.cells.map(p => p.y)) + 1;
-  c.upkeep = 0; c.max = 0; c.movers = 0; c.makes = 0;
-  for (const p of c.cells) { const s = CELLS[p.t]; c.upkeep += s.upkeep; c.max += s.holds; c.makes += s.makes || 0; if (p.t === 'mover') c.movers += s.push; }
+  c.upkeep = 0; c.max = 0; c.movers = 0; c.makes = 0; c.eyes = 0; c.killers = 0;
+  for (const p of c.cells) {
+    const s = CELLS[p.t]; c.upkeep += s.upkeep; c.max += s.holds; c.makes += s.makes || 0;
+    if (p.t === 'mover') c.movers += s.push;
+    if (p.t === 'eye') c.eyes++;
+    if (p.t === 'killer') c.killers++;
+  }
   return c;
 }
 function fits(c, x, y) {
@@ -201,6 +214,33 @@ function die(c) {
   if (WORLD.deadToFood) for (const p of c.cells) { const k = (c.y + p.y) * W + c.x + p.x; if (!food[k]) { food[k] = 1; foodCount++; } }
 }
 
+// The way to go (an index into DIRS) for a creature with eyes, or null if
+// its eyes see nothing: a hunter goes for the nearest creature; anyone else
+// goes away from the nearest killer, else to the nearest food.
+const towards = (dx, dy) => Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3);
+function look(c) {
+  const r = CELLS.eye.sees;
+  let food1 = null, foodD = 1e9, foe = null, foeD = 1e9, prey = null, preyD = 1e9;
+  for (const p of c.cells) {
+    if (p.t !== 'eye') continue;
+    const ex = c.x + p.x, ey = c.y + p.y;
+    for (let y = Math.max(0, ey - r); y <= Math.min(H - 1, ey + r); y++)
+      for (let x = Math.max(0, ex - r); x <= Math.min(W - 1, ex + r); x++) {
+        const k = y * W + x, d = Math.abs(x - ex) + Math.abs(y - ey);
+        if (food[k] && d < foodD) { foodD = d; food1 = [x - ex, y - ey]; }
+        const o = occ[k];
+        if (o && o !== c.id) {
+          if (d < preyD) { preyD = d; prey = [x - ex, y - ey]; }
+          if (d < foeD) { const v = byId.get(o); if (v && v.killers) { foeD = d; foe = [x - ex, y - ey]; } }
+        }
+      }
+  }
+  if (c.killers && prey) return towards(prey[0], prey[1]);
+  if (foe) return towards(-foe[0] || (Math.random() < .5 ? 1 : -1), -foe[1]);
+  if (food1 && (food1[0] || food1[1])) return towards(food1[0], food1[1]);
+  return null;
+}
+
 function live(c) {
   c.age++;
   c.energy = Math.min(c.max, c.energy - c.upkeep + c.makes);
@@ -237,7 +277,9 @@ function live(c) {
   }
   // More movers move it more often; a bigger body moves it less often.
   if (c.movers && Math.random() < Math.min(1, c.movers / c.cells.length)) {
-    if (Math.random() < WORLD.turn) c.dir = rnd(4);
+    const seen = c.eyes ? look(c) : null;
+    if (seen != null) c.dir = seen;
+    else if (Math.random() < WORLD.turn) c.dir = rnd(4);
     const [dx, dy] = DIRS[c.dir];
     if (fits(c, c.x + dx, c.y + dy)) { mark(c, 0); c.x += dx; c.y += dy; mark(c, c.id); }
     else c.dir = rnd(4);
@@ -349,10 +391,26 @@ function setPlacing(kind) {
   placing = kind;
   $('#foodBtn').setAttribute('aria-pressed', kind === 'food');
   $('#poisonBtn').setAttribute('aria-pressed', kind === 'poison');
+  $('#creatureBtn').setAttribute('aria-pressed', kind === 'creature');
   cv.style.cursor = kind ? 'crosshair' : '';
 }
 $('#foodBtn').onclick = () => setPlacing(placing === 'food' ? null : 'food');
 $('#poisonBtn').onclick = () => setPlacing(placing === 'poison' ? null : 'poison');
+$('#creatureBtn').onclick = () => setPlacing(placing === 'creature' ? null : 'creature');
+
+// Add creature (his ask, 21 Nov): each tap puts a copy of the builder's
+// creature where he taps, centred on the tap, or the nearest free spot within
+// a few squares. A builder creature that can't live (no cells, or cells not
+// touching) opens the builder instead.
+function dropCreature(x, y) {
+  if (!design.length || !connected(design)) { setPlacing(null); openBuilder(); return; }
+  const c = makeCreature(design, 0, 0, 1), x0 = x - (c.w >> 1), y0 = y - (c.h >> 1);
+  for (let d = 0; d <= 4; d++)
+    for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== d || !fits(c, x0 + dx, y0 + dy)) continue;
+      c.x = x0 + dx; c.y = y0 + dy; c.energy = c.max; addCreature(c); return;
+    }
+}
 // A quick drag skips squares between pointer events, so fill in the line.
 let lastTile = null;
 cv.addEventListener('pointermove', e => {
@@ -366,6 +424,7 @@ cv.addEventListener('pointerup', stopPaint);
 cv.addEventListener('pointercancel', stopPaint);
 cv.addEventListener('pointerdown', e => {
   const [x, y] = tileAt(e);
+  if (placing === 'creature') { dropCreature(x, y); return; }
   if (placing) {
     painting = true; cv.setPointerCapture(e.pointerId);
     erasing = placing === 'poison' && x >= 0 && y >= 0 && x < W && y < H && !!poison[y * W + x];
@@ -414,7 +473,7 @@ const toolsEl = $('#tools');
 [...TYPES, 'empty'].forEach((t, i) => {
   const s = CELLS[t], lab = document.createElement('label');
   lab.className = 'tool';
-  const nums = s ? `Uses ${s.upkeep} · Holds ${s.holds}${s.room ? ' · +' + s.room + ' room' : ''}${s.damage ? ' · ' + s.damage + ' damage' : ''}${s.makes ? ' · Makes ' + s.makes : ''}` : 'Takes a cell away.';
+  const nums = s ? `Uses ${s.upkeep} · Holds ${s.holds}${s.room ? ' · +' + s.room + ' room' : ''}${s.damage ? ' · ' + s.damage + ' damage' : ''}${s.makes ? ' · Makes ' + s.makes : ''}${s.sees ? ' · Sees ' + s.sees : ''}` : 'Takes a cell away.';
   lab.innerHTML = `<input type="radio" name="tool" value="${t}"${t === tool ? ' checked' : ''}>` +
     (s ? `<img src="${ICON[t]}" alt="">` : '<span class="empty"></span>') +
     `<span><b>${i + 1}. ${s ? s.name : 'Empty'}</b><small>${s ? s.says + '<br>' : ''}${nums}</small></span>`;
@@ -440,7 +499,7 @@ gridEl.addEventListener('keydown', e => {
   b.tabIndex = -1; const n = gridBtns[y * ED + x]; n.tabIndex = 0; n.focus();
 });
 buildDlg.addEventListener('keydown', e => {
-  const i = '12345678'.indexOf(e.key);
+  const i = '123456789'.indexOf(e.key);
   if (i < 0 || e.target.closest('input')) return;
   const r = toolsEl.querySelectorAll('input')[i]; r.checked = true; tool = r.value;
 });
@@ -538,6 +597,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'b' || e.key === 'B') openBuilder();
   else if (e.key === 'f' || e.key === 'F') setPlacing(placing === 'food' ? null : 'food');
   else if (e.key === 'p' || e.key === 'P') setPlacing(placing === 'poison' ? null : 'poison');
+  else if (e.key === 'c' || e.key === 'C') setPlacing(placing === 'creature' ? null : 'creature');
   else if (e.key === 'n' || e.key === 'N') nextCreature();
   else if (e.key === '?') $('#helpDlg').showModal();
   else if (e.key === 'Escape' && sel) select(null);
