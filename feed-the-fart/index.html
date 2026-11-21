@@ -260,6 +260,9 @@ svg.wilt #cactus{transform:rotate(85deg)}
       <ellipse cx="330" cy="261" rx="17" ry="4" fill="#fff"/><ellipse cx="690" cy="261" rx="17" ry="4" fill="#fff"/>
       <path d="M672 252l4-12h30l4 12z" fill="#b07a3a"/><path d="M676 246h30" stroke="#8a5a2a" stroke-width="2"/>
       <ellipse cx="684" cy="238" rx="7" ry="5" fill="#d9a05a"/><ellipse cx="697" cy="237" rx="7" ry="5" fill="#c98a4a"/>
+      <!-- a plain bottle of hot sauce, his go-to; no label art -->
+      <rect x="588" y="226" width="7" height="8" fill="#c2201a"/><rect x="587" y="221" width="9" height="6" rx="2" fill="#f4e6c4"/>
+      <rect x="584" y="233" width="15" height="21" rx="3" fill="#c2201a"/><rect x="584" y="239" width="15" height="7" fill="#f4e6c4"/><rect x="586" y="235" width="3" height="16" fill="#e8584a"/>
       <!-- the flower centerpiece -->
       <g id="flowers">
         <g class="stem" id="stemL"><path d="M560 228q-10-20-22-36" stroke="#3f7d2a" stroke-width="4" fill="none"/><circle cx="538" cy="190" r="10" fill="#e8743b"/><circle cx="538" cy="190" r="4" fill="#7a3a10"/></g>
@@ -404,6 +407,8 @@ const T = {
   sbd: 'What? I didn\'t hear anything.',
   after: ['Excuse me!', 'Better out than in.', 'That was the turkey.', 'You pulled it.'],
   roomEw: ['Ewww!', 'Open a window!', 'Not at the table!', 'Who did that?'],
+  yell: `${NAME.toUpperCase()}!!`,
+  tapatio: ['Don\'t forget my Tapatio!', 'Pass the hot sauce. The Tapatio.'],
   roomSbd: 'What is that SMELL?',
   ohNo: 'Oh no.',
   goHome: 'I might need a change of clothes.',
@@ -636,7 +641,9 @@ function cloud(type, scale, slow, x0, y0) {
 function react(level) {
   clearTimeout(clearT);
   if (level >= 1) svg.classList.add('dognose');
-  if (level >= 2) { svg.classList.add('noses', 'flydrop'); sayRoom(pick(T.roomEw)); }
+  // Decided 20 Nov: the kids at the table yell his name on the bad ones; always
+  // on the biggest, about half the time on medium ones.
+  if (level >= 2) { svg.classList.add('noses', 'flydrop'); sayRoom(level >= 3 || Math.random() < .5 ? T.yell : pick(T.roomEw)); }
   if (level >= 3) svg.classList.add('wilt', 'catgone');
   clearT = setTimeout(calm, 7000);
 }
@@ -663,6 +670,8 @@ function eat(f) {
   if (f.room) sayRoom(f.room);
   if (belly.gas >= 100) say(T.full, 0);
   else if (f.say) say(f.say);
+  // his go-to hot sauce (decided 20 Nov), now and then on savory food
+  else if ((f.mix.savory || 0) + (f.mix.sulfur || 0) >= .5 && Math.random() < .35) say(pick(T.tapatio));
   else if ((f.mix.dairy || 0) >= .5) say(pick(T.dairyEat));
   else if (belly.gas >= READY && !svg.classList.contains('finger')) say(T.ready);
   else say(fill(T.mmm, { food: f.name.toLowerCase() }), 1500);
@@ -703,7 +712,7 @@ function pull() {
   face(type === 'sneaky' || type === 'sbd' ? 'smug' : 'normal');
   setTimeout(() => {
     react(type === 'sneaky' ? 1 : level);
-    if (type === 'sbd') sayRoom(T.roomSbd);
+    if (type === 'sbd') { sayRoom(T.roomSbd); setTimeout(() => sayRoom(T.yell), 1600); }
     $('#live').textContent = fill(T.live, { name: ty.name, react: T.liveReact[type === 'sneaky' ? 1 : level] });
   }, delay);
   setTimeout(() => {
