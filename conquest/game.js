@@ -40,6 +40,7 @@ const STR = {
   teamTurn: '{team} turn…',
   title: 'Conquest',
   howBtn: 'How to play',
+  gCured: 'Cured', gRunway: 'Runway: {n} of {of}',
   gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
   g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
   g_drag: 'Drag the map to look around. Pinch, or tap + and −, to zoom.',
@@ -47,7 +48,7 @@ const STR = {
   g_fire_t: 'Fire', g_fire: 'Then tap a unit in a red box to fire at it.',
   g_marks_t: 'What each unit has left', g_marks: 'Filled square: it can still move. Empty square: it moved, and can still fire. Greyed out: it’s done. When you’re done, press End turn.',
   g_city_t: 'Cities and money', g_city: 'Every city you own pays you each turn: 1 money, or 3 for your home city. Tap your city to buy units there. On this level you start with {m} money.',
-  g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities or on one of your runways to fill up, or it crashes. A runway belongs to whoever holds the city next to it.',
+  g_air_t: 'Planes', g_air: 'Planes and helicopters fly over anything. A plane carries 10 fuel: land it in one of your cities or on one of your runways to fill up, or it crashes. A runway holds {n}: a jet takes 2, a bomber 4. Tap it, then Take off. Whoever takes the city next to it gets the runway and the planes on it.',
   g_bomb_t: 'Bombers', g_bomb: 'Bombers can only bomb ground units from 1 square away.',
   g_build_t: 'Build guns', g_build: 'Tap an empty square next to one of your units to build a defense gun or AA gun there.',
   g_carry_t: 'Transports', g_carry: 'A transport chopper, transport jet or trade ship carries your ground units and guns. Walk onto a trade ship from the shore. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
@@ -107,7 +108,8 @@ const STR = {
   dSetHow: 'Pick what each district is. You can change them on your turn.',
   dMaxIndustry: 'This city already has {max} industrial districts.',
   healed: '+{n}',
-  g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. The first district is free, then each costs 1. Hospital heals your units next to it and cures viruses, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city). A city with a virus makes half its money and makes your units sick.',
+  g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. The first district is free, then each costs 1. Hospital heals your units next to it and cures viruses, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city).',
+  g_virus_t: 'Viruses', g_virus: 'A city can catch a virus. Then it makes half its money, and your ground units in it get sick and lose health each turn. Build a hospital there to cure it. Quarantine keeps viruses out. A virus can also come down a trade route from a sick ally.',
   passTitle: '{team} turn',
   passBody: 'Pass the device to the {team} player.',
   startTurn: 'Start turn',
@@ -1486,10 +1488,10 @@ function drawFlag(o, c = ctx) {
 // capital has a gold edge.
 // a runway: dark tarmac across its 2 squares with a dashed white centre line
 // and the owner's colour at each end
-function drawRunway(r, c = ctx) {
+function drawRunway(r, c = ctx, own = cityAt(r.cx, r.cy)?.owner) {   // How to play passes the owner: no game there
   const xs = r.sq.map(p => p[0]), ys = r.sq.map(p => p[1]), across = ys[0] === ys[1];
   const X = Math.min(...xs) * TS, Y = Math.min(...ys) * TS, W = (Math.max(...xs) + 1) * TS - X, H = (Math.max(...ys) + 1) * TS - Y;
-  const own = cityAt(r.cx, r.cy)?.owner, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
+  const f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   if (across) { f('#1b1a15', X + 2, Y + 10, W - 4, H - 20); f('#3d3b34', X + 3, Y + 11, W - 6, H - 22); for (let i = 0; i < 6; i++) f('#e8dfc8', X + 10 + i * (W - 20) / 6, Y + H / 2 - 1, (W - 20) / 12, 3); if (own) { f(TEAM[own].bar, X + 4, Y + 12, 4, H - 24); f(TEAM[own].bar, X + W - 8, Y + 12, 4, H - 24); } }
   else { f('#1b1a15', X + 10, Y + 2, W - 20, H - 4); f('#3d3b34', X + 11, Y + 3, W - 22, H - 6); for (let i = 0; i < 6; i++) f('#e8dfc8', X + W / 2 - 1, Y + 10 + i * (H - 20) / 6, 3, (H - 20) / 12); if (own) { f(TEAM[own].bar, X + 12, Y + 4, W - 24, 4); f(TEAM[own].bar, X + 12, Y + H - 8, W - 24, 4); } }
 }
@@ -1978,6 +1980,17 @@ const GUIDE = [
     drawUnit(c, gUnit('soldier', 'green', 1, 1, { hp: healed ? 1 : .4 }), now, false);
     gNum(c, '+' + fmt(HOSPITAL_HEAL), 1, 1, (k - 4.3) / .9);
   } },
+  { key: 'virus', map: ['ppppp', 'ppcpp', 'ppppp'], loop: 6.4, draw(c, k, now) {
+    // a sick city makes half its money and makes the soldier at its gate sick; a hospital cures both
+    const cured = k > 3.6, d = [k > 3.2 ? 'hospital' : null, null, null, null];
+    drawCity({ x: 2, y: 1, d, sick: !cured }, now, c); drawFlag({ x: 2, y: 1, owner: 'green' }, c);
+    gNum(c, '+' + fmt(CITY_MONEY / 2), 2, 1, (k - .3) / 1);
+    const hurt = k > 1.5 && !cured;
+    drawUnit(c, gUnit('soldier', 'green', 1, 1, { sick: cured ? 0 : 1, hp: UNITS.soldier.hp - (hurt || cured ? VIRUS_HURT : 0) }), now, false);
+    gNum(c, '-' + fmt(VIRUS_HURT), 1, 1, (k - 1.4) / .9);
+    gTap(c, 2, 1, (k - 2.6) / .5);
+    if (cured) gLabel(c, t('gCured'), 2 * TS - 10, TS * 2.3, '#7fb069');
+  } },
   { key: 'ships', map: ['ppwww', 'ppwww', 'ppwww'], loop: 5, draw(c, k, now) {
     drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: true }), now, true);
     if (k > .4 && k < 1.6) { c.fillStyle = 'rgba(232,223,200,.22)'; c.fillRect(2 * TS + 3, TS + 3, TS - 6, TS - 6); }
@@ -1986,12 +1999,16 @@ const GUIDE = [
     if (k > 1.6 && k < 2.4) drawUnit(c, gUnit('destroyer', 'green', 2, 0, { ang: 0 }), now, false);          // built, bow up
     if (k >= 2.4) drawUnit(c, gUnit('destroyer', 'green', 3 + go, 1, { ang: Math.PI / 2 }), now, false);   // then it sails off
   } },
-  { key: 'air', map: ['ppmwp', 'cpmww', 'ppwwp'], loop: 6.4, draw(c, k, now) {
+  { key: 'air', map: ['ppmwp', 'cpmww', 'ppwwp'], loop: 7, draw(c, k, now) {
+    // out over the sea and back, then down onto the city's runway, where the fuel fills up
     drawFlag({ x: 0, y: 1, owner: 'green' }, c);
-    const out = span(k, .4, 2.6), back = span(k, 3, 5.2), x = 4 * out - 4 * back;
-    const fuel = k > 5.8 ? FUEL : Math.round(FUEL - 4 * out - 4 * back);
-    drawUnit(c, gUnit('interceptor', 'green', x, 1, { fuel, ang: k < 2.8 ? Math.PI / 2 : -Math.PI / 2 }), now, false);
+    drawRunway({ sq: [[0, 2], [1, 2]], cx: 0, cy: 1 }, c, 'green');
+    const out = span(k, .4, 2.4), back = span(k, 2.8, 4.4), down = span(k, 4.6, 5.2), x = 4 * out - 3 * back;
+    const fuel = k > 5.8 ? FUEL : Math.round(FUEL - 4 * out - 3 * back - down);
+    const ang = k < 2.6 ? Math.PI / 2 : k < 4.5 ? -Math.PI / 2 : Math.PI;
+    drawUnit(c, gUnit('interceptor', 'green', x, 1 + down, { fuel, ang }), now, false);
     gLabel(c, `${fuel} / ${FUEL}`, 6, 6, fuel <= 4 ? '#e0a040' : '#9fb8c8');
+    if (k > 5.2) gLabel(c, t('gRunway', { n: 2, of: RUNWAY_HOLDS }), 6, 30);
   } },
   { key: 'bomb', map: ['ppppp', 'ppppp', 'pppfp'], loop: 5, draw(c, k, now) {
     // 2 squares away: no bomb (a red X); 1 square away: the bomb drops
@@ -2075,6 +2092,7 @@ function guideText(pg, L, name) {
   if (pg.key === 'level') return t('g_level', { m: fmt(L.start), pay: frac(L.pay), buy: buy(L.buy), air: L.air });
   if (pg.key === 'city') return t('g_city', { m: fmt(L.start) });
   if (pg.key === 'move') return t('g_move') + ' ' + t('g_drag');
+  if (pg.key === 'air') return t('g_air', { n: RUNWAY_HOLDS });
   return t('g_' + pg.key);
 }
 function guideCard(i = 0, back = guideBack) {
@@ -2101,7 +2119,7 @@ function guideDraw(now) {
   const pg = GUIDE[guideAt], [, L] = guideLevel();
   const g = guideTiles[pg.key] || (guideTiles[pg.key] = paintTiles(pg.map, 11 + guideAt));
   c.imageSmoothingEnabled = false; c.drawImage(g, 0, 0, GW * TS, GH * TS);
-  if (pg.key !== 'districts') pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
+  if (pg.key !== 'districts' && pg.key !== 'virus') pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
   pg.draw(c, ((now - guideT0) / 1000) % pg.loop, now, L);
   return true;
 }
