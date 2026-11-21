@@ -23,12 +23,15 @@ Object.assign(T, {
   allFood: "That's all the food! Head to the dining room.",
   houseHint: 'Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door, window or fridge next to you. People who smell it open a window, so shut them in a room without one. Goals has things to try. Fill the bar all the way and run for the bathroom. The glowing door at the end of the big hall goes to dinner. With a controller: A farts, B is Use, Select opens this.',
   intro: 'Find the food. Trap them with your farts!',
+  ow: ['OW!', 'OW OW OW!', 'Who left Legos here?!', 'My foot!'],
+  slow1: 'Ugh, so full. Slowing down...',
+  slow2: 'Too full to hurry.',
   got: 'Got the {food}!',
   empty: 'Nothing left in the tank.',
   knock: { plant: 'The plant wilted!', dog: 'The dog passed out!', cat: 'The cat fainted!', tank: 'The fish played dead!', person: `${NAME.toUpperCase()}!!` },
   trapped: 'Trapped in the {room}!',
   sniff: '{who} sniffed.',
-  who: { plant: 'The plant', dog: 'The dog', cat: 'The cat', tank: 'The fish', grandma: 'Grandma', dad: 'Dad', kid: 'The kid', aunt: 'Aunt', uncle: 'Uncle' },
+  who: { cousin1: 'Cousin', cousin2: 'Cousin', plant: 'The plant', dog: 'The dog', cat: 'The cat', tank: 'The fish', grandma: 'Grandma', dad: 'Dad', kid: 'The kid', aunt: 'Aunt', uncle: 'Uncle' },
   stuck: 'Who closed the door?!',
   pts: '+{n}',
   fridgeIn: 'You left one in the fridge...',
@@ -229,6 +232,16 @@ const HOUSE = (() => {
       if (out) { r(8, 1, 5, 2, '#f4ece0'); r(8, 3, 5, 1, '#f08a1e'); }
       else { r(8, 4, 4, 3, '#f08a1e'); r(6, 4, 2, 3, '#d96a10'); r(11, 5, 1, 1, K); }
     });
+    if (t.sit && !t.walk) {   // a cousin on the floor, playing with Legos
+      const play = out ? 0 : Math.floor(time * 3) % 2;
+      return sprite(`sit-${t.who}-${out}-${play}`, 16, 15, r => {
+        const skin = out ? '#b8c890' : t.skin;
+        r(3, 8, 10, 5, t.shirt); r(5, 1, 6, 7, skin); r(5, 0, 6, 3, t.hair); r(5, 3, 1, 2, t.hair); r(10, 3, 1, 2, t.hair);
+        r(6, 4, 1, 1, K); r(9, 4, 1, 1, K); r(7, 6, 2, 1, out ? t.skin : '#7a2e22');
+        r(2, 13, 12, 2, '#3a3a4a');
+        r(1, 10 - play, 3, 2, skin); r(12, 9 + play, 3, 2, skin);
+      });
+    }
     const fan = out && Math.floor(time * 6) % 2, w = t.walk ? Math.floor(time * 6) % 2 : 0;
     return sprite(`p-${t.who}-${out}-${fan}-${w}`, 16, 18, r => {
       const skin = out ? '#b8c890' : t.skin;
@@ -255,6 +268,9 @@ const HOUSE = (() => {
       route: [[27.5, 7.5, 'milk'], [21.5, 15.6], [11.5, 10.6], [24.5, 12.6], [21.5, 15.6]], pause: 5 },
     { kind: 'person', who: 'kid', x: 32.5, y: 23.6, need: 28, hair: '#2a1a10', shirt: '#3f8f5a', skin: '#c68a5e',
       route: [[32.5, 23.6], [38.5, 22.6], [10.5, 23.6], [35.5, 7.6], [32.5, 23.6]], pause: 4 },
+    // two cousins on the living room floor in front of the TV, playing with Legos (Randi, 21 Nov)
+    { kind: 'person', who: 'cousin1', sit: true, x: 9.2, y: 8.3, need: 26, hair: '#e8c35a', shirt: '#e8742a', skin: '#f0c9a0', route: [[9.2, 8.3]], pause: 30 },
+    { kind: 'person', who: 'cousin2', sit: true, x: 11.6, y: 8.3, need: 26, hair: '#3a2414', shirt: '#7d4fa0', skin: '#c68a5e', route: [[11.6, 8.3]], pause: 30 },
     // Thanksgiving guests ring the bell during the level (Randi: more to do)
     { kind: 'person', who: 'aunt', arrive: 35, x: 43.5, y: 27.6, need: 30, hair: '#e8c35a', shirt: '#c2304a', skin: '#f0c9a0',
       route: [[44.5, 23.6], [11.5, 8.6], [24.5, 24.6], [35.5, 13.6], [26.5, 11.6]], pause: 4 },
@@ -264,6 +280,10 @@ const HOUSE = (() => {
   // Randi, 20 Nov: the guests bring food. These dishes aren't in the house at
   // the start; they're set down in the front hall when that guest arrives.
   const BRINGS = { pie: ['aunt', 42.5, 26.5], casserole: ['aunt', 43.5, 26.5], eggnog: ['uncle', 45.5, 23.5], eggs: ['uncle', 42.5, 24.5] };
+  // Legos to step on (Randi, 21 Nov): "OW!", a moment's hop, and a little
+  // fart slips out; the brick gets kicked away.
+  const LEGOS = [[10.5, 8.6, '#d8344f'], [13.5, 10.6, '#3a74b8'], [7.5, 8.6, '#f5d34a'], [33.5, 24.6, '#3f8f3a'], [32.5, 22.6, '#d8344f'],
+    [20.5, 18.7, '#3a74b8'], [29.5, 19.5, '#f5d34a'], [15.5, 24.6, '#e8742a'], [5, 14.6, '#3f8f3a']];
   const GOALS = ['pantry', 'fridge', 'grandma', 'dog', 'cat', 'fish', 'plants', 'family', 'food', 'bath'];
   const FOOD_AT = { turkey: [24.5, 12.5], mac: [21.5, 7.5], eggnog: [27.5, 8.5], eggs: [26.5, 12.5], gravy: [20.5, 12.5], mash: [27.5, 11.5],
     casserole: [25.5, 7.5], stuffing: [22.5, 15.5], rolls: [20.5, 15.5], cranberry: [44.5, 23.5], sweetpot: [13.5, 23.5], corn: [4.5, 10.5],
@@ -280,7 +300,8 @@ const HOUSE = (() => {
       b: newBelly(), score: 0, dusts: 0, got: new Set(), puffs: [], pops: [],
       alert: 0, frozen: 0, needMsgT: 0, time: 0, fridgeOpen: 0, fridgeGas: 0,
       targets: TARGETS.map(t => ({ ...t, out: false, sniffed: false, dose: 0, leg: 0, wait: 2, path: null, stuckT: 0, here: !t.arrive, reactT: 0, detour: null })),
-      win: WINDOWS.map(() => 0), goals: new Set(), regionT: 0,
+      win: WINDOWS.map(() => 0), goals: new Set(), regionT: 0, hop: 0,
+      legos: LEGOS.map(([x, y, c]) => ({ x: x * TS, y: y * TS, c, gone: false })),
       foods: FOODS.filter(f => !locked(f) && FOOD_AT[f.id]).map(f => { const b = BRINGS[f.id], at = b ? b.slice(1) : FOOD_AT[f.id]; return { f, x: at[0] * TS, y: at[1] * TS, wait: b ? b[0] : null }; }),
     };
     mode = 'house';
@@ -457,11 +478,14 @@ const HOUSE = (() => {
     if (G.frozen > 0) G.frozen -= dt;
     if (G.moving) {
       dx /= Math.max(1, len); dy /= Math.max(1, len);
-      const sp = 66 * dt;
+      // slower when he's eaten a lot, and slower still while clenching for the
+      // bathroom (Randi, 21 Nov)
+      const n = G.got.size, slow = (n >= 12 ? .7 : n >= 8 ? .85 : 1) * (G.alert ? .6 : 1);
+      const sp = 66 * slow * dt;
       if (!blocked(G.x + dx * sp, G.y)) G.x += dx * sp; else if (dx) bumpDoor(G.x + dx * sp, G.y);
       if (!blocked(G.x, G.y + dy * sp)) G.y += dy * sp; else if (dy) bumpDoor(G.x, G.y + dy * sp);
       G.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      G.stepT += dt; if (G.stepT > .16) { G.stepT = 0; G.step = G.step === 1 ? 2 : 1; }
+      G.stepT += dt; if (G.stepT > .16 / slow) { G.stepT = 0; G.step = G.step === 1 ? 2 : 1; }
     } else G.step = 0;
     const room = roomAt(Math.floor(G.x / TS), Math.floor((G.y - 3) / TS));
     if (room && room !== G.room) { G.room = room; G.roomT = 1.6; }
@@ -475,6 +499,7 @@ const HOUSE = (() => {
       const add = fd.f.gas * .6; G.b.gas = Math.min(100, G.b.gas + add); G.b.total += add;
       for (const k in fd.f.mix) G.b[k] += fd.f.mix[k] * add;
       G.b.ate.add(fd.f.id);
+      if (G.got.size === 8 || G.got.size === 12) setTimeout(() => { if (mode === 'house') say(G.got.size >= 12 ? T.slow2 : T.slow1); }, 1500);
       if (G.got.size === G.foods.length) goal('food');
       say(G.got.size === G.foods.length ? T.allFood : fill(T.got, { food: fd.f.name.toLowerCase() }), G.got.size === G.foods.length ? 4000 : 2200);
     }
@@ -521,7 +546,7 @@ const HOUSE = (() => {
       // people who smell it say so, then go and open the window in that room
       if (t.kind === 'person' && g > 2 && t.reactT <= 0 && !t.detour) {
         t.reactT = 18;
-        if (near(t)) say(fill(T.quote, { who: T.who[t.who], line: pick(T.ew) }), 2600);
+        if (near(t) && G.time > (G.quiet || 0)) say(fill(T.quote, { who: T.who[t.who], line: pick(T.ew) }), 2600);
         const r = region[Math.floor(t.y - .2) * MW + Math.floor(t.x)];
         const w = WINDOWS.find((w, n) => !G.win[n] && region[w.iy * MW + w.ix] === r);
         if (w) { t.detour = w; t.path = null; t.wait = .6; }
@@ -530,6 +555,18 @@ const HOUSE = (() => {
         t.sniffed = true; G.score += 10;
         if (t.kind !== 'person') say(fill(T.sniff, { who: T.who[t.who || t.kind] }));
         pop(t.x * TS, t.y * TS - 20, fill(T.pts, { n: 10 }));
+      }
+    }
+    // stepping on a Lego
+    if (G.hop > 0) G.hop -= dt;
+    for (const l of G.legos) {
+      if (l.gone || G.frozen > 0 || Math.hypot(l.x - G.x, l.y - (G.y - 2)) > 6) continue;
+      l.gone = true; G.frozen = .7; G.hop = .5; say(pick(T.ow), 1800); G.quiet = G.time + 1.6;   // let the OW be seen
+      tone(900, .08, 'square', 0, .1, 1500);
+      if (G.b.gas >= 15) {   // the shock lets a little one out
+        addGas(G.x, G.y - 4, 15 * 2.6); G.b.gas -= 15;
+        G.puffs.push({ x: G.x, y: G.y - 4, t: 0, color: TYPES.squeaker.color, r: 6 });
+        playType('squeaker', .6); discover('squeaker');
       }
     }
     for (const p of G.puffs) p.t += dt;
@@ -627,6 +664,17 @@ const HOUSE = (() => {
     const c = cam();
     cx.fillStyle = '#2a1a10'; cx.fillRect(0, 0, VW, VH);
     cx.drawImage(mapCan, -c.x, -c.y);
+    { // the TV in the living room has the game on: little red and blue players on a field
+      const x = 8 * TS + 2 - c.x, y = 6 * TS + 3 - c.y, w = 4 * TS - 4, h = 9, t = G.time;
+      cx.fillStyle = '#3f8f3a'; cx.fillRect(x, y, w, h); cx.fillStyle = 'rgba(255,255,255,.55)';
+      for (let a = 4; a < w; a += 8) cx.fillRect(x + a, y, 1, h);
+      for (let i = 0; i < 6; i++) { const px = (Math.sin(t * 1.3 + i * 1.7) * .5 + .5) * (w - 3), py = (i % 3) * 3 + 1;
+        cx.fillStyle = i < 3 ? '#d8344f' : '#3a74b8'; cx.fillRect(Math.round(x + px), y + py, 2, 2); }
+      cx.fillStyle = '#7a4a22'; cx.fillRect(Math.round(x + (Math.sin(t * 1.3 + 2) * .5 + .5) * (w - 3)) + 1, y + 4, 2, 1); }
+    for (const l of G.legos) if (!l.gone) {
+      const s = sprite(`lego-${l.c}`, 6, 5, r => { r(0, 1, 6, 4, l.c); r(1, 0, 1, 1, l.c); r(4, 0, 1, 1, l.c); r(0, 1, 6, 1, 'rgba(255,255,255,.35)'); });
+      cx.drawImage(s, Math.round(l.x - 4 - c.x), Math.round(l.y - 4 - c.y));
+    }
     // open windows: the glass slid aside, sky showing
     WINDOWS.forEach((w, n) => { if (!G.win[n]) return; const x = w.x * TS - c.x, y = w.y * TS - c.y, front = at(w.x, w.y + 1) !== '#' && at(w.x, w.y + 1) !== 'N';
       cx.fillStyle = '#5ab0e0'; cx.fillRect(x + 3, y + (front ? 6 : 5), 10, front ? 5 : 6); cx.fillStyle = '#ffffff'; cx.fillRect(x + 2, y + (front ? 5 : 4), 2, front ? 7 : 8); cx.fillRect(x + 12, y + (front ? 5 : 4), 2, front ? 7 : 8); });
@@ -655,7 +703,7 @@ const HOUSE = (() => {
         cx.fillStyle = '#7aa83a'; const bx = Math.round(t.x * TS - c.x), by = Math.round(t.y * TS - s.height - c.y - 2), f = Math.floor(G.time * 5) % 2;
         for (const o of [-5, 0, 5]) { cx.fillRect(bx + o, by - 2 - f, 1, 2); cx.fillRect(bx + o + 1, by - 4 + f, 1, 2); } }
       if (t.out && (t.kind === 'dog' || t.kind === 'cat' || t.kind === 'person')) { cx.fillStyle = '#fff'; cx.font = '8px "Press Start 2P", monospace'; cx.fillText('z', Math.round(t.x * TS + 6 - c.x), Math.round(t.y * TS - 16 - c.y - (G.time * 6 % 6))); } } });
-    items.push({ y: G.y, d: () => { const s = himSprite(G.frozen > 0 ? 'down' : G.dir, G.step, G.frozen > 0); cx.fillStyle = 'rgba(0,0,0,.2)'; cx.fillRect(Math.round(G.x - 6 - c.x), Math.round(G.y - 2 - c.y), 12, 3); cx.drawImage(s, Math.round(G.x - s.width / 2 - c.x), Math.round(G.y - s.height + 1 - c.y)); } });
+    items.push({ y: G.y, d: () => { const s = himSprite(G.frozen > 0 ? 'down' : G.dir, G.step, G.frozen > 0); cx.fillStyle = 'rgba(0,0,0,.2)'; cx.fillRect(Math.round(G.x - 6 - c.x), Math.round(G.y - 2 - c.y), 12, 3); cx.drawImage(s, Math.round(G.x - s.width / 2 - c.x), Math.round(G.y - s.height + 1 - c.y - (G.hop > 0 ? Math.round(Math.abs(Math.sin(G.hop * 12)) * 4) : 0))); } });
     items.sort((a, b) => a.y - b.y).forEach(i => i.d());
     // the gas: a green haze per square, thicker where there's more, in 2 x 2 dither
     const i0 = Math.max(0, Math.floor(c.x / TS)), j0 = Math.max(0, Math.floor(c.y / TS));
