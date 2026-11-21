@@ -23,6 +23,12 @@
 // to escape. Any other creature that moves and has an eye runs straight away
 // from the nearest killer it sees; seeing none, it heads for the nearest food
 // it sees. `sees` is how many squares out an eye looks.
+// His idea, 21 Nov: the smart cell remembers where it found food, "and maybe
+// what is good vs bad". A creature with one remembers the last place it ate
+// (good) and the last place it got hurt by poison or a killer (bad). With
+// nothing in sight it keeps away from the bad place until `forgets` ticks have
+// passed, else goes back to the good place and forgets it once there. What its
+// eyes see comes first. Babies start with no memories.
 // PLACEHOLDER: every number below is a first guess until he gives his own.
 // The colours and drawings are placeholders too, until he picks or draws them.
 const CELLS = {
@@ -32,6 +38,7 @@ const CELLS = {
   bone:    { name: 'Bone',    says: 'Inside frame. Lets the creature grow bigger.', upkeep: 0.05, holds: 10, room: 4, color: '#efe4cc' },
   killer:  { name: 'Killer',  says: 'Takes energy from other creatures it touches. Armor stops it.', upkeep: 0.15, holds: 10, damage: 2, color: '#26282c' },
   producer: { name: 'Producer', says: 'Makes energy for the creature, like a plant.', upkeep: 0.05, holds: 10, makes: 0.15, color: '#5c940d' },
+  smart:   { name: 'Smart',   says: 'Remembers where it found food, and where it got hurt.', upkeep: 0.10, holds: 10, forgets: 300, color: '#cc5de8' },
   eye:     { name: 'Eye',     says: 'Sees food to go to and killers to run from. On a killer, it sees prey to chase.', upkeep: 0.10, holds: 10, sees: 6, color: '#4dabf7' },
   armor:   { name: 'Armor',   says: 'Outside protection. Killer cells can\'t hurt it.', upkeep: 0.10, holds: 10, color: '#62708a' },
 };
@@ -101,6 +108,7 @@ function drawCell(g, t, x, y, s) {
   else if (t === 'bone') { g.fillStyle = '#8e7b55'; R(1, 2, 2, 4); R(5, 2, 2, 4); R(3, 3, 2, 2); }
   else if (t === 'killer') { g.fillStyle = '#ff6b4a'; R(0, 0, 2, 2); R(6, 0, 2, 2); R(0, 6, 2, 2); R(6, 6, 2, 2); R(3, 3, 2, 2); R(2, 2, 1, 1); R(5, 2, 1, 1); R(2, 5, 1, 1); R(5, 5, 1, 1); }
   else if (t === 'producer') { g.fillStyle = '#c0eb75'; R(3, 1, 2, 6); R(1, 3, 6, 2); g.fillStyle = '#f4fce3'; R(3, 3, 2, 2); }
+  else if (t === 'smart') { g.fillStyle = '#f3d9fa'; R(1, 1, 6, 1); R(1, 1, 1, 3); R(1, 3, 4, 1); R(4, 3, 1, 3); R(2, 6, 5, 1); R(6, 4, 1, 3); }
   else if (t === 'eye') { g.fillStyle = '#ffffff'; R(1, 2, 6, 4); g.fillStyle = '#10203f'; R(3, 2, 2, 4); R(2, 3, 4, 2); g.fillStyle = '#ffffff'; R(3, 3, 1, 1); }
   else if (t === 'armor') { g.fillStyle = '#c3ccdb'; R(0, 0, 8, 1); R(0, 0, 1, 8); g.fillStyle = '#39445a'; R(7, 0, 1, 8); R(0, 7, 8, 1); R(3, 3, 2, 2); }
 }
@@ -159,6 +167,7 @@ function makeCreature(cells, x, y, gen) {
     const s = CELLS[p.t]; c.upkeep += s.upkeep; c.max += s.holds; c.makes += s.makes || 0;
     if (p.t === 'mover') c.movers += s.push;
     if (p.t === 'eye') c.eyes++;
+    if (p.t === 'smart') c.smart = (c.smart || 0) + 1;
     if (p.t === 'killer') c.killers++;
   }
   return c;
@@ -260,12 +269,30 @@ function look(c) {
   return null;
 }
 
+// Smart cell memories, in world squares from the creature's middle.
+const middle = c => [c.x + c.w / 2, c.y + c.h / 2];
+function hurtAt(c) { if (c.smart) { c.bad = middle(c); c.badAt = c.age; } }
+function recall(c) {
+  const [mx, my] = middle(c);
+  if (c.bad && c.age - c.badAt > CELLS.smart.forgets) c.bad = null;
+  if (c.bad) {
+    const dx = mx - c.bad[0], dy = my - c.bad[1];
+    if (Math.abs(dx) + Math.abs(dy) < 10) return towards(dx || (Math.random() < .5 ? 1 : -1), dy);
+  }
+  if (c.good) {
+    const dx = c.good[0] - mx, dy = c.good[1] - my;
+    if (Math.abs(dx) + Math.abs(dy) <= 2) { c.good = null; return null; }
+    return towards(dx, dy);
+  }
+  return null;
+}
+
 function live(c) {
   c.age++;
   c.energy = Math.min(c.max, c.energy - c.upkeep + c.makes);
   if (poisonCount) for (const p of c.cells) for (const [dx, dy] of DIRS) {
     const x = c.x + p.x + dx, y = c.y + p.y + dy;
-    if (x >= 0 && y >= 0 && x < W && y < H && poison[y * W + x]) c.energy -= WORLD.poisonHurt;
+    if (x >= 0 && y >= 0 && x < W && y < H && poison[y * W + x]) { c.energy -= WORLD.poisonHurt; hurtAt(c); }
   }
   for (const p of c.cells) {
     if (p.t !== 'killer') continue;
@@ -279,7 +306,7 @@ function live(c) {
       const hit = v.cells.find(q => v.x + q.x === x && v.y + q.y === y);
       if (hit && hit.t !== 'armor') {
         const take = Math.min(CELLS.killer.damage, Math.max(0, v.energy));
-        v.energy -= CELLS.killer.damage; c.energy = Math.min(c.max, c.energy + take);
+        v.energy -= CELLS.killer.damage; c.energy = Math.min(c.max, c.energy + take); hurtAt(v);
         if (v.energy <= 0) die(v);
       }
     }
@@ -291,13 +318,14 @@ function live(c) {
       const x = mx + dx, y = my + dy;
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
       const k = y * W + x;
-      if (food[k]) { food[k] = 0; foodCount--; c.energy = Math.min(c.max, c.energy + WORLD.foodEnergy); break; }
+      if (food[k]) { food[k] = 0; foodCount--; c.energy = Math.min(c.max, c.energy + WORLD.foodEnergy); if (c.smart) c.good = [x, y]; break; }
     }
   }
   // More movers move it more often; a bigger body moves it less often.
   if (c.movers && Math.random() < Math.min(1, c.movers / c.cells.length)) {
-    const seen = c.eyes ? look(c) : null;
+    const seen = c.eyes ? look(c) : null, thought = seen == null && c.smart ? recall(c) : null;
     if (seen != null) c.dir = seen;
+    else if (thought != null) c.dir = thought;
     else if (Math.random() < WORLD.turn) c.dir = rnd(4);
     const [dx, dy] = DIRS[c.dir];
     if (fits(c, c.x + dx, c.y + dy)) { mark(c, 0); c.x += dx; c.y += dy; mark(c, c.id); }
@@ -361,6 +389,14 @@ function draw() {
     const pad = Math.max(2, T / 3);
     g.strokeStyle = '#14262b'; g.lineWidth = Math.max(2, T / 4);
     g.strokeRect(ox + sel.x * T - pad, oy + sel.y * T - pad, sel.w * T + pad * 2, sel.h * T + pad * 2);
+    // a picked smart creature shows its memories: a green ring where it ate,
+    // a red cross where it got hurt
+    g.lineWidth = Math.max(2, T / 5);
+    if (sel.good) { g.strokeStyle = '#2b8a3e'; g.beginPath(); g.arc(ox + (sel.good[0] + .5) * T, oy + (sel.good[1] + .5) * T, Math.max(5, T * .7), 0, 7); g.stroke(); }
+    if (sel.bad) {
+      const bx = ox + sel.bad[0] * T, by = oy + sel.bad[1] * T, r = Math.max(5, T * .7);
+      g.strokeStyle = '#c92a2a'; g.beginPath(); g.moveTo(bx - r, by - r); g.lineTo(bx + r, by + r); g.moveTo(bx + r, by - r); g.lineTo(bx - r, by + r); g.stroke();
+    }
   }
 }
 function drawGraph() {
@@ -406,6 +442,7 @@ function showInfo() {
     ...(c.makes ? [['Makes each tick', +c.makes.toFixed(2)]] : []),
     ['Cells', c.cells.length + ' of ' + sizeLimit(c.cells)],
     ['Generation', c.gen], ['Age', c.age], ['Babies', c.kids],
+    ...(c.smart ? [['Remembers', [c.good && 'food', c.bad && 'danger'].filter(Boolean).join(', ') || 'nothing yet']] : []),
     ...TYPES.filter(n).map(t => [CELLS[t].name, n(t)]),
   ];
   $('#infoList').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
@@ -594,7 +631,7 @@ const toolsEl = $('#tools');
 [...TYPES, 'empty'].forEach((t, i) => {
   const s = CELLS[t], lab = document.createElement('label');
   lab.className = 'tool';
-  const nums = s ? `Uses ${s.upkeep} · Holds ${s.holds}${s.room ? ' · +' + s.room + ' room' : ''}${s.damage ? ' · ' + s.damage + ' damage' : ''}${s.makes ? ' · Makes ' + s.makes : ''}${s.sees ? ' · Sees ' + s.sees : ''}` : 'Takes a cell away.';
+  const nums = s ? `Uses ${s.upkeep} · Holds ${s.holds}${s.room ? ' · +' + s.room + ' room' : ''}${s.damage ? ' · ' + s.damage + ' damage' : ''}${s.makes ? ' · Makes ' + s.makes : ''}${s.sees ? ' · Sees ' + s.sees : ''}${s.forgets ? ' · Forgets danger in ' + s.forgets : ''}` : 'Takes a cell away.';
   lab.innerHTML = `<input type="radio" name="tool" value="${t}"${t === tool ? ' checked' : ''}>` +
     (s ? `<img src="${ICON[t]}" alt="">` : '<span class="empty"></span>') +
     `<span><b>${i + 1}. ${s ? s.name : 'Empty'}</b><small>${s ? s.says + '<br>' : ''}${nums}</small></span>`;
@@ -620,7 +657,7 @@ gridEl.addEventListener('keydown', e => {
   b.tabIndex = -1; const n = gridBtns[y * ED + x]; n.tabIndex = 0; n.focus();
 });
 buildDlg.addEventListener('keydown', e => {
-  const i = '123456789'.indexOf(e.key);
+  const i = '1234567890'.indexOf(e.key);
   if (i < 0 || e.target.closest('input')) return;
   const r = toolsEl.querySelectorAll('input')[i]; r.checked = true; tool = r.value;
 });
@@ -743,7 +780,8 @@ window.addEventListener('resize', () => { fit(); draw(); });
 // card doesn't cover; on a phone the card covers most of the bottom.
 function followSel() {
   const r = cv.getBoundingClientRect(), dpr = cv.width / r.width, card = $('#info');
-  const sy = card.hidden ? cv.height / 2 : (card.getBoundingClientRect().top - r.top) * dpr / 2;
+  const cr = card.hidden ? null : card.getBoundingClientRect();
+  const sy = cr && cr.width > r.width * 0.6 ? (cr.top - r.top) * dpr / 2 : cv.height / 2;
   ox = cv.width / 2 - (sel.x + sel.w / 2) * T; oy = sy - (sel.y + sel.h / 2) * T; clampView();
 }
 // The + and − buttons zoom around the picked creature if there is one.

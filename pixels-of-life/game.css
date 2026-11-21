@@ -85,5 +85,6 @@ dialog p{margin:.35rem 0}
   #infoPic{display:none}
   .info dl{grid-template-columns:auto auto auto auto;gap:0 .5rem;font-size:.8rem}
   .info .row{margin-top:.5rem}
-  .info .btn{padding:.55rem .7rem;font-size:.6rem}
+  .info .btn{padding:.5rem .55rem;font-size:.55rem}
+  .info .row{flex-wrap:nowrap;gap:.4rem}
 }
