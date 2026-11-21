@@ -225,6 +225,20 @@
         <g class="face f-smug"><image data-spr="himSmug" x="125" y="143.75"/></g>
         <g class="face f-frozen"><image data-spr="himFrozen" x="125" y="143.75"/><path d="M182 158q5 8 0 12q-5-4 0-12z" fill="#8fd3f5"/></g>
       </g>
+      <!-- the food coma (card #55): after a big meal he dozes in a recliner by the door -->
+      <g id="coma">
+        <rect x="100" y="220" width="46" height="112" rx="8" fill="#6b3f22"/><rect x="104" y="226" width="38" height="98" rx="6" fill="#8a5228"/>
+        <rect x="100" y="300" width="140" height="34" rx="6" fill="#6b3f22"/><rect x="140" y="294" width="96" height="16" rx="5" fill="#8a5228"/>
+        <rect x="236" y="298" width="52" height="16" rx="5" fill="#8a5228"/><rect x="236" y="310" width="52" height="8" fill="#6b3f22"/>
+        <rect x="150" y="330" width="12" height="16" fill="#4a2c16"/><rect x="226" y="330" width="12" height="16" fill="#4a2c16"/>
+        <rect x="118" y="262" width="44" height="44" rx="10" fill="#3d3d45"/>
+        <rect x="140" y="268" width="62" height="34" rx="12" fill="#b07a3a"/><rect x="150" y="272" width="3" height="28" fill="#9c6a30"/>
+        <rect x="196" y="286" width="56" height="16" rx="6" fill="#b07a3a"/><rect x="246" y="284" width="42" height="16" rx="6" fill="#b07a3a"/>
+        <rect x="284" y="276" width="14" height="26" rx="4" fill="#6b4226"/><rect x="284" y="298" width="14" height="5" fill="#1d120a"/>
+        <path d="M150 268l30 24" stroke="#3d3d45" stroke-width="14" stroke-linecap="round"/><circle cx="186" cy="295" r="7" fill="#d9a074"/>
+        <image data-spr="himEat" x="112.5" y="203.125"/>
+        <g class="zz"><path d="M150 196h9l-9 9h9"/><path d="M162 184h7l-7 7h7"/><path d="M172 174h5l-5 5h5"/></g>
+      </g>
       <g id="clouds"></g>
     </svg>
     <canvas id="px" aria-hidden="true"></canvas>
@@ -239,6 +253,7 @@
       <div class="meter" id="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Fart meter"><i id="meterFill"></i></div>
     </div>
     <button class="pull" id="pullBtn" disabled>Pull my finger</button>
+    <button class="pull" id="wakeBtn" hidden></button>
   </div>
   <p class="hint" id="hint"></p>
   </div>

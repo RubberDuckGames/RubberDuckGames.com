@@ -27,6 +27,10 @@ const T = {
   yell: `${NAME.toUpperCase()}!!`,
   tapatio: ['Don\'t forget my Tapatio!', 'Pass the hot sauce. The Tapatio.'],
   roomSbd: 'What is that SMELL?',
+  coma: "I'm stuffed. Just resting my eyes...",
+  wokeUp: "Huh? I wasn't asleep.",
+  wokeSelf: 'Huh? Who farted?',
+  wakeBtn: 'Wake him up',
   ohNo: 'Oh no.',
   goHome: 'I might need a change of clothes.',
   newFind: 'New fart: {name}!',
@@ -297,6 +301,51 @@ function eat(f) {
   else if (belly.gas >= READY && !svg.classList.contains('finger')) say(T.ready);
   else say(fill(T.mmm, { food: f.name.toLowerCase() }), 1500);
   update();
+  meal++;
+  if (meal >= COMA_AT) setTimeout(startComa, 1200);
+}
+
+// The food coma (card #55: "after too much food he dozes off in the recliner,
+// and sneaky farts slip out while he sleeps"). After COMA_AT helpings at one
+// dinner he leans back in the recliner by the door and snores; every few
+// seconds a fart slips out on its own, the table reacts as usual, and new
+// kinds count for the collection. Wake him up (the button, tapping him, or F)
+// or wait: after five he wakes by himself. The meal count starts again.
+const COMA_AT = 10;
+let meal = 0, coma = null;
+function startComa() {
+  if (coma || busy || mode !== 'dinner') return;
+  busy = true; coma = { farts: 0, timers: [] };
+  svg.classList.remove('finger'); svg.classList.add('coma');
+  say(T.coma, 3200);
+  $('#pullBtn').hidden = true; $('#wakeBtn').hidden = false; $('#wakeBtn').focus();
+  update();
+  const snore = () => { if (!coma) return; const a = audio(); if (a) brap(a.currentTime, 1.1, { f: 70, f2: 50, wave: 'sine', flut: 9, lp: 300, noise: .3, vol: .12 }); coma.timers.push(setTimeout(snore, 2600)); };
+  coma.timers.push(setTimeout(snore, 1800));
+  coma.timers.push(setTimeout(sleepFart, 3800));
+}
+function sleepFart() {
+  if (!coma) return;
+  const type = pick(['sneaky', 'sneaky', 'squeaker', 'sbd', 'rumbler']), ty = TYPES[type];
+  cloud(type, ty.size * .9, 1, 150, 318);
+  playType(type, .6);
+  const delay = type === 'sbd' ? 2600 : 600;
+  coma.timers.push(setTimeout(() => {
+    react(type === 'sneaky' ? 1 : ty.react);
+    if (type === 'sbd') sayRoom(T.roomSbd);
+    discover(type);
+  }, delay));
+  if (++coma.farts >= 5) coma.timers.push(setTimeout(() => wake(false), delay + 2500));
+  else coma.timers.push(setTimeout(sleepFart, 4000 + Math.random() * 2500));
+}
+function wake(byYou, quiet) {
+  if (!coma) return;
+  coma.timers.forEach(clearTimeout); coma = null; meal = 0;
+  svg.classList.remove('coma');
+  $('#wakeBtn').hidden = true; $('#pullBtn').hidden = false;
+  emptyBelly(); busy = false; face('normal'); update();
+  if (!quiet) say(byYou ? T.wokeUp : T.wokeSelf, 2600);
+  $('#pullBtn').focus();
 }
 function update() {
   const g = belly.gas;
@@ -377,7 +426,7 @@ function shart() {
 function playAgain() {
   $('#winCover').hidden = true; $('#sayDoor').hidden = true;
   svg.classList.remove('slow'); $('#him').classList.remove('run');
-  calm(); face('normal'); emptyBelly(); busy = false; update();
+  calm(); face('normal'); emptyBelly(); busy = false; meal = 0; update();
   $('#pullBtn').focus();
 }
 
@@ -426,9 +475,13 @@ function startDinner(allowed) {
   for (const { f, b } of foodBtns) b.hidden = !!allowed && !allowed.has(f.id);
   $('#snacksH').hidden = !foodBtns.some(o => o.f.unlock && !o.b.hidden);
   $('#fromHouse').hidden = !allowed; $('#fromHouse').textContent = T.fromHouse;
+  wake(false, true); meal = 0;
   emptyBelly(); busy = false; calm(); face('normal'); update();
 }
 $('#pullBtn').onclick = pull;
+$('#wakeBtn').onclick = () => wake(true);
+$('#wakeBtn').textContent = T.wakeBtn;
+$('#coma').addEventListener('click', () => wake(true));
 $('#armOut').addEventListener('click', pull);
 $('#startText').textContent = T.start;
 $('#snacksH').textContent = T.snacks;
@@ -442,7 +495,7 @@ document.addEventListener('keydown', e => {
   if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
   if (mode === 'house') return;   // the house has its own keys
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
-  if (e.key === 'f' || e.key === 'F') pull();
+  if (e.key === 'f' || e.key === 'F') { if (coma) wake(true); else pull(); }
   else if (e.key === 'c' || e.key === 'C') showColl();
 });
 update();
