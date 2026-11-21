@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pixels of Life · Rubber Duck Games</title>
+<meta name="description" content="Build a creature out of cells, let it live, then change its world and watch what happens.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#14262b;--soft:#3d565c;--panel:#fbfdf9;--line:#5b7a72;--accent:#0b6e4f;--accentDark:#063a2a;--bg:#bcd8cf;--slide:#eef6f2;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);touch-action:manipulation}
+body{display:flex;flex-direction:column;font-size:1rem;line-height:1.45}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible,input:focus-visible,canvas:focus-visible{outline:3px solid var(--accentDark);outline-offset:2px}
+.bar{display:flex;align-items:center;gap:.5rem;padding:.5rem max(.75rem,env(safe-area-inset-right)) .5rem max(.75rem,env(safe-area-inset-left))}
+.bar h1{flex:1;margin:0;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 rgba(0,0,0,.25)}
+#stage{flex:1;position:relative;min-height:0}
+#world{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.stats{position:absolute;left:.5rem;top:.5rem;right:.5rem;display:flex;flex-wrap:wrap;gap:.35rem;pointer-events:none}
+.stats .pill{font-family:Lexend,Verdana,sans-serif;font-size:.8rem;padding:.15rem .55rem;box-shadow:none}
+.stats b{font-weight:800}
+.panel{background:var(--panel);border-top:3px solid var(--line);padding:.6rem max(.75rem,env(safe-area-inset-right)) max(.6rem,env(safe-area-inset-bottom)) max(.75rem,env(safe-area-inset-left));display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1.2rem}
+.sliders{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;align-items:flex-end}
+.sl{display:flex;flex-direction:column;font-size:.85rem;font-weight:600}
+.sl span{display:flex;justify-content:space-between;gap:.5rem}
+.sl output{font-weight:800}
+input[type=range]{width:8.5rem;accent-color:var(--accent);margin:.2rem 0 0}
+.check{display:flex;align-items:center;gap:.4rem;font-size:.85rem;font-weight:600}
+.check input{width:1.2rem;height:1.2rem;accent-color:var(--accent)}
+.graph{display:flex;flex-direction:column;font-size:.75rem;color:var(--soft)}
+#graph{width:9rem;height:2.6rem;background:var(--slide);border:2px solid var(--line)}
+.acts{display:flex;gap:.5rem;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.btn{background:var(--accent);color:#fff;padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--accentDark)}
+.btn.plain{background:#e3ece7;color:var(--ink);box-shadow:.25rem .25rem 0 var(--line)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.info{position:absolute;left:.5rem;bottom:.5rem;max-width:min(22rem,calc(100% - 1rem));background:var(--panel);border:3px solid var(--ink);padding:.7rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3)}
+.info h2{margin:0 0 .3rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6}
+.info .top{display:flex;gap:.7rem;align-items:flex-start}
+#infoPic{width:4rem;height:4rem;flex:none;background:var(--slide);border:2px solid var(--line);image-rendering:pixelated}
+.info dl{margin:0;display:grid;grid-template-columns:auto auto;gap:0 .7rem;font-size:.85rem}
+.info dt{color:var(--soft)}
+.info dd{margin:0;font-weight:800}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.8rem}
+dialog{max-width:min(46rem,calc(100vw - 1rem));max-height:calc(100dvh - 1rem);padding:1.1rem;border:4px solid var(--ink);background:var(--panel);color:var(--ink);font:inherit;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,30,25,.55)}
+dialog h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.5}
+dialog p{margin:.35rem 0}
+.soft{color:var(--soft)}
+.build{display:grid;gap:1rem}
+@media (min-width:40rem){.build{grid-template-columns:auto 1fr;align-items:start}}
+#grid{display:grid;grid-template-columns:repeat(9,2.1rem);grid-template-rows:repeat(9,2.1rem);gap:2px;background:var(--line);border:3px solid var(--line);width:max-content;margin:0 auto}
+#grid button{background:var(--slide);padding:0;display:block;width:100%;height:100%}
+#grid button img{display:block;width:100%;height:100%;image-rendering:pixelated}
+#grid button:focus-visible{outline:3px solid var(--accentDark);outline-offset:-3px}
+.tools{border:none;margin:0;padding:0;display:grid;gap:.4rem}
+.tools legend{font-weight:800;margin-bottom:.3rem;padding:0}
+.tool{display:flex;gap:.6rem;align-items:center;border:2px solid var(--line);background:#fff;padding:.35rem .5rem;cursor:pointer}
+.tool input{position:absolute;opacity:0;width:1px;height:1px}
+.tool:has(input:checked){border-color:var(--ink);background:#d9efe6;box-shadow:inset 0 0 0 2px var(--ink)}
+.tool:has(input:focus-visible){outline:3px solid var(--accentDark);outline-offset:2px}
+.tool img{width:1.8rem;height:1.8rem;image-rendering:pixelated;flex:none;border:1px solid var(--line)}
+.tool .empty{width:1.8rem;height:1.8rem;flex:none;border:1px dashed var(--line);background:var(--slide)}
+.tool b{display:block;font-size:.95rem}
+.tool small{display:block;color:var(--soft);font-size:.8rem;line-height:1.35}
+.sizeLine{font-weight:800}
+#buildMsg{min-height:1.4em;color:#8a1c1c;font-weight:600}
+#buildMsg.ok{color:var(--accentDark)}
+#buildMsg button{margin-left:.5rem;text-decoration:underline;font-weight:800;color:var(--accentDark)}
+.saved h3{margin:.6rem 0 .3rem;font-size:.95rem}
+.savedList{display:flex;flex-wrap:wrap;gap:.5rem;max-width:20rem}
+.savedItem{display:flex;flex-direction:column;align-items:center;border:2px solid var(--line);background:#fff;padding:.25rem}
+.savedItem .use{padding:0;display:block}
+.savedItem canvas{display:block;width:3.2rem;height:3.2rem;image-rendering:pixelated;background:var(--slide)}
+.savedItem .rm{font-size:.75rem;color:var(--soft);text-decoration:underline;padding:.1rem .2rem}
+/* Add food: tapping the world drops food instead of picking a creature */
+#foodBtn[aria-pressed="true"]{background:#2b8a3e;color:#fff;box-shadow:.25rem .25rem 0 #14461f}
+#poisonBtn[aria-pressed="true"]{background:#5f3dc4;color:#fff;box-shadow:.25rem .25rem 0 #2b1a63}
+.acts [aria-pressed="true"]::before{content:"✓ "}
+/* On a phone the builder scrolls; its buttons stay in view at the bottom. */
+.row.stick{position:sticky;bottom:-1.1rem;margin:0 -1.1rem -1.1rem;padding:.7rem 1.1rem;background:var(--panel);border-top:2px solid var(--line)}
+</style>
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <h1>Pixels of Life</h1>
+  <button class="pill" id="helpBtn" type="button" aria-label="How to play">?</button>
+</div>
+
+<div id="stage">
+  <canvas id="world" tabindex="0" aria-label="The world. Tap a creature, or press N, to see its numbers."></canvas>
+  <div class="stats" aria-live="off">
+    <span class="pill">Creatures <b id="sN">0</b></span>
+    <span class="pill">Born <b id="sBorn">0</b></span>
+    <span class="pill">Died <b id="sDied">0</b></span>
+    <span class="pill">Top generation <b id="sGen">0</b></span>
+    <span class="pill">Food <b id="sFood">0</b></span>
+  </div>
+  <div class="info" id="info" hidden>
+    <h2 id="infoTitle">Creature</h2>
+    <div class="top">
+      <canvas id="infoPic" width="64" height="64"></canvas>
+      <dl id="infoList"></dl>
+    </div>
+    <div class="row">
+      <button class="btn plain" type="button" id="infoClose">Close</button>
+      <button class="btn plain" type="button" id="infoSave">Save</button>
+      <button class="btn" type="button" id="infoEdit">Edit a copy</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="sliders">
+    <label class="sl"><span>Food <output id="foodOut"></output></span><input type="range" id="food" min="0" max="20" step="1"></label>
+    <label class="sl"><span>Babies change <output id="changeOut"></output></span><input type="range" id="change" min="0" max="100" step="5"></label>
+    <label class="sl"><span>Speed <output id="speedOut"></output></span><input type="range" id="speed" min="1" max="60" step="1"></label>
+    <label class="check"><input type="checkbox" id="babies"> Babies</label>
+  </div>
+  <div class="graph"><span>Creatures over time</span><canvas id="graph" width="180" height="52"></canvas></div>
+  <div class="acts">
+    <button class="btn plain" type="button" id="newBtn">New world</button>
+    <button class="btn plain" type="button" id="foodBtn" aria-pressed="false">Add food</button>
+    <button class="btn plain" type="button" id="poisonBtn" aria-pressed="false">Add poison</button>
+    <button class="btn plain" type="button" id="pauseBtn">Pause</button>
+    <button class="btn" type="button" id="buildBtn">Build</button>
+  </div>
+</div>
+
+<dialog id="buildDlg" aria-labelledby="buildTitle">
+  <h2 id="buildTitle">Build a creature</h2>
+  <div class="build">
+    <div>
+      <div id="grid" role="group" aria-label="Builder grid, 9 by 9"></div>
+      <p class="sizeLine" id="sizeLine"></p>
+      <div class="saved" id="saved"><h3>Saved creatures</h3><div class="savedList" id="savedList"></div></div>
+    </div>
+    <fieldset class="tools" id="tools"><legend>Pick a cell, then tap the grid</legend></fieldset>
+  </div>
+  <p id="buildMsg" role="status"></p>
+  <div class="row stick">
+    <button class="btn plain" type="button" id="buildCancel">Cancel</button>
+    <button class="btn plain" type="button" id="buildClear">Clear</button>
+    <button class="btn plain" type="button" id="buildSave">Save</button>
+    <button class="btn" type="button" id="buildAdd">Add to world</button>
+  </div>
+</dialog>
+
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <h2 id="helpTitle">How to play</h2>
+  <p>Build a creature out of cells, then add it to the world.</p>
+  <p>Every cell uses a little energy all the time. A mouth eats the green food next to it. When a creature runs out of energy, it dies.</p>
+  <p>When a creature is full of energy, it has a baby and gives it half. With Babies change turned up, some babies are born with one cell added, taken away or swapped.</p>
+  <p>Change the sliders, or edit a copy of a creature, and watch what happens. Add food lets you drop food by tapping or dragging on the world.</p>
+  <p>Save keeps a creature on this device. Its picture shows under the builder grid; tap it to build it again.</p>
+  <p>Poison blocks are solid. A creature touching one loses energy. Add poison drops them; with it on, tapping a poison block takes it away.</p>
+  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off.</p>
+  <div class="row"><button class="btn" type="button" id="helpClose">Close</button></div>
+</dialog>
+
+<script>
+// Pixels of Life (Trello #54). A first foundation: a grid world with food, a
+// builder for a few cell types (his storage and bone cells among them), and
+// creatures that eat, move, use energy, have babies and die.
+
+// ---------------------------------------------------------------------------
+// Cell stats: one row per cell, so they can be tuned in one place.
+// upkeep = energy it uses every tick; holds = energy it can store;
+// push = how much a mover moves the creature; room = extra cells a bone allows.
+// Decided 20 Nov (his answers): storage holds energy so the creature lasts
+// longer without food; bone is the inside frame that lets the creature grow
+// bigger, and armor (not in yet) is the outside protection.
+// PLACEHOLDER: every number below is a first guess until he gives his own.
+// The colours and drawings are placeholders too, until he picks or draws them.
+const CELLS = {
+  mouth:   { name: 'Mouth',   says: 'Eats food next to it.',               upkeep: 0.10, holds: 10, color: '#c2255c' },
+  mover:   { name: 'Mover',   says: 'Moves the creature.',                 upkeep: 0.15, holds: 10, push: 1, color: '#0b7285' },
+  storage: { name: 'Storage', says: 'Holds lots of energy, so it lasts longer without food.', upkeep: 0.05, holds: 60, color: '#e8a317' },
+  bone:    { name: 'Bone',    says: 'Inside frame. Lets the creature grow bigger.', upkeep: 0.05, holds: 10, room: 4, color: '#efe4cc' },
+};
+const TYPES = Object.keys(CELLS);
+
+// World rules. PLACEHOLDER numbers, same as above.
+const WORLD = {
+  baseSize: 5,       // most cells a creature can have with no bone
+  foodEnergy: 10,    // energy in one piece of food
+  food: 4,           // Food slider start: new food each tick, per 10,000 squares
+  foodCap: 0.2,      // at most this share of the world is food at once
+  startFood: 0.03,   // share of the world that is food in a new world
+  babies: true,      // Babies box start
+  birthAt: 0.9,      // has a baby when its energy is this full
+  birthAge: 40,      // ticks old before it can have a baby
+  change: 25,        // Babies change slider start: % of babies born different
+  turn: 0.04,        // chance a moving creature turns each tick
+  deadToFood: true,  // a dead creature's cells turn into food
+  // Poison block (his idea, 20 Nov; what it does is a placeholder until he says):
+  // solid, nothing grows on it, and each cell touching one loses this much
+  // energy every tick.
+  poisonHurt: 1,
+  maxCreatures: 400, // the world stops babies past this many
+  speed: 20,         // Speed slider start: ticks each second
+};
+
+// ---------------------------------------------------------------------------
+const $ = s => document.querySelector(s);
+const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+const rnd = n => (Math.random() * n) | 0;
+const pick = a => a[rnd(a.length)];
+
+// Drawing one cell. Used in the world, the builder and the info card.
+function drawCell(g, t, x, y, s) {
+  const u = s / 8, R = (a, b, w, h) => g.fillRect(Math.round(x + a * u), Math.round(y + b * u), Math.round(w * u), Math.round(h * u));
+  if (t === 'poison') {
+    g.fillStyle = '#3b1f7a'; g.fillRect(Math.round(x), Math.round(y), Math.ceil(s), Math.ceil(s));
+    g.fillStyle = '#c9b6ff'; R(1, 1, 2, 2); R(5, 1, 2, 2); R(3, 3, 2, 2); R(1, 5, 2, 2); R(5, 5, 2, 2);
+    return;
+  }
+  if (t === 'food') {
+    g.fillStyle = '#2b8a3e'; R(2, 2, 4, 4);
+    g.fillStyle = '#8ce99a'; R(2, 2, 2, 2);
+    return;
+  }
+  g.fillStyle = CELLS[t].color; g.fillRect(Math.round(x), Math.round(y), Math.ceil(s), Math.ceil(s));
+  if (t === 'mouth') { g.fillStyle = '#3d0619'; R(2, 3, 4, 2); }
+  else if (t === 'mover') { g.fillStyle = '#a5ecf5'; R(1, 1, 2, 2); R(5, 5, 2, 2); R(5, 1, 2, 2); R(1, 5, 2, 2); }
+  else if (t === 'storage') { g.fillStyle = '#fff1b8'; R(2, 2, 4, 4); g.fillStyle = '#b77800'; R(1, 0, 6, 1); R(1, 7, 6, 1); R(0, 1, 1, 6); R(7, 1, 1, 6); }
+  else if (t === 'bone') { g.fillStyle = '#8e7b55'; R(1, 2, 2, 4); R(5, 2, 2, 4); R(3, 3, 2, 2); }
+}
+const ICON = {};
+for (const t of TYPES) {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  drawCell(c.getContext('2d'), t, 0, 0, 32); ICON[t] = c.toDataURL();
+}
+
+// A creature's shape: cells at x,y offsets, with the top-left at 0,0.
+function norm(cells) {
+  const mx = Math.min(...cells.map(p => p.x)), my = Math.min(...cells.map(p => p.y));
+  return cells.map(p => ({ x: p.x - mx, y: p.y - my, t: p.t }));
+}
+const sizeLimit = cells => WORLD.baseSize + cells.filter(p => p.t === 'bone').length * CELLS.bone.room;
+function connected(cells) {
+  if (!cells.length) return false;
+  const key = p => p.x + ',' + p.y, all = new Set(cells.map(key)), seen = new Set([key(cells[0])]), todo = [cells[0]];
+  while (todo.length) {
+    const p = todo.pop();
+    for (const [dx, dy] of DIRS) {
+      const k = (p.x + dx) + ',' + (p.y + dy);
+      if (all.has(k) && !seen.has(k)) { seen.add(k); todo.push({ x: p.x + dx, y: p.y + dy }); }
+    }
+  }
+  return seen.size === cells.length;
+}
+const fitsSize = cells => cells.length <= sizeLimit(cells);
+
+// ---------------------------------------------------------------------------
+// The world
+const cv = $('#world'), g = cv.getContext('2d');
+let poisonCount = 0;
+let W, H, occ, food, poison, foodCount, creatures, byId, nextId = 1, tick, born, died, sel = null, paused = false, foodAcc = 0;
+const hist = [];
+const settings = { food: WORLD.food, change: WORLD.change, speed: WORLD.speed, babies: WORLD.babies };
+
+// The world is as many squares as fit the screen when it's made; cols and
+// rows are for the home page card picture, whose headless window reported a
+// shorter screen than it took the picture of.
+function newWorld(cols, rows) {
+  const r = $('#stage').getBoundingClientRect();
+  const T = r.width < 700 ? 8 : 10;
+  W = cols || Math.max(30, Math.floor(r.width / T)); H = rows || Math.max(20, Math.floor(r.height / T));
+  occ = new Int32Array(W * H); food = new Uint8Array(W * H); poison = new Uint8Array(W * H); foodCount = 0; poisonCount = 0;
+  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null);
+  for (let i = 0; i < W * H * WORLD.startFood; i++) { const k = rnd(W * H); if (!food[k]) { food[k] = 1; foodCount++; } }
+}
+
+function makeCreature(cells, x, y, gen) {
+  const c = { id: nextId++, cells: norm(cells), x, y, dir: rnd(4), age: 0, gen, kids: 0, energy: 0 };
+  c.w = Math.max(...c.cells.map(p => p.x)) + 1; c.h = Math.max(...c.cells.map(p => p.y)) + 1;
+  c.upkeep = 0; c.max = 0; c.movers = 0;
+  for (const p of c.cells) { const s = CELLS[p.t]; c.upkeep += s.upkeep; c.max += s.holds; if (p.t === 'mover') c.movers += s.push; }
+  return c;
+}
+function fits(c, x, y) {
+  for (const p of c.cells) {
+    const px = x + p.x, py = y + p.y;
+    if (px < 0 || py < 0 || px >= W || py >= H) return false;
+    const o = occ[py * W + px]; if ((o && o !== c.id) || poison[py * W + px]) return false;
+  }
+  return true;
+}
+const mark = (c, v) => { for (const p of c.cells) occ[(c.y + p.y) * W + c.x + p.x] = v; };
+function addCreature(c) { creatures.push(c); byId.set(c.id, c); mark(c, c.id); }
+
+// Put a new creature from the builder somewhere free, near the middle first.
+function release(cells) {
+  const c = makeCreature(cells, 0, 0, 1);
+  for (let tries = 0; tries < 400; tries++) {
+    const spread = Math.min(1, 0.15 + tries / 200);
+    const x = Math.round(W / 2 - c.w / 2 + (Math.random() - 0.5) * W * spread);
+    const y = Math.round(H / 2 - c.h / 2 + (Math.random() - 0.5) * H * spread);
+    if (fits(c, x, y)) { c.x = x; c.y = y; c.energy = c.max; addCreature(c); return c; }
+  }
+  return null;
+}
+
+function growFood() {
+  foodAcc += settings.food * W * H / 10000;
+  while (foodAcc >= 1) {
+    foodAcc--;
+    if (foodCount >= W * H * WORLD.foodCap) break;
+    const k = rnd(W * H);
+    if (!occ[k] && !food[k] && !poison[k]) { food[k] = 1; foodCount++; }
+  }
+  foodAcc = Math.min(foodAcc, 1);
+}
+
+function mutate(cells) {
+  const out = cells.map(p => ({ ...p })), op = rnd(3);
+  if (op === 0) {        // add a cell next to one it has
+    const p = pick(out), [dx, dy] = pick(DIRS), x = p.x + dx, y = p.y + dy;
+    if (out.some(q => q.x === x && q.y === y)) return null;
+    out.push({ x, y, t: pick(TYPES) });
+  } else if (op === 1) { // take one away
+    if (out.length < 2) return null;
+    out.splice(rnd(out.length), 1);
+  } else {               // swap one for another kind
+    const p = pick(out), t = pick(TYPES.filter(t => t !== p.t)); p.t = t;
+  }
+  return connected(out) && fitsSize(out) ? out : null;
+}
+
+function haveBaby(c) {
+  let cells = c.cells, changed = false;
+  if (Math.random() * 100 < settings.change) { const m = mutate(cells); if (m) { cells = m; changed = true; } }
+  const b = makeCreature(cells, 0, 0, c.gen + 1);
+  const spots = [[c.x + c.w + 1, c.y], [c.x - b.w - 1, c.y], [c.x, c.y + c.h + 1], [c.x, c.y - b.h - 1]];
+  for (let i = spots.length - 1; i > 0; i--) { const j = rnd(i + 1); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+  for (const [x, y] of spots) {
+    if (!fits(b, x, y)) continue;
+    b.x = x; b.y = y; b.changed = changed;
+    const give = c.energy / 2; c.energy -= give; b.energy = Math.min(b.max, give);
+    addCreature(b); c.kids++; born++;
+    return;
+  }
+}
+
+function die(c) {
+  mark(c, 0); c.dead = true; died++; byId.delete(c.id);
+  if (WORLD.deadToFood) for (const p of c.cells) { const k = (c.y + p.y) * W + c.x + p.x; if (!food[k]) { food[k] = 1; foodCount++; } }
+}
+
+function live(c) {
+  c.age++;
+  c.energy -= c.upkeep;
+  if (poisonCount) for (const p of c.cells) for (const [dx, dy] of DIRS) {
+    const x = c.x + p.x + dx, y = c.y + p.y + dy;
+    if (x >= 0 && y >= 0 && x < W && y < H && poison[y * W + x]) c.energy -= WORLD.poisonHurt;
+  }
+  for (const p of c.cells) {
+    if (p.t !== 'mouth') continue;
+    const mx = c.x + p.x, my = c.y + p.y;
+    for (const [dx, dy] of [[0, 0], ...DIRS]) {
+      const x = mx + dx, y = my + dy;
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const k = y * W + x;
+      if (food[k]) { food[k] = 0; foodCount--; c.energy = Math.min(c.max, c.energy + WORLD.foodEnergy); break; }
+    }
+  }
+  // More movers move it more often; a bigger body moves it less often.
+  if (c.movers && Math.random() < Math.min(1, c.movers / c.cells.length)) {
+    if (Math.random() < WORLD.turn) c.dir = rnd(4);
+    const [dx, dy] = DIRS[c.dir];
+    if (fits(c, c.x + dx, c.y + dy)) { mark(c, 0); c.x += dx; c.y += dy; mark(c, c.id); }
+    else c.dir = rnd(4);
+  }
+  if (settings.babies && c.energy >= c.max * WORLD.birthAt && c.age >= WORLD.birthAge && creatures.length < WORLD.maxCreatures) haveBaby(c);
+  if (c.energy <= 0) die(c);
+}
+
+function step() {
+  tick++;
+  growFood();
+  for (const c of creatures.slice()) if (!c.dead) live(c);
+  creatures = creatures.filter(c => !c.dead);
+  if (tick % 10 === 0) { hist.push(creatures.length); if (hist.length > 180) hist.shift(); }
+}
+
+// ---------------------------------------------------------------------------
+// Drawing
+let T = 8, ox = 0, oy = 0;
+function fit() {
+  const dpr = window.devicePixelRatio || 1, r = cv.getBoundingClientRect();
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  T = Math.max(1, Math.floor(Math.min(cv.width / W, cv.height / H)));
+  ox = Math.floor((cv.width - T * W) / 2); oy = Math.floor((cv.height - T * H) / 2);
+}
+function draw() {
+  g.fillStyle = '#bcd8cf'; g.fillRect(0, 0, cv.width, cv.height);
+  g.fillStyle = '#eef6f2'; g.fillRect(ox, oy, T * W, T * H);
+  for (let k = 0; k < W * H; k++) {
+    if (food[k]) drawCell(g, 'food', ox + (k % W) * T, oy + ((k / W) | 0) * T, T);
+    else if (poison[k]) drawCell(g, 'poison', ox + (k % W) * T, oy + ((k / W) | 0) * T, T);
+  }
+  for (const c of creatures) for (const p of c.cells) drawCell(g, p.t, ox + (c.x + p.x) * T, oy + (c.y + p.y) * T, T);
+  if (sel && !sel.dead) {
+    const pad = Math.max(2, T / 3);
+    g.strokeStyle = '#14262b'; g.lineWidth = Math.max(2, T / 4);
+    g.strokeRect(ox + sel.x * T - pad, oy + sel.y * T - pad, sel.w * T + pad * 2, sel.h * T + pad * 2);
+  }
+}
+function drawGraph() {
+  const c = $('#graph'), x = c.getContext('2d'), w = c.width, h = c.height;
+  x.fillStyle = '#eef6f2'; x.fillRect(0, 0, w, h);
+  if (hist.length < 2) return;
+  const top = Math.max(5, ...hist);
+  x.strokeStyle = '#0b6e4f'; x.lineWidth = 2; x.beginPath();
+  hist.forEach((v, i) => { const px = i / 179 * (w - 4) + 2, py = h - 3 - v / top * (h - 6); i ? x.lineTo(px, py) : x.moveTo(px, py); });
+  x.stroke();
+}
+function drawShape(canvas, cells) {
+  const x = canvas.getContext('2d'), n = Math.max(...cells.map(p => Math.max(p.x, p.y))) + 1;
+  const s = Math.floor(canvas.width / Math.max(n, 4)), off = (canvas.width - s * n) / 2;
+  x.fillStyle = '#eef6f2'; x.fillRect(0, 0, canvas.width, canvas.height);
+  for (const p of cells) drawCell(x, p.t, off + p.x * s, off + p.y * s, s);
+}
+
+let lastStats = 0;
+function showStats() {
+  $('#sN').textContent = creatures.length; $('#sBorn').textContent = born; $('#sDied').textContent = died;
+  $('#sGen').textContent = creatures.reduce((m, c) => Math.max(m, c.gen), 0); $('#sFood').textContent = foodCount;
+  drawGraph();
+  if (sel) showInfo();
+}
+
+// ---------------------------------------------------------------------------
+// The info card for one creature
+function select(c) {
+  sel = c; $('#info').hidden = !c;
+  if (c) { drawShape($('#infoPic'), c.cells); showInfo(); }
+}
+function showInfo() {
+  const c = sel, n = id => c.cells.filter(p => p.t === id).length;
+  $('#infoTitle').textContent = c.dead ? 'It died' : c.changed ? 'Creature (born different)' : 'Creature';
+  const rows = [
+    ['Energy', Math.max(0, Math.round(c.energy)) + ' of ' + c.max],
+    ['Uses each tick', +c.upkeep.toFixed(2)],
+    ['Cells', c.cells.length + ' of ' + sizeLimit(c.cells)],
+    ['Generation', c.gen], ['Age', c.age], ['Babies', c.kids],
+    ...TYPES.filter(n).map(t => [CELLS[t].name, n(t)]),
+  ];
+  $('#infoList').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
+  $('#infoEdit').hidden = c.dead;
+}
+const tileAt = e => {
+  const r = cv.getBoundingClientRect(), dpr = cv.width / r.width;
+  return [Math.floor(((e.clientX - r.left) * dpr - ox) / T), Math.floor(((e.clientY - r.top) * dpr - oy) / T)];
+};
+// Add food (Randi's ask, 20 Nov): with it on, tapping or dragging on the world
+// drops food in a small patch (3 by 3) on empty squares. Placed food can go
+// past WORLD.foodCap, which only limits what grows by itself.
+// Add poison works the same way one square at a time; a stroke that starts
+// on a poison block takes blocks away instead.
+let placing = null, painting = false, erasing = false;
+function drop(x, y) {
+  if (placing === 'poison') {
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+    const k = y * W + x;
+    if (erasing) { if (poison[k]) { poison[k] = 0; poisonCount--; } }
+    else if (!occ[k] && !poison[k]) { if (food[k]) { food[k] = 0; foodCount--; } poison[k] = 1; poisonCount++; }
+    return;
+  }
+  for (let yy = y - 1; yy <= y + 1; yy++) for (let xx = x - 1; xx <= x + 1; xx++) {
+    if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+    const k = yy * W + xx;
+    if (!occ[k] && !food[k] && !poison[k]) { food[k] = 1; foodCount++; }
+  }
+}
+function setPlacing(kind) {
+  placing = kind;
+  $('#foodBtn').setAttribute('aria-pressed', kind === 'food');
+  $('#poisonBtn').setAttribute('aria-pressed', kind === 'poison');
+  cv.style.cursor = kind ? 'crosshair' : '';
+}
+$('#foodBtn').onclick = () => setPlacing(placing === 'food' ? null : 'food');
+$('#poisonBtn').onclick = () => setPlacing(placing === 'poison' ? null : 'poison');
+// A quick drag skips squares between pointer events, so fill in the line.
+let lastTile = null;
+cv.addEventListener('pointermove', e => {
+  if (!painting) return;
+  const [x, y] = tileAt(e), [lx, ly] = lastTile, n = Math.max(Math.abs(x - lx), Math.abs(y - ly));
+  for (let i = 1; i <= n; i++) drop(Math.round(lx + (x - lx) * i / n), Math.round(ly + (y - ly) * i / n));
+  lastTile = [x, y];
+});
+const stopPaint = () => { painting = false; };
+cv.addEventListener('pointerup', stopPaint);
+cv.addEventListener('pointercancel', stopPaint);
+cv.addEventListener('pointerdown', e => {
+  const [x, y] = tileAt(e);
+  if (placing) {
+    painting = true; cv.setPointerCapture(e.pointerId);
+    erasing = placing === 'poison' && x >= 0 && y >= 0 && x < W && y < H && !!poison[y * W + x];
+    drop(x, y); lastTile = [x, y]; return;
+  }
+  let hit = null;
+  // a tap near a creature counts too, since cells are small on a phone
+  for (let d = 0; d <= 2 && !hit; d++)
+    for (let yy = y - d; yy <= y + d && !hit; yy++)
+      for (let xx = x - d; xx <= x + d && !hit; xx++)
+        if (xx >= 0 && yy >= 0 && xx < W && yy < H && occ[yy * W + xx]) hit = byId.get(occ[yy * W + xx]);
+  select(hit);
+});
+function nextCreature() {
+  if (!creatures.length) return select(null);
+  const i = sel ? creatures.indexOf(sel) : -1;
+  select(creatures[(i + 1) % creatures.length]);
+}
+$('#infoClose').onclick = () => { select(null); cv.focus(); };
+$('#infoEdit').onclick = () => openBuilder(sel.cells);
+$('#infoSave').onclick = () => { saveCreature(sel.cells); $('#infoSave').textContent = 'Saved'; setTimeout(() => { $('#infoSave').textContent = 'Save'; }, 1500); };
+
+// Saved creatures (Randi's ask, 20 Nov): kept on this device under
+// pixels-of-life:saved, newest first, at most SAVED_MAX.
+const SAVED_KEY = 'pixels-of-life:saved', SAVED_MAX = 12;
+let saved = [];
+try { const d = JSON.parse(localStorage.getItem(SAVED_KEY)); if (Array.isArray(d)) saved = d.filter(c => Array.isArray(c) && c.length && c.every(p => CELLS[p.t])); } catch (e) {}
+const storeSaved = () => { try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch (e) {} };
+const sameShape = (a, b) => { const k = c => norm(c).map(p => p.x + ',' + p.y + p.t).sort().join(' '); return k(a) === k(b); };
+function saveCreature(cells) {
+  const n = norm(cells);
+  saved = [n, ...saved.filter(c => !sameShape(c, n))].slice(0, SAVED_MAX);
+  storeSaved(); drawSaved();
+}
+
+// ---------------------------------------------------------------------------
+// The builder
+const ED = 9, buildDlg = $('#buildDlg');
+let design = [], tool = 'mouth';
+const STARTER = [{ x: 3, y: 4, t: 'mover' }, { x: 4, y: 4, t: 'mouth' }, { x: 5, y: 4, t: 'storage' }];
+const SAVE_KEY = 'pixels-of-life:design';
+try { const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if (Array.isArray(d) && d.length) design = d.filter(p => CELLS[p.t]); } catch (e) {}
+if (!design.length) design = STARTER.map(p => ({ ...p }));
+
+const toolsEl = $('#tools');
+[...TYPES, 'empty'].forEach((t, i) => {
+  const s = CELLS[t], lab = document.createElement('label');
+  lab.className = 'tool';
+  const nums = s ? `Uses ${s.upkeep} · Holds ${s.holds}${s.room ? ' · +' + s.room + ' room' : ''}` : 'Takes a cell away.';
+  lab.innerHTML = `<input type="radio" name="tool" value="${t}"${t === tool ? ' checked' : ''}>` +
+    (s ? `<img src="${ICON[t]}" alt="">` : '<span class="empty"></span>') +
+    `<span><b>${i + 1}. ${s ? s.name : 'Empty'}</b><small>${s ? s.says + '<br>' : ''}${nums}</small></span>`;
+  toolsEl.append(lab);
+});
+toolsEl.addEventListener('change', e => { tool = e.target.value; });
+
+const gridEl = $('#grid'), gridBtns = [];
+for (let y = 0; y < ED; y++) for (let x = 0; x < ED; x++) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.dataset.x = x; b.dataset.y = y; b.tabIndex = -1;
+  b.onclick = () => { placeAt(x, y); };
+  gridEl.append(b); gridBtns.push(b);
+}
+gridBtns[4 * ED + 4].tabIndex = 0;
+gridEl.addEventListener('keydown', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  let x = +b.dataset.x, y = +b.dataset.y;
+  const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!mv) return;
+  e.preventDefault();
+  x = Math.min(ED - 1, Math.max(0, x + mv[0])); y = Math.min(ED - 1, Math.max(0, y + mv[1]));
+  b.tabIndex = -1; const n = gridBtns[y * ED + x]; n.tabIndex = 0; n.focus();
+});
+buildDlg.addEventListener('keydown', e => {
+  const i = '12345'.indexOf(e.key);
+  if (i < 0 || e.target.closest('input')) return;
+  const r = toolsEl.querySelectorAll('input')[i]; r.checked = true; tool = r.value;
+});
+
+function placeAt(x, y) {
+  const at = design.findIndex(p => p.x === x && p.y === y);
+  const next = design.filter((p, i) => i !== at);
+  if (tool !== 'empty' && !(at >= 0 && design[at].t === tool)) next.push({ x, y, t: tool });
+  if (!fitsSize(next)) { say(`Too big. With ${next.filter(p => p.t === 'bone').length} bone it can have ${sizeLimit(next)} cells. Add a bone to grow bigger.`); return; }
+  design = next; say(''); drawBuilder();
+}
+function say(m, ok, undo) {
+  const el = $('#buildMsg'); el.textContent = m; el.classList.toggle('ok', !!ok);
+  if (undo) { const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Undo'; b.onclick = undo; el.append(b); }
+}
+function drawBuilder() {
+  for (const b of gridBtns) {
+    const p = design.find(q => q.x === +b.dataset.x && q.y === +b.dataset.y);
+    b.innerHTML = p ? `<img src="${ICON[p.t]}" alt="">` : '';
+    b.setAttribute('aria-label', `Row ${+b.dataset.y + 1}, column ${+b.dataset.x + 1}: ${p ? CELLS[p.t].name : 'empty'}`);
+  }
+  const bones = design.filter(p => p.t === 'bone').length;
+  $('#sizeLine').textContent = `Cells: ${design.length} of ${sizeLimit(design)}` + (bones ? ` (${bones} bone)` : '');
+}
+function openBuilder(cells) {
+  let msg = '';
+  if (cells) {
+    const n = norm(cells), w = Math.max(...n.map(p => p.x)) + 1, h = Math.max(...n.map(p => p.y)) + 1;
+    if (w > ED || h > ED) msg = `That creature is too big for the builder (${ED} by ${ED}), so this is your last one.`;
+    else {
+      const dx = Math.floor((ED - w) / 2), dy = Math.floor((ED - h) / 2);
+      design = n.map(p => ({ x: p.x + dx, y: p.y + dy, t: p.t }));
+    }
+  }
+  drawBuilder(); drawSaved(); say(msg); if (!buildDlg.open) buildDlg.showModal();
+}
+$('#buildBtn').onclick = () => openBuilder();
+$('#buildCancel').onclick = () => buildDlg.close();
+$('#buildClear').onclick = () => { design = []; say(''); drawBuilder(); };
+$('#buildSave').onclick = () => {
+  if (!design.length) return say('Put at least one cell on the grid.');
+  if (!connected(design)) return say('All the cells have to touch, side to side.');
+  saveCreature(design); say('Saved.', true);
+};
+function drawSaved() {
+  const list = $('#savedList');
+  $('#saved').hidden = !saved.length;
+  list.innerHTML = '';
+  saved.forEach((cells, i) => {
+    const item = document.createElement('div'); item.className = 'savedItem';
+    const use = document.createElement('button'); use.type = 'button'; use.className = 'use';
+    use.setAttribute('aria-label', `Saved creature ${i + 1}, ${cells.length} cells. Put it in the builder.`);
+    const pic = document.createElement('canvas'); pic.width = pic.height = 64; drawShape(pic, cells); use.append(pic);
+    use.onclick = () => openBuilder(cells);
+    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'rm'; rm.textContent = 'Remove';
+    rm.setAttribute('aria-label', `Remove saved creature ${i + 1}`);
+    rm.onclick = () => {
+      const gone = saved.splice(i, 1)[0]; storeSaved(); drawSaved();
+      say('Removed.', true, () => { saved.splice(i, 0, gone); storeSaved(); drawSaved(); say(''); });
+    };
+    item.append(use, rm); list.append(item);
+  });
+}
+$('#buildAdd').onclick = () => {
+  if (!design.length) return say('Put at least one cell on the grid.');
+  if (!connected(design)) return say('All the cells have to touch, side to side.');
+  const c = release(design);
+  if (!c) return say('There is no room in the world. Try New world.');
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(design)); } catch (e) {}
+  buildDlg.close(); select(c); cv.focus();
+};
+buildDlg.addEventListener('close', () => { if (!creatures.length && !document.querySelector('dialog[open]')) cv.focus(); });
+
+// ---------------------------------------------------------------------------
+// Controls
+function bindSlider(id, fmt) {
+  const el = $('#' + id), out = $('#' + id + 'Out');
+  el.value = settings[id]; out.textContent = fmt(settings[id]);
+  el.addEventListener('input', () => { settings[id] = +el.value; out.textContent = fmt(settings[id]); });
+}
+bindSlider('food', v => v);
+bindSlider('change', v => v + '%');
+bindSlider('speed', v => v);
+$('#babies').checked = settings.babies;
+$('#babies').onchange = e => { settings.babies = e.target.checked; };
+function setPaused(p) { paused = p; $('#pauseBtn').textContent = p ? 'Play' : 'Pause'; }
+$('#pauseBtn').onclick = () => setPaused(!paused);
+$('#newBtn').onclick = () => { newWorld(); fit(); showStats(); openBuilder(); };
+$('#helpBtn').onclick = () => $('#helpDlg').showModal();
+$('#helpClose').onclick = () => $('#helpDlg').close();
+window.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const onControl = e.target.closest && e.target.closest('button, input, a');
+  if (e.key === ' ' && !onControl) { e.preventDefault(); setPaused(!paused); }
+  else if (e.key === 'b' || e.key === 'B') openBuilder();
+  else if (e.key === 'f' || e.key === 'F') setPlacing(placing === 'food' ? null : 'food');
+  else if (e.key === 'p' || e.key === 'P') setPlacing(placing === 'poison' ? null : 'poison');
+  else if (e.key === 'n' || e.key === 'N') nextCreature();
+  else if (e.key === '?') $('#helpDlg').showModal();
+  else if (e.key === 'Escape' && sel) select(null);
+});
+window.addEventListener('resize', () => { fit(); draw(); });
+
+// ---------------------------------------------------------------------------
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+  if (!paused) {
+    acc += dt * settings.speed;
+    let n = 0;
+    while (acc >= 1 && n++ < 30) { step(); acc--; }
+    if (n > 30) acc = 0;
+  }
+  draw();
+  if (now - lastStats > 250) { lastStats = now; showStats(); }
+  requestAnimationFrame(frame);
+}
+newWorld(); fit(); showStats();
+requestAnimationFrame(frame);
+openBuilder();
+</script>
+</body>
+</html>
