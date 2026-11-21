@@ -37,6 +37,20 @@ const CELLS = {
 };
 const TYPES = Object.keys(CELLS);
 
+// Kinds of creature (Randi's ask, 21 Nov), worked out from the cells: the first
+// rule that fits wins. The names are ours until he picks his own.
+const KINDS = [
+  { name: 'Hunter', fits: n => n.killer > 0 },
+  { name: 'Plant',  fits: n => n.producer > 0 && !n.mover },
+  { name: 'Grazer', fits: n => n.mouth > 0 && n.mover > 0 },
+  { name: 'Blob',   fits: () => true },
+];
+function kindOf(cells) {
+  const n = {}; for (const p of cells) n[p.t] = (n[p.t] || 0) + 1;
+  for (const t of TYPES) n[t] = n[t] || 0;
+  return KINDS.find(k => k.fits(n)).name;
+}
+
 // World rules. PLACEHOLDER numbers, same as above.
 const WORLD = {
   baseSize: 5,       // most cells a creature can have with no bone
@@ -166,7 +180,7 @@ function release(cells) {
     const spread = Math.min(1, 0.15 + tries / 200);
     const x = Math.round(W / 2 - c.w / 2 + (Math.random() - 0.5) * W * spread);
     const y = Math.round(H / 2 - c.h / 2 + (Math.random() - 0.5) * H * spread);
-    if (fits(c, x, y)) { c.x = x; c.y = y; c.energy = c.max; addCreature(c); return c; }
+    if (fits(c, x, y)) { c.x = x; c.y = y; c.energy = c.max; c.name = designName(); addCreature(c); return c; }
   }
   return null;
 }
@@ -205,7 +219,8 @@ function haveBaby(c) {
   for (let i = spots.length - 1; i > 0; i--) { const j = rnd(i + 1); [spots[i], spots[j]] = [spots[j], spots[i]]; }
   for (const [x, y] of spots) {
     if (!fits(b, x, y)) continue;
-    b.x = x; b.y = y; b.changed = changed;
+    // a baby born the same keeps the name; one born different has none yet
+    b.x = x; b.y = y; b.changed = changed; b.name = changed ? '' : c.name;
     const give = c.energy / 2; c.energy -= give; b.energy = Math.min(b.max, give);
     addCreature(b); c.kids++; born++;
     return;
@@ -357,8 +372,9 @@ function select(c) {
 }
 function showInfo() {
   const c = sel, n = id => c.cells.filter(p => p.t === id).length;
-  $('#infoTitle').textContent = c.dead ? 'It died' : c.changed ? 'Creature (born different)' : 'Creature';
+  $('#infoTitle').textContent = (c.dead ? 'It died: ' : '') + (c.name || 'Creature') + (c.changed ? ' (born different)' : '');
   const rows = [
+    ['Kind', kindOf(c.cells)],
     ['Energy', Math.max(0, Math.round(c.energy)) + ' of ' + c.max],
     ['Uses each tick', +c.upkeep.toFixed(2)],
     ...(c.makes ? [['Makes each tick', +c.makes.toFixed(2)]] : []),
@@ -434,7 +450,7 @@ function dropCreature(x, y) {
   for (let d = 0; d <= 4; d++)
     for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== d || !fits(c, x0 + dx, y0 + dy)) continue;
-      c.x = x0 + dx; c.y = y0 + dy; c.energy = c.max; addCreature(c); return;
+      c.x = x0 + dx; c.y = y0 + dy; c.energy = c.max; c.name = designName(); addCreature(c); return;
     }
 }
 // A quick drag skips squares between pointer events, so fill in the line.
@@ -470,21 +486,35 @@ function nextCreature() {
   select(creatures[(i + 1) % creatures.length]);
 }
 $('#infoClose').onclick = () => { select(null); cv.focus(); };
-$('#infoEdit').onclick = () => openBuilder(sel.cells);
-$('#infoSave').onclick = () => { saveCreature(sel.cells); $('#infoSave').textContent = 'Saved'; setTimeout(() => { $('#infoSave').textContent = 'Save'; }, 1500); };
+$('#infoEdit').onclick = () => openBuilder(sel.cells, sel.name);
+$('#infoSave').onclick = () => { if (!sel.name) sel.name = nextName(); saveCreature(sel.cells, sel.name); showInfo(); $('#infoSave').textContent = 'Saved'; setTimeout(() => { $('#infoSave').textContent = 'Save'; }, 1500); };
 
 // Saved creatures (Randi's ask, 20 Nov): kept on this device under
-// pixels-of-life:saved, newest first, at most SAVED_MAX.
+// pixels-of-life:saved, newest first, at most SAVED_MAX. Since 21 Nov each is
+// { name, cells }; saves from before were only the cells, and get numbered names.
 const SAVED_KEY = 'pixels-of-life:saved', SAVED_MAX = 12;
 let saved = [];
-try { const d = JSON.parse(localStorage.getItem(SAVED_KEY)); if (Array.isArray(d)) saved = d.filter(c => Array.isArray(c) && c.length && c.every(p => CELLS[p.t])); } catch (e) {}
+try {
+  const d = JSON.parse(localStorage.getItem(SAVED_KEY));
+  if (Array.isArray(d)) saved = d.map((e, i) => Array.isArray(e) ? { name: 'Creature ' + (i + 1), cells: e } : e)
+    .filter(e => e && Array.isArray(e.cells) && e.cells.length && e.cells.every(p => CELLS[p.t]))
+    .map(e => ({ name: String(e.name || '').slice(0, 24), cells: e.cells }));
+} catch (e) {}
 const storeSaved = () => { try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch (e) {} };
 const sameShape = (a, b) => { const k = c => norm(c).map(p => p.x + ',' + p.y + p.t).sort().join(' '); return k(a) === k(b); };
-function saveCreature(cells) {
+// Saving the same shape again replaces it, so changing the name and saving
+// again is how a saved creature is renamed.
+function saveCreature(cells, name) {
   const n = norm(cells);
-  saved = [n, ...saved.filter(c => !sameShape(c, n))].slice(0, SAVED_MAX);
+  saved = [{ name, cells: n }, ...saved.filter(e => !sameShape(e.cells, n))].slice(0, SAVED_MAX);
   storeSaved(); drawSaved();
 }
+function nextName() {
+  const used = new Set(saved.map(e => e.name));
+  let i = 1; while (used.has('Creature ' + i)) i++;
+  return 'Creature ' + i;
+}
+const designName = () => $('#nameIn').value.trim();
 
 // ---------------------------------------------------------------------------
 // The builder
@@ -548,11 +578,12 @@ function drawBuilder() {
     b.setAttribute('aria-label', `Row ${+b.dataset.y + 1}, column ${+b.dataset.x + 1}: ${p ? CELLS[p.t].name : 'empty'}`);
   }
   const bones = design.filter(p => p.t === 'bone').length;
-  $('#sizeLine').textContent = `Cells: ${design.length} of ${sizeLimit(design)}` + (bones ? ` (${bones} bone)` : '');
+  $('#sizeLine').textContent = `Cells: ${design.length} of ${sizeLimit(design)}` + (bones ? ` (${bones} bone)` : '') + (design.length ? ` · Kind: ${kindOf(design)}` : '');
 }
-function openBuilder(cells) {
+function openBuilder(cells, name) {
   let msg = '';
   if (cells) {
+    $('#nameIn').value = name || '';
     const n = norm(cells), w = Math.max(...n.map(p => p.x)) + 1, h = Math.max(...n.map(p => p.y)) + 1;
     if (w > ED || h > ED) msg = `That creature is too big for the builder (${ED} by ${ED}), so this is your last one.`;
     else {
@@ -564,24 +595,28 @@ function openBuilder(cells) {
 }
 $('#buildBtn').onclick = () => openBuilder();
 $('#buildCancel').onclick = () => buildDlg.close();
-$('#buildClear').onclick = () => { design = []; say(''); drawBuilder(); };
+$('#buildClear').onclick = () => { design = []; $('#nameIn').value = ''; say(''); drawBuilder(); };
 $('#buildSave').onclick = () => {
   if (!design.length) return say('Put at least one cell on the grid.');
   if (!connected(design)) return say('All the cells have to touch, side to side.');
-  saveCreature(design); say('Saved.', true);
+  if (!designName()) $('#nameIn').value = nextName();
+  saveCreature(design, designName()); say(`Saved as ${designName()}.`, true);
 };
 function drawSaved() {
   const list = $('#savedList');
   $('#saved').hidden = !saved.length;
   list.innerHTML = '';
-  saved.forEach((cells, i) => {
+  saved.forEach(({ name, cells }, i) => {
     const item = document.createElement('div'); item.className = 'savedItem';
     const use = document.createElement('button'); use.type = 'button'; use.className = 'use';
-    use.setAttribute('aria-label', `Saved creature ${i + 1}, ${cells.length} cells. Put it in the builder.`);
-    const pic = document.createElement('canvas'); pic.width = pic.height = 64; drawShape(pic, cells); use.append(pic);
-    use.onclick = () => openBuilder(cells);
+    use.setAttribute('aria-label', `${name}, ${kindOf(cells)}, ${cells.length} cells. Put it in the builder.`);
+    const pic = document.createElement('canvas'); pic.width = pic.height = 64; drawShape(pic, cells);
+    const nm = document.createElement('b'); nm.textContent = name;
+    const kd = document.createElement('small'); kd.textContent = kindOf(cells);
+    use.append(pic, nm, kd);
+    use.onclick = () => openBuilder(cells, name);
     const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'rm'; rm.textContent = 'Remove';
-    rm.setAttribute('aria-label', `Remove saved creature ${i + 1}`);
+    rm.setAttribute('aria-label', `Remove ${name}`);
     rm.onclick = () => {
       const gone = saved.splice(i, 1)[0]; storeSaved(); drawSaved();
       say('Removed.', true, () => { saved.splice(i, 0, gone); storeSaved(); drawSaved(); say(''); });

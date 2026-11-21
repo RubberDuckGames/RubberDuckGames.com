@@ -67,6 +67,8 @@
   <div class="build">
     <div>
       <div id="grid" role="group" aria-label="Builder grid, 9 by 9"></div>
+      <label class="nameRow" for="nameIn">Name</label>
+      <input id="nameIn" type="text" maxlength="24" autocomplete="off" spellcheck="false">
       <p class="sizeLine" id="sizeLine"></p>
       <div class="saved" id="saved"><h3>Saved creatures</h3><div class="savedList" id="savedList"></div></div>
     </div>
@@ -89,7 +91,7 @@
   <p>Change the sliders, or edit a copy of a creature, and watch what happens. Add food lets you drop food by tapping or dragging on the world.</p>
   <p>Add creature puts a copy of the creature in the builder wherever you tap.</p>
   <p>Remove takes away creatures, food and poison wherever you tap or drag.</p>
-  <p>Save keeps a creature on this device. Its picture shows under the builder grid; tap it to build it again.</p>
+  <p>Save keeps a creature on this device, with its name. Its picture shows under the builder grid; tap it to build it again. To rename one, change its name and save it again. Each creature also gets a kind from its cells: Hunter, Plant, Grazer or Blob.</p>
   <p>A producer cell makes energy, like a plant, so a creature with enough of them never needs to eat.</p>
   <p>An eye cell sees a few squares around it. A creature that can move heads for food it sees, and runs from any creature with a killer cell. A killer with an eye chases the creatures it sees.</p>
   <p>A killer cell takes energy from any other creature it touches, unless it touches armor.</p>
