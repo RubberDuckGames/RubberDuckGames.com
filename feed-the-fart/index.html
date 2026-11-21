@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Feed the Fart · Rubber Duck Games</title>
+<meta name="description" content="Thanksgiving dinner. Feed the plumber from the table, pull his finger, and collect every kind of fart.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#3a2414;--soft:#6b4c33;--bg:#f6e7cc;--panel:#fffaf0;--line:#d9b98a;--accent:#9a3412;--accentDark:#6b230b;font-family:Lexend,Verdana,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);touch-action:manipulation}
+body{font-size:1.125rem;line-height:1.45;min-height:100vh;min-height:100dvh}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+button:focus-visible,a:focus-visible{outline:.2rem solid var(--ink);outline-offset:.2rem}
+.bar{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;flex-wrap:wrap}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+@media (max-width:30rem){.pill{font-size:.55rem;padding:.3rem .5rem}}
+main{max-width:64rem;margin:0 auto;padding:0 .75rem 2rem}
+.stage{position:relative;max-width:calc(62vh * 800 / 460);margin:0 auto;border:4px solid var(--ink);background:#f1d7a6;box-shadow:.4rem .4rem 0 rgba(0,0,0,.2);overflow:hidden}
+.stage svg{display:block;width:100%;height:auto}
+#px{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.say{font-family:"Press Start 2P",monospace;font-size:clamp(.5rem,1.5vw,.8rem);line-height:1.6;border-radius:0;box-shadow:.2rem .2rem 0 rgba(0,0,0,.35)}
+/* speech bubbles sit over the picture, placed in % of it so they follow its size */
+.say{position:absolute;background:#fff;color:#1d120a;border:3px solid #1d120a;border-radius:1rem;padding:.35rem .7rem;font-weight:600;font-size:clamp(.8rem,2.4vw,1.15rem);line-height:1.3;max-width:42%;pointer-events:none}
+.say::after{content:"";position:absolute;left:1rem;bottom:-.75rem;border:.6rem solid transparent;border-top-color:#1d120a;border-bottom:0}
+#sayHim{left:22%;top:6%}
+#sayRoom{right:3%;top:4%}
+#sayRoom::after{left:auto;right:1.5rem}
+#sayDoor{left:2%;top:8%}
+.controls{display:flex;gap:1rem;align-items:center;margin:1rem 0 .4rem;flex-wrap:wrap}
+.meterbox{flex:1;min-width:14rem}
+.meterbox label{display:flex;justify-content:space-between;font-weight:600;margin-bottom:.3rem}
+.meter{height:1.6rem;border:3px solid var(--ink);background:var(--panel);position:relative}
+.meter i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#7aa83a,#e0a526 60%,#c2410c);transition:width .4s}
+.pull{background:var(--accent);color:#fff;font-family:"Press Start 2P",monospace;font-size:.85rem;line-height:1.6;padding:1rem 1.2rem;box-shadow:0 .35rem 0 var(--accentDark);margin-left:auto}
+.pull:disabled{background:#c9b597;color:#4a3826;box-shadow:0 .35rem 0 #a8916f;cursor:default}
+.pull.ready{animation:beg 1s ease-in-out infinite}
+.pull:active:not(:disabled){transform:translateY(.25rem);box-shadow:0 .1rem 0 var(--accentDark)}
+@keyframes beg{50%{transform:scale(1.06)}}
+.hint{color:var(--soft);margin:.2rem 0 .8rem;font-size:1rem}
+.foods{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.5rem}
+/* On a phone the foods scrolled the table off screen while you picked; the
+   scene, meter and button stay pinned and the foods scroll under them. */
+@media (max-width:40rem){.top{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:.25rem}.foods{grid-template-columns:repeat(3,1fr)}.food{font-size:.8rem;min-height:4.5rem;padding:.4rem .2rem}.food .e{width:3rem;height:3rem}.controls{margin:.6rem 0 .2rem;gap:.6rem}.pull{padding:.8rem 1rem;font-size:.75rem}.hint{font-size:.9rem;margin:.2rem 0 .5rem}}
+.food{background:var(--panel);border:3px solid var(--line);border-radius:.6rem;padding:.5rem .4rem;display:flex;flex-direction:column;align-items:center;gap:.2rem;text-align:center;line-height:1.25;font-size:.95rem;min-height:5.5rem}
+.food .e{width:4rem;height:4rem;image-rendering:pixelated}
+.food .d{font-size:.75rem;color:var(--soft)}
+.food:hover:not(:disabled){border-color:var(--accent)}
+.food:disabled{opacity:.5;cursor:default}
+.cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(40,24,12,.6);z-index:20;padding:1rem;overflow:auto}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:30rem;width:100%;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
+.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1.2rem;line-height:1.6;text-align:center}
+.card p{margin:.4rem 0}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
+.btn{background:var(--accent);color:#fff;padding:.8rem 1.1rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--line)}
+.btn.plain{background:var(--panel);color:var(--ink);border:2px solid var(--ink)}
+.coll{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+@media (max-width:30rem){.coll{grid-template-columns:1fr}}
+.coll li{border:2px solid var(--line);border-radius:.6rem;padding:.5rem;display:flex;gap:.6rem;align-items:center}
+.coll svg{width:3.2rem;height:2.4rem;flex:none}
+.coll b{display:block}
+.coll .d{font-size:.85rem;color:var(--soft);display:block}
+.coll button{font-size:.8rem;text-decoration:underline;padding:.2rem 0;color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%);background:#1d120a;color:#fff;padding:.6rem 1rem;border-radius:.6rem;font-weight:600;z-index:15;text-align:center;max-width:calc(100vw - 2rem)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---- the scene. Faces and poses are swapped with data attributes on the svg. ---- */
+.face,#armOut{display:none}
+svg[data-face="normal"] .f-normal,svg[data-face="eat"] .f-eat,svg[data-face="smug"] .f-smug,svg[data-face="frozen"] .f-frozen{display:inline}
+svg.finger #armOut{display:inline}
+svg.finger #armDown{display:none}
+#armOut{cursor:pointer}
+#tip{animation:tip 1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes tip{50%{transform:scale(1.5);opacity:.3}}
+#belly{transform-box:fill-box;transform-origin:center bottom;transform:scaleX(var(--b,1));transition:transform .4s}
+#him{transition:transform 1.6s ease-in,opacity .3s}
+#him.run{transform:translateX(-120px);opacity:0;transition:transform 1.1s ease-in,opacity .3s 1s}
+#him.run #legs{animation:legs .18s linear infinite}
+@keyframes legs{50%{transform:translateY(-6px)}}
+#doorOpen{display:none}
+svg.dooropen #doorOpen{display:inline}
+.stem{transform-box:view-box;transition:transform 1.5s,filter 1.5s}
+#stemL{transform-origin:560px 228px}#stemM{transform-origin:560px 228px}#stemR{transform-origin:560px 228px}
+svg.wilt #stemL{transform:rotate(-100deg);filter:saturate(.2) brightness(.7)}
+svg.wilt #stemM{transform:rotate(115deg);filter:saturate(.2) brightness(.7)}
+svg.wilt #stemR{transform:rotate(100deg);filter:saturate(.2) brightness(.7)}
+#dogPaw{transition:transform .4s}
+svg.dognose #dogPaw{transform:translate(18px,-58px) rotate(-20deg)}
+#dogEyes2{display:none}
+svg.dognose #dogEyes2{display:inline}svg.dognose #dogEyes{display:none}
+#cat{transition:transform .5s ease-in,opacity .5s}
+svg.catgone #cat{transform:translateX(220px);opacity:0}
+.noseHand,.fanHand{display:none}
+svg.noses .noseHand{display:inline}
+svg.noses .fanHand{display:inline;animation:fan .3s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:left bottom}
+@keyframes fan{to{transform:rotate(-35deg)}}
+svg.noses .pmouth{display:none}
+.pmouthEw{display:none}
+svg.noses .pmouthEw{display:inline}
+#flyWing{animation:buzz .08s linear infinite alternate}
+@keyframes buzz{to{opacity:.2}}
+#flyLoop{animation:loop 3s linear infinite;transform-box:view-box;transform-origin:470px 195px}
+@keyframes loop{to{transform:rotate(360deg)}}
+#fly{transition:transform .8s ease-in}
+svg.flydrop #fly{transform:translate(0,52px)}
+svg.flydrop #flyLoop{animation:none}
+svg.flydrop #flyWing{animation:none}
+svg.slow{filter:saturate(.5) contrast(1.15)}
+.steam path{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;animation:steam 2.4s ease-in infinite;transform-box:view-box}
+.steam path:nth-child(2){animation-delay:.8s}.steam path:nth-child(3){animation-delay:1.6s}
+@keyframes steam{0%{transform:translateY(6px);opacity:0}30%{opacity:.9}100%{transform:translateY(-10px);opacity:0}}
+#fish{animation:swim 4s ease-in-out infinite alternate;transform-box:view-box}
+@keyframes swim{to{transform:translateX(26px)}}
+#fishHide{transition:transform .5s,opacity .5s;transform-box:fill-box;transform-origin:center}
+svg.noses #fishHide{transform:translate(-14px,-6px) scale(.6);opacity:.55}
+#hangLeaves{transition:transform 1.5s,filter 1.5s;transform-box:fill-box;transform-origin:center top}
+svg.wilt #hangLeaves{transform:scaleY(1.2) scaleX(.8);filter:saturate(.15) brightness(.75)}
+#cactus{transition:transform .6s ease-in;transform-box:view-box;transform-origin:756px 148px}
+svg.wilt #cactus{transform:rotate(85deg)}
+@media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish{animation:none}}
+</style>
+</head>
+<body>
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <button class="pill" id="collBtn" aria-haspopup="dialog">Farts 0/8</button>
+  <button class="pill" id="soundBtn">Sound on</button>
+</div>
+<main>
+  <h1 class="sr">Feed the Fart</h1>
+  <div class="top">
+  <div class="stage" id="stage">
+    <svg id="scene" viewBox="0 0 800 460" role="img" aria-label="Thanksgiving dinner. The plumber stands by the table, with the family, a dog under the table and a cat on the windowsill." data-face="normal">
+      <defs>
+        <!-- Dithers line up with the game's pixels: one canvas pixel is 800/256 = 3.125 SVG units.
+             The gingham is faint on purpose: stronger checks crossed the outline pass's
+             brightness jump and every square got a dark box round it. -->
+        <pattern id="dLight" width="6.25" height="6.25" patternUnits="userSpaceOnUse"><rect width="3.125" height="3.125" fill="#fbecc9"/><rect x="3.125" y="3.125" width="3.125" height="3.125" fill="#fbecc9"/></pattern>
+        <pattern id="dShade" width="6.25" height="6.25" patternUnits="userSpaceOnUse"><rect width="3.125" height="3.125" fill="#6e4528"/><rect x="3.125" y="3.125" width="3.125" height="3.125" fill="#6e4528"/></pattern>
+        <pattern id="gingham" width="25" height="25" patternUnits="userSpaceOnUse"><rect width="25" height="25" fill="#f4e6c4"/><rect width="12.5" height="25" fill="#a01830" opacity=".15"/><rect width="25" height="12.5" fill="#a01830" opacity=".15"/></pattern>
+      </defs>
+      <!-- room -->
+      <rect width="800" height="330" fill="#f1d7a6"/>
+      <!-- the lamp over the table and its glow on the wall -->
+      <ellipse cx="470" cy="110" rx="200" ry="125" fill="url(#dLight)"/>
+      <ellipse cx="470" cy="100" rx="135" ry="85" fill="#f8e3b8"/>
+      <ellipse cx="470" cy="90" rx="80" ry="50" fill="url(#dLight)"/>
+      <rect x="0" y="0" width="800" height="12" fill="#7a4a2a"/>
+      <!-- fish tank on a wall shelf -->
+      <rect x="112" y="102" width="100" height="6" fill="#5a3418"/>
+      <rect x="120" y="58" width="84" height="44" fill="#3a2414"/><rect x="123" y="61" width="78" height="38" fill="#8fd3f5"/>
+      <rect x="123" y="92" width="78" height="7" fill="#c9a26a"/><path d="M132 92q-4-14 2-24M140 92q4-12-2-20" stroke="#3f8f3a" stroke-width="3" fill="none"/>
+      <g id="fishHide"><g id="fish"><ellipse cx="160" cy="78" rx="9" ry="6" fill="#f08a1e"/><path d="M151 78l-7-5v10z" fill="#d96a10"/><circle cx="164" cy="76" r="1.5" fill="#2a1a0e"/></g></g>
+      <!-- a hanging plant -->
+      <path d="M548 12v26" stroke="#3a2414" stroke-width="2"/>
+      <path d="M537 38h22l-3 14h-16z" fill="#c2643a"/>
+      <g id="hangLeaves">
+        <path d="M540 50q-8 20-4 44M548 52q0 22 2 40M556 50q8 18 4 38" stroke="#3f8f3a" stroke-width="3" fill="none"/>
+        <ellipse cx="537" cy="64" rx="5" ry="3" fill="#5ab04a"/><ellipse cx="535" cy="80" rx="5" ry="3" fill="#3f8f3a"/><ellipse cx="537" cy="94" rx="5" ry="3" fill="#5ab04a"/>
+        <ellipse cx="552" cy="70" rx="5" ry="3" fill="#3f8f3a"/><ellipse cx="551" cy="88" rx="5" ry="3" fill="#5ab04a"/>
+        <ellipse cx="562" cy="62" rx="5" ry="3" fill="#5ab04a"/><ellipse cx="563" cy="78" rx="5" ry="3" fill="#3f8f3a"/>
+      </g>
+      <!-- a picture on the wall: hills at sunset -->
+      <rect x="236" y="60" width="96" height="70" fill="#7a4a2a"/><rect x="243" y="67" width="82" height="56" fill="#f2b26a"/>
+      <path d="M243 105q20-22 40-6t42-10v34h-82z" fill="#6b8f3a"/><circle cx="300" cy="88" r="8" fill="#ffe08a"/>
+      <rect y="250" width="800" height="80" fill="#e2bd83"/>
+      <rect y="246" width="800" height="6" fill="#b88a52"/>
+      <rect y="330" width="800" height="130" fill="#9a6a43"/>
+      <path d="M0 360h800M0 395h800M0 430h800" stroke="#86593a" stroke-width="3"/>
+      <!-- the bathroom door on the left wall (the shart's way out) -->
+      <g id="door">
+        <rect x="8" y="110" width="84" height="222" fill="#7a4a2a"/>
+        <rect x="14" y="116" width="72" height="216" fill="#b9814f"/>
+        <rect x="22" y="128" width="56" height="70" fill="none" stroke="#8f5e36" stroke-width="4"/>
+        <rect x="22" y="214" width="56" height="96" fill="none" stroke="#8f5e36" stroke-width="4"/>
+        <circle cx="76" cy="232" r="5" fill="#e8c35a"/>
+        <!-- a toilet sign, drawn so it reads without words -->
+        <rect x="34" y="138" width="32" height="40" rx="4" fill="#fff"/>
+        <path d="M41 150h18v6h-18z M43 156h14l-2 12h-10z M47 168h6v5h-6z" fill="#3a6ea5"/>
+        <g id="doorOpen"><rect x="14" y="116" width="72" height="216" fill="#2b1a10"/><rect x="80" y="116" width="10" height="216" fill="#b9814f"/></g>
+      </g>
+      <!-- autumn window, curtains, the cat and a cactus on the sill -->
+      <rect x="600" y="28" width="160" height="122" fill="#7a4a2a"/>
+      <rect x="608" y="36" width="144" height="106" fill="#f6c870"/>
+      <rect x="608" y="36" width="144" height="30" fill="#f9dc98"/>
+      <path d="M608 118q30-18 70-8t74-6v38h-144z" fill="#b8642a"/>
+      <rect x="628" y="88" width="6" height="30" fill="#5a3418"/><circle cx="631" cy="80" r="16" fill="#d9542a"/><circle cx="642" cy="90" r="11" fill="#e8923a"/>
+      <rect x="716" y="84" width="6" height="34" fill="#5a3418"/><circle cx="719" cy="74" r="18" fill="#c2304a"/><circle cx="706" cy="84" r="10" fill="#e8923a"/>
+      <circle cx="668" cy="52" r="3" fill="#d9542a"/><circle cx="690" cy="64" r="3" fill="#e8923a"/>
+      <path d="M680 36v106M608 89h144" stroke="#7a4a2a" stroke-width="6"/>
+      <rect x="584" y="20" width="192" height="6" fill="#5a3418"/>
+      <path d="M586 24h22v120q-10 8-22 0z" fill="#d9a420"/><path d="M594 28v112" stroke="#b5841a" stroke-width="3"/>
+      <path d="M752 24h22v120q-10 8-22 0z" fill="#d9a420"/><path d="M764 28v112" stroke="#b5841a" stroke-width="3"/>
+      <rect x="592" y="148" width="176" height="10" fill="#6b3f22"/>
+      <g id="cactus">
+        <rect x="741" y="118" width="10" height="26" rx="5" fill="#3f8f3a"/><rect x="733" y="124" width="6" height="12" rx="3" fill="#3f8f3a"/><rect x="753" y="120" width="6" height="12" rx="3" fill="#3f8f3a"/>
+        <rect x="745" y="120" width="3" height="22" fill="#5ab04a"/>
+        <path d="M736 136h20l-3 12h-14z" fill="#c2643a"/>
+      </g>
+      <g id="cat">
+        <path d="M702 146q30-10 24-34" stroke="#e8923a" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="682" cy="130" rx="20" ry="18" fill="#f4ece0"/>
+        <path d="M690 116q12 4 12 18t-10 12z" fill="#e8923a"/><path d="M664 136q4 8 12 10l-12 0z" fill="#4a3020"/>
+        <circle cx="670" cy="108" r="13" fill="#f4ece0"/>
+        <path d="M670 95q10 2 13 12l-13 2z" fill="#4a3020"/><path d="M658 104q2-8 10-9l-4 10z" fill="#e8923a"/>
+        <path d="M659 101l2-14 9 9zM672 96l9-9 1 14z" fill="#f4ece0"/><path d="M662 98l1-7 4 4zM675 95l4-4 1 6z" fill="#f2a7b8"/>
+        <circle cx="665" cy="107" r="2.5" fill="#2a1a0e"/><circle cx="675" cy="107" r="2.5" fill="#2a1a0e"/><path d="M669 112h3" stroke="#f27d92" stroke-width="2"/>
+      </g>
+      <!-- family behind the table. Generic people, not anyone real. -->
+      <g class="person">
+        <rect x="302" y="198" width="56" height="70" rx="18" fill="#7d4fa0"/><rect x="344" y="204" width="12" height="62" rx="6" fill="#000" opacity=".16"/>
+        <circle cx="330" cy="176" r="22" fill="#f0c9a0"/>
+        <path d="M308 172q2-22 22-22t22 22q-6-12-22-12t-22 12z" fill="#c9c9c9"/><circle cx="330" cy="148" r="9" fill="#c9c9c9"/>
+        <circle cx="322" cy="176" r="2.5" fill="#222"/><circle cx="338" cy="176" r="2.5" fill="#222"/>
+        <path class="pmouth" d="M323 186q7 5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <path class="pmouthEw" d="M323 189q7-5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <circle class="noseHand" cx="330" cy="182" r="7" fill="#e8b98c"/>
+        <g class="fanHand"><path d="M356 214l22-34" stroke="#7d4fa0" stroke-width="9" stroke-linecap="round"/><ellipse cx="381" cy="174" rx="7" ry="10" fill="#e8b98c"/></g>
+      </g>
+      <g class="person">
+        <rect x="408" y="206" width="44" height="60" rx="16" fill="#3f8f5a"/><rect x="441" y="212" width="10" height="52" rx="5" fill="#000" opacity=".16"/>
+        <circle cx="430" cy="188" r="18" fill="#c68a5e"/>
+        <path d="M412 184q0-18 18-18t18 18q-4-8-18-8t-18 8z" fill="#2a1a10"/>
+        <circle cx="424" cy="188" r="2.3" fill="#222"/><circle cx="436" cy="188" r="2.3" fill="#222"/>
+        <path class="pmouth" d="M424 196q6 5 12 0" stroke="#5a2a1a" stroke-width="2.5" fill="none"/>
+        <path class="pmouthEw" d="M424 199q6-5 12 0" stroke="#5a2a1a" stroke-width="2.5" fill="none"/>
+        <circle class="noseHand" cx="430" cy="193" r="6" fill="#b87b50"/>
+        <g class="fanHand"><path d="M450 220l18-30" stroke="#3f8f5a" stroke-width="8" stroke-linecap="round"/><ellipse cx="470" cy="185" rx="6" ry="9" fill="#b87b50"/></g>
+      </g>
+      <g class="person">
+        <rect x="662" y="196" width="58" height="72" rx="18" fill="#3a6ea5"/><rect x="706" y="202" width="12" height="64" rx="6" fill="#000" opacity=".16"/>
+        <circle cx="691" cy="174" r="22" fill="#e9b88f"/>
+        <path d="M669 170q0-24 22-24t22 24q-4-14-22-14t-22 14z" fill="#8a4b22"/>
+        <circle cx="683" cy="174" r="2.5" fill="#222"/><circle cx="699" cy="174" r="2.5" fill="#222"/>
+        <path class="pmouth" d="M684 185q7 5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <path class="pmouthEw" d="M684 188q7-5 14 0" stroke="#7a3b2a" stroke-width="2.5" fill="none"/>
+        <circle class="noseHand" cx="691" cy="180" r="7" fill="#dca67a"/>
+        <g class="fanHand"><path d="M664 212l-14-34" stroke="#3a6ea5" stroke-width="9" stroke-linecap="round"/><ellipse cx="648" cy="172" rx="7" ry="10" fill="#dca67a"/></g>
+      </g>
+      <path d="M470 12v30" stroke="#3a2414" stroke-width="3"/>
+      <path d="M446 62l8-20h32l8 20z" fill="#5a3418"/><rect x="446" y="60" width="48" height="5" fill="#3a2414"/>
+      <ellipse cx="470" cy="68" rx="10" ry="5" fill="#fff4c2"/>
+      <!-- table -->
+      <ellipse cx="515" cy="372" rx="300" ry="26" fill="url(#dShade)"/>
+      <rect x="262" y="300" width="12" height="70" fill="#5a3418"/><rect x="760" y="300" width="12" height="70" fill="#5a3418"/>
+      <path d="M240 255h550v62q-20 8-34 0t-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0-34 0z" fill="url(#gingham)"/>
+      <rect x="240" y="252" width="550" height="8" fill="#a32a3e"/>
+      <!-- food on the table -->
+      <ellipse cx="300" cy="254" rx="26" ry="6" fill="#e8e0d0"/><path d="M282 252q18-26 36 0z" fill="#fbf6e9"/><rect x="296" y="236" width="8" height="5" fill="#f5d34a"/>
+      <path d="M352 252l6-14h26l8 14z" fill="#f2efe6"/><ellipse cx="371" cy="240" rx="13" ry="3" fill="#8a5a2a"/>
+      <ellipse cx="470" cy="256" rx="60" ry="9" fill="#f2efe6"/>
+      <ellipse cx="470" cy="238" rx="42" ry="22" fill="#b0642a"/><ellipse cx="462" cy="232" rx="20" ry="8" fill="#cf8a4a"/>
+      <path d="M432 244l-14 6M508 244l14 6" stroke="#b0642a" stroke-width="9" stroke-linecap="round"/><circle cx="416" cy="251" r="5" fill="#fff"/><circle cx="524" cy="251" r="5" fill="#fff"/>
+      <g class="steam"><path d="M456 214q-5-6 0-12t0-12" /><path d="M472 210q5-6 0-12t0-12"/><path d="M488 214q-5-6 0-12t0-12"/></g>
+      <ellipse cx="640" cy="252" rx="28" ry="7" fill="#c9893f"/><ellipse cx="640" cy="249" rx="22" ry="5" fill="#d9822b"/><ellipse cx="634" cy="246" rx="7" ry="3" fill="#fff"/>
+      <ellipse cx="730" cy="252" rx="20" ry="5" fill="#9b1b30"/>
+      <ellipse cx="330" cy="261" rx="17" ry="4" fill="#fff"/><ellipse cx="690" cy="261" rx="17" ry="4" fill="#fff"/>
+      <path d="M672 252l4-12h30l4 12z" fill="#b07a3a"/><path d="M676 246h30" stroke="#8a5a2a" stroke-width="2"/>
+      <ellipse cx="684" cy="238" rx="7" ry="5" fill="#d9a05a"/><ellipse cx="697" cy="237" rx="7" ry="5" fill="#c98a4a"/>
+      <!-- the flower centerpiece -->
+      <g id="flowers">
+        <g class="stem" id="stemL"><path d="M560 228q-10-20-22-36" stroke="#3f7d2a" stroke-width="4" fill="none"/><circle cx="538" cy="190" r="10" fill="#e8743b"/><circle cx="538" cy="190" r="4" fill="#7a3a10"/></g>
+        <g class="stem" id="stemM"><path d="M560 228v-48" stroke="#3f7d2a" stroke-width="4"/><circle cx="560" cy="178" r="11" fill="#f2c230"/><circle cx="560" cy="178" r="4.5" fill="#7a3a10"/></g>
+        <g class="stem" id="stemR"><path d="M560 228q10-20 22-36" stroke="#3f7d2a" stroke-width="4" fill="none"/><circle cx="582" cy="190" r="10" fill="#c2304a"/><circle cx="582" cy="190" r="4" fill="#7a3a10"/></g>
+        <path d="M546 226h28l-4 28h-20z" fill="#3a6ea5"/>
+      </g>
+      <!-- a fly over the turkey -->
+      <g id="fly"><g id="flyLoop"><g transform="translate(470 178)"><ellipse rx="5" ry="3.5" fill="#222"/><g id="flyWing"><ellipse cx="-2" cy="-5" rx="4" ry="3" fill="#cfe8f5" opacity=".9"/><ellipse cx="3" cy="-5" rx="4" ry="3" fill="#cfe8f5" opacity=".9"/></g></g></g></g>
+      <!-- the dog, sitting by the table with a red collar -->
+      <g id="dog">
+        <path d="M444 420q-26-2-22-22" stroke="#b87333" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <ellipse cx="466" cy="408" rx="28" ry="22" fill="#b87333"/>
+        <ellipse cx="488" cy="388" rx="17" ry="28" fill="#c98544"/><ellipse cx="492" cy="396" rx="9" ry="18" fill="#f0d2a8"/>
+        <rect x="480" y="402" width="9" height="28" rx="4" fill="#c98544"/>
+        <rect x="454" y="424" width="22" height="8" rx="4" fill="#a8652a"/>
+        <circle cx="494" cy="350" r="19" fill="#c98544"/>
+        <ellipse cx="512" cy="358" rx="12" ry="8" fill="#f0d2a8"/><circle cx="522" cy="355" r="4.5" fill="#2a1a0e"/>
+        <path d="M482 336q-12 6-8 30" stroke="#7a4a20" stroke-width="10" fill="none" stroke-linecap="round"/>
+        <path d="M476 368q14 8 28 0" stroke="#c2304a" stroke-width="5" fill="none"/><circle cx="491" cy="374" r="3" fill="#f5d34a"/>
+        <g id="dogEyes"><circle cx="500" cy="346" r="3" fill="#2a1a0e"/></g>
+        <g id="dogEyes2"><path d="M496 346l8 2" stroke="#2a1a0e" stroke-width="2.5"/></g>
+        <g id="dogPaw"><rect x="494" y="402" width="9" height="28" rx="4" fill="#c98544"/></g>
+      </g>
+      <!-- the plumber: fit, in tan canvas bib overalls over a long-sleeve maroon shirt, from
+           the photo Randi sent 20 Nov; no cap, no logo, nothing lettered (card #55) -->
+      <g id="him">
+        <g id="legs">
+          <rect x="122" y="330" width="24" height="98" fill="#b07a3a"/><rect x="154" y="330" width="24" height="98" fill="#b07a3a"/>
+          <rect x="122" y="366" width="24" height="30" fill="#9c6a30"/><rect x="154" y="366" width="24" height="30" fill="#9c6a30"/><rect x="169" y="330" width="9" height="92" fill="#000" opacity=".16"/>
+          <rect x="116" y="422" width="32" height="14" rx="5" fill="#6b4226"/><rect x="152" y="422" width="32" height="14" rx="5" fill="#6b4226"/>
+          <rect x="116" y="434" width="32" height="6" fill="#1d120a"/><rect x="152" y="434" width="32" height="6" fill="#1d120a"/>
+        </g>
+        <g id="belly">
+          <rect x="112" y="214" width="76" height="96" rx="16" fill="#8a2a2e"/>
+          <rect x="112" y="288" width="76" height="52" rx="6" fill="#b07a3a"/>
+          <rect x="124" y="236" width="52" height="58" fill="#b07a3a"/>
+          <path d="M128 237l-4-22M172 237l4-22" stroke="#b07a3a" stroke-width="7"/>
+          <circle cx="128" cy="240" r="3" fill="#d9b44a"/><circle cx="172" cy="240" r="3" fill="#d9b44a"/>
+          <rect x="112" y="288" width="76" height="8" fill="#9c6a30"/>
+          <path d="M150 248v84M134 252h10M156 252h10" stroke="#9c6a30" stroke-width="2.5"/>
+          <rect x="175" y="218" width="12" height="120" rx="5" fill="#000" opacity=".16"/>
+        </g>
+        <rect x="141" y="198" width="18" height="18" fill="#d9a074"/>
+        <path d="M138 214q12 8 24 0" stroke="#74222a" stroke-width="4" fill="none"/>
+        <g id="armDown">
+          <path d="M188 222l6 30" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
+          <path d="M194 252l3 46" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
+          <circle cx="197" cy="304" r="9" fill="#d9a074"/>
+        </g>
+        <g id="armOut" role="button" aria-label="Pull his finger">
+          <path d="M186 224l34 8" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
+          <path d="M220 232l38 4" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
+          <circle cx="266" cy="236" r="10" fill="#d9a074"/>
+          <rect x="270" y="230" width="22" height="8" rx="4" fill="#d9a074"/>
+          <circle id="tip" cx="292" cy="234" r="6" fill="none" stroke="#fff" stroke-width="3"/>
+          <circle cx="282" cy="234" r="34" fill="transparent"/>
+        </g>
+        <path d="M112 222l-6 30" stroke="#8a2a2e" stroke-width="18" stroke-linecap="round"/>
+        <path d="M106 252l-2 46" stroke="#8a2a2e" stroke-width="15" stroke-linecap="round"/>
+        <circle cx="104" cy="304" r="9" fill="#d9a074"/>
+        <circle cx="120" cy="180" r="6" fill="#d9a074"/><circle cx="180" cy="180" r="6" fill="#d9a074"/>
+        <circle cx="150" cy="178" r="30" fill="#e2a978"/>
+        <path d="M121 172q-1-26 29-26t29 26q-4-14-29-15t-29 15z" fill="#22160e"/>
+        <g class="face f-normal">
+          <circle cx="140" cy="176" r="3" fill="#1d120a"/><circle cx="160" cy="176" r="3" fill="#1d120a"/>
+          <path d="M134 168l10-2M156 166l10 2" stroke="#4a2f1d" stroke-width="3"/>
+          <path d="M140 191q10 7 20 0" stroke="#7a3b2a" stroke-width="3" fill="none"/>
+        </g>
+        <g class="face f-eat">
+          <path d="M136 176h8M156 176h8" stroke="#1d120a" stroke-width="3"/>
+          <path d="M134 167l10-2M156 165l10 2" stroke="#4a2f1d" stroke-width="3"/>
+          <ellipse cx="150" cy="193" rx="6" ry="5" fill="#5a2318"/>
+        </g>
+        <g class="face f-smug">
+          <path d="M136 177q4-3 8 0M156 177q4-3 8 0" stroke="#1d120a" stroke-width="3" fill="none"/>
+          <path d="M134 164l10 1M156 165l10-1" stroke="#4a2f1d" stroke-width="3"/>
+          <path d="M142 192q8 2 16-4" stroke="#7a3b2a" stroke-width="3" fill="none"/>
+        </g>
+        <g class="face f-frozen">
+          <circle cx="140" cy="175" r="6.5" fill="#fff" stroke="#1d120a" stroke-width="2"/><circle cx="160" cy="175" r="6.5" fill="#fff" stroke="#1d120a" stroke-width="2"/>
+          <circle cx="140" cy="175" r="1.6" fill="#1d120a"/><circle cx="160" cy="175" r="1.6" fill="#1d120a"/>
+          <path d="M132 163l12 3M156 166l12-3" stroke="#4a2f1d" stroke-width="3"/>
+          <ellipse cx="150" cy="194" rx="4" ry="5" fill="#5a2318"/>
+          <path d="M178 160q5 8 0 12q-5-4 0-12z" fill="#8fd3f5"/>
+        </g>
+      </g>
+      <g id="clouds"></g>
+    </svg>
+    <canvas id="px" aria-hidden="true"></canvas>
+    <div class="say" id="sayHim" hidden></div>
+    <div class="say" id="sayRoom" hidden></div>
+    <div class="say" id="sayDoor" hidden></div>
+  </div>
+
+  <div class="controls">
+    <div class="meterbox">
+      <label for="meter"><span>Fart meter</span><span id="meterWord">Empty</span></label>
+      <div class="meter" id="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Fart meter"><i id="meterFill"></i></div>
+    </div>
+    <button class="pull" id="pullBtn" disabled>Pull my finger</button>
+  </div>
+  <p class="hint" id="hint"></p>
+  </div>
+  <div class="foods" id="foods"></div>
+  <p class="sr" aria-live="polite" id="live"></p>
+</main>
+
+<div class="cover" id="startCover">
+  <div class="card">
+    <h2>Feed the Fart</h2>
+    <p id="startText"></p>
+    <p id="startKeys" style="color:var(--soft);font-size:1rem"></p>
+    <div class="row"><button class="btn" id="startBtn">Play</button></div>
+  </div>
+</div>
+
+<div class="cover" id="collCover" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="collTitle">
+    <h2 id="collTitle">Fart collection</h2>
+    <ul class="coll" id="collList"></ul>
+    <div class="row"><button class="btn" id="collClose">Done</button></div>
+  </div>
+</div>
+
+<div class="cover" id="winCover" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <h2 id="winTitle">"I might need a change of clothes."</h2>
+    <p id="winText"></p>
+    <div class="row"><button class="btn plain" id="winColl">See collection</button><button class="btn" id="winAgain">Play again</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+// Feed the Fart (Trello #55; the name decided 20 Nov). Pull my finger is the main button. Thanksgiving dinner: feed the
+// plumber, fill his fart meter, pull his finger. The plumber is a family in-joke
+// about a real person who is in on it and encourages it, so the family
+// nickname is fine on screen (decided 20 Nov). He's lactose intolerant and
+// denies it, so dairy makes the worst ones and he always says it wasn't the cheese.
+
+const NAME = 'Uncle Stinky Butt';   // which nickname goes on screen is Randi's call; one place to change it
+
+// Every visible string, by key (the parent CLAUDE.md wants a catalogue in a new game).
+const T = {
+  start: `It's Thanksgiving dinner. Feed ${NAME} from the table. When he holds out his finger, pull it. Find every kind of fart, and maybe the secret one.`,
+  keys: 'On a keyboard: Tab to a food and press Enter. F pulls his finger. C opens the collection.',
+  hintEmpty: 'Pick something from the table for him to eat.',
+  hintReady: 'He\'s holding out his finger. Pull it now, or keep eating for a bigger one.',
+  hintFull: 'He\'s full. Pull his finger!',
+  hintBusy: '…',
+  meterWords: ['Empty', 'Rumbling', 'Getting full', 'Full!'],
+  mmm: 'Mmm, {food}.',
+  dairyEat: ['Cheese never bothers me.', 'Dairy? I\'m fine with dairy.', 'My stomach is made of steel.'],
+  full: 'I\'m stuffed. Pull my finger!',
+  ready: 'Hey. Pull my finger.',
+  cheese: 'It wasn\'t the cheese.',
+  sneaky: 'Who, me?',
+  sbd: 'What? I didn\'t hear anything.',
+  after: ['Excuse me!', 'Better out than in.', 'That was the turkey.', 'You pulled it.'],
+  roomEw: ['Ewww!', 'Open a window!', 'Not at the table!', 'Who did that?'],
+  roomSbd: 'What is that SMELL?',
+  ohNo: 'Oh no.',
+  goHome: 'I might need a change of clothes.',
+  newFind: 'New fart: {name}!',
+  count: 'Farts {n}/{total}',
+  winText: `You found the Ultimate Shart, the secret win! ${NAME} made it to the bathroom. Nobody saw anything.`,
+  notFound: '???',
+  play: 'Play it',
+  soundOn: 'Sound on',
+  soundOff: 'Sound off',
+  live: '{name}! {react}',
+  liveReact: ['Nobody noticed.', 'The dog covers its nose.', 'Everyone holds their nose.', 'The flowers wilt and the cat runs off.'],
+};
+const fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k]);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+// Each food adds gas and pushes the mix toward a kind of fart. The weights add
+// up to 1 per food: dairy, sulfur (eggs, sprouts, beans), bread, sweet, savory.
+const FOODS = [
+  { id: 'turkey', name: 'Turkey', gas: 15, mix: { savory: 1 } },
+  { id: 'stuffing', name: 'Stuffing', gas: 15, mix: { bread: .6, savory: .4 } },
+  { id: 'mash', name: 'Mashed potatoes', d: 'with butter', gas: 15, mix: { dairy: .5, savory: .5 } },
+  { id: 'gravy', name: 'Gravy', gas: 10, mix: { savory: 1 } },
+  { id: 'casserole', name: 'Green bean casserole', gas: 15, mix: { dairy: .5, sulfur: .5 } },
+  { id: 'mac', name: 'Mac and cheese', gas: 25, mix: { dairy: 1 } },
+  { id: 'sweetpot', name: 'Sweet potatoes', d: 'with marshmallows', gas: 15, mix: { sweet: 1 } },
+  { id: 'cranberry', name: 'Cranberry sauce', gas: 10, mix: { sweet: 1 } },
+  { id: 'corn', name: 'Corn', gas: 10, mix: { sweet: .4, savory: .6 } },
+  { id: 'rolls', name: 'Rolls', d: 'with butter', gas: 10, mix: { bread: .8, dairy: .2 } },
+  { id: 'eggs', name: 'Deviled eggs', gas: 20, mix: { sulfur: 1 } },
+  { id: 'sprouts', name: 'Brussels sprouts', gas: 20, mix: { sulfur: 1 } },
+  { id: 'pie', name: 'Pumpkin pie', d: 'with whipped cream', gas: 15, mix: { sweet: .5, dairy: .5 } },
+  { id: 'eggnog', name: 'Eggnog', gas: 30, mix: { dairy: 1 } },
+];
+
+// The kinds of fart, in collection order. size scales the cloud; react is the
+// least the room does (0 nothing, 1 the dog, 2 the family, 3 everything).
+const TYPES = {
+  sbd:      { name: 'Silent But Deadly', d: 'No sound. The biggest stink.', hint: 'Eggs and sprouts, and not a sound.', color: '#a6c73a', size: 1.5, alpha: .35, react: 3 },
+  squeaker: { name: 'The Squeaker', d: 'A short, high squeak.', hint: 'Something sweet.', color: '#f2a7c3', size: .55, alpha: .7, react: 1 },
+  duck:     { name: 'The Duck', d: 'Quack.', hint: 'Ducks love bread.', color: '#ffd84a', size: .75, alpha: .7, react: 1 },
+  trumpet:  { name: 'The Trumpet', d: 'A long, brassy blast.', hint: 'Lots of dairy. He says it wasn\'t.', color: '#e08a2b', size: 1.1, alpha: .7, react: 2 },
+  machine:  { name: 'The Machine Gun', d: 'Rapid-fire bursts.', hint: 'A little of everything.', color: '#9a9a9a', size: .45, alpha: .75, react: 2 },
+  rumbler:  { name: 'The Rumbler', d: 'A low, long rumble.', hint: 'Turkey and gravy.', color: '#a0784a', size: 1, alpha: .7, react: 1 },
+  sneaky:   { name: 'The Sneaky', d: 'A tiny cloud. Watch who notices.', hint: 'Pull early, before he\'s very full.', color: '#d6d6d6', size: .3, alpha: .5, react: 1 },
+  shart:    { name: 'The Ultimate Shart', d: 'The secret win. He ran for the bathroom.', hint: 'The secret one. Nobody knows the recipe.', color: '#7f8a3a', size: 1.6, alpha: .75, react: 3 },
+};
+const ORDER = Object.keys(TYPES);
+
+// The rules, first match wins. The shart recipe is the secret (card #55): the
+// meter maxed, eggnog and mac and cheese, plus deviled eggs or Brussels sprouts.
+function whichFart() {
+  const b = belly, share = k => b[k] / Math.max(1, b.total);
+  if (b.gas >= 100 && b.ate.has('eggnog') && b.ate.has('mac') && (b.ate.has('eggs') || b.ate.has('sprouts'))) return 'shart';
+  if (b.gas < 35) return 'sneaky';
+  if (share('sulfur') >= .4) return 'sbd';
+  if (share('dairy') >= .45) return 'trumpet';
+  if (b.ate.size >= 5) return 'machine';
+  if (share('bread') >= .4) return 'duck';
+  if (share('sweet') >= .4) return 'squeaker';
+  return 'rumbler';
+}
+
+// Each food is a little pixel drawing, not an emoji (decided 20 Nov: "can we
+// not use icons"). One letter per pixel; '.' is see-through. PAL is the colours.
+const PAL = { k: '#2a1a0e', h: '#fffbe9', w: '#f4efe4', p: '#c9c2b4', e: '#e2d6bd', c: '#f4e0b0', b: '#d9a05a', B: '#7a4a22',
+  o: '#e8923a', O: '#b5642a', z: '#7a3a14', y: '#ffd84a', Y: '#d99a1e', g: '#6cbf3f', G: '#2f7a2a', r: '#d8344f', R: '#8a1c30',
+  P: '#f27d92', q: '#7fb0e6', u: '#3a74b8', U: '#23508a', s: '#e0652a', m: '#fff6e6', M: '#d99a5a' };
+const WHITE_BOWL = ['kkkkkkkkkkkkkkkk', 'khwwwwwwwwwwwwpk', 'kwwwwwwwwwwwwwpk', '.kwwwwwwwwwwwpk.', '..kwwwwwwwwwpk..', '...kkppppppkk...', '....kkkkkkkk....'];
+const BLUE_BOWL = ['kkkkkkkkkkkkkkkk', 'kqqqqqqqqqqqqqUk', 'kquuuuuuuuuuuuUk', '.kuuuuuuuuuuuUk.', '..kuuuuuuuuuUk..', '...kkUUUUUUkk...', '....kkkkkkkk....'];
+const RED_BOWL = ['kkkkkkkkkkkkkkkk', 'kPPPPPPPPPPPPPRk', 'kPrrrrrrrrrrrrRk', '.krrrrrrrrrrrRk.', '..krrrrrrrrrRk..', '...kkRRRRRRkk...', '....kkkkkkkk....'];
+const DISH = ['kkkkkkkkkkkkkkkk', 'kpkhwwwwwwwwkpk.', '.kkwwwwwwwwwwkk.', '..kwwwwwwwwwwk..', '..kppppppppppk..', '..kkkkkkkkkkkk..'];
+const SPRITES = {
+  turkey: ['...........kkk..', '..........khwwk.', '..........kwwwk.', '.........kwwkk..', '........kzOk....', '.......kzOOk....',
+    '....kkkOOOOk....', '...kOOoOOOOk....', '..kOoooOOOOzk...', '.kOoohoOOOOzk...', '.kOooooOOOzzk...', '.kOOooOOOOzk....',
+    '.kzOOOOOOzzk....', '..kzzOOzzzk.....', '...kkzzzkk......'],
+  stuffing: ['....kkkkkkkk....', '..kkbcbBcbgbkk..', '.kbcBbgcbBcbcbk.', '.kcbBcbbcgbBcbk.', ...WHITE_BOWL],
+  mash: ['.......kk.......', '......kyyk......', '.....kyhyYk.....', '...kkwyyYYwkk...', '..kwhwwwwwwwek..', '.kwhwwewwwwewek.', ...BLUE_BOWL],
+  gravy: ['kk..........kk..', 'kBk.......kkkwk.', '.kBkkkkkkkk..kwk', '.kwBBBBzBBBk.kwk', '.khwwwwwwwwwkkwk', '..kwhwwwwwwwwwk.',
+    '...kwwwwwwwwpk..', '....kkwwwwppk...', '.....kppppk.....', '....kkkkkkkk....'],
+  casserole: ['...kkkkkkkkkk...', '..kMoMkoMoMoMk..', '.kgoMgoMgoMgogk.', '.kGgGgGgGgGgGgk.', ...DISH],
+  mac: ['....kkkkkkkk....', '..kkyYyhYyYykk..', '.kyYyYYyYyYyYyk.', '.kYyhyYyYYyYyYk.', ...RED_BOWL],
+  sweetpot: ['...kkkkkkkkkk...', '..kmMkmMkmMmkk..', '.kmMmsmMsmMmMsk.', '.kssssssssssssk.', ...DISH],
+  cranberry: ['....kkkkkkkk....', '...kPrrrrrrRk...', '...krPrrrrrRk...', '...kRRRRRRRRk...', '...kPrrrrrrRk...', '...krrrrrrrRk...',
+    '...kRRRRRRRRk...', '...kPrrrrrrRk...', '...krrrrrrrRk...', '.kkkkkkkkkkkkkk.', 'kphhhhhhhhhhhhpk', 'kppppppppppppppk', '.kkkkkkkkkkkkkk.'],
+  corn: ['............kGk.', '...........kgGk.', '..........kyyGk.', '.........kyhyk..', '........kyhyYk..', '.......kyyyYk...',
+    '......kyhyYk....', '.....kyyyYk.....', '....kyhyYk......', '...kyyyYk.......', '..kgyyYk........', '.kgGgYk.........', '.kGgGk..........', '..kkk...........'],
+  rolls: ['....kkkkkkk.....', '...kbhbbbbbk....', '..kbhbbbbbbOk...', '.kbbbkbbbkbbOk..', '.kbbbbkbkbbbOk..', '.kOcccccccccOk..',
+    '.kOOOOOOOOOOOk..', '..kkkkkkkkkkk...', '..........kkkkk.', '.........kyhyyk.', '.........kyyyYk.', '.........kkkkkk.'],
+  eggs: ['.kkkkk...kkkkk..', 'khyryek.khyyrek.', 'kwyyyek.kwyyyek.', 'kwwwwek.kwwwwek.', '.kweek...kweek..', '..kkk.....kkk...',
+    'kkkkkkkkkkkkkkkk', 'kphhhhhhhhhhhhpk', '.kkkkkkkkkkkkkk.'],
+  sprouts: ['....kkkk........', '...khgGgk.kkkk..', '..kgGgGgGkhgGgk.', '..kGgGgGGkgGgGGk', '..kgGgGGkkGgGGGk', '...kkkkk.kkgGGk.',
+    '.kkkkk....kkkk..', 'khgGgGk.........', 'kgGgGGk.........', 'kGgGGGk.........', '.kkkkk..........'],
+  pie: ['..........kkk...', '.........khwwk..', '........kkwwwk..', '......kkoowkk...', '.....kooooook...', '....kohooooOk...',
+    '...koooooooOk...', '..kooooooooOk...', '.kooooooooOOk...', 'kMMMMMMMMMMMMk..', 'kBBBBBBBBBBBBk..', '.kkkkkkkkkkkk...'],
+  eggnog: ['...kkkkkkkk.....', '...kcBcccBck....', '...kccBccccbk...', '...khcccccckkk..', '...khcccccck.kk.', '...khcccccck..k.',
+    '...khcccccck.kk.', '...khcccccckkk..', '...kwcccccck....', '...kwwwwwwwk....', '....kkkkkkk.....'],
+};
+PAL.K = PAL.k;
+function spriteURL(id) {
+  const rows = SPRITES[id], c = document.createElement('canvas'); c.width = c.height = 16;
+  const x = c.getContext('2d'), top = 16 - rows.length >> 1;
+  rows.forEach((r, j) => [...r].forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i, top + j, 1, 1); } }));
+  return c.toDataURL();
+}
+
+const $ = s => document.querySelector(s);
+const svg = $('#scene');
+const KEY = 'feed-the-fart:found', SKEY = 'feed-the-fart-sound';
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+let found = new Set();
+try { found = new Set(JSON.parse(store.get(KEY) || '[]').filter(k => TYPES[k])); } catch (e) {}
+let soundOn = store.get(SKEY) !== 'off';
+let belly, busy = false, clearT = 0;
+const READY = 20;   // the finger comes out at 20%, so the Sneaky (a small one) can be found; full is the big payoff
+function emptyBelly() { belly = { gas: 0, total: 0, dairy: 0, sulfur: 0, bread: 0, sweet: 0, savory: 0, ate: new Set() }; }
+emptyBelly();
+
+// ---------- sound: everything is made in the browser, no recordings ----------
+let ac, master, noiseBuf;
+function audio() {
+  if (!ac) {
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain(); master.gain.value = .8; master.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    } catch (e) { ac = null; }
+  }
+  if (ac && ac.state === 'suspended') ac.resume();
+  return soundOn ? ac : null;
+}
+// One fart voice: a buzzing tone with a wobble on its pitch, a flutter on its
+// loudness (the "brrrap"), and some filtered noise for air.
+function brap(t, dur, o) {
+  const osc = ac.createOscillator(); osc.type = o.wave || 'sawtooth';
+  osc.frequency.setValueAtTime(o.f, t); osc.frequency.linearRampToValueAtTime(o.f2 || o.f, t + dur);
+  const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = o.wob || 0; lg.gain.value = o.depth || 0;
+  lfo.connect(lg); lg.connect(osc.frequency);
+  const amp = ac.createGain(); amp.gain.value = o.flut ? .5 : 1;
+  const fl = ac.createOscillator(), flg = ac.createGain(); fl.type = 'square'; fl.frequency.value = o.flut || 1; flg.gain.value = o.flut ? .5 : 0;
+  fl.connect(flg); flg.connect(amp.gain);
+  const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
+  const nf = ac.createBiquadFilter(); nf.type = o.hiss ? 'highpass' : 'bandpass'; nf.frequency.value = o.hiss ? 2500 : o.f * 2; nf.Q.value = .8;
+  const ng = ac.createGain(); ng.gain.value = o.noise || 0;
+  const og = ac.createGain(); og.gain.value = o.tone == null ? 1 : o.tone;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.lp || 1000;
+  const env = ac.createGain(), v = o.vol || .5;
+  env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(v, t + .02);
+  env.gain.setValueAtTime(v * .85, t + dur * .7); env.gain.linearRampToValueAtTime(0, t + dur);
+  osc.connect(og); og.connect(amp); n.connect(nf); nf.connect(ng); ng.connect(amp); amp.connect(lp); lp.connect(env); env.connect(master);
+  [osc, lfo, fl, n].forEach(s => { s.start(t); s.stop(t + dur + .05); });
+}
+function quack(t) {
+  const o = ac.createOscillator(); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(400, t + .16);
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1150; bp.Q.value = 3;
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.9, t + .02); g.gain.linearRampToValueAtTime(0, t + .17);
+  o.connect(bp); bp.connect(g); g.connect(master); o.start(t); o.stop(t + .2);
+}
+function note(t, f, dur, wave, vol, vib) {
+  const o = ac.createOscillator(); o.type = wave; o.frequency.value = f;
+  if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 6; lg.gain.value = vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur); }
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+  const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .03); g.gain.setValueAtTime(vol, t + dur * .8); g.gain.linearRampToValueAtTime(0, t + dur);
+  o.connect(lp); lp.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+}
+const SOUNDS = {
+  sbd() {},   // silent, by definition
+  squeaker(t, v) { brap(t, .38, { f: 430, f2: 580, wob: 9, depth: 40, flut: 40, lp: 3200, noise: .15, vol: .45 * v, wave: 'square' }); },
+  duck(t, v) { brap(t, .22, { f: 110, flut: 28, lp: 700, noise: .3, vol: .6 * v }); quack(t + .28); quack(t + .52); },
+  trumpet(t, v) { brap(t, 1.4, { f: 185, f2: 168, wob: 5.5, depth: 7, lp: 2200, noise: .06, vol: .45 * v, wave: 'square' }); },
+  machine(t, v) { for (let i = 0; i < 9; i++) brap(t + i * .11, .08, { f: 95 + Math.random() * 30, flut: 30, lp: 900, noise: .35, vol: .7 * v }); },
+  rumbler(t, v) { brap(t, 2.1, { f: 55, f2: 44, wob: 3, depth: 6, flut: 17, lp: 420, noise: .25, vol: .95 * v }); },
+  sneaky(t, v) { brap(t, .55, { f: 200, wave: 'sine', tone: 0, hiss: true, lp: 6000, noise: .6, vol: .12 * v }); },
+  shart(t) { brap(t, .75, { f: 72, f2: 92, flut: 22, wob: 4, depth: 10, lp: 650, noise: .55, vol: .95 }); },
+};
+function sadTrombone(t) { [311, 294, 277].forEach((f, i) => note(t + i * .38, f, .34, 'sawtooth', .35)); note(t + 1.14, 262, 1.1, 'sawtooth', .35, 7); }
+function nom() { const a = audio(); if (!a) return; const t = a.currentTime; note(t, 520, .07, 'sine', .25); note(t + .1, 440, .07, 'sine', .25); }
+function slam() { const a = audio(); if (!a) return; brap(a.currentTime, .15, { f: 60, tone: .5, noise: 1, lp: 500, vol: .9 }); }
+function playType(k, v) { const a = audio(); if (a) SOUNDS[k](a.currentTime + .02, v || 1); }
+
+// ---------- the clouds ----------
+const NS = 'http://www.w3.org/2000/svg';
+function cloud(type, scale, slow, x0, y0) {
+  const ty = TYPES[type], g = document.createElementNS(NS, 'g');
+  for (let i = 0; i < 8; i++) {
+    const c = document.createElementNS(NS, 'circle');
+    const a = i / 8 * Math.PI * 2;
+    c.setAttribute('cx', (Math.cos(a) * 26 * (.6 + Math.random() * .5)).toFixed(1));
+    c.setAttribute('cy', (Math.sin(a) * 16 * (.6 + Math.random() * .5)).toFixed(1));
+    c.setAttribute('r', (22 + Math.random() * 14).toFixed(1));
+    c.setAttribute('fill', ty.color);
+    g.append(c);
+  }
+  $('#clouds').append(g);
+  const sx = x0 == null ? 108 : x0, sy = y0 == null ? 322 : y0;
+  const dur = (2600 + scale * 1800) * (slow || 1), t0 = performance.now();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (function step(now) {
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 2);
+    const s = .25 + e * scale * 2.4;
+    const x = sx + (reduce ? 0 : e * 260 * scale), y = sy - (reduce ? 0 : e * 90);
+    g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${s.toFixed(3)})`);
+    g.setAttribute('opacity', (ty.alpha * (p < .6 ? 1 : 1 - (p - .6) / .4)).toFixed(3));
+    if (p < 1) requestAnimationFrame(step); else g.remove();
+  })(t0);
+}
+
+// ---------- the room ----------
+function react(level) {
+  clearTimeout(clearT);
+  if (level >= 1) svg.classList.add('dognose');
+  if (level >= 2) { svg.classList.add('noses', 'flydrop'); sayRoom(pick(T.roomEw)); }
+  if (level >= 3) svg.classList.add('wilt', 'catgone');
+  clearT = setTimeout(calm, 7000);
+}
+function calm() { svg.classList.remove('dognose', 'noses', 'flydrop', 'wilt', 'catgone'); $('#sayRoom').hidden = true; }
+
+let sayT = {};
+function bubble(id, text, ms) {
+  const el = $(id); el.textContent = text; el.hidden = false;
+  clearTimeout(sayT[id]); if (ms) sayT[id] = setTimeout(() => el.hidden = true, ms);
+}
+const say = (t, ms = 2600) => bubble('#sayHim', t, ms);
+const sayRoom = t => bubble('#sayRoom', t, 4000);
+let faceT;
+function face(f, ms) { svg.dataset.face = f; clearTimeout(faceT); if (ms) faceT = setTimeout(() => svg.dataset.face = 'normal', ms); }
+
+// ---------- eating, the meter, the finger ----------
+function eat(f) {
+  if (busy || belly.gas >= 100) return;
+  audio(); nom();
+  belly.gas = Math.min(100, belly.gas + f.gas); belly.total += f.gas;
+  for (const k in f.mix) belly[k] += f.mix[k] * f.gas;
+  belly.ate.add(f.id);
+  face('eat', 500);
+  if (belly.gas >= 100) say(T.full, 0);
+  else if ((f.mix.dairy || 0) >= .5) say(pick(T.dairyEat));
+  else if (belly.gas >= READY && !svg.classList.contains('finger')) say(T.ready);
+  else say(fill(T.mmm, { food: f.name.toLowerCase() }), 1500);
+  update();
+}
+function update() {
+  const g = belly.gas;
+  $('#meterFill').style.width = g + '%';
+  $('#meter').setAttribute('aria-valuenow', g);
+  const w = g >= 100 ? 3 : g >= 50 ? 2 : g > 0 ? 1 : 0;
+  $('#meterWord').textContent = T.meterWords[w];
+  $('#meter').setAttribute('aria-valuetext', `${g}%, ${T.meterWords[w]}`);
+  const ready = g >= READY && !busy;
+  svg.classList.toggle('finger', ready);
+  $('#pullBtn').disabled = !ready;
+  $('#pullBtn').classList.toggle('ready', ready && g >= 100);
+  document.querySelectorAll('.food').forEach(b => b.disabled = busy || g >= 100);
+  $('#hint').textContent = busy ? T.hintBusy : g >= 100 ? T.hintFull : g >= READY ? T.hintReady : T.hintEmpty;
+  svg.style.setProperty('--b', (1 + g * .0018).toFixed(3));
+  $('#collBtn').textContent = fill(T.count, { n: found.size, total: ORDER.length });
+}
+
+function pull() {
+  if (busy || belly.gas < READY) return;
+  audio();
+  busy = true;
+  const type = whichFart(), ty = TYPES[type], full = belly.gas / 100;
+  const dairy = belly.dairy / Math.max(1, belly.total) >= .3;
+  const scale = ty.size * (.55 + full * .6);
+  $('#sayHim').hidden = true;
+  update();
+  if (type === 'shart') return shart();
+  if (type === 'machine') { for (let i = 0; i < 6; i++) setTimeout(() => cloud(type, scale), i * 110); }
+  else cloud(type, scale);
+  playType(type, .55 + full * .45);
+  const level = Math.max(ty.react, full >= .99 ? 2 : full >= .7 ? 1 : 0);
+  const delay = type === 'sbd' ? 2600 : 600;
+  face(type === 'sneaky' || type === 'sbd' ? 'smug' : 'normal');
+  setTimeout(() => {
+    react(type === 'sneaky' ? 1 : level);
+    if (type === 'sbd') sayRoom(T.roomSbd);
+    $('#live').textContent = fill(T.live, { name: ty.name, react: T.liveReact[type === 'sneaky' ? 1 : level] });
+  }, delay);
+  setTimeout(() => {
+    say(dairy ? T.cheese : type === 'sneaky' ? T.sneaky : type === 'sbd' ? T.sbd : pick(T.after), 3000);
+    discover(type);
+  }, delay + 500);
+  setTimeout(() => { emptyBelly(); busy = false; face('normal'); update(); }, delay + 2400);
+}
+
+function discover(type) {
+  if (found.has(type)) return;
+  found.add(type); store.set(KEY, JSON.stringify([...found]));
+  toast(fill(T.newFind, { name: TYPES[type].name }));
+  update();
+}
+let toastT;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 3000); }
+
+// The secret win. Decided 20 Nov: keep it cartoony, never the mess. His face
+// freezes, a slow pause, "Oh no.", then he runs off to the bathroom (added
+// 20 Nov), the door slams, and "I might need a change of clothes." comes from
+// behind it (it replaced the card's "I need to go home." the same day).
+function shart() {
+  const a = audio(); if (a) SOUNDS.shart(a.currentTime + .02);
+  cloud('shart', 1.6, 2.2);
+  face('frozen');
+  svg.classList.add('slow');
+  react(3);
+  $('#live').textContent = TYPES.shart.name + '!';
+  setTimeout(() => say(T.ohNo, 0), 1600);
+  setTimeout(() => { $('#sayHim').hidden = true; svg.classList.add('dooropen'); $('#him').classList.add('run'); }, 3400);
+  setTimeout(() => { svg.classList.remove('dooropen'); slam(); }, 4700);
+  setTimeout(() => { bubble('#sayDoor', T.goHome, 0); const a2 = audio(); if (a2) sadTrombone(a2.currentTime + .05); $('#live').textContent = T.goHome; }, 5600);
+  setTimeout(() => {
+    discover('shart');
+    $('#winText').textContent = T.winText;
+    $('#winCover').hidden = false; $('#winAgain').focus();
+  }, 8200);
+}
+function playAgain() {
+  $('#winCover').hidden = true; $('#sayDoor').hidden = true;
+  svg.classList.remove('slow'); $('#him').classList.remove('run');
+  calm(); face('normal'); emptyBelly(); busy = false; update();
+  $('#pullBtn').focus();
+}
+
+// ---------- the collection ----------
+const CLOUD_ICON = c => `<svg viewBox="0 0 64 48" aria-hidden="true"><g fill="${c}"><circle cx="20" cy="28" r="13"/><circle cx="34" cy="20" r="15"/><circle cx="46" cy="30" r="12"/><circle cx="30" cy="34" r="12"/></g></svg>`;
+function showColl() {
+  $('#collList').innerHTML = '';
+  for (const k of ORDER) {
+    const t = TYPES[k], has = found.has(k), li = document.createElement('li');
+    li.innerHTML = has
+      ? `${CLOUD_ICON(t.color)}<div><b>${t.name}</b><span class="d">${t.d}</span>${k === 'sbd' ? '' : `<button type="button" data-k="${k}">${T.play}</button>`}</div>`
+      : `${CLOUD_ICON('#4a3826')}<div><b>${T.notFound}</b><span class="d">${t.hint}</span></div>`;
+    $('#collList').append(li);
+  }
+  $('#collCover').hidden = false; $('#collClose').focus();
+}
+$('#collList').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) playType(b.dataset.k === 'shart' ? 'shart' : b.dataset.k, 1); });
+const closeColl = () => { $('#collCover').hidden = true; $('#collBtn').focus(); };
+$('#collClose').onclick = closeColl;
+$('#collBtn').onclick = showColl;
+$('#winColl').onclick = () => { playAgain(); showColl(); };
+$('#winAgain').onclick = playAgain;
+
+// ---------- setup ----------
+for (const f of FOODS) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'food';
+  b.innerHTML = `<img class="e" src="${spriteURL(f.id)}" alt="" width="16" height="16"><span>${f.name}</span>${f.d ? `<span class="d">${f.d}</span>` : ''}`;
+  b.onclick = () => eat(f);
+  $('#foods').append(b);
+}
+$('#pullBtn').onclick = pull;
+$('#armOut').addEventListener('click', pull);
+$('#startText').textContent = T.start;
+$('#startKeys').textContent = T.keys;
+$('#startBtn').onclick = () => { audio(); $('#startCover').hidden = true; $('#foods button').focus(); };
+const soundIcon = () => { $('#soundBtn').textContent = soundOn ? T.soundOn : T.soundOff; };
+$('#soundBtn').onclick = () => { soundOn = !soundOn; store.set(SKEY, soundOn ? 'on' : 'off'); soundIcon(); };
+soundIcon();
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;   // the Menu dialog
+  if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
+  if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
+  if (e.key === 'f' || e.key === 'F') pull();
+  else if (e.key === 'c' || e.key === 'C') showColl();
+});
+update();
+
+// ---------- 16-bit look (decided 20 Nov, Randi: "can we go 8bit? or really 16 bit?") ----------
+// The scene is still drawn as one SVG, so the poses, reactions and clouds stay
+// simple CSS and DOM. A copy of it, with each element's live (mid-animation)
+// style written onto it, is drawn into a canvas at 4x the pixel size, then
+// one sample from the middle of each 4x4 block is kept. Taking one sample
+// rather than averaging the block is what gives hard pixel edges; averaging
+// (just drawing it small) left blurry blended edges that read as a shrunk
+// picture, not pixel art. The SVG stays underneath for clicks and screen
+// readers, and shows on its own if this ever fails.
+(() => {
+  const W = 256, H = Math.round(W * 460 / 800), K = 4;
+  const out = $('#px'), o = out.getContext('2d');
+  out.width = W; out.height = H;
+  const big = document.createElement('canvas'); big.width = W * K; big.height = H * K;
+  const b = big.getContext('2d', { willReadFrequently: true });
+  const frame = o.createImageData(W, H);
+  const els = [svg, ...svg.querySelectorAll('*')];
+  const PROPS = ['display', 'opacity', 'transform', 'transform-origin', 'transform-box', 'filter'];
+  let loading = false;
+  // Pixel-art outlines (decided 20 Nov, from Randi's Stardew-style references):
+  // where two colours meet with a big jump in brightness, the darker side gets
+  // a one-pixel edge in a dark shade of its own colour, not flat black. The
+  // jump has to be big so the wall's light dither and soft shading don't get
+  // outlined too.
+  const lum = new Float32Array(W * H), JUMP = 34;
+  function outline(d) {
+    for (let i = 0; i < W * H; i++) lum[i] = d[i * 4] * .3 + d[i * 4 + 1] * .59 + d[i * 4 + 2] * .11;
+    const mark = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      for (const j of [x + 1 < W ? i + 1 : -1, y + 1 < H ? i + W : -1]) {
+        if (j < 0 || Math.abs(lum[i] - lum[j]) < JUMP) continue;
+        mark[lum[i] < lum[j] ? i : j] = 1;
+      }
+    }
+    for (let i = 0; i < W * H; i++) if (mark[i]) { const t = i * 4; d[t] *= .42; d[t + 1] *= .38; d[t + 2] *= .36; }
+  }
+  function snap() {
+    if (loading) return;
+    loading = true;
+    const copy = svg.cloneNode(true), all = [copy, ...copy.querySelectorAll('*')];
+    const live = [svg, ...svg.querySelectorAll('*')];   // clouds come and go, so walk it fresh
+    for (let i = 0; i < live.length; i++) {
+      const cs = getComputedStyle(live[i]);
+      all[i].setAttribute('style', PROPS.map(p => `${p}:${cs.getPropertyValue(p)}`).join(';'));
+    }
+    copy.setAttribute('width', W * K); copy.setAttribute('height', H * K);
+    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml' }));
+    const img = new Image();
+    img.onload = () => {
+      b.drawImage(img, 0, 0, W * K, H * K);
+      const src = b.getImageData(0, 0, W * K, H * K).data, d = frame.data, h = K >> 1;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const s = ((y * K + h) * W * K + x * K + h) * 4, t = (y * W + x) * 4;
+        d[t] = src[s]; d[t + 1] = src[s + 1]; d[t + 2] = src[s + 2]; d[t + 3] = 255;
+      }
+      outline(d);
+      o.putImageData(frame, 0, 0);
+      URL.revokeObjectURL(url); loading = false;
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); out.hidden = true; };
+    img.src = url;
+  }
+  setInterval(snap, 66);   // about 15 frames a second, which suits the look
+  snap();
+})();
+</script>
+</body>
