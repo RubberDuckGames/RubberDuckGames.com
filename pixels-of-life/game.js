@@ -76,6 +76,11 @@ const WORLD = {
   // energy every tick.
   poisonHurt: 1,
   maxCreatures: 400, // the world stops babies past this many
+  // Old age (22 Nov, after the testers said the world froze): nothing died of
+  // old age, so after a disaster plants (which never starve) filled the world
+  // to maxCreatures, no babies could be born, and nothing moved. Now a creature
+  // dies once it's this many ticks old, so the world keeps changing. Ours.
+  oldAge: 2000,
   // Disasters (his idea, 22 Nov: a mass extinction that can wipe out the whole
   // thing, can't be predicted, and how a creature is built decides if it
   // lives). Disaster picks one at random. PLACEHOLDER numbers, ours.
@@ -401,7 +406,7 @@ function live(c) {
     else c.dir = rnd(4);
   }
   if (settings.babies && c.energy >= c.max * WORLD.birthAt && c.age >= WORLD.birthAge && creatures.length < WORLD.maxCreatures) haveBaby(c);
-  if (c.energy <= 0) die(c);
+  if (c.energy <= 0 || c.age >= WORLD.oldAge) die(c);
 }
 
 function step() {
@@ -523,7 +528,7 @@ function showInfo() {
     ['Uses each tick', +c.upkeep.toFixed(2)],
     ...(c.makes ? [['Makes each tick', +c.makes.toFixed(2)]] : []),
     ['Cells', c.cells.length + ' of ' + sizeLimit(c.cells)],
-    ['Generation', c.gen], ['Age', c.age], ['Babies', c.kids],
+    ['Generation', c.gen], ['Age', c.age + ' of ' + WORLD.oldAge], ['Babies', c.kids],
     ...(c.smart ? [['Remembers', [c.good && 'food', c.bad && 'danger'].filter(Boolean).join(', ') || 'nothing yet']] : []),
     ...TYPES.filter(n).map(t => [CELLS[t].name, n(t)]),
   ];
@@ -663,6 +668,9 @@ cv.addEventListener('wheel', e => {
   setZoom(zoom * (e.deltaY < 0 ? 1.25 : 0.8), ...devPt(e.clientX, e.clientY)); follow = false;
 }, { passive: false });
 cv.addEventListener('pointerdown', e => {
+  // a finger whose lift was missed (it slid off onto a button) would make
+  // every later tap count as a pinch, so the first finger down starts afresh
+  if (e.isPrimary) { pts.clear(); pinch = null; }
   pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   cv.setPointerCapture(e.pointerId);
   if (pts.size === 2) { painting = false; press = null; pinch = { d: spread()[0] || 1, z: zoom }; return; }
@@ -901,7 +909,12 @@ $('#zoomOut').onclick = () => zoomBy(1 / 1.5);
 
 // ---------------------------------------------------------------------------
 let last = performance.now(), acc = 0;
+// One bad frame can't stop the game: the next frame is asked for first.
 function frame(now) {
+  requestAnimationFrame(frame);
+  try { runFrame(now); } catch (e) { console.error(e); }
+}
+function runFrame(now) {
   const dt = Math.min(0.25, (now - last) / 1000); last = now;
   if (!paused) {
     // Fast speeds run as many ticks as fit in about 12 ms of each frame, so
@@ -915,7 +928,6 @@ function frame(now) {
   if (follow && sel && !sel.dead && zoom > 1) followSel();
   draw();
   if (now - lastStats > 250) { lastStats = now; showStats(); }
-  requestAnimationFrame(frame);
 }
 newWorld(); fit(); showStats();
 requestAnimationFrame(frame);
