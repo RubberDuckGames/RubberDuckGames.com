@@ -33,6 +33,7 @@
     <button class="pill" type="button" id="zoomIn" aria-label="Zoom in">+</button>
     <button class="pill" type="button" id="zoomOut" aria-label="Zoom out">−</button>
   </div>
+  <p class="news" id="news" role="status" hidden></p>
   <div class="info" id="info" hidden>
     <h2 id="infoTitle">Creature</h2>
     <div class="top">
@@ -61,6 +62,7 @@
     <button class="btn plain" type="button" id="poisonBtn" aria-pressed="false">Add poison</button>
     <button class="btn plain" type="button" id="creatureBtn" aria-pressed="false">Add creature</button>
     <button class="btn plain" type="button" id="removeBtn" aria-pressed="false">Remove</button>
+    <button class="btn plain" type="button" id="disasterBtn">Disaster</button>
     <button class="btn plain" type="button" id="pauseBtn">Pause</button>
     <button class="btn" type="button" id="buildBtn">Build</button>
   </div>
@@ -102,7 +104,8 @@
   <p>A killer cell takes energy from any other creature it touches, unless it touches armor.</p>
   <p>Poison blocks are solid. A creature touching one loses energy. Add poison drops them; with it on, tapping a poison block takes it away.</p>
   <p>Zoom in with + and − (or pinch, or the mouse wheel) to see the cells up close, and drag to look around. Zoomed in, the view follows the creature you picked.</p>
-  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off, C turns Add creature on and off, R turns Remove on and off, + and − zoom.</p>
+  <p>Disaster picks one at random: a meteor (armor saves creatures at its edge), an ice age (no food and no producing for a while, so storage helps) or poison rain (armor blocks it, and the poison stays). Whether anything lives depends on how the creatures are built.</p>
+  <p class="soft">Keys: Space pauses, B builds, N picks the next creature, F turns Add food on and off, P turns Add poison on and off, C turns Add creature on and off, R turns Remove on and off, X starts a disaster, + and − zoom.</p>
   <div class="row"><button class="btn" type="button" id="helpClose">Close</button></div>
 </dialog>
 

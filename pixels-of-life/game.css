@@ -88,3 +88,6 @@ dialog p{margin:.35rem 0}
   .info .btn{padding:.5rem .55rem;font-size:.55rem}
   .info .row{flex-wrap:nowrap;gap:.4rem}
 }
+/* What a disaster did, over the top of the world for a few seconds */
+.news{position:absolute;left:50%;top:3.2rem;transform:translateX(-50%);width:max-content;max-width:calc(100% - 1rem);margin:0;background:#2b0f0f;color:#fff;border:3px solid #ff922b;padding:.6rem .9rem;font-weight:600;line-height:1.4;box-shadow:.3rem .3rem 0 rgba(0,0,0,.35);pointer-events:none;text-align:center}
+#disasterBtn{background:#b02525;color:#fff;box-shadow:.25rem .25rem 0 #5c1010}

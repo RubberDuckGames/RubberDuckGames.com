@@ -76,6 +76,15 @@ const WORLD = {
   // energy every tick.
   poisonHurt: 1,
   maxCreatures: 400, // the world stops babies past this many
+  // Disasters (his idea, 22 Nov: a mass extinction that can wipe out the whole
+  // thing, can't be predicted, and how a creature is built decides if it
+  // lives). Disaster picks one at random. PLACEHOLDER numbers, ours.
+  meteorSize: [0.15, 0.4], // the blast's radius, a share of the world's longer side
+  meteorBig: 0.1,          // chance the blast covers almost the whole world
+  meteorEdge: 0.6,         // inside this share of the radius nothing lives; outside it, armor saves
+  iceTicks: 300,           // how long an ice age stops food and producers
+  rainShare: 0.03,         // share of the world's squares poison rain falls on
+  rainHurt: 20,            // energy a creature loses for each cell a poison drop hits
   speed: 20,         // ticks each second at ×1
   // The Speed dial (his ask, 21 Nov: evolution was too slow to watch). Each
   // step is a multiple of `speed`; the dial starts at ×1.
@@ -155,7 +164,7 @@ function newWorld(cols, rows) {
   const T = r.width < 700 ? 8 : 10;
   W = cols || Math.max(30, Math.floor(r.width / T)); H = rows || Math.max(20, Math.floor(r.height / T));
   occ = new Int32Array(W * H); food = new Uint8Array(W * H); poison = new Uint8Array(W * H); foodCount = 0; poisonCount = 0;
-  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null);
+  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null); iceUntil = 0; boom = null;
   for (let i = 0; i < W * H * WORLD.startFood; i++) { const k = rnd(W * H); if (!food[k]) { food[k] = 1; foodCount++; } }
 }
 
@@ -196,6 +205,7 @@ function release(cells) {
 }
 
 function growFood() {
+  if (tick < iceUntil) return;
   foodAcc += settings.food * W * H / 10000;
   while (foodAcc >= 1) {
     foodAcc--;
@@ -240,6 +250,58 @@ function haveBaby(c) {
 function die(c) {
   mark(c, 0); c.dead = true; died++; byId.delete(c.id);
   if (WORLD.deadToFood) for (const p of c.cells) { const k = (c.y + p.y) * W + c.x + p.x; if (!food[k]) { food[k] = 1; foodCount++; } }
+}
+
+// ---------------------------------------------------------------------------
+// Disasters. Each returns the line shown on screen; `boom` is the meteor's
+// flash, drawn for a moment after it hits.
+let iceUntil = 0, boom = null;
+const hasArmor = c => c.cells.some(p => p.t === 'armor');
+function meteor() {
+  const long = Math.max(W, H), big = Math.random() < WORLD.meteorBig;
+  const r = big ? long * 0.8 : long * (WORLD.meteorSize[0] + Math.random() * (WORLD.meteorSize[1] - WORLD.meteorSize[0]));
+  const cx = Math.random() * W, cy = Math.random() * H, before = creatures.length;
+  for (const c of creatures.slice()) {
+    const [mx, my] = [c.x + c.w / 2, c.y + c.h / 2], d = Math.hypot(mx - cx, my - cy);
+    if (d >= r) continue;
+    if (d < r * WORLD.meteorEdge || !hasArmor(c)) { removeCreature(c); died++; }
+    else c.energy /= 2;
+  }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (Math.hypot(x + .5 - cx, y + .5 - cy) >= r) continue;
+    const k = y * W + x;
+    if (food[k]) { food[k] = 0; foodCount--; }
+    if (poison[k]) { poison[k] = 0; poisonCount--; }
+  }
+  boom = { x: cx, y: cy, r, at: performance.now() };
+  const lost = before - creatures.length;
+  return (big ? 'A giant meteor! ' : 'A meteor hit! ') + `${lost} creature${lost === 1 ? '' : 's'} gone. Armor saved some at the edge.`;
+}
+function iceAge() {
+  food.fill(0); foodCount = 0; iceUntil = tick + WORLD.iceTicks;
+  return `Ice age! All the food froze, and nothing grows for ${WORLD.iceTicks} ticks. Producers stop too. Storage helps.`;
+}
+function poisonRain() {
+  let hits = 0;
+  const drops = Math.round(W * H * WORLD.rainShare);
+  for (let i = 0; i < drops; i++) {
+    const k = rnd(W * H), x = k % W, y = (k / W) | 0;
+    if (occ[k]) {
+      const v = byId.get(occ[k]), cell = v && v.cells.find(q => v.x + q.x === x && v.y + q.y === y);
+      if (cell && cell.t !== 'armor') { v.energy -= WORLD.rainHurt; hurtAt(v); hits++; if (v.energy <= 0) die(v); }
+    } else if (!poison[k]) { if (food[k]) { food[k] = 0; foodCount--; } poison[k] = 1; poisonCount++; }
+  }
+  creatures = creatures.filter(c => !c.dead);
+  return `Poison rain! It hit creatures ${hits} time${hits === 1 ? '' : 's'}, and the poison stays. Armor blocks it.`;
+}
+const DISASTERS = [meteor, iceAge, poisonRain];
+let newsTimer = 0;
+function disaster() {
+  const msg = pick(DISASTERS)();
+  if (sel && sel.dead) showInfo();
+  const el = $('#news'); el.textContent = msg; el.hidden = false;
+  clearTimeout(newsTimer); newsTimer = setTimeout(() => { el.hidden = true; }, 6000);
+  showStats();
 }
 
 // The way to go (an index into DIRS) for a creature with eyes, or null if
@@ -289,7 +351,7 @@ function recall(c) {
 
 function live(c) {
   c.age++;
-  c.energy = Math.min(c.max, c.energy - c.upkeep + c.makes);
+  c.energy = Math.min(c.max, c.energy - c.upkeep + (tick < iceUntil ? 0 : c.makes));
   if (poisonCount) for (const p of c.cells) for (const [dx, dy] of DIRS) {
     const x = c.x + p.x + dx, y = c.y + p.y + dy;
     if (x >= 0 && y >= 0 && x < W && y < H && poison[y * W + x]) { c.energy -= WORLD.poisonHurt; hurtAt(c); }
@@ -385,6 +447,17 @@ function draw() {
     else if (poison[k]) drawCell(g, 'poison', ox + x * T, oy + y * T, T);
   }
   for (const c of creatures) for (const p of c.cells) drawCell(g, p.t, ox + (c.x + p.x) * T, oy + (c.y + p.y) * T, T);
+  if (tick < iceUntil) { g.fillStyle = 'rgba(165, 216, 255, .35)'; g.fillRect(ox, oy, T * W, T * H); }
+  if (boom) {
+    const age = (performance.now() - boom.at) / 1200;
+    if (age >= 1) boom = null;
+    else {
+      g.globalAlpha = 1 - age;
+      g.fillStyle = '#ff922b'; g.beginPath(); g.arc(ox + boom.x * T, oy + boom.y * T, boom.r * T, 0, 7); g.fill();
+      g.strokeStyle = '#c92a2a'; g.lineWidth = Math.max(3, T / 2); g.stroke();
+      g.globalAlpha = 1;
+    }
+  }
   if (sel && !sel.dead) {
     const pad = Math.max(2, T / 3);
     g.strokeStyle = '#14262b'; g.lineWidth = Math.max(2, T / 4);
@@ -769,6 +842,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'p' || e.key === 'P') setPlacing(placing === 'poison' ? null : 'poison');
   else if (e.key === 'c' || e.key === 'C') setPlacing(placing === 'creature' ? null : 'creature');
   else if (e.key === 'r' || e.key === 'R') setPlacing(placing === 'remove' ? null : 'remove');
+  else if (e.key === 'x' || e.key === 'X') disaster();
   else if (e.key === 'n' || e.key === 'N') nextCreature();
   else if (e.key === '+' || e.key === '=') zoomBy(1.5);
   else if (e.key === '-' || e.key === '_') zoomBy(1 / 1.5);
@@ -789,6 +863,7 @@ function zoomBy(f) {
   if (sel && !sel.dead) { setZoom(zoom * f); followSel(); follow = true; }
   else setZoom(zoom * f);
 }
+$('#disasterBtn').onclick = disaster;
 $('#zoomIn').onclick = () => zoomBy(1.5);
 $('#zoomOut').onclick = () => zoomBy(1 / 1.5);
 
