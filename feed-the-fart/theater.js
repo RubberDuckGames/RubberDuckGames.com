@@ -29,7 +29,8 @@ Object.assign(T, {
   usherWarn: ['The usher is watching you.', 'Last warning from the usher!'],
   usherLose: 'Three strikes! The usher walks him out.',
   strikes: 'Usher {n}/3',
-  movHint: 'People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine.',
+  popcorn: 'Popcorn', popcornGot: 'Extra butter! More gas.', popcornWait: 'The popcorn is still popping.',
+  movHint: 'People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine. Low on gas? Walk to the popcorn stand at the back and press Use for a big bucket.',
 });
 
 const THEATER = (() => {
@@ -42,10 +43,12 @@ const THEATER = (() => {
   const ROWS = [5, 7, 9, 11, 13];
   for (const y of ROWS) { put(2, y, 9, 1, 's'); put(13, y, 9, 1, 's'); }   // seats; aisles at the sides and down the middle
   put(11, 16, 2, 1, 'O');           // the doors
-  const SOLID = '#Ms';
+  put(3, 16, 3, 1, 'P');            // the popcorn stand, in the back wall (Randi, 22 Nov: "for more gas")
+  const STAND = [4.5 * TS, 16 * TS], POP = 40, POPWAIT = 15;   // how much gas a bucket gives, and how long the next one takes
+  const SOLID = '#MsP';
   const at = (i, j) => (i < 0 || j < 0 || i >= MW || j >= MH) ? '#' : map[j][i];
   const blocked = (x, y) => [[x - 5, y - 6], [x + 5, y - 6], [x - 5, y - 1], [x + 5, y - 1]].some(([a, b]) => SOLID.includes(at(Math.floor(a / TS), Math.floor(b / TS))));
-  const GG = K.gasGrid(MW, MH, k => map[Math.floor(k / MW)][k % MW] === '#', .996);   // a big room with the air on: it fades
+  const GG = K.gasGrid(MW, MH, k => '#P'.includes(map[Math.floor(k / MW)][k % MW]), .996);   // a big room with the air on: it fades
   // the movie: quiet scenes and loud ones; a fart is heard if it's louder than the scene
   const MOVIE = [[8, .1, 'Opening scene'], [4, 1, 'Explosion!'], [9, .08, 'The kissing scene'], [5, .95, 'Car chase!'], [8, .1, 'The sad part'],
     [3, 1, 'Jump scare!'], [9, .12, 'Talking scene'], [6, 1, 'The big battle'], [8, .06, 'Very quiet scene'], [4, .9, 'Helicopter crash!'], [10, .1, 'The ending'], [6, .6, 'The credits']];
@@ -71,7 +74,7 @@ const THEATER = (() => {
       if ((x * 7 + y * 13) % 5 < 2 && !(y === 13 && x >= 13 && x <= 18)) people.push({ x: x + .5, y: y + .9, who: 'm' + n, hair: HAIRS[n % 7], shirt: SHIRTS[(n * 3) % 7] }), n++;
     }
     G = { time: 0, x: 14.5 * TS, y: 14.8 * TS, dir: 'up', step: 0, frozen: 0, moving: false, done: false, bar: 30, crowd: 0, score: 0, gone: 0, puffs: [], nextTalk: 5, endAt: 0,
-      strikes: 0, out: false,
+      strikes: 0, out: false, popT: 0, buckets: 0,
       usher: { x: WALK[0][0], y: WALK[0][1], to: 1, wait: 2, face: -Math.PI / 2, beam: -Math.PI / 2, watchT: 0 },
       people: people.map(p => ({ ...p, dose: 0, talking: false, quietT: 0, ewT: 0, complained: false, left: false, leaveT: 0 })) };
     mode = 'movie';
@@ -95,6 +98,7 @@ const THEATER = (() => {
       if (quiet.length) { const p = pick(quiet); p.talking = true; p.line = pick(T.talking); }
     }
     walkUsher(dt);
+    if (G.popT > 0) G.popT -= dt;
     let gasStep = (G.gasT || 0) + dt; while (gasStep > .05) { gasStep -= .05; GG.step(); } G.gasT = gasStep;
     for (const p of G.people) {
       if (p.left) { p.leaveT += dt; continue; }
@@ -146,19 +150,27 @@ const THEATER = (() => {
   function fart() {
     if (G.done || G.frozen > 0) return;
     if (G.bar < 12) { say(T.empty); return; }
-    const scene = MOVIE[sceneAt(G.time)], loud = .2 + G.bar / 125;
+    const scene = MOVIE[sceneAt(G.time)], loud = Math.min(.85, .2 + G.bar / 125);   // a scene the bar calls Loud always covers it, however full he is
     const type = whichFart({ gas: G.bar, total: 4, dairy: 2, sulfur: 1, bread: 1, sweet: 0, savory: 0, ate: new Set() });   // popcorn with butter
     const back = { up: [0, 4], down: [0, -12], left: [6, -6], right: [-6, -6] }[G.dir], px = G.x + back[0], py = G.y + back[1];
-    GG.add(px, py, G.bar * 2.4);
-    for (const p of G.people) if (!p.left && Math.hypot(p.x * TS - px, p.y * TS - 6 - py) < 30) p.dose += G.bar * .12;   // right behind them
-    G.puffs.push({ x: px, y: py, t: 0, color: TYPES[type].color, r: 5 + G.bar * .1 });
+    const out = Math.min(G.bar, 40);   // a fart lets out 40 of the bar, so a bucket of popcorn means more farts, not bigger ones
+    GG.add(px, py, out * 2.4);
+    for (const p of G.people) if (!p.left && Math.hypot(p.x * TS - px, p.y * TS - 6 - py) < 30) p.dose += out * .12;   // right behind them
+    G.puffs.push({ x: px, y: py, t: 0, color: TYPES[type].color, r: 5 + out * .1 });
     playType(type, scene[1] >= loud ? .25 : .45 + G.bar / 200); discover(type);
     if (scene[1] < loud) { G.crowd += 12; say(T.heard, 1600); }
     if (seen()) strike();
     G.bar = Math.max(0, G.bar - 40);
   }
+  const atStand = () => Math.hypot(G.x - STAND[0], G.y - STAND[1]) < 30;
+  function popcorn() {
+    if (G.popT > 0) { say(T.popcornWait, 1400); return; }
+    G.bar = Math.min(100, G.bar + POP); G.popT = POPWAIT; G.buckets++;
+    say(T.popcornGot, 1800); for (let k = 0; k < 4; k++) tone(900 + k * 140, .04, 'square', k * .07, .06);   // crunch crunch
+  }
   function shush() {
     if (G.done) return;
+    if (atStand()) return popcorn();
     const p = G.people.filter(q => q.talking && q.quietT <= 0).sort((a, b) => Math.hypot(a.x * TS - G.x, a.y * TS - G.y) - Math.hypot(b.x * TS - G.x, b.y * TS - G.y))[0];
     if (!p || Math.hypot(p.x * TS - G.x, p.y * TS - G.y) > 30) return;
     p.quietT = 8; say(T.shushed, 1000); tone(1800, .05, 'sine', 0, .05);
@@ -171,7 +183,8 @@ const THEATER = (() => {
     $('#hScore').textContent = fill(T.score, { n: G.score });
     $('#hFood').textContent = fill(T.crowd, { n: Math.round(G.crowd) }) + (G.strikes ? ' · ' + fill(T.strikes, { n: G.strikes }) : '');
     const near = G.people.some(q => q.talking && q.quietT <= 0 && Math.hypot(q.x * TS - G.x, q.y * TS - G.y) <= 30);
-    $('#hUse').disabled = !near; $('#hUse').textContent = T.shush;
+    const stand = atStand();
+    $('#hUse').disabled = !near && !stand; $('#hUse').textContent = stand ? T.popcorn : T.shush;
   }
 
   // the camera follows him but stays on the theater when it's bigger than the screen
@@ -189,6 +202,12 @@ const THEATER = (() => {
       R(x, y, TS, TS, '#3a2030'); if ((i + j) % 2) R(x + 4, y + 4, 2, 2, '#4a2838');   // dark carpet
       if (c === 's') { R(x + 1, y + 2, 14, 12, '#8a1f2a'); R(x + 1, y + 2, 14, 4, '#a8323a'); R(x, y + 14, TS, 2, '#2a1018'); }
       if ((i === 1 || i === 11 || i === 12 || i === 22) && j > 3 && j % 2) R(x + 7, y + 13, 2, 2, '#f5d34a');   // aisle lights
+      if (c === 'P') {   // a red and white counter with popcorn piled behind the glass
+        R(x, y, TS, TS, '#f2efe6'); for (let k = 0; k < 4; k++) R(x + k * 4, y, 2, TS, '#c2304a');
+        R(x + 1, y + 1, 14, 7, '#3a2a20'); R(x + 2, y + 3, 12, 5, '#f5d34a'); R(x + 3 + (i % 2) * 4, y + 2, 3, 2, '#fff6c8'); R(x + 9 - (i % 2) * 3, y + 4, 2, 2, '#fff6c8');
+        if (i === 4) { R(x + 4, y + 10, 8, 6, '#c2304a'); R(x + 5, y + 10, 2, 6, '#f2efe6'); R(x + 9, y + 10, 2, 6, '#f2efe6'); R(x + 4, y + 8, 8, 3, '#f5d34a'); }   // a bucket on the counter
+        continue;
+      }
       if (c === 'O') { R(x, y, TS, TS, '#4a2838'); R(x + 2, y + 2, 12, 14, '#6a3a4a'); R(x + 2, y + 1, 12, 2, '#3f8f3a'); }
     }
   }
@@ -305,5 +324,5 @@ const THEATER = (() => {
   $('#movBtn').textContent = T.movBtn;
   $('#movBtn').onclick = () => { audio(); $('#startCover').hidden = true; start(); };
   T.start += ' ' + T.movStart; $('#startText').textContent = T.start;
-  return { start, peek: () => G, step, draw, fart, shush, seen, LENGTH };   // for checking from the console
+  return { start, peek: () => G, step, draw, fart, shush, seen, STAND, LENGTH };   // for checking from the console
 })();
