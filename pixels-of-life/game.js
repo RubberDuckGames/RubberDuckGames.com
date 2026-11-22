@@ -85,6 +85,11 @@ const WORLD = {
   iceTicks: 300,           // how long an ice age stops food and producers
   rainShare: 0.03,         // share of the world's squares poison rain falls on
   rainHurt: 20,            // energy a creature loses for each cell a poison drop hits
+  // Surprise disasters (his ask, 22 Nov: "happen by themselves sometimes").
+  surprise: true,          // Surprise disasters box start
+  surpriseEvery: 5000,     // about this many ticks between them, on average
+  surpriseCalm: 1000,      // none in a new world's first ticks
+  surpriseGap: 1500,       // and none this soon after the last one
   speed: 20,         // ticks each second at ×1
   // The Speed dial (his ask, 21 Nov: evolution was too slow to watch). Each
   // step is a multiple of `speed`; the dial starts at ×1.
@@ -153,7 +158,7 @@ const cv = $('#world'), g = cv.getContext('2d');
 let poisonCount = 0;
 let W, H, occ, food, poison, foodCount, creatures, byId, nextId = 1, tick, born, died, sel = null, paused = false, foodAcc = 0;
 const hist = [];
-const settings = { food: WORLD.food, change: WORLD.change, speed: WORLD.speed, babies: WORLD.babies };
+const settings = { food: WORLD.food, change: WORLD.change, speed: WORLD.speed, babies: WORLD.babies, surprise: WORLD.surprise };
 
 // The world is as many squares as fit the screen when it's made; cols and
 // rows are for the home page card picture, whose headless window reported a
@@ -164,7 +169,7 @@ function newWorld(cols, rows) {
   const T = r.width < 700 ? 8 : 10;
   W = cols || Math.max(30, Math.floor(r.width / T)); H = rows || Math.max(20, Math.floor(r.height / T));
   occ = new Int32Array(W * H); food = new Uint8Array(W * H); poison = new Uint8Array(W * H); foodCount = 0; poisonCount = 0;
-  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null); iceUntil = 0; boom = null;
+  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null); iceUntil = 0; boom = null; lastDisaster = 0;
   for (let i = 0; i < W * H * WORLD.startFood; i++) { const k = rnd(W * H); if (!food[k]) { food[k] = 1; foodCount++; } }
 }
 
@@ -296,8 +301,10 @@ function poisonRain() {
 }
 const DISASTERS = [meteor, iceAge, poisonRain];
 let newsTimer = 0;
-function disaster() {
-  const msg = pick(DISASTERS)();
+let lastDisaster = 0;
+function disaster(surprise) {
+  lastDisaster = tick;
+  const msg = (surprise ? 'Surprise! ' : '') + pick(DISASTERS)();
   if (sel && sel.dead) showInfo();
   const el = $('#news'); el.textContent = msg; el.hidden = false;
   clearTimeout(newsTimer); newsTimer = setTimeout(() => { el.hidden = true; }, 6000);
@@ -399,6 +406,8 @@ function live(c) {
 
 function step() {
   tick++;
+  if (settings.surprise && creatures.length && tick > WORLD.surpriseCalm && tick - lastDisaster > WORLD.surpriseGap &&
+      Math.random() < 1 / WORLD.surpriseEvery) disaster(true);
   growFood();
   for (const c of creatures.slice()) if (!c.dead) live(c);
   creatures = creatures.filter(c => !c.dead);
@@ -849,6 +858,8 @@ bindSlider('change', v => v + '%');
 }
 $('#babies').checked = settings.babies;
 $('#babies').onchange = e => { settings.babies = e.target.checked; };
+$('#surprise').checked = settings.surprise;
+$('#surprise').onchange = e => { settings.surprise = e.target.checked; };
 function setPaused(p) { paused = p; $('#pauseBtn').textContent = p ? 'Play' : 'Pause'; }
 $('#pauseBtn').onclick = () => setPaused(!paused);
 $('#newBtn').onclick = () => { newWorld(); fit(); showStats(); openBuilder(); };
@@ -884,7 +895,7 @@ function zoomBy(f) {
   if (sel && !sel.dead) { setZoom(zoom * f); followSel(); follow = true; }
   else setZoom(zoom * f);
 }
-$('#disasterBtn').onclick = disaster;
+$('#disasterBtn').onclick = () => disaster();
 $('#zoomIn').onclick = () => zoomBy(1.5);
 $('#zoomOut').onclick = () => zoomBy(1 / 1.5);
 
