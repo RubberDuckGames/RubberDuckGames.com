@@ -6,12 +6,14 @@
 // enough they leave ("Ugh, let's go."). Use shushes a talker for a few
 // seconds, no smell. But the gas drifts onto the quiet people too, and a fart
 // in a quiet scene is heard. The crowd bar full, the lights come up and the
-// usher shows him out; the movie ends, he wins. It borrows the house's
+// usher shows him out; the movie ends, he wins. Added 22 Nov: an usher walks
+// the aisles with a flashlight. Fart where the beam (or the usher's nose) can
+// find him and it's a strike; three strikes and he's walked out. It borrows the house's
 // canvas, buttons, sprites, gas grid and walking (HOUSE.kit).
 Object.assign(T, {
   movBtn: 'The movies',
   movStart: 'Or go to the movies and fart the loud talkers out.',
-  movIntro: 'Shut the talkers up! Fart behind them. Not too much...',
+  movIntro: 'Shut the talkers up! Fart behind them. Not too much... and watch out for the usher.',
   shush: 'Shush', someone: 'Someone',
   talking: ['Blah blah blah', 'No, YOU hang up!', '*loud chewing*', 'Wait, who is that guy?', 'I saw this already'],
   shushed: 'Shhh!',
@@ -24,7 +26,10 @@ Object.assign(T, {
   movLose: 'The lights come up. The usher points at the door.',
   movText: 'Score {score}. He farted {gone} talkers out of the theater. The crowd ended {n}% upset. Best score {best}.',
   movAgain: 'Go to the movies again', movHome: 'Back to the start',
-  movHint: 'People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out.',
+  usherWarn: ['The usher is watching you.', 'Last warning from the usher!'],
+  usherLose: 'Three strikes! The usher walks him out.',
+  strikes: 'Usher {n}/3',
+  movHint: 'People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine.',
 });
 
 const THEATER = (() => {
@@ -47,6 +52,9 @@ const THEATER = (() => {
   const STARTS = []; { let t = 0; for (const m of MOVIE) { STARTS.push(t); t += m[0]; } }
   const LENGTH = STARTS[STARTS.length - 1] + MOVIE[MOVIE.length - 1][0];
   const sceneAt = t => { let i = 0; while (i < MOVIE.length - 1 && t >= STARTS[i + 1]) i++; return i; };
+  // the usher's walk: down the middle aisle, along the first row (the front is under the movie), down the side aisles, along the back
+  const WALK = [[12, 15.2], [12, 6.2], [1.5, 6.2], [1.5, 15.2], [22.5, 15.2], [22.5, 6.2], [12, 6.2]].map(([x, y]) => [x * TS, y * TS]);
+  const BEAM = 150, WIDE = .65, NEAR = 26;   // how far the flashlight reaches, half its width, and how close is "right next to"
   const HAIRS = ['#2a1a10', '#8a4b22', '#e8c35a', '#6a6a6a', '#3a2414', '#c9c9c9', '#c2643a'], SHIRTS = ['#3f8f5a', '#c2304a', '#3a6ea5', '#d9a420', '#7d4fa0', '#4f7a4a', '#e8742a'];
   const FAMILY = [[15, 13, 'mom', '#c9c9c9', '#7d4fa0'], [16, 13, 'kidA', '#e8c35a', '#e8742a'], [17, 13, 'kidB', '#3a2414', '#7d4fa0']];
   let G = null, raf = 0, last = 0, msgT = 0, ended = false;
@@ -63,6 +71,8 @@ const THEATER = (() => {
       if ((x * 7 + y * 13) % 5 < 2 && !(y === 13 && x >= 13 && x <= 18)) people.push({ x: x + .5, y: y + .9, who: 'm' + n, hair: HAIRS[n % 7], shirt: SHIRTS[(n * 3) % 7] }), n++;
     }
     G = { time: 0, x: 14.5 * TS, y: 14.8 * TS, dir: 'up', step: 0, frozen: 0, moving: false, done: false, bar: 30, crowd: 0, score: 0, gone: 0, puffs: [], nextTalk: 5, endAt: 0,
+      strikes: 0, out: false,
+      usher: { x: WALK[0][0], y: WALK[0][1], to: 1, wait: 2, face: -Math.PI / 2, beam: -Math.PI / 2, watchT: 0 },
       people: people.map(p => ({ ...p, dose: 0, talking: false, quietT: 0, ewT: 0, complained: false, left: false, leaveT: 0 })) };
     mode = 'movie';
     document.body.classList.add('housePlay', 'outPlay');
@@ -84,6 +94,7 @@ const THEATER = (() => {
       const quiet = G.people.filter(p => !p.family && !p.left && !p.talking);
       if (quiet.length) { const p = pick(quiet); p.talking = true; p.line = pick(T.talking); }
     }
+    walkUsher(dt);
     let gasStep = (G.gasT || 0) + dt; while (gasStep > .05) { gasStep -= .05; GG.step(); } G.gasT = gasStep;
     for (const p of G.people) {
       if (p.left) { p.leaveT += dt; continue; }
@@ -104,6 +115,34 @@ const THEATER = (() => {
     else if (G.time >= LENGTH) { G.done = true; G.won = true; G.score += Math.round((100 - G.crowd) * 3); say(T.movWin, 2400); G.endAt = G.time + 2.2; }
     hud();
   }
+  // the usher walks the loop, stops at each corner to look around, and sweeps the light as they go
+  function walkUsher(dt) {
+    const u = G.usher;
+    if (u.watchT > 0) { u.watchT -= dt; u.beam = Math.atan2(G.y - u.y, G.x - u.x); return; }   // the light stays on him
+    if (u.wait > 0) u.wait -= dt;
+    else {
+      const [tx, ty] = WALK[u.to], dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy), sp = 40 * dt;
+      if (d <= sp) { u.x = tx; u.y = ty; u.to = (u.to + 1) % WALK.length; u.wait = 1.5; }
+      else { u.x += dx / d * sp; u.y += dy / d * sp; u.face = Math.atan2(dy, dx); }
+    }
+    u.beam = u.face + Math.sin(G.time * 1.3) * (u.wait > 0 ? 1.8 : 1.3);
+    // the usher smells it: a strong cloud on the usher with him close by
+    if (GG.at(u.x, u.y - 6) > .7 && Math.hypot(G.x - u.x, G.y - u.y) < 56) strike();
+  }
+  function seen() {
+    const u = G.usher, dx = G.x - u.x, dy = G.y - u.y, d = Math.hypot(dx, dy);
+    if (d < NEAR) return true;
+    if (d > BEAM) return false;
+    let a = Math.atan2(dy, dx) - u.beam; a = Math.atan2(Math.sin(a), Math.cos(a));
+    return Math.abs(a) < WIDE;
+  }
+  function strike() {
+    const u = G.usher;
+    if (G.done || u.watchT > 0) return;
+    G.strikes++; u.watchT = 3;
+    if (G.strikes >= 3) { G.done = true; G.won = false; G.out = true; say(T.usherLose, 3000, true); tone(196, .5, 'square', 0, .12); G.endAt = G.time + 3; }
+    else { say(T.usherWarn[G.strikes - 1], 2200, true); tone(330, .12, 'square', 0, .1); tone(262, .18, 'square', .12, .1); }
+  }
   function fart() {
     if (G.done || G.frozen > 0) return;
     if (G.bar < 12) { say(T.empty); return; }
@@ -115,6 +154,7 @@ const THEATER = (() => {
     G.puffs.push({ x: px, y: py, t: 0, color: TYPES[type].color, r: 5 + G.bar * .1 });
     playType(type, scene[1] >= loud ? .25 : .45 + G.bar / 200); discover(type);
     if (scene[1] < loud) { G.crowd += 12; say(T.heard, 1600); }
+    if (seen()) strike();
     G.bar = Math.max(0, G.bar - 40);
   }
   function shush() {
@@ -129,7 +169,7 @@ const THEATER = (() => {
     $('#hMeter').setAttribute('aria-valuenow', g); $('#hMeter').setAttribute('aria-valuetext', `${g}%, ${T.barWords[w]}`);
     $('#hRoom').textContent = `${sc[2]} (${sc[1] >= .85 ? T.loud : T.quiet})`;
     $('#hScore').textContent = fill(T.score, { n: G.score });
-    $('#hFood').textContent = fill(T.crowd, { n: Math.round(G.crowd) });
+    $('#hFood').textContent = fill(T.crowd, { n: Math.round(G.crowd) }) + (G.strikes ? ' · ' + fill(T.strikes, { n: G.strikes }) : '');
     const near = G.people.some(q => q.talking && q.quietT <= 0 && Math.hypot(q.x * TS - G.x, q.y * TS - G.y) <= 30);
     $('#hUse').disabled = !near; $('#hUse').textContent = T.shush;
   }
@@ -187,6 +227,24 @@ const THEATER = (() => {
     }
     if (p.ewT > 0) { cx.fillStyle = '#7aa83a'; const f = Math.floor(t * 5) % 2; for (const o of [-3, 2]) { cx.fillRect(x + o, y - 18 - f, 1, 2); cx.fillRect(x + o + 1, y - 20 + f, 1, 2); } }
   }
+  function usher(c, t) {
+    const u = G.usher, x = Math.round(u.x - c.x), y = Math.round(u.y - c.y);
+    const s = K.sprite('usher', 12, 15, r => {
+      r(2, 0, 8, 3, '#8a1f2a'); r(1, 2, 10, 1, '#5a1018');   // the cap
+      r(3, 3, 6, 3, '#e9b88f'); r(4, 4, 1, 1, INK); r(7, 4, 1, 1, INK);
+      r(2, 6, 8, 6, '#8a1f2a'); r(5, 6, 2, 6, '#f2efe6'); r(6, 8, 1, 1, '#f5d34a'); r(6, 10, 1, 1, '#f5d34a');   // the uniform
+      r(1, 7, 1, 4, '#8a1f2a'); r(10, 7, 1, 4, '#8a1f2a');
+      r(3, 12, 2, 3, '#1d1d22'); r(7, 12, 2, 3, '#1d1d22');
+    });
+    cx.drawImage(s, x - 7, y - 16);
+    if (u.watchT > 0 && Math.floor(t * 4) % 2) { cx.fillStyle = '#fff'; cx.fillRect(x - 2, y - 26, 5, 8); cx.fillStyle = '#c2304a'; cx.fillRect(x - 1, y - 25, 3, 4); cx.fillRect(x - 1, y - 20, 3, 1); }   // a ! over the usher
+  }
+  function beam(c, t) {
+    const u = G.usher, x = u.x - c.x, y = u.y - 8 - c.y, on = u.watchT > 0;
+    cx.globalAlpha = on ? .3 + .1 * Math.sin(t * 20) : .18; cx.fillStyle = '#fff2a0';
+    cx.beginPath(); cx.moveTo(x, y); cx.arc(x, y, BEAM, u.beam - WIDE, u.beam + WIDE); cx.closePath(); cx.fill();
+    cx.globalAlpha = 1;
+  }
   function draw() {
     const [W, H] = K.view(), c = cam(W, H), t = G.time;
     cx.fillStyle = '#120a10'; cx.fillRect(0, 0, W, H);
@@ -194,9 +252,11 @@ const THEATER = (() => {
     if (MOVIE[sceneAt(t)][1] >= .85 && Math.floor(t * 8) % 3 === 0) { cx.globalAlpha = .08; cx.fillStyle = '#ffe9a0'; cx.fillRect(0, 0, W, H); cx.globalAlpha = 1; }   // the screen lights the room
     const items = [];
     for (const p of G.people) if (!p.left) items.push({ y: p.y * TS, d: () => seated(p, c, t) });
+    items.push({ y: G.usher.y, d: () => usher(c, t) });
     items.push({ y: G.y, d: () => { const s = K.himSprite(G.dir, G.step, false); cx.drawImage(s, Math.round(G.x - s.width / 2 - c.x), Math.round(G.y - s.height + 1 - c.y)); } });
     items.sort((a, b) => a.y - b.y).forEach(i => i.d());
     K.drawGas(GG.gas, MW, MH, c);
+    beam(c, t);
     for (const q of G.puffs) { cx.globalAlpha = .7 * (1 - q.t / .7); cx.fillStyle = q.color; cx.beginPath(); cx.arc(Math.round(q.x - c.x), Math.round(q.y - c.y), q.r * (.5 + q.t), 0, 7); cx.fill(); }
     cx.globalAlpha = 1;
     // the movie itself is drawn just under the bar at the top, always in view
@@ -215,7 +275,7 @@ const THEATER = (() => {
   function finish(win) {
     mode = 'done'; ended = true; cancelAnimationFrame(raf);
     const best = Math.max(+store.get('feed-the-fart:movBest') || 0, G.score); store.set('feed-the-fart:movBest', best);
-    $('#hdTitle').textContent = win ? T.movWin : T.movLose;
+    $('#hdTitle').textContent = win ? T.movWin : G.out ? T.usherLose : T.movLose;
     $('#hdText').textContent = fill(T.movText, { score: G.score, gone: G.gone, n: Math.round(G.crowd), best });
     $('#hdFoods').innerHTML = '';
     $('#hdAgain').textContent = T.movAgain; $('#hdDinner').textContent = T.movHome;
@@ -245,5 +305,5 @@ const THEATER = (() => {
   $('#movBtn').textContent = T.movBtn;
   $('#movBtn').onclick = () => { audio(); $('#startCover').hidden = true; start(); };
   T.start += ' ' + T.movStart; $('#startText').textContent = T.start;
-  return { start, peek: () => G, step, draw, fart, shush, LENGTH };   // for checking from the console
+  return { start, peek: () => G, step, draw, fart, shush, seen, LENGTH };   // for checking from the console
 })();
