@@ -58,10 +58,16 @@
   <div class="graph"><span>Creatures over time</span><canvas id="graph" width="180" height="52"></canvas></div>
   <div class="acts">
     <button class="btn plain" type="button" id="newBtn">New world</button>
-    <button class="btn plain" type="button" id="foodBtn" aria-pressed="false">Add food</button>
-    <button class="btn plain" type="button" id="poisonBtn" aria-pressed="false">Add poison</button>
-    <button class="btn plain" type="button" id="creatureBtn" aria-pressed="false">Add creature</button>
-    <button class="btn plain" type="button" id="removeBtn" aria-pressed="false">Remove</button>
+    <div class="toolWrap">
+      <button class="btn plain" type="button" id="toolsBtn" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu">Tools</button>
+      <div class="toolsMenu" id="toolsMenu" role="group" aria-label="Tools" hidden>
+        <button class="btn plain" type="button" id="foodBtn" aria-pressed="false">Add food</button>
+        <button class="btn plain" type="button" id="poisonBtn" aria-pressed="false">Add poison</button>
+        <button class="btn plain" type="button" id="creatureBtn" aria-pressed="false">Add creature</button>
+        <button class="btn plain" type="button" id="removeBtn" aria-pressed="false">Remove</button>
+        <button class="btn plain" type="button" id="noToolBtn">No tool</button>
+      </div>
+    </div>
     <button class="btn plain" type="button" id="disasterBtn">Disaster</button>
     <button class="btn plain" type="button" id="pauseBtn">Pause</button>
     <button class="btn" type="button" id="buildBtn">Build</button>
@@ -94,7 +100,7 @@
   <p>Build a creature out of cells, then add it to the world.</p>
   <p>Every cell uses a little energy all the time. A mouth eats the green food next to it. When a creature runs out of energy, it dies.</p>
   <p>When a creature is full of energy, it has a baby and gives it half. With Babies change turned up, some babies are born with one cell added, taken away or swapped.</p>
-  <p>Change the sliders, or edit a copy of a creature, and watch what happens. Add food lets you drop food by tapping or dragging on the world.</p>
+  <p>Change the sliders, or edit a copy of a creature, and watch what happens. Tools has Add food, Add poison, Add creature and Remove; pick one, then tap or drag on the world.</p>
   <p>Add creature puts a copy of the creature in the builder wherever you tap.</p>
   <p>Remove takes away creatures, food and poison wherever you tap or drag.</p>
   <p>Save keeps a creature on this device, with its name. Its picture shows under the builder grid; tap it to build it again. To rename one, change its name and save it again. Each creature also gets a kind from its cells: Hunter, Plant, Grazer or Blob.</p>

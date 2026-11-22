@@ -74,6 +74,12 @@ dialog p{margin:.35rem 0}
 #creatureBtn[aria-pressed="true"]{background:#0b7285;color:#fff;box-shadow:.25rem .25rem 0 #063f4a}
 #removeBtn[aria-pressed="true"]{background:#b02525;color:#fff;box-shadow:.25rem .25rem 0 #5c1010}
 .acts [aria-pressed="true"]::before{content:"✓ "}
+/* Tools (Randi's ask, 22 Nov): the four tools in one menu above the button,
+   so the panel has fewer buttons. The button shows the tool that's on. */
+.toolWrap{position:relative}
+.toolsMenu{position:absolute;right:0;bottom:calc(100% + .6rem);z-index:6;display:flex;flex-direction:column;gap:.5rem;min-width:12rem;background:var(--panel);border:3px solid var(--ink);padding:.6rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3)}
+.toolsMenu .btn{width:100%;text-align:left;white-space:nowrap}
+#toolsBtn.on{background:var(--ink);color:#fff;box-shadow:.25rem .25rem 0 #000}
 /* On a phone the builder scrolls; its buttons stay in view at the bottom. */
 .row.stick{position:sticky;bottom:-1.1rem;margin:0 -1.1rem -1.1rem;padding:.7rem 1.1rem;background:var(--panel);border-top:2px solid var(--line)}
 /* Zoom buttons, bottom right of the world (actions on the right) */

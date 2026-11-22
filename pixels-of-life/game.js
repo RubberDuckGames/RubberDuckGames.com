@@ -569,8 +569,29 @@ function setPlacing(kind) {
   $('#poisonBtn').setAttribute('aria-pressed', kind === 'poison');
   $('#creatureBtn').setAttribute('aria-pressed', kind === 'creature');
   $('#removeBtn').setAttribute('aria-pressed', kind === 'remove');
+  const names = { food: 'Add food', poison: 'Add poison', creature: 'Add creature', remove: 'Remove' };
+  $('#toolsBtn').textContent = kind ? names[kind] : 'Tools';
+  $('#toolsBtn').classList.toggle('on', !!kind);
+  $('#noToolBtn').hidden = !kind;
   cv.style.cursor = kind ? 'crosshair' : zoom > 1 ? 'grab' : '';
 }
+// The Tools menu: picking a tool closes it; so do Escape, the button again,
+// or a tap anywhere else. Up and down arrows move between the tools.
+const toolsMenu = $('#toolsMenu'), toolsBtn = $('#toolsBtn');
+function showTools(open) {
+  toolsMenu.hidden = !open; toolsBtn.setAttribute('aria-expanded', open);
+  if (open) (toolsMenu.querySelector('[aria-pressed="true"]') || toolsMenu.querySelector('button')).focus();
+}
+toolsBtn.onclick = () => showTools(toolsMenu.hidden);
+toolsMenu.addEventListener('click', e => { if (e.target.closest('button')) { showTools(false); toolsBtn.focus(); } });
+toolsMenu.addEventListener('keydown', e => {
+  const items = [...toolsMenu.querySelectorAll('button:not([hidden])')], i = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+  else if (e.key === 'Escape') { e.stopPropagation(); showTools(false); toolsBtn.focus(); }
+});
+document.addEventListener('pointerdown', e => { if (!toolsMenu.hidden && !e.target.closest('.toolWrap')) showTools(false); });
+$('#noToolBtn').onclick = () => setPlacing(null);
+$('#noToolBtn').hidden = true;
 $('#foodBtn').onclick = () => setPlacing(placing === 'food' ? null : 'food');
 $('#poisonBtn').onclick = () => setPlacing(placing === 'poison' ? null : 'poison');
 $('#creatureBtn').onclick = () => setPlacing(placing === 'creature' ? null : 'creature');
