@@ -41,7 +41,7 @@ Object.assign(T, {
 const OUT = (() => {
   const K = HOUSE.kit, { cv, cx, sprite } = K;
   const TS = 16, INK = '#2a1a0e', GAS = '#9fc93a';
-  let G = null, keys = {}, raf = 0, last = 0, msgT = 0, ended = false;
+  let G = null, raf = 0, last = 0, msgT = 0, ended = false;
   const say = (text, ms = 2200, alert = false) => { const el = $('#hMsg'); el.textContent = text; el.hidden = false; el.classList.toggle('alert', alert); $('#live').textContent = text; msgT = ms; };
   const font = () => { cx.font = '8px "Press Start 2P", monospace'; };
 
@@ -224,22 +224,8 @@ const OUT = (() => {
     [[5.5, 6.7], [5.5, 10.6], [20.5, 10.6], [26.5, 10.6], [26.5, 6.9], [20.5, 6.9]],
     [[12.5, 4.7], [20.5, 4.7], [21.5, 6.9], [11.5, 6.9]],
   ];
-  const gas = new Float32Array(MW * MH), gas2 = new Float32Array(MW * MH);
   const airtight = k => { const c = map[Math.floor(k / MW)][k % MW]; return c === '#' || c === 'O' || (c === 'R' && G.occ > 0); };
-  function stepGas() {
-    for (let k = 0; k < MW * MH; k++) {
-      if (airtight(k)) { gas2[k] = 0; continue; }
-      let sum = 0, n = 0;
-      for (const d of [-1, 1, -MW, MW]) { const q = k + d; if (q >= 0 && q < MW * MH && !airtight(q) && Math.abs((q % MW) - (k % MW)) <= 1) { sum += gas[q]; n++; } }
-      gas2[k] = (gas[k] + .1 * (sum - n * gas[k])) * .9986;
-    }
-    gas.set(gas2);
-  }
-  const gasAt = (px, py) => { const i = Math.floor(px / TS), j = Math.floor(py / TS); return i < 0 || j < 0 || i >= MW || j >= MH ? 0 : gas[j * MW + i]; };
-  function addGas(px, py, amount) {
-    const i = Math.floor(px / TS), j = Math.floor(py / TS);
-    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const k = (j + b) * MW + i + a; if (k >= 0 && k < MW * MH && !airtight(k)) gas[k] += amount * (a || b ? .07 : .44); }
-  }
+  const GG = K.gasGrid(MW, MH, airtight, .9986), gas = GG.gas, stepGas = GG.step, gasAt = GG.at, addGas = GG.add;
   // the floor, painted once
   const mapCan = document.createElement('canvas'); mapCan.width = MW * TS; mapCan.height = MH * TS;
   { const m = mapCan.getContext('2d'), R = (x, y, w, h, c) => { m.fillStyle = c; m.fillRect(x, y, w, h); };
@@ -278,23 +264,7 @@ const OUT = (() => {
     if (!G.alert && !G.done && G.restT > 4.3) { G.alert = 18; G.alertStart = G.time; G.occ = 4 + Math.random() * 5; G.bar = 100; tone(523, .18, 'square', 0, .12); tone(392, .3, 'square', .22, .12); }
     if (G.endAt && G.time >= G.endAt) { G.endAt = 0; return finish(G.won); }
     if (G.oopsAt && G.time >= G.oopsAt) { G.oopsAt = 0; say(T.oops, 2200); }
-    // walking, as in the house: keys, the stick, or a finger held on the screen
-    const stick = K.stick, sx = Math.hypot(stick.x, stick.y) < .2 ? 0 : stick.x, sy = Math.hypot(stick.x, stick.y) < .2 ? 0 : stick.y;
-    let dx = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0) + sx;
-    let dy = (keys.ArrowDown || keys.s ? 1 : 0) - (keys.ArrowUp || keys.w ? 1 : 0) + sy;
-    const hold = K.hold(), [W, H] = K.view();
-    if (hold) { const c = cam(W, H), hx = hold.x + c.x - G.x, hy = hold.y + c.y - (G.y - 8), d = Math.hypot(hx, hy); if (d > 4) { dx += hx / d; dy += hy / d; } }
-    const len = Math.hypot(dx, dy);
-    if (G.frozen > 0) G.frozen -= dt;
-    G.moving = len > .2 && G.frozen <= 0 && !G.done;
-    if (G.moving) {
-      dx /= Math.max(1, len); dy /= Math.max(1, len);
-      const sp = 66 * (G.alert ? .75 : 1) * dt;   // clenching slows him down
-      if (!blocked(G.x + dx * sp, G.y)) G.x += dx * sp;
-      if (!blocked(G.x, G.y + dy * sp)) G.y += dy * sp;
-      G.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-      G.step = [1, 0, 2, 0][Math.floor(G.restT * 7) % 4];
-    } else G.step = 0;
+    K.steer(G, dt, 66 * (G.alert ? .75 : 1), blocked, cam, G.restT);   // clenching slows him down
     // the restroom door: someone's in there for the first few seconds
     if (G.occ > 0 && G.alert) {
       G.occ -= dt;
@@ -370,13 +340,7 @@ const OUT = (() => {
       cx.drawImage(s, x - s.width / 2, y - s.height + 2); cx.fillStyle = INK; cx.fillRect(x + 3, y - 22, 12, 4); cx.fillStyle = '#c9c9d4'; cx.fillRect(x + 4, y - 21, 10, 2); cx.fillStyle = '#d9822b'; cx.fillRect(x + 6, y - 24, 6, 3); } });
     items.push({ y: G.y, d: () => { const s = K.himSprite(G.frozen > 0 ? 'down' : G.dir, G.step, G.frozen > 0); cx.fillStyle = 'rgba(0,0,0,.2)'; cx.fillRect(Math.round(G.x - 6 - c.x), Math.round(G.y - 2 - c.y), 12, 3); cx.drawImage(s, Math.round(G.x - s.width / 2 - c.x), Math.round(G.y - s.height + 1 - c.y)); } });
     items.sort((a, b) => a.y - b.y).forEach(i => i.d());
-    const i0 = Math.max(0, Math.floor(c.x / TS)), j0 = Math.max(0, Math.floor(c.y / TS));
-    cx.fillStyle = GAS;
-    for (let j = j0; j <= j0 + Math.ceil(H / TS) && j < MH; j++) for (let i = i0; i <= i0 + Math.ceil(W / TS) && i < MW; i++) {
-      const g = gas[j * MW + i]; if (g < .25) continue;
-      cx.globalAlpha = Math.min(.66, g / 8); cx.fillRect(i * TS - c.x, j * TS - c.y, TS, TS);
-    }
-    cx.globalAlpha = 1;
+    K.drawGas(gas, MW, MH, c);
     for (const p of G.puffs) { cx.globalAlpha = .7 * (1 - p.t / .7); cx.fillStyle = p.color; cx.beginPath(); cx.arc(Math.round(p.x - c.x), Math.round(p.y - c.y), p.r * (.5 + p.t), 0, 7); cx.fill(); }
     cx.globalAlpha = 1; font(); cx.textAlign = 'center';
     for (const p of G.pops) { cx.fillStyle = INK; cx.fillText(p.text, Math.round(p.x - c.x) + 1, Math.round(p.y - c.y - p.t * 10) + 1); cx.fillStyle = '#ffe066'; cx.fillText(p.text, Math.round(p.x - c.x), Math.round(p.y - c.y - p.t * 10)); }
@@ -433,12 +397,9 @@ const OUT = (() => {
   document.addEventListener('keydown', e => {
     if ((mode !== 'car' && mode !== 'rest') || document.querySelector('dialog[open]')) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; e.preventDefault(); }
-    else if ((k === ' ' || k === 'f') && !e.repeat) { e.preventDefault(); audio(); fart(); }
+    if ((k === ' ' || k === 'f') && !e.repeat) { e.preventDefault(); audio(); fart(); }
     else if ((k === 'e' || k === 'Enter') && !e.repeat && !(e.target.closest && e.target.closest('button'))) { e.preventDefault(); use(); }
   });
-  document.addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; keys[k] = false; });
-  window.addEventListener('blur', () => { keys = {}; });
   for (const [id, fn] of [['#hFart', fart], ['#hUse', use]]) {
     const b = $(id);
     b.addEventListener('pointerdown', e => { if (mode === 'car' || mode === 'rest') { e.preventDefault(); audio(); fn(); } });

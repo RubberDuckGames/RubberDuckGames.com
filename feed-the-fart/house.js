@@ -78,7 +78,7 @@ const HOUSE = (() => {
     cv.style.width = VW * k + 'px'; cv.style.height = VH * k + 'px';
     cx.imageSmoothingEnabled = false;
   }
-  addEventListener('resize', () => { if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed') fitView(); });
+  addEventListener('resize', () => { if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie') fitView(); });
 
   // ---- the map: walls everywhere, rooms carved out, doors, then furniture ----
   const map = Array.from({ length: MH }, () => Array(MW).fill('#'));
@@ -761,7 +761,7 @@ const HOUSE = (() => {
   window.addEventListener('blur', () => { keys = {}; stick.letGo(); hold = null; });
   // the stick and the zoom block come from the kit, like the other steered games
   const stick = RDG.stick('#hStick', '#hStick i');
-  RDG.noZoom(() => mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed', ['#hStick', '#hFart', '#hUse', '#hc']);
+  RDG.noZoom(() => mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie', ['#hStick', '#hFart', '#hUse', '#hc']);
   // A game controller (#56): A farts, B is Use, X is F (a fart in the house,
   // the finger or waking him at dinner), Select is the ? help, Start is Enter,
   // and the left thumbstick drives the stick. The cross pad is the arrow keys.
@@ -783,7 +783,62 @@ const HOUSE = (() => {
       GOALS.map(id => { const d = G && G.goals.has(id); return `<li class="${d ? 'done' : ''}"><span class="box" aria-hidden="true"></span>${esc(T.goals[id])}<span class="sr">${d ? ' (done)' : ''}</span></li>`; }).join('') + '</ul>';
   }
   // out.js (going out to dinner) borrows the canvas, the stick and the sprites
-  const kit = { cv, cx, stick, fitView, sprite, himSprite, targetSprite, view: () => [VW, VH], hold: () => hold };
+  // Shared by the levels that walk on a floor of their own (the restaurant,
+  // the movie theater): a gas grid like the house's, the walking (keys, stick
+  // or a finger held on the screen), the arrow keys, and the haze drawing.
+  function gasGrid(MW2, MH2, airtight, fade) {
+    const N = MW2 * MH2, gas = new Float32Array(N), g2 = new Float32Array(N);
+    return { gas,
+      step() {
+        for (let k = 0; k < N; k++) {
+          if (airtight(k)) { g2[k] = 0; continue; }
+          let sum = 0, n = 0;
+          for (const d of [-1, 1, -MW2, MW2]) { const q = k + d; if (q >= 0 && q < N && !airtight(q) && Math.abs((q % MW2) - (k % MW2)) <= 1) { sum += gas[q]; n++; } }
+          g2[k] = (gas[k] + .1 * (sum - n * gas[k])) * fade;
+        }
+        gas.set(g2);
+      },
+      at: (px, py) => { const i = Math.floor(px / TS), j = Math.floor(py / TS); return i < 0 || j < 0 || i >= MW2 || j >= MH2 ? 0 : gas[j * MW2 + i]; },
+      add(px, py, amount) {
+        const i = Math.floor(px / TS), j = Math.floor(py / TS);
+        for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const k = (j + b) * MW2 + i + a; if (k >= 0 && k < N && !airtight(k)) gas[k] += amount * (a || b ? .07 : .44); }
+      } };
+  }
+  const walkKeys = {}, walking = () => mode === 'rest' || mode === 'movie';
+  document.addEventListener('keydown', e => {
+    if (!walking() || document.querySelector('dialog[open]')) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(k)) { walkKeys[k] = true; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', e => { const k = e.key.length === 1 ? e.key.toLowerCase() : e.key; walkKeys[k] = false; });
+  window.addEventListener('blur', () => { for (const k in walkKeys) walkKeys[k] = false; });
+  // moves P (x, y, dir, step, frozen, moving) at sp pixels a second; cam(W, H) is the level's camera
+  function steer(P, dt, sp, blocked, camFn, t) {
+    const s = stick, sx = Math.hypot(s.x, s.y) < .2 ? 0 : s.x, sy = Math.hypot(s.x, s.y) < .2 ? 0 : s.y, k = walkKeys;
+    let dx = (k.ArrowRight || k.d ? 1 : 0) - (k.ArrowLeft || k.a ? 1 : 0) + sx;
+    let dy = (k.ArrowDown || k.s ? 1 : 0) - (k.ArrowUp || k.w ? 1 : 0) + sy;
+    if (hold) { const c = camFn(VW, VH), hx = hold.x + c.x - P.x, hy = hold.y + c.y - (P.y - 8), d = Math.hypot(hx, hy); if (d > 4) { dx += hx / d; dy += hy / d; } }
+    const len = Math.hypot(dx, dy);
+    if (P.frozen > 0) P.frozen -= dt;
+    P.moving = len > .2 && P.frozen <= 0 && !P.done;
+    if (!P.moving) { P.step = 0; return; }
+    dx /= Math.max(1, len); dy /= Math.max(1, len);
+    const m = sp * dt;
+    if (!blocked(P.x + dx * m, P.y)) P.x += dx * m;
+    if (!blocked(P.x, P.y + dy * m)) P.y += dy * m;
+    P.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    P.step = [1, 0, 2, 0][Math.floor(t * 7) % 4];
+  }
+  function drawGas(gas, MW2, MH2, c) {
+    const i0 = Math.max(0, Math.floor(c.x / TS)), j0 = Math.max(0, Math.floor(c.y / TS));
+    cx.fillStyle = '#9fc93a';
+    for (let j = j0; j <= j0 + Math.ceil(VH / TS) && j < MH2; j++) for (let i = i0; i <= i0 + Math.ceil(VW / TS) && i < MW2; i++) {
+      const g = gas[j * MW2 + i]; if (g < .25) continue;
+      cx.globalAlpha = Math.min(.66, g / 8); cx.fillRect(i * TS - c.x, j * TS - c.y, TS, TS);
+    }
+    cx.globalAlpha = 1;
+  }
+  const kit = { cv, cx, stick, fitView, sprite, himSprite, targetSprite, view: () => [VW, VH], hold: () => hold, gasGrid, steer, drawGas };
   return { kit, goalsHTML, peek: () => G, gas, start,   // peek: for checking the level from the console
     again: () => { $('#houseDone').hidden = true; start(); },
     dinner: () => { $('#houseDone').hidden = true; leave(); startDinner(new Set(G.got)); window.scrollTo(0, 0); } };
@@ -798,7 +853,7 @@ function toggleHelp(show, kind = 'help') {
   const box = $('#helpBox');
   if (show === undefined) show = box.hidden || box.dataset.kind !== kind;
   box.dataset.kind = kind;
-  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : T.keys;
+  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : mode === 'movie' ? T.movHint : T.keys;
   box.hidden = !show;
   $('#helpBtn').setAttribute('aria-expanded', String(show && kind === 'help')); $('#goalsBtn').setAttribute('aria-expanded', String(show && kind === 'goals'));
 }
