@@ -35,6 +35,10 @@ input[type=range]{width:8.5rem;accent-color:var(--accent);margin:.2rem 0 0}
 dialog{max-width:min(46rem,calc(100vw - 1rem));max-height:calc(100dvh - 1rem);padding:1.1rem;border:4px solid var(--ink);background:var(--panel);color:var(--ink);font:inherit;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(10,30,25,.55)}
 dialog h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.5}
+/* The builder covers the whole screen on a phone and opens first, so it has
+   its own way back to all the games (22 Nov: the testers couldn't find one). */
+.dlgTop{display:flex;align-items:center;gap:.4rem .8rem;flex-wrap:wrap;margin-bottom:.6rem}
+.dlgTop h2{margin:0}
 dialog p{margin:.35rem 0}
 .soft{color:var(--soft)}
 .build{display:grid;gap:1rem}
