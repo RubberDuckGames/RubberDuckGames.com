@@ -33,6 +33,8 @@ h1{font-size:2.6rem;margin:.5rem 0 0;line-height:1.2}
 .game.tt{--lit:#ffc93c}
 .game.mf{--lit:#41e3ff;--bezel:#18254a}
 .game.mf .screen img{transform:scale(1.18)}
+.game.ant{--lit:#e8c07a;--bezel:#3a2414}
+.game.ant .info p{color:#f3e2cf}
 .game.bread{--lit:#ff9f43;--bezel:#3a2414}
 .game.bread .info p{color:#f3e2cf}
 .game.tug{--lit:#5bb8e8;--bezel:#1f3a55}

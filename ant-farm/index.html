@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ant Farm · Rubber Duck Games</title>
+<meta name="description" content="Be a worker ant in a glass ant farm. Dig tunnels, gather food, raise the brood and fill a field notebook with real ant facts.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="game.css">
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+<script src="../shared/kit.js"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <span class="pill" id="hAnts" role="img" hidden></span>
+  <span class="pill" id="hFood" role="img" hidden></span>
+  <button class="pill" id="bookBtn" type="button" hidden>Notebook</button>
+  <button class="pill" id="helpBtn" type="button" hidden aria-label="How to play" aria-expanded="false">?</button>
+  <button class="pill" id="soundBtn" type="button" aria-label="Sounds on or off" title="Sounds on or off">🔔</button>
+</div>
+<div class="wrap">
+  <div class="stagebox" id="box">
+    <canvas id="cv" data-hold aria-label="The ant farm"></canvas>
+    <aside class="help" id="help" hidden aria-label="How to play">
+      <p class="goal" id="goalNow"></p>
+      <ul>
+        <li><b>Walk:</b> arrow keys, the stick, or hold a finger on the farm. Walk into sand to dig.</li>
+        <li><b>Pick up, Put down, Feed:</b> Space or the big button.</li>
+        <li><b>Room:</b> R or the Room button digs a room where you stand.</li>
+        <li><b>Notebook:</b> N. <b>This help:</b> H or ?.</li>
+      </ul>
+      <p class="jobs" id="jobs"></p>
+    </aside>
+    <p class="msg" id="msg" role="status" hidden></p>
+    <div class="cover" id="cover" hidden><div class="card" id="card" role="dialog" aria-modal="true"></div></div>
+  </div>
+</div>
+<div class="ctrl" id="ctrl" hidden>
+  <div class="stick" id="pad" aria-label="Walking stick"><i id="knob"></i></div>
+  <div class="btns">
+    <button class="rnd room" id="roomBtn" type="button">Room</button>
+    <button class="rnd act" id="actBtn" type="button">Pick up</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
