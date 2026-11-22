@@ -40,6 +40,7 @@ const CELLS = {
   producer: { name: 'Producer', says: 'Makes energy for the creature, like a plant.', upkeep: 0.05, holds: 10, makes: 0.15, color: '#5c940d' },
   smart:   { name: 'Smart',   says: 'Remembers where it found food, and where it got hurt.', upkeep: 0.10, holds: 10, forgets: 300, color: '#cc5de8' },
   eye:     { name: 'Eye',     says: 'Sees food to go to and killers to run from. On a killer, it sees prey to chase.', upkeep: 0.10, holds: 10, sees: 6, color: '#4dabf7' },
+  fins:    { name: 'Fins',    says: 'Swims: loses no energy in a flood, and can move in water.', upkeep: 0.05, holds: 10, color: '#1864ab' },
   armor:   { name: 'Armor',   says: 'Outside protection. Killer cells can\'t hurt it.', upkeep: 0.10, holds: 10, color: '#62708a' },
 };
 const TYPES = Object.keys(CELLS);
@@ -133,6 +134,7 @@ function drawCell(g, t, x, y, s) {
   else if (t === 'producer') { g.fillStyle = '#c0eb75'; R(3, 1, 2, 6); R(1, 3, 6, 2); g.fillStyle = '#f4fce3'; R(3, 3, 2, 2); }
   else if (t === 'smart') { g.fillStyle = '#f3d9fa'; R(1, 1, 6, 1); R(1, 1, 1, 3); R(1, 3, 4, 1); R(4, 3, 1, 3); R(2, 6, 5, 1); R(6, 4, 1, 3); }
   else if (t === 'eye') { g.fillStyle = '#ffffff'; R(1, 2, 6, 4); g.fillStyle = '#10203f'; R(3, 2, 2, 4); R(2, 3, 4, 2); g.fillStyle = '#ffffff'; R(3, 3, 1, 1); }
+  else if (t === 'fins') { g.fillStyle = '#a5d8ff'; R(0, 1, 2, 2); R(0, 5, 2, 2); R(2, 2, 2, 1); R(2, 5, 2, 1); R(4, 3, 3, 2); g.fillStyle = '#ffffff'; R(6, 3, 1, 1); }
   else if (t === 'armor') { g.fillStyle = '#c3ccdb'; R(0, 0, 8, 1); R(0, 0, 1, 8); g.fillStyle = '#39445a'; R(7, 0, 1, 8); R(0, 7, 8, 1); R(3, 3, 2, 2); }
 }
 const ICON = {};
@@ -191,6 +193,7 @@ function makeCreature(cells, x, y, gen) {
     if (p.t === 'mover') c.movers += s.push;
     if (p.t === 'eye') c.eyes++;
     if (p.t === 'smart') c.smart = (c.smart || 0) + 1;
+    if (p.t === 'fins') c.fins = (c.fins || 0) + 1;
     if (p.t === 'killer') c.killers++;
   }
   return c;
@@ -225,7 +228,7 @@ function growFood() {
     foodAcc--;
     if (foodCount >= W * H * WORLD.foodCap) break;
     const k = rnd(W * H);
-    if (!occ[k] && !food[k] && !poison[k] && !wet(k % W, (k / W) | 0)) { food[k] = 1; foodCount++; }
+    if (!occ[k] && !food[k] && !poison[k]) { food[k] = 1; foodCount++; }
   }
   foodAcc = Math.min(foodAcc, 1);
 }
@@ -315,7 +318,10 @@ function poisonRain() {
   return `Poison rain! It hit creatures ${hits} time${hits === 1 ? '' : 's'}, and the poison stays. Armor blocks it.`;
 }
 // Movers swim straight for dry land (away from the side the water came from);
-// creatures that can't move wait it out on their stored energy.
+// creatures that can't move wait it out on their stored energy. The food
+// there washes away, and new food grows in the water as usual, which only
+// a swimmer with fins stays long enough to eat (22 Nov: with no food
+// growing back, fins creatures starved).
 function floodWaters() {
   const side = rnd(4), across = side % 2 ? H : W;
   const depth = Math.round(across * (WORLD.floodSize[0] + Math.random() * (WORLD.floodSize[1] - WORLD.floodSize[0])));
@@ -384,7 +390,10 @@ function recall(c) {
 function live(c) {
   c.age++;
   const swimming = flood && tick < flood.until && c.cells.some(p => wet(c.x + p.x, c.y + p.y));
-  if (swimming) c.energy -= WORLD.floodHurt + c.makes; // no sun underwater
+  // His ask, 22 Nov: fins. A creature with fins loses nothing to the water and
+  // can move in it even without movers, so it can keep eating instead of
+  // racing for land. Producers still stop underwater.
+  if (swimming) c.energy -= (c.fins ? 0 : WORLD.floodHurt) + c.makes; // no sun underwater
   c.energy = Math.min(c.max, c.energy - c.upkeep + (tick < iceUntil ? 0 : c.makes));
   if (poisonCount) for (const p of c.cells) for (const [dx, dy] of DIRS) {
     const x = c.x + p.x + dx, y = c.y + p.y + dy;
@@ -419,15 +428,15 @@ function live(c) {
   }
   // More movers move it more often; a bigger body moves it less often.
   // (in a flood a mover swims every tick)
-  if (c.movers && (swimming || Math.random() < Math.min(1, c.movers / c.cells.length))) {
+  if ((c.movers || (swimming && c.fins)) && (swimming || Math.random() < Math.min(1, c.movers / c.cells.length))) {
     const seen = c.eyes ? look(c) : null, thought = seen == null && c.smart ? recall(c) : null;
-    if (swimming) c.dir = (flood.side + 2) % 4;
+    if (swimming && !c.fins) c.dir = (flood.side + 2) % 4;
     else if (seen != null) c.dir = seen;
     else if (thought != null) c.dir = thought;
     else if (Math.random() < WORLD.turn) c.dir = rnd(4);
     let [dx, dy] = DIRS[c.dir];
     // a swimmer blocked on its way to dry land tries going round
-    if (swimming && !fits(c, c.x + dx, c.y + dy)) {
+    if (swimming && !c.fins && !fits(c, c.x + dx, c.y + dy)) {
       const side = DIRS[(c.dir + (Math.random() < .5 ? 1 : 3)) % 4];
       if (fits(c, c.x + side[0], c.y + side[1])) [dx, dy] = side;
     }
