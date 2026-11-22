@@ -19,7 +19,7 @@ Object.assign(T, {
   served: '{food} is served.', ate: 'Mmm, {food}!', eatNag: 'Mom: "Eat your food!"',
   wedWin: 'What a lovely wedding!', wedLose: 'Asked to leave the wedding.',
   wedText: 'Score {score}. He snuck out {safe} without anyone noticing and got caught {caught} times. Best score {best}.',
-  wedAgain: 'Go to the wedding again', wedHome: 'Back to the start',
+  wedAgain: 'Go to the wedding again',
   disturbed: 'Caught {n}/3',
   wedHint: 'The wedding: try NOT to fart. Hold it in! The bar fills on its own, faster after he eats. Let one out (Space, F or the Fart button) only when the room is loud: laughing, clapping, cheering or the band. A bigger bar is a louder fart. The strip under the room shows what is coming: yellow is loud, green is chatter, dark is quiet. A fart in a quiet moment, or a full bar, disturbs the wedding; three times and he has to leave. When food comes, Eat (E or Use). With a controller: A farts, B is Use, Select opens this.',
 });
@@ -207,12 +207,12 @@ const WEDDING = (() => {
     $('#hdTitle').textContent = win ? T.wedWin : T.wedLose;
     $('#hdText').textContent = fill(T.wedText, { score: G.score, safe: G.safe, caught: G.caught, best });
     $('#hdFoods').innerHTML = '';
-    $('#hdAgain').textContent = T.wedAgain; $('#hdDinner').textContent = T.wedHome;
+    $('#hdAgain').textContent = T.wedAgain; $('#hdDinner').hidden = true;   // Menu on the bottom row goes back to the start (22 Nov)
     $('#houseDone').hidden = false; $('#hdAgain').focus();
   }
   function home() {
     ended = false; mode = 'start';
-    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner; $('#hBarLabel').textContent = T.barLabel;
+    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner; $('#hdDinner').hidden = false; $('#hBarLabel').textContent = T.barLabel;
     document.body.classList.remove('housePlay', 'outPlay', 'wedPlay'); $('#house').hidden = true; $('#dinner').hidden = false;
     $('#startCover').hidden = false; $('#wedBtn').focus();
   }

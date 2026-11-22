@@ -69,6 +69,11 @@ const FOODS = [
   { id: 'sprouts', name: 'Brussels sprouts', gas: 20, mix: { sulfur: 1 } },
   { id: 'pie', name: 'Pumpkin pie', d: 'with whipped cream', gas: 15, mix: { sweet: .5, dairy: .5 } },
   { id: 'eggnog', name: 'Eggnog', gas: 30, mix: { dairy: 1 } },
+  // More to pick from (Randi, 22 Nov: "they want more variety - like beans,
+  // nachos, milk shakes"). In the house his brothers bring them.
+  { id: 'beans', name: 'Baked beans', gas: 25, mix: { sulfur: .5, sweet: .3, savory: .2 } },
+  { id: 'nachos', name: 'Nachos', d: 'with extra cheese', gas: 20, mix: { dairy: .6, savory: .4 } },
+  { id: 'shake', name: 'Milkshake', d: 'chocolate', gas: 25, mix: { dairy: .6, sweet: .4 } },
   // Snacks from the fridge (decided 20 Nov, family favorites). Each unlocks
   // when that many kinds of fart have been found, and has its own line.
   { id: 'pizzabites', name: 'Pizza bites', gas: 15, mix: { dairy: .5, savory: .5 }, unlock: 1, say: 'Pizza bites! The best food group.' },
@@ -139,6 +144,10 @@ const SPRITES = {
     '...koooooooOk...', '..kooooooooOk...', '.kooooooooOOk...', 'kMMMMMMMMMMMMk..', 'kBBBBBBBBBBBBk..', '.kkkkkkkkkkkk...'],
   eggnog: ['...kkkkkkkk.....', '...kcBcccBck....', '...kccBccccbk...', '...khcccccckkk..', '...khcccccck.kk.', '...khcccccck..k.',
     '...khcccccck.kk.', '...khcccccckkk..', '...kwcccccck....', '...kwwwwwwwk....', '....kkkkkkk.....'],
+  beans: ['....kkkkkkkk....', '..kkOzOOzOOzkk..', '.kOzOOzhOzOOzOk.', '.kzOOzOOzOOhzOk.', ...WHITE_BOWL],
+  nachos: ['.....k....k.....', '....kyk..kyk....', '...kyYyk.kyyk...', '..kyyooyykyoyk..', '.kyoooooooooyyk.', '.kooooyoooyoook.', ...DISH],
+  shake: ['..........kk....', '.....kk..kPk....', '....krRk.kPk....', '...kkwwwkPkkk...', '..khwwwwwwwwwk..', '..kwwwwwwwwwpk..', '..kkkkkkkkkkkk..',
+    '...kBBBBBBBBk...', '...khBBBBBBBk...', '....kBBBBBBk....', '....khBBBBBk....', '.....kBBBBk.....', '......kkkk......', '.......kk.......', '.....kkkkkk.....'],
   pizzabites: ['................', '................', '................', '.kkkk.kkkk.kkkk.', 'kyrhykyrhykyrhyk', 'kyyyYkyyyYkyyyYk', 'kYyyYkYyyYkYyyYk', '.kkkk.kkkk.kkkk.', 'kkkkkkkkkkkkkkkk', 'kphhhhhhhhhhhhpk', '.kkkkkkkkkkkkkk.'],
   bagel: ['....kkkkkkkk....', '..kkbbbbbbbbkk..', '.kbbwwwwwwwwbbk.', 'kbbwwwhhwwwwwbbk', 'kbwwwhwwkkwwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwwkkwwwwbk', 'kbbwwwwwwwwwwbbk', '.kbbwwwwwwwwbbk.', '..kkbbOObbbbkk..', '....kkkkkkkk....'],
   sardines: ['kkkkkkkkkkkk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwwwwwwwwwwk....', 'kkkkkkkkkkkk....', '.kkkkkk.kkkkkkk.', '.koYoYk.koYoYok.', '.kooook.koooook.', '.koYoYk.koYoYok.', '.kkkkkk.kkkkkkk.'],
@@ -605,3 +614,7 @@ for (const im of document.querySelectorAll('#scene image[data-spr]')) {
   setInterval(() => { if (mode !== 'house') snap(); }, 66);   // about 15 frames a second, which suits the look
   snap();
 })();
+
+// Menu on the end cards (Randi, 22 Nov): the game is over, so it goes straight to
+// the start card the way the top bar's Menu does, without asking first.
+document.querySelectorAll('[data-menu]').forEach(b => { b.onclick = () => { location.href = location.pathname; }; });

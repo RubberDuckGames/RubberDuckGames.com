@@ -299,7 +299,8 @@ const HOUSE = (() => {
   ];
   // Randi, 20 Nov: the guests bring food. These dishes aren't in the house at
   // the start; they're set down in the front hall when that guest arrives.
-  const BRINGS = { pie: ['aunt', 42.5, 26.5], casserole: ['aunt', 43.5, 26.5], eggnog: ['uncle', 45.5, 23.5], eggs: ['uncle', 42.5, 24.5] };
+  const BRINGS = { pie: ['aunt', 42.5, 26.5], casserole: ['aunt', 43.5, 26.5], eggnog: ['uncle', 45.5, 23.5], eggs: ['uncle', 42.5, 24.5],
+    beans: ['brother1', 44.5, 26.5], nachos: ['brother1', 44.5, 24.5], shake: ['brother2', 45.5, 25.5] };   // 22 Nov: the brothers bring the new foods
   // Legos to step on (Randi, 21 Nov): "OW!", a moment's hop, and a little
   // fart slips out; the brick gets kicked away.
   const LEGOS = [[10.5, 8.6, '#d8344f'], [13.5, 10.6, '#3a74b8'], [7.5, 8.6, '#f5d34a'], [33.5, 24.6, '#3f8f3a'], [32.5, 22.6, '#d8344f'],
@@ -307,7 +308,8 @@ const HOUSE = (() => {
   const GOALS = ['pantry', 'fridge', 'grandma', 'dog', 'cat', 'fish', 'plants', 'family', 'food', 'bath'];
   const FOOD_AT = { turkey: [24.5, 12.5], mac: [21.5, 7.5], eggnog: [27.5, 8.5], eggs: [26.5, 12.5], gravy: [20.5, 12.5], mash: [27.5, 11.5],
     casserole: [25.5, 7.5], stuffing: [22.5, 15.5], rolls: [20.5, 15.5], cranberry: [44.5, 23.5], sweetpot: [13.5, 23.5], corn: [4.5, 10.5],
-    sprouts: [35.5, 12.5], pie: [25.5, 25.5], pizzabites: [10.5, 11.5], bagel: [33.5, 23.5], sardines: [34.5, 7.5], creamblock: [38.5, 22.5] };
+    sprouts: [35.5, 12.5], pie: [25.5, 25.5], pizzabites: [10.5, 11.5], bagel: [33.5, 23.5], sardines: [34.5, 7.5], creamblock: [38.5, 22.5],
+    beans: [44.5, 26.5], nachos: [44.5, 24.5], shake: [45.5, 25.5] };
 
   let G = null, keys = {}, hold = null, last = 0, msgT = 0, raf = 0, gasT = 0;
   const gas = new Float32Array(MW * MH), gas2 = new Float32Array(MW * MH);

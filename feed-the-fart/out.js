@@ -32,7 +32,7 @@ Object.assign(T, {
   outWin: 'Ahh. Made it!',
   outLose: '"I might need a change of clothes."',
   outText: 'Score {score}. In the car you knocked out {car} of {carAll}; at the restaurant, {diners} of {dinersAll}. Best score {best}.',
-  outAgain: 'Go out again', outHome: 'Back to the start',
+  outAgain: 'Go out again',
   riders: { mom: 'Mom', kidA: 'The kid', kidB: 'The other kid', crumb: 'Crumb' },
   outHint: 'Out to dinner: car farts on the way, then a race for the restaurant bathroom. In the car: fart with Space, F or the Fart button. Use (or E) locks the windows so nobody can roll one down. At the restaurant: walk with the arrows or the stick (or hold a finger on the screen) and get to the bathroom at the back before the time runs out. A fart on the way buys a few seconds. With a controller: A farts, B is Use, Select opens this.',
 });
@@ -381,12 +381,12 @@ const OUT = (() => {
     $('#hdTitle').textContent = win ? T.outWin : T.outLose;
     $('#hdText').textContent = fill(T.outText, { score: G.score, car: G.carOut, carAll: RIDERS.length, diners: G.diners, dinersAll: DINERS.length, best });
     $('#hdFoods').innerHTML = '';
-    $('#hdAgain').textContent = T.outAgain; $('#hdDinner').textContent = T.outHome;
+    $('#hdAgain').textContent = T.outAgain; $('#hdDinner').hidden = true;   // Menu on the bottom row goes back to the start (22 Nov)
     $('#houseDone').hidden = false; $('#hdAgain').focus();
   }
   function home() {
     ended = false; mode = 'start';
-    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner;
+    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner; $('#hdDinner').hidden = false;
     document.body.classList.remove('housePlay', 'outPlay'); $('#house').hidden = true; $('#dinner').hidden = false;
     $('#startCover').hidden = false; $('#outBtn').focus();
   }

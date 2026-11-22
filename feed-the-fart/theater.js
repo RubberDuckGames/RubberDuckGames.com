@@ -24,12 +24,14 @@ Object.assign(T, {
   movWin: 'What a great movie!',
   movLose: 'The lights come up. The usher points at the door.',
   movText: 'Score {score}. He farted {gone} talkers out of the theater. The crowd ended {n}% upset. Best score {best}.',
-  movAgain: 'Go to the movies again', movHome: 'Back to the start',
+  movAgain: 'Go to the movies again',
   usherWarn: ['The usher is watching you.', 'Last warning from the usher!'],
   usherLose: 'Three strikes! The usher walks him out.',
   strikes: 'Usher {n}/3',
-  popcorn: 'Popcorn', popcornGot: 'Extra butter! More gas.', popcornWait: 'The popcorn is still popping.',
-  movHint: 'The movies: fart the loud talkers out. People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine. Low on gas? Walk to the popcorn stand at the back and press Use for a big bucket. With a controller: A farts, B is Use, Select opens this.',
+  popcornWait: 'The popcorn is still popping.',
+  // the stand sells three things in turn (22 Nov, "more variety"); the button says which is next
+  stand: [['Popcorn', 'Extra butter! More gas.'], ['Nachos', 'Nachos with extra cheese!'], ['Milkshake', 'A chocolate milkshake! Brain freeze.']],
+  movHint: 'The movies: fart the loud talkers out. People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine. Low on gas? Walk to the snack stand at the back and press Use: popcorn, then nachos, then a milkshake. What he eats changes the fart. With a controller: A farts, B is Use, Select opens this.',
 });
 
 const THEATER = (() => {
@@ -73,7 +75,8 @@ const THEATER = (() => {
       if ((x * 7 + y * 13) % 5 < 2 && !(y === 13 && x >= 13 && x <= 18)) people.push({ x: x + .5, y: y + .9, who: 'm' + n, hair: HAIRS[n % 7], shirt: SHIRTS[(n * 3) % 7] }), n++;
     }
     G = { time: 0, x: 14.5 * TS, y: 14.8 * TS, dir: 'up', step: 0, frozen: 0, moving: false, done: false, bar: 30, crowd: 0, score: 0, gone: 0, puffs: [], nextTalk: 5, endAt: 0,
-      strikes: 0, out: false, popT: 0, buckets: 0,
+      strikes: 0, out: false, popT: 0, buckets: 0, standN: 0,
+      belly: { gas: 100, total: 4, dairy: 2, sulfur: 1, bread: 1, sweet: 0, savory: 0, ate: new Set() },   // popcorn with butter, to start
       usher: { x: WALK[0][0], y: WALK[0][1], to: 1, wait: 2, face: -Math.PI / 2, beam: -Math.PI / 2, watchT: 0 },
       people: people.map(p => ({ ...p, dose: 0, talking: false, quietT: 0, ewT: 0, complained: false, left: false, leaveT: 0 })) };
     mode = 'movie';
@@ -150,7 +153,7 @@ const THEATER = (() => {
     if (G.done || G.frozen > 0) return;
     if (G.bar < 12) { say(T.empty); return; }
     const scene = MOVIE[sceneAt(G.time)], loud = Math.min(.85, .2 + G.bar / 125);   // a scene the bar calls Loud always covers it, however full he is
-    const type = whichFart({ gas: G.bar, total: 4, dairy: 2, sulfur: 1, bread: 1, sweet: 0, savory: 0, ate: new Set() });   // popcorn with butter
+    const type = whichFart({ ...G.belly, gas: G.bar });   // what he's eaten from the stand
     const back = { up: [0, 4], down: [0, -12], left: [6, -6], right: [-6, -6] }[G.dir], px = G.x + back[0], py = G.y + back[1];
     const out = Math.min(G.bar, 40);   // a fart lets out 40 of the bar, so a bucket of popcorn means more farts, not bigger ones
     GG.add(px, py, out * 2.4);
@@ -164,8 +167,10 @@ const THEATER = (() => {
   const atStand = () => Math.hypot(G.x - STAND[0], G.y - STAND[1]) < 30;
   function popcorn() {
     if (G.popT > 0) { say(T.popcornWait, 1400); return; }
-    G.bar = Math.min(100, G.bar + POP); G.popT = POPWAIT; G.buckets++;
-    say(T.popcornGot, 1800); for (let k = 0; k < 4; k++) tone(900 + k * 140, .04, 'square', k * .07, .06);   // crunch crunch
+    const [name, line] = T.stand[G.standN % 3], b = G.belly, add = [{ bread: 2, dairy: 1 }, { dairy: 2, savory: 1 }, { dairy: 1, sweet: 3 }][G.standN % 3];
+    for (const k in add) { b[k] += add[k]; b.total += add[k]; } b.ate.add(name);
+    G.bar = Math.min(100, G.bar + POP); G.popT = POPWAIT; G.buckets++; G.standN++;
+    say(line, 1800); for (let k = 0; k < 4; k++) tone(900 + k * 140, .04, 'square', k * .07, .06);   // crunch crunch
   }
   function shush() {
     if (G.done) return;
@@ -183,7 +188,7 @@ const THEATER = (() => {
     $('#hFood').textContent = fill(T.crowd, { n: Math.round(G.crowd) }) + (G.strikes ? ' · ' + fill(T.strikes, { n: G.strikes }) : '');
     const near = G.people.some(q => q.talking && q.quietT <= 0 && Math.hypot(q.x * TS - G.x, q.y * TS - G.y) <= 30);
     const stand = atStand();
-    $('#hUse').disabled = !near && !stand; $('#hUse').textContent = stand ? T.popcorn : T.shush;
+    $('#hUse').disabled = !near && !stand; $('#hUse').textContent = stand ? T.stand[G.standN % 3][0] : T.shush;
   }
 
   // the camera follows him but stays on the theater when it's bigger than the screen
@@ -296,12 +301,12 @@ const THEATER = (() => {
     $('#hdTitle').textContent = win ? T.movWin : G.out ? T.usherLose : T.movLose;
     $('#hdText').textContent = fill(T.movText, { score: G.score, gone: G.gone, n: Math.round(G.crowd), best });
     $('#hdFoods').innerHTML = '';
-    $('#hdAgain').textContent = T.movAgain; $('#hdDinner').textContent = T.movHome;
+    $('#hdAgain').textContent = T.movAgain; $('#hdDinner').hidden = true;   // Menu on the bottom row goes back to the start (22 Nov)
     $('#houseDone').hidden = false; $('#hdAgain').focus();
   }
   function home() {
     ended = false; mode = 'start';
-    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner;
+    $('#houseDone').hidden = true; $('#hdAgain').textContent = T.again; $('#hdDinner').textContent = T.toDinner; $('#hdDinner').hidden = false;
     document.body.classList.remove('housePlay', 'outPlay'); $('#house').hidden = true; $('#dinner').hidden = false;
     $('#startCover').hidden = false; $('#movBtn').focus();
   }
