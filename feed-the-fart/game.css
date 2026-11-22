@@ -89,6 +89,7 @@ body.housePlay .hctrl .stick i{background:#f4f1e4}
 #goalsBtn{display:none}
 body.housePlay #goalsBtn{display:inline-block}
 body.outPlay #goalsBtn{display:none}
+body.wedPlay #hStick{visibility:hidden}
 .helpBox{position:fixed;z-index:12;top:calc(3.6rem + env(safe-area-inset-top));right:max(.75rem,env(safe-area-inset-right));max-width:min(24rem,calc(100vw - 1.5rem));background:var(--panel);border:3px solid var(--ink);padding:.7rem .9rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3);line-height:1.45}
 .hdList{list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.4rem}
 .hdList img{width:2.5rem;height:2.5rem;image-rendering:pixelated;display:block}
