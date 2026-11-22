@@ -90,6 +90,10 @@ const WORLD = {
   iceTicks: 300,           // how long an ice age stops food and producers
   rainShare: 0.03,         // share of the world's squares poison rain falls on
   rainHurt: 20,            // energy a creature loses for each cell a poison drop hits
+  // Flood (his ask, 22 Nov): water covers one side of the world for a while.
+  floodSize: [0.35, 0.65], // share of the world it covers, from one edge
+  floodTicks: 300,         // how long before it drains (producers don't work underwater)
+  floodHurt: 0.15,         // energy lost each tick while any cell is in the water
   // Surprise disasters (his ask, 22 Nov: "happen by themselves sometimes").
   surprise: true,          // Surprise disasters box start
   surpriseEvery: 5000,     // about this many ticks between them, on average
@@ -174,7 +178,7 @@ function newWorld(cols, rows) {
   const T = r.width < 700 ? 8 : 10;
   W = cols || Math.max(30, Math.floor(r.width / T)); H = rows || Math.max(20, Math.floor(r.height / T));
   occ = new Int32Array(W * H); food = new Uint8Array(W * H); poison = new Uint8Array(W * H); foodCount = 0; poisonCount = 0;
-  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null); iceUntil = 0; boom = null; lastDisaster = 0;
+  creatures = []; byId = new Map(); tick = born = died = 0; hist.length = 0; select(null); iceUntil = 0; boom = null; flood = null; lastDisaster = 0;
   for (let i = 0; i < W * H * WORLD.startFood; i++) { const k = rnd(W * H); if (!food[k]) { food[k] = 1; foodCount++; } }
 }
 
@@ -221,7 +225,7 @@ function growFood() {
     foodAcc--;
     if (foodCount >= W * H * WORLD.foodCap) break;
     const k = rnd(W * H);
-    if (!occ[k] && !food[k] && !poison[k]) { food[k] = 1; foodCount++; }
+    if (!occ[k] && !food[k] && !poison[k] && !wet(k % W, (k / W) | 0)) { food[k] = 1; foodCount++; }
   }
   foodAcc = Math.min(foodAcc, 1);
 }
@@ -265,7 +269,13 @@ function die(c) {
 // ---------------------------------------------------------------------------
 // Disasters. Each returns the line shown on screen; `boom` is the meteor's
 // flash, drawn for a moment after it hits.
-let iceUntil = 0, boom = null;
+let iceUntil = 0, boom = null, flood = null;
+// flood: { side: 0 east, 1 south, 2 west, 3 north, depth in squares, until }
+function wet(x, y) {
+  if (!flood || tick >= flood.until) return false;
+  const d = flood.depth;
+  return flood.side === 0 ? x >= W - d : flood.side === 1 ? y >= H - d : flood.side === 2 ? x < d : y < d;
+}
 const hasArmor = c => c.cells.some(p => p.t === 'armor');
 function meteor() {
   const long = Math.max(W, H), big = Math.random() < WORLD.meteorBig;
@@ -304,7 +314,17 @@ function poisonRain() {
   creatures = creatures.filter(c => !c.dead);
   return `Poison rain! It hit creatures ${hits} time${hits === 1 ? '' : 's'}, and the poison stays. Armor blocks it.`;
 }
-const DISASTERS = [meteor, iceAge, poisonRain];
+// Movers swim straight for dry land (away from the side the water came from);
+// creatures that can't move wait it out on their stored energy.
+function floodWaters() {
+  const side = rnd(4), across = side % 2 ? H : W;
+  const depth = Math.round(across * (WORLD.floodSize[0] + Math.random() * (WORLD.floodSize[1] - WORLD.floodSize[0])));
+  flood = { side, depth, until: tick + WORLD.floodTicks };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const k = y * W + x; if (food[k] && wet(x, y)) { food[k] = 0; foodCount--; } }
+  const where = ['east', 'south', 'west', 'north'][side];
+  return `Flood! Water covers the ${where} side for ${WORLD.floodTicks} ticks. Movers swim for dry land; producers stop underwater; the rest need storage.`;
+}
+const DISASTERS = [meteor, iceAge, poisonRain, floodWaters];
 let newsTimer = 0;
 let lastDisaster = 0;
 function disaster(surprise) {
@@ -363,6 +383,8 @@ function recall(c) {
 
 function live(c) {
   c.age++;
+  const swimming = flood && tick < flood.until && c.cells.some(p => wet(c.x + p.x, c.y + p.y));
+  if (swimming) c.energy -= WORLD.floodHurt + c.makes; // no sun underwater
   c.energy = Math.min(c.max, c.energy - c.upkeep + (tick < iceUntil ? 0 : c.makes));
   if (poisonCount) for (const p of c.cells) for (const [dx, dy] of DIRS) {
     const x = c.x + p.x + dx, y = c.y + p.y + dy;
@@ -396,12 +418,19 @@ function live(c) {
     }
   }
   // More movers move it more often; a bigger body moves it less often.
-  if (c.movers && Math.random() < Math.min(1, c.movers / c.cells.length)) {
+  // (in a flood a mover swims every tick)
+  if (c.movers && (swimming || Math.random() < Math.min(1, c.movers / c.cells.length))) {
     const seen = c.eyes ? look(c) : null, thought = seen == null && c.smart ? recall(c) : null;
-    if (seen != null) c.dir = seen;
+    if (swimming) c.dir = (flood.side + 2) % 4;
+    else if (seen != null) c.dir = seen;
     else if (thought != null) c.dir = thought;
     else if (Math.random() < WORLD.turn) c.dir = rnd(4);
-    const [dx, dy] = DIRS[c.dir];
+    let [dx, dy] = DIRS[c.dir];
+    // a swimmer blocked on its way to dry land tries going round
+    if (swimming && !fits(c, c.x + dx, c.y + dy)) {
+      const side = DIRS[(c.dir + (Math.random() < .5 ? 1 : 3)) % 4];
+      if (fits(c, c.x + side[0], c.y + side[1])) [dx, dy] = side;
+    }
     if (fits(c, c.x + dx, c.y + dy)) { mark(c, 0); c.x += dx; c.y += dy; mark(c, c.id); }
     else c.dir = rnd(4);
   }
@@ -462,6 +491,11 @@ function draw() {
   }
   for (const c of creatures) for (const p of c.cells) drawCell(g, p.t, ox + (c.x + p.x) * T, oy + (c.y + p.y) * T, T);
   if (tick < iceUntil) { g.fillStyle = 'rgba(165, 216, 255, .35)'; g.fillRect(ox, oy, T * W, T * H); }
+  if (flood && tick < flood.until) {
+    const d = flood.depth, f = flood.side;
+    const [fx, fy, fw, fh] = f === 0 ? [W - d, 0, d, H] : f === 1 ? [0, H - d, W, d] : f === 2 ? [0, 0, d, H] : [0, 0, W, d];
+    g.fillStyle = 'rgba(28, 126, 214, .4)'; g.fillRect(ox + fx * T, oy + fy * T, fw * T, fh * T);
+  }
   if (boom) {
     const age = (performance.now() - boom.at) / 1200;
     if (age >= 1) boom = null;
