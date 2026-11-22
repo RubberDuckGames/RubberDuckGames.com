@@ -12,7 +12,6 @@
 // canvas, buttons, sprites, gas grid and walking (HOUSE.kit).
 Object.assign(T, {
   movBtn: 'The movies',
-  movStart: 'Or go to the movies and fart the loud talkers out.',
   movIntro: 'Shut the talkers up! Fart behind them. Not too much... and watch out for the usher.',
   shush: 'Shush', someone: 'Someone',
   talking: ['Blah blah blah', 'No, YOU hang up!', '*loud chewing*', 'Wait, who is that guy?', 'I saw this already'],
@@ -30,7 +29,7 @@ Object.assign(T, {
   usherLose: 'Three strikes! The usher walks him out.',
   strikes: 'Usher {n}/3',
   popcorn: 'Popcorn', popcornGot: 'Extra butter! More gas.', popcornWait: 'The popcorn is still popping.',
-  movHint: 'People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine. Low on gas? Walk to the popcorn stand at the back and press Use for a big bucket.',
+  movHint: 'The movies: fart the loud talkers out. People in the audience start talking (a glowing phone and dots). Every second they talk upsets the crowd. Walk behind a talker and fart (Space, F or the Fart button): when they’ve breathed enough, they leave. Shush (Use or E) quiets a talker you’re next to for a few seconds. But the gas drifts onto quiet people too, and a fart in a quiet scene gets heard. Loud scenes (explosions, car chases) cover the sound. If the crowd gets too upset, the usher shows him out. And watch the usher with the flashlight: a fart in the beam, or right next to the usher, is a strike. Three strikes and you’re out. Shushing is fine. Low on gas? Walk to the popcorn stand at the back and press Use for a big bucket. With a controller: A farts, B is Use, Select opens this.',
 });
 
 const THEATER = (() => {
@@ -323,6 +322,5 @@ const THEATER = (() => {
   $('#hdDinner').onclick = () => { if (ended) home(); else prevDinner(); };
   $('#movBtn').textContent = T.movBtn;
   $('#movBtn').onclick = () => { audio(); $('#startCover').hidden = true; start(); };
-  T.start += ' ' + T.movStart; $('#startText').textContent = T.start;
   return { start, peek: () => G, step, draw, fart, shush, seen, STAND, LENGTH };   // for checking from the console
 })();

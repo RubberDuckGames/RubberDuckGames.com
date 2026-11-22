@@ -9,7 +9,6 @@
 // to leave. It borrows the house's canvas, bar, buttons and sprites (HOUSE.kit).
 Object.assign(T, {
   wedBtn: 'The wedding',
-  wedStart: 'Or go to a wedding and try NOT to fart.',
   wedIntro: "Hold it in! Let one out only when it's loud.",
   wedBar: 'Holding it',
   eat: 'Eat',
@@ -22,7 +21,7 @@ Object.assign(T, {
   wedText: 'Score {score}. He snuck out {safe} without anyone noticing and got caught {caught} times. Best score {best}.',
   wedAgain: 'Go to the wedding again', wedHome: 'Back to the start',
   disturbed: 'Caught {n}/3',
-  wedHint: 'Hold it in! The bar fills on its own, faster after he eats. Let one out (Space, F or the Fart button) only when the room is loud: laughing, clapping, cheering or the band. A bigger bar is a louder fart. The strip under the room shows what is coming: yellow is loud, green is chatter, dark is quiet. A fart in a quiet moment, or a full bar, disturbs the wedding; three times and he has to leave. When food comes, Eat (E or Use).',
+  wedHint: 'The wedding: try NOT to fart. Hold it in! The bar fills on its own, faster after he eats. Let one out (Space, F or the Fart button) only when the room is loud: laughing, clapping, cheering or the band. A bigger bar is a louder fart. The strip under the room shows what is coming: yellow is loud, green is chatter, dark is quiet. A fart in a quiet moment, or a full bar, disturbs the wedding; three times and he has to leave. When food comes, Eat (E or Use). With a controller: A farts, B is Use, Select opens this.',
 });
 
 const WEDDING = (() => {
@@ -235,6 +234,5 @@ const WEDDING = (() => {
   $('#hdDinner').onclick = () => { if (ended) home(); else prevDinner(); };
   $('#wedBtn').textContent = T.wedBtn;
   $('#wedBtn').onclick = () => { audio(); $('#startCover').hidden = true; start(); };
-  T.start += ' ' + T.wedStart; $('#startText').textContent = T.start;
   return { start, peek: () => G, step, draw, PROGRAM, LENGTH };   // peek, step, draw: for checking from the console
 })();

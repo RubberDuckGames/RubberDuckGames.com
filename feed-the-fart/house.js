@@ -13,15 +13,17 @@
 // he picked up. On a phone the house fills the screen with the bar and buttons
 // floating over it, like Mission Directive (her ask: no wasted space).
 Object.assign(T, {
-  start: `Walk ${NAME} through the house. Grab the food and fart where people and pets will smell it. Gas spreads through open rooms and stops at closed doors, so trap them in small spaces! A full bar means a run for the bathroom. Then it's dinner: feed him what you found and pull his finger.`,
-  keys: 'Keyboard: arrows to walk, Space or F to fart, E to open or close a door. At dinner: arrows to a food, Space or Enter to eat, F pulls his finger. A game controller works too: A farts, B is Use, X pulls the finger at dinner, Select is help.',
+  // the start card stays short (Randi, 22 Nov: "the base menu is a little wordy"); how to play each one is in its ? help
+  start: `It's Thanksgiving with ${NAME}. Pick where to go. Press ? in the game for how to play.`,
+  keys: '',
+  dinnerHint: `It's Thanksgiving dinner. Feed ${NAME} from the table. When he holds out his finger, pull it. Find every kind of fart, and maybe the secret one. Keyboard: arrows (or Tab) to a food, Space or Enter to eat, F pulls his finger, C opens the collection. With a controller: A eats, X pulls the finger, Select opens this.`,
   playHouse: 'Play the house', justDinner: 'Just dinner',
   barLabel: 'Fart bar', fart: 'Fart', open: 'Open', close: 'Close', use: 'Use',
   barWords: ['Empty', 'Rumbling', 'Ready', 'Full!'],
   score: 'Score {n}', food: 'Food {n}/{all}',
   where: 'Dinner is through the glowing door at the end of the big hall.',
   allFood: "That's all the food! Head to the dining room.",
-  houseHint: 'Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door, window or fridge next to you. People who smell it open a window, so shut them in a room without one. Goals has things to try. Fill the bar all the way and run for the bathroom. The glowing door at the end of the big hall goes to dinner. With a controller: A farts, B is Use, Select opens this.',
+  houseHint: 'Grab the food and fart where people and pets will smell it. Trap them in small spaces! Walk with the arrows or the stick (or hold a finger on the house). Fart with Space, F or the Fart button: the gas spreads through open rooms and stops at closed doors. Use (or E) opens or closes the door, window or fridge next to you. People who smell it open a window, so shut them in a room without one. Goals has things to try. Fill the bar all the way and run for the bathroom. The glowing door at the end of the big hall goes to dinner. With a controller: A farts, B is Use, Select opens this.',
   intro: 'Find the food. Trap them with your farts!',
   ow: ['OW!', 'OW OW OW!', 'Who left Legos here?!', 'My foot!'],
   slow1: 'Ugh, so full. Slowing down...',
@@ -845,7 +847,7 @@ const HOUSE = (() => {
 })();
 
 $('#startText').textContent = T.start;
-$('#startKeys').textContent = T.keys;
+$('#startKeys').textContent = T.keys; $('#startKeys').hidden = !T.keys;
 $('#startBtn').textContent = T.playHouse; $('#dinnerBtn').textContent = T.justDinner;
 $('#hBarLabel').textContent = T.barLabel; $('#hFart').textContent = T.fart; $('#hUse').textContent = T.use;
 // One box under the bar for How to play (?) and, in the house, the Goals list.
@@ -853,7 +855,7 @@ function toggleHelp(show, kind = 'help') {
   const box = $('#helpBox');
   if (show === undefined) show = box.hidden || box.dataset.kind !== kind;
   box.dataset.kind = kind;
-  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : mode === 'movie' ? T.movHint : T.keys;
+  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : mode === 'movie' ? T.movHint : T.dinnerHint;
   box.hidden = !show;
   $('#helpBtn').setAttribute('aria-expanded', String(show && kind === 'help')); $('#goalsBtn').setAttribute('aria-expanded', String(show && kind === 'goals'));
 }

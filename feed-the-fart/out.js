@@ -8,7 +8,6 @@
 //      waiters. A fart on the way buys a few seconds (and gets the diners).
 Object.assign(T, {
   outBtn: 'Out to dinner',
-  outStart: 'Or go out to dinner: car farts on the way, then a race for the restaurant bathroom.',
   carIntro: "Off to the restaurant! He's driving. Fart in the car; Use locks the windows.",
   lock: 'Lock', unlock: 'Unlock',
   locked: 'Windows locked.', unlocked: 'Windows unlocked.',
@@ -35,7 +34,7 @@ Object.assign(T, {
   outText: 'Score {score}. In the car you knocked out {car} of {carAll}; at the restaurant, {diners} of {dinersAll}. Best score {best}.',
   outAgain: 'Go out again', outHome: 'Back to the start',
   riders: { mom: 'Mom', kidA: 'The kid', kidB: 'The other kid', crumb: 'Crumb' },
-  outHint: 'In the car: fart with Space, F or the Fart button. Use (or E) locks the windows so nobody can roll one down. At the restaurant: walk with the arrows or the stick (or hold a finger on the screen) and get to the bathroom at the back before the time runs out. A fart on the way buys a few seconds.',
+  outHint: 'Out to dinner: car farts on the way, then a race for the restaurant bathroom. In the car: fart with Space, F or the Fart button. Use (or E) locks the windows so nobody can roll one down. At the restaurant: walk with the arrows or the stick (or hold a finger on the screen) and get to the bathroom at the back before the time runs out. A fart on the way buys a few seconds. With a controller: A farts, B is Use, Select opens this.',
 });
 
 const OUT = (() => {
@@ -410,7 +409,6 @@ const OUT = (() => {
   $('#hdAgain').onclick = () => { if (ended) { $('#houseDone').hidden = true; startCar(); } else houseAgain(); };
   $('#hdDinner').onclick = () => { if (ended) home(); else houseDinner(); };
   $('#outBtn').textContent = T.outBtn;
-  T.start += ' ' + T.outStart; $('#startText').textContent = T.start;
   $('#outBtn').onclick = () => { audio(); $('#startCover').hidden = true; startCar(); };
   return { start: startCar, peek: () => G, step, draw, restaurant: startRest };   // peek, step, draw: for checking from the console
 })();
