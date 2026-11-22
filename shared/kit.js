@@ -179,5 +179,33 @@ const RDG = (() => {
     addEventListener('gamepaddisconnected', () => { Object.keys(held).forEach(k => hold(k, false)); if (o.stick && steering) { o.stick.x = o.stick.y = 0; o.stick.on = false; steering = false; } });
   }
 
-  return { sound, stick, noZoom, pad };
+  // ---------- The studio database ----------
+  // Decided 22 Nov: every game uses the one shared Supabase project
+  // (RubberDuckGames; tables in db/). The publishable key is public by
+  // design: browsers can only call the functions the database allows.
+  // rpc(fn, args) calls one. Every request gives up after 8 seconds: found
+  // in Conquest (10 Nov), where a phone that slept mid-request never got an
+  // answer and stopped checking for turns.
+  const DB_URL = 'https://hybjirpyeyomedhluvvl.supabase.co';
+  const DB_KEY = 'sb_publishable_3n3_7kk6BSLnDQ1_FLdOHA_xyXEJm8P';
+  async function rpc(fn, body = {}) {
+    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch(`${DB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', signal: ctl.signal, headers: { apikey: DB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).finally(() => clearTimeout(tm));
+    const j = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(j?.message || 'net');
+    return j;
+  }
+
+  // Counts one open of this game for today (db/0002_plays.sql): the game's
+  // folder name, the day and a number. Every game
+  // that loads the kit is counted by itself, once per page load, and only on
+  // rubberduckgames.com, so previews and a file opened from the disk aren't.
+  function played(game = location.pathname.split('/').filter(Boolean)[0]) {
+    if (played.done || !game || location.hostname !== 'rubberduckgames.com') return;
+    played.done = true;
+    rpc('play_add', { p_game: game }).catch(() => { });
+  }
+  played();
+
+  return { sound, stick, noZoom, pad, rpc, played };
 })();

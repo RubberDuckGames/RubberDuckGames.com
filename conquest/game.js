@@ -531,20 +531,13 @@ function save() {
 // `G.waiting` until their device starts their turn (pay, healing, fuel). The
 // others' devices check for a new turn every few seconds. A save made from an
 // older copy is refused, so two devices can't overwrite each other.
-const SB_URL = 'https://hybjirpyeyomedhluvvl.supabase.co', SB_KEY = 'sb_publishable_3n3_7kk6BSLnDQ1_FLdOHA_xyXEJm8P';
 let ONLINE = null;   // { id, ver, me }
 // Decided 10 Nov, from the first real game: a waiting phone stopped picking up
-// turns. Phones pause pages when the screen sleeps or the app switches, and a
-// request caught in that never came back, so the checking stopped for good.
-// Now every request gives up after 8 seconds, the game checks again as soon
-// as the page is back on screen, and the Waiting button checks right away.
-async function rpc(fn, body) {
-  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 8000);
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: 'POST', signal: ctl.signal, headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).finally(() => clearTimeout(tm));
-  const j = await r.json().catch(() => null);
-  if (!r.ok) throw new Error(j?.message || 'net');
-  return j;
-}
+// turns when a request caught in a sleeping phone never came back. Requests
+// now go through the kit's RDG.rpc, which gives up after 8 seconds; the game
+// checks again as soon as the page is back on screen, and the Waiting button
+// checks right away.
+const rpc = RDG.rpc;
 const packG = () => ({ ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) });
 const linkFor = id => location.origin + location.pathname + '?game=' + id;
 const seatKey = id => 'conquest-online:' + id;
