@@ -82,6 +82,12 @@ const WORLD = {
   // to maxCreatures, no babies could be born, and nothing moved. Now a creature
   // dies once it's this many ticks old, so the world keeps changing. Ours.
   oldAge: 2000,
+  // Super plants (his idea, 22 Nov: a group of similar things joins into one
+  // thing). Two plants this many empty squares apart or closer join into one
+  // super plant, up to `superMax` cells. Both must be `birthAge` old, or every
+  // newborn would join its parent the tick it was born.
+  joinGap: 1,
+  superMax: 30,
   // Disasters (his idea, 22 Nov: a mass extinction that can wipe out the whole
   // thing, can't be predicted, and how a creature is built decides if it
   // lives). Disaster picks one at random. PLACEHOLDER numbers, ours.
@@ -196,6 +202,7 @@ function makeCreature(cells, x, y, gen) {
     if (p.t === 'fins') c.fins = (c.fins || 0) + 1;
     if (p.t === 'killer') c.killers++;
   }
+  c.plant = c.makes > 0 && !c.movers;
   return c;
 }
 function fits(c, x, y) {
@@ -252,6 +259,7 @@ function haveBaby(c) {
   let cells = c.cells, changed = false;
   if (Math.random() * 100 < settings.change) { const m = mutate(cells); if (m) { cells = m; changed = true; } }
   const b = makeCreature(cells, 0, 0, c.gen + 1);
+  b.super = c.super && !changed;
   const spots = [[c.x + c.w + 1, c.y], [c.x - b.w - 1, c.y], [c.x, c.y + c.h + 1], [c.x, c.y - b.h - 1]];
   for (let i = spots.length - 1; i > 0; i--) { const j = rnd(i + 1); [spots[i], spots[j]] = [spots[j], spots[i]]; }
   for (const [x, y] of spots) {
@@ -447,12 +455,44 @@ function live(c) {
   if (c.energy <= 0 || c.age >= WORLD.oldAge) die(c);
 }
 
+// Super plants. The two bodies keep their shapes and places; the group shares
+// one energy store, one name and one baby count, so a hunter has to drain the
+// whole group. The cells don't have to touch, so a super plant skips the
+// all-cells-joined check (and a baby copies the whole group, since a change
+// that broke the check is thrown away).
+function joinPlants(a) {
+  if (a.dead || !a.plant || a.age < WORLD.birthAge) return;
+  const r = WORLD.joinGap + 1;
+  for (const p of a.cells) for (const [dx, dy] of DIRS) for (let i = 1; i <= r; i++) {
+    const x = a.x + p.x + dx * i, y = a.y + p.y + dy * i;
+    if (x < 0 || y < 0 || x >= W || y >= H) break;
+    const o = occ[y * W + x];
+    if (!o) continue;
+    if (o === a.id) break;
+    const b = byId.get(o);
+    if (b && !b.dead && b.plant && b.age >= WORLD.birthAge && a.cells.length + b.cells.length <= WORLD.superMax) { join(a, b); return; }
+    break;
+  }
+}
+function join(a, b) {
+  const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
+  const cells = [...a.cells.map(p => ({ x: a.x + p.x - x0, y: a.y + p.y - y0, t: p.t })),
+                 ...b.cells.map(p => ({ x: b.x + p.x - x0, y: b.y + p.y - y0, t: p.t }))];
+  const c = makeCreature(cells, x0, y0, Math.max(a.gen, b.gen));
+  c.super = true; c.name = a.name || b.name; c.kids = a.kids + b.kids;
+  c.age = Math.min(a.age, b.age); c.energy = Math.min(c.max, a.energy + b.energy);
+  for (const v of [a, b]) { mark(v, 0); v.dead = true; byId.delete(v.id); }
+  addCreature(c);
+  if (sel === a || sel === b) select(c);
+}
+
 function step() {
   tick++;
   if (settings.surprise && creatures.length && tick > WORLD.surpriseCalm && tick - lastDisaster > WORLD.surpriseGap &&
       Math.random() < 1 / WORLD.surpriseEvery) disaster(true);
   growFood();
   for (const c of creatures.slice()) if (!c.dead) live(c);
+  for (const c of creatures.slice()) joinPlants(c);
   creatures = creatures.filter(c => !c.dead);
 
 }
@@ -499,6 +539,9 @@ function draw() {
     else if (poison[k]) drawCell(g, 'poison', ox + x * T, oy + y * T, T);
   }
   for (const c of creatures) for (const p of c.cells) drawCell(g, p.t, ox + (c.x + p.x) * T, oy + (c.y + p.y) * T, T);
+  // a super plant's group gets a green box round it, so the joined bodies read as one
+  g.strokeStyle = '#2b8a3e'; g.lineWidth = Math.max(1, T / 6);
+  for (const c of creatures) if (c.super) g.strokeRect(ox + c.x * T, oy + c.y * T, c.w * T, c.h * T);
   if (tick < iceUntil) { g.fillStyle = 'rgba(165, 216, 255, .35)'; g.fillRect(ox, oy, T * W, T * H); }
   if (flood && tick < flood.until) {
     const d = flood.depth, f = flood.side;
@@ -566,17 +609,17 @@ function showInfo() {
   const c = sel, n = id => c.cells.filter(p => p.t === id).length;
   $('#infoTitle').textContent = (c.dead ? 'It died: ' : '') + (c.name || 'Creature') + (c.changed ? ' (born different)' : '');
   const rows = [
-    ['Kind', kindOf(c.cells)],
+    ['Kind', c.super ? 'Super plant' : kindOf(c.cells)],
     ['Energy', Math.max(0, Math.round(c.energy)) + ' of ' + c.max],
     ['Uses each tick', +c.upkeep.toFixed(2)],
     ...(c.makes ? [['Makes each tick', +c.makes.toFixed(2)]] : []),
-    ['Cells', c.cells.length + ' of ' + sizeLimit(c.cells)],
+    ['Cells', c.cells.length + ' of ' + (c.super ? WORLD.superMax : sizeLimit(c.cells))],
     ['Generation', c.gen], ['Age', c.age + ' of ' + WORLD.oldAge], ['Babies', c.kids],
     ...(c.smart ? [['Remembers', [c.good && 'food', c.bad && 'danger'].filter(Boolean).join(', ') || 'nothing yet']] : []),
     ...TYPES.filter(n).map(t => [CELLS[t].name, n(t)]),
   ];
   $('#infoList').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
-  $('#infoEdit').hidden = c.dead;
+  $('#infoEdit').hidden = c.dead || c.super; $('#infoSave').hidden = !!c.super; // a group is bigger than the builder's grid
 }
 const tileAt = e => {
   const r = cv.getBoundingClientRect(), dpr = cv.width / r.width;
