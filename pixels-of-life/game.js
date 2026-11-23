@@ -29,6 +29,10 @@
 // nothing in sight it keeps away from the bad place until `forgets` ticks have
 // passed, else goes back to the good place and forgets it once there. What its
 // eyes see comes first. Babies start with no memories.
+// His ask, 22 Nov: smart cells stack and do more. Each smart cell lets the
+// creature remember one more food place and one more danger place, and keep
+// danger in mind `forgets` ticks longer. It heads for the nearest food place
+// it remembers and keeps away from any danger place near it.
 // PLACEHOLDER: every number below is a first guess until he gives his own.
 // The colours and drawings are placeholders too, until he picks or draws them.
 const CELLS = {
@@ -38,7 +42,7 @@ const CELLS = {
   bone:    { name: 'Bone',    says: 'Inside frame. Lets the creature grow bigger.', upkeep: 0.05, holds: 10, room: 4, color: '#efe4cc' },
   killer:  { name: 'Killer',  says: 'Takes energy from other creatures it touches. Armor stops it.', upkeep: 0.15, holds: 10, damage: 2, color: '#26282c' },
   producer: { name: 'Producer', says: 'Makes energy for the creature, like a plant.', upkeep: 0.05, holds: 10, makes: 0.15, color: '#5c940d' },
-  smart:   { name: 'Smart',   says: 'Remembers where it found food, and where it got hurt.', upkeep: 0.10, holds: 10, forgets: 300, color: '#cc5de8' },
+  smart:   { name: 'Smart',   says: 'Remembers where it found food, and where it got hurt. More smart cells remember more places, for longer.', upkeep: 0.10, holds: 10, forgets: 300, color: '#cc5de8' },
   eye:     { name: 'Eye',     says: 'Sees food to go to and killers to run from. On a killer, it sees prey to chase.', upkeep: 0.10, holds: 10, sees: 6, color: '#4dabf7' },
   fins:    { name: 'Fins',    says: 'Swims: loses no energy in a flood, and can move in water.', upkeep: 0.05, holds: 10, color: '#1864ab' },
   armor:   { name: 'Armor',   says: 'Outside protection. Killer cells can\'t hurt it.', upkeep: 0.10, holds: 10, color: '#62708a' },
@@ -88,6 +92,9 @@ const WORLD = {
   // newborn would join its parent the tick it was born.
   joinGap: 1,
   superMax: 30,
+  // His ask, 22 Nov: super plants make more energy. Their producers make this
+  // many times as much. Ours.
+  superBoost: 1.5,
   // Disasters (his idea, 22 Nov: a mass extinction that can wipe out the whole
   // thing, can't be predicted, and how a creature is built decides if it
   // lives). Disaster picks one at random. PLACEHOLDER numbers, ours.
@@ -260,6 +267,7 @@ function haveBaby(c) {
   if (Math.random() * 100 < settings.change) { const m = mutate(cells); if (m) { cells = m; changed = true; } }
   const b = makeCreature(cells, 0, 0, c.gen + 1);
   b.super = c.super && !changed;
+  if (b.super) b.makes *= WORLD.superBoost;
   const spots = [[c.x + c.w + 1, c.y], [c.x - b.w - 1, c.y], [c.x, c.y + c.h + 1], [c.x, c.y - b.h - 1]];
   for (let i = spots.length - 1; i > 0; i--) { const j = rnd(i + 1); [spots[i], spots[j]] = [spots[j], spots[i]]; }
   for (const [x, y] of spots) {
@@ -379,20 +387,30 @@ function look(c) {
 
 // Smart cell memories, in world squares from the creature's middle.
 const middle = c => [c.x + c.w / 2, c.y + c.h / 2];
-function hurtAt(c) { if (c.smart) { c.bad = middle(c); c.badAt = c.age; } }
+// c.goods: food places, c.bads: danger places, each { at: [x, y], age }.
+// Each list holds one place per smart cell, the oldest dropped first; a place
+// within 2 squares of one it has already counts as that one.
+const dist = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+function remember(list, n, item, at) {
+  const i = list.findIndex(m => dist(at(m), at(item)) <= 2);
+  if (i >= 0) list.splice(i, 1);
+  list.push(item); if (list.length > n) list.shift();
+}
+function ateAt(c, x, y) { if (c.smart) remember(c.goods || (c.goods = []), c.smart, { at: [x, y], age: c.age }, m => m.at); }
+function hurtAt(c) { if (c.smart) remember(c.bads || (c.bads = []), c.smart, { at: middle(c), age: c.age }, m => m.at); }
+function nearest(list, from) { let best = null, d = 1e9; for (const m of list) { const e = dist(m, from); if (e < d) { d = e; best = m; } } return best; }
 function recall(c) {
-  const [mx, my] = middle(c);
-  if (c.bad && c.age - c.badAt > CELLS.smart.forgets) c.bad = null;
-  if (c.bad) {
-    const dx = mx - c.bad[0], dy = my - c.bad[1];
-    if (Math.abs(dx) + Math.abs(dy) < 10) return towards(dx || (Math.random() < .5 ? 1 : -1), dy);
-  }
-  if (c.good) {
-    const dx = c.good[0] - mx, dy = c.good[1] - my;
-    if (Math.abs(dx) + Math.abs(dy) <= 2) { c.good = null; return null; }
-    return towards(dx, dy);
-  }
-  return null;
+  const here = middle(c);
+  if (c.bads) c.bads = c.bads.filter(m => c.age - m.age <= CELLS.smart.forgets * c.smart);
+  const bad = c.bads && nearest(c.bads.map(m => m.at), here);
+  if (bad && dist(bad, here) < 10) return towards(here[0] - bad[0] || (Math.random() < .5 ? 1 : -1), here[1] - bad[1]);
+  // Back at a food place, it forgets it, but not one it ate at in the last
+  // 20 ticks. Forgetting on arrival forgot the place it had just eaten at, so
+  // it never held more than one; keeping a place while food was still near it
+  // left creatures circling food their mouths couldn't reach until they starved.
+  if (c.goods) c.goods = c.goods.filter(m => dist(m.at, here) > 2 || c.age - m.age < 20);
+  const good = c.goods && nearest(c.goods.filter(m => dist(m.at, here) > 2).map(m => m.at), here);
+  return good ? towards(good[0] - here[0], good[1] - here[1]) : null;
 }
 
 function live(c) {
@@ -431,7 +449,7 @@ function live(c) {
       const x = mx + dx, y = my + dy;
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
       const k = y * W + x;
-      if (food[k]) { food[k] = 0; foodCount--; c.energy = Math.min(c.max, c.energy + WORLD.foodEnergy); if (c.smart) c.good = [x, y]; break; }
+      if (food[k]) { food[k] = 0; foodCount--; c.energy = Math.min(c.max, c.energy + WORLD.foodEnergy); ateAt(c, x, y); break; }
     }
   }
   // More movers move it more often; a bigger body moves it less often.
@@ -479,7 +497,7 @@ function join(a, b) {
   const cells = [...a.cells.map(p => ({ x: a.x + p.x - x0, y: a.y + p.y - y0, t: p.t })),
                  ...b.cells.map(p => ({ x: b.x + p.x - x0, y: b.y + p.y - y0, t: p.t }))];
   const c = makeCreature(cells, x0, y0, Math.max(a.gen, b.gen));
-  c.super = true; c.name = a.name || b.name; c.kids = a.kids + b.kids;
+  c.super = true; c.makes *= WORLD.superBoost; c.name = a.name || b.name; c.kids = a.kids + b.kids;
   c.age = Math.min(a.age, b.age); c.energy = Math.min(c.max, a.energy + b.energy);
   for (const v of [a, b]) { mark(v, 0); v.dead = true; byId.delete(v.id); }
   addCreature(c);
@@ -565,9 +583,9 @@ function draw() {
     // a picked smart creature shows its memories: a green ring where it ate,
     // a red cross where it got hurt
     g.lineWidth = Math.max(2, T / 5);
-    if (sel.good) { g.strokeStyle = '#2b8a3e'; g.beginPath(); g.arc(ox + (sel.good[0] + .5) * T, oy + (sel.good[1] + .5) * T, Math.max(5, T * .7), 0, 7); g.stroke(); }
-    if (sel.bad) {
-      const bx = ox + sel.bad[0] * T, by = oy + sel.bad[1] * T, r = Math.max(5, T * .7);
+    for (const { at: m } of sel.goods || []) { g.strokeStyle = '#2b8a3e'; g.beginPath(); g.arc(ox + (m[0] + .5) * T, oy + (m[1] + .5) * T, Math.max(5, T * .7), 0, 7); g.stroke(); }
+    for (const { at } of sel.bads || []) {
+      const bx = ox + at[0] * T, by = oy + at[1] * T, r = Math.max(5, T * .7);
       g.strokeStyle = '#c92a2a'; g.beginPath(); g.moveTo(bx - r, by - r); g.lineTo(bx + r, by + r); g.moveTo(bx + r, by - r); g.lineTo(bx - r, by + r); g.stroke();
     }
   }
@@ -615,7 +633,7 @@ function showInfo() {
     ...(c.makes ? [['Makes each tick', +c.makes.toFixed(2)]] : []),
     ['Cells', c.cells.length + ' of ' + (c.super ? WORLD.superMax : sizeLimit(c.cells))],
     ['Generation', c.gen], ['Age', c.age + ' of ' + WORLD.oldAge], ['Babies', c.kids],
-    ...(c.smart ? [['Remembers', [c.good && 'food', c.bad && 'danger'].filter(Boolean).join(', ') || 'nothing yet']] : []),
+    ...(c.smart ? [['Remembers', [c.goods?.length && `${c.goods.length} food`, c.bads?.length && `${c.bads.length} danger`].filter(Boolean).join(', ') || 'nothing yet']] : []),
     ...TYPES.filter(n).map(t => [CELLS[t].name, n(t)]),
   ];
   $('#infoList').innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('');
