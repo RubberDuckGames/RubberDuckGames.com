@@ -16,6 +16,16 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#8fd3ff;tou
 .help .goal{margin:0 0 .4rem;font-weight:800}
 .help ul{margin:.2rem 0;padding-left:1.1rem}
 .help .jobs{margin:.4rem 0 0;color:var(--soft)}
+.help .needsH{margin:.6rem 0 .2rem}
+.needs{list-style:none;padding:0!important;margin:0}
+.needs li{margin:.25rem 0}
+/* the state is a word, not only a colour */
+.st{display:inline-block;min-width:4.6rem;margin-right:.45rem;padding:0 .35rem;border:2px solid;font-size:.85rem;font-weight:800;text-align:center}
+.st.good{color:#2f6b2a;border-color:#2f6b2a;background:#e6f4dd}
+.st.bad{color:#8e2a14;border-color:#8e2a14;background:#fbe3dc}
+.guide{display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;margin:.4rem 0 .6rem;padding:.6rem;background:#f2e2bc;border:3px solid var(--line)}
+.gpic{image-rendering:pixelated;max-width:22%;height:auto}
+.guide .to,.guide .gap{color:var(--soft);font-weight:800}
 
 /* one short line at a time, inside the farm's bottom edge */
 .msg{position:absolute;left:50%;bottom:.6rem;transform:translateX(-50%);z-index:5;margin:0;max-width:calc(100% - 1rem);background:var(--panel);border:3px solid var(--ink);padding:.4rem .8rem;font-weight:700;text-align:center;box-shadow:.25rem .25rem 0 rgba(0,0,0,.3)}
@@ -59,4 +69,4 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#8fd3ff;tou
 /* a phone: short labels in the bar, and cards over the whole screen, since
    the farm is small there (after the rules they change, so they win) */
 .bar .ico{display:none}
-@media (max-width:40rem){.bar{gap:.3rem;padding-left:.4rem;padding-right:.4rem}.bar .pill{padding:.3rem .4rem;font-size:.6rem}.bar .lbl{display:none}.bar .ico{display:inline}.cover{position:fixed;z-index:20}}
+@media (max-width:40rem){.bar{gap:.25rem;padding-left:.3rem;padding-right:.3rem}.bar .pill{padding:.3rem .3rem;font-size:.55rem;box-shadow:.15rem .15rem 0 #8a6236}.bar .lbl{display:none}.bar .ico{display:inline}.cover{position:fixed;z-index:20}}

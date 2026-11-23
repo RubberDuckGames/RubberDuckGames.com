@@ -28,8 +28,14 @@ const TUNE = {
   step: .16,        // you walk one square
   antStep: .24,     // the other ants walk one square
   queenStep: .6,    // the queen walks one square
-  dig: .4,          // dig one square of the top sand
-  digDeep: .65,     // dig one square of the harder soil lower down
+  // Decided 22 Nov, the oldest kid tester's first play: digging was too
+  // touchy and ran away with you (it was .4 and .65 a square, no rest, and
+  // the lightest push on the stick dug). Now it takes longer, rests after
+  // each square, and the stick has to be pushed firmly to dig.
+  dig: .8,          // dig one square of the top sand
+  digDeep: 1.1,     // dig one square of the harder soil lower down
+  digRest: .35,     // after a square, this long before the next one starts
+  digPush: .75,     // how far the stick must be pushed to dig (walking needs .35)
   bugSlow: 1.7,     // carrying a dead bug, every step takes this many times as long
   roomW: 5, roomH: 3,
   egg: 18,          // an egg hatches into a larva
@@ -39,11 +45,17 @@ const TUNE = {
   layAlone: 30,     // the queen lays an egg this often before she has her deep room
   layRoom: 16,      // and this often in it
   queenFat: 3,      // eggs she can lay at the start without being fed (her own fat)
+  queenFeeds: 6,    // larvae feeds she gives from her own body before workers take over
+  queenFeedEvery: 4, // seconds between those feeds
   eggsPerFood: 2,   // eggs one food lets her lay
   queenFull: 6,     // she won't take food past this many eggs' worth
   broodMax: 12,     // eggs, larvae and pupae at once
+  broodCrowded: 2,  // ...and before there's a nursery, all the queen's chamber holds
+  untended: .5,     // brood outside a nursery grows at this speed...
+  founding: 4,      // ...except while the colony has fewer ants than this (the queen raises them)
+  trashBlows: 60,   // trash carried out the door blows away after this long
   antsMax: 30,
-  meal: 60,         // the colony eats from the pantry this often
+  meal: 60,         // the colony eats this often
   perMeal: 4,       // one food each meal for every this many ants
   husk: .5,         // chance a meal leaves a husk to throw out
   trailLife: 70,    // a scent trail nobody walks fades in this long
@@ -200,7 +212,8 @@ const free = (x, y) => walk(x, y) && !itemsAt(x, y).length;
 const antCount = () => G.ants.length + 1;
 
 function newFarm(k) {
-  const g = { kind: k, grid: new Uint8Array(W * H), items: [], ants: [], rooms: [], trails: [], spots: [], nid: 1, time: 0, flags: {}, goals: {}, lastMeal: 0, nextSpot: 0, nextBug: 20, hungry: false, germs: false };
+  const g = { kind: k, grid: new Uint8Array(W * H), items: [], ants: [], rooms: [], trails: [], spots: [], nid: 1, time: 0, flags: {}, goals: {}, lastMeal: 60,   // the first meal comes at two minutes, once the first ants are up
+    nextSpot: 0, nextBug: 20, hungry: false, germs: false };
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
     g.grid[idx(x, y)] = x === 0 || x === W - 1 || y === H - 1 ? FRAME : y < SURF ? SKY : y === SURF ? TOP : SOIL;
   // the start: a short tunnel down from the surface to the queen's first
@@ -216,7 +229,7 @@ function newFarm(k) {
     if (Math.abs(rx - ex) < 5 && ry < 13) continue;
     for (let i = 0; i < rw; i++) if (g.grid[idx(rx + i, ry)] === SOIL) g.grid[idx(rx + i, ry)] = ROCK;
   }
-  g.queen = { x: 21, y: 10, fx: 21, fy: 10, t: 1, face: 'l', path: null, fed: TUNE.queenFat, layT: 0 };
+  g.queen = { x: 21, y: 10, fx: 21, fy: 10, t: 1, face: 'l', path: null, fed: TUNE.queenFat, fat: TUNE.queenFeeds, layT: 0 };
   g.player = { id: 0, x: 22, y: 10, fx: 22, fy: 10, t: 1, face: 'l', carry: null, digT: 0, digAt: -1, rec: null };
   const add = (k2, x, y) => g.items.push({ id: g.nid++, k: k2, x, y, t: 0, fed: 0, by: null, res: null });
   add('egg', 18, 10); add('egg', 19, 10); add('egg', 18, 9);
@@ -325,7 +338,8 @@ const stick = RDG.stick('#pad', '#knob');
 function dirInput() {
   if (lastDir && held.has(lastDir)) return KEYDIR[lastDir];
   for (const k of held) if (KEYDIR[k]) return KEYDIR[k];
-  if (stick.on && Math.hypot(stick.x, stick.y) > .35) return Math.abs(stick.x) > Math.abs(stick.y) ? [Math.sign(stick.x), 0] : [0, Math.sign(stick.y)];
+  // the third number says whether the push is firm enough to dig
+  if (stick.on && Math.hypot(stick.x, stick.y) > .35) return [...(Math.abs(stick.x) > Math.abs(stick.y) ? [Math.sign(stick.x), 0] : [0, Math.sign(stick.y)]), Math.hypot(stick.x, stick.y) >= TUNE.digPush];
   if (hold) {   // a finger or the mouse held on the farm: walk toward it
     const ax = P.x * T + T / 2, ay = P.y * T + T / 2, dx = hold.x - ax, dy = hold.y - ay;
     if (Math.hypot(dx, dy) > T * .7) return Math.abs(dx) > Math.abs(dy) ? [Math.sign(dx), 0] : [0, Math.sign(dy)];
@@ -359,6 +373,7 @@ $('#actBtn').addEventListener('click', e => { if (e.detail === 0 && playing()) a
 $('#roomBtn').addEventListener('click', () => { if (playing()) makeRoom(); });
 $('#bookBtn').onclick = () => { if (screen === 'play') openBook(); };
 $('#helpBtn').onclick = () => toggleHelp();
+$('#howHelp').onclick = () => { if (screen === 'play') openGuide(0); };
 $('#soundBtn').onclick = () => { S.sound = !S.sound; persist(); hud(); };
 RDG.noZoom(playing, ['#pad', '#actBtn', '#roomBtn']);
 RDG.pad({ a: ' ', b: 'r', x: 'n', select: 'h', start: 'Enter', stick });
@@ -367,6 +382,7 @@ RDG.pad({ a: ' ', b: 'r', x: 'n', select: 'h', start: 'Enter', stick });
 let bumpT = 0;
 function stepPlayer(dt) {
   if (moveOn(P, dt, stepTime(P, TUNE.step))) arrived();
+  if (P.rest > 0) P.rest -= dt;
   if (P.t < 1) return;
   // a quick tap of a key can come and go between two frames, so a tap is
   // kept (P.queued) until it has taken its step or dug its square through
@@ -377,18 +393,23 @@ function stepPlayer(dt) {
   if (walk(nx, ny)) { P.digT = 0; P.queued = null; startMove(P, nx, ny); return; }
   const f = faceOf(d[0], d[1], P.y === SURF); if (f) P.face = f;
   if (diggable(nx, ny)) {
+    if (d[2] === false || P.rest > 0) { P.digT = 0; return; }   // a light push, or resting after a square
     if (P.digAt !== idx(nx, ny)) { P.digAt = idx(nx, ny); P.digT = 0; }
     P.digT += dt;
     if (Math.random() < dt * 14) sfx.dig();
-    if (P.digT >= digTime(ny)) { G.grid[idx(nx, ny)] = OPEN; P.digT = 0; P.queued = null; unlock('dig'); startMove(P, nx, ny); }
+    if (P.digT >= digTime(ny)) { G.grid[idx(nx, ny)] = OPEN; P.digT = 0; P.rest = TUNE.digRest; P.queued = null; unlock('dig'); startMove(P, nx, ny); }
   } else { P.queued = null; if ((bumpT -= dt) < 0) { bumpT = .4; sfx.bump(); } }
 }
 // the scent trail: the way you walked home with food, loops cut out
+function record(m) {
+  if (!m.rec) return;
+  const i = m.rec.findIndex(c => c.x === m.x && c.y === m.y);
+  if (i >= 0) m.rec.length = i + 1; else m.rec.push({ x: m.x, y: m.y });
+}
 function arrived() {
-  if (!P.rec) return;
-  const i = P.rec.findIndex(c => c.x === P.x && c.y === P.y);
-  if (i >= 0) P.rec.length = i + 1; else P.rec.push({ x: P.x, y: P.y });
   if (nearQueen(P)) unlock('founding');
+  if (!P.rec) return;
+  record(P);
 }
 function nearestItem(a) {
   let best = null, bd = 9;
@@ -463,14 +484,16 @@ function setJob(r, j) {
 }
 
 // ---------- The scent trail ----------
-function makeTrail(rec) {
+function makeTrail(rec, scout) {
   if (rec.length < 3) return;
   const end = rec[0];
   // a new trail to the same place replaces the old one
   G.trails = G.trails.filter(t => Math.abs(t.path[0].x - end.x) > 4 || t.path[0].y !== end.y);
   G.trails.push({ path: rec.slice(), s: 1 });
   if (G.trails.length > TUNE.trailsMax) { G.trails.sort((a, b) => b.s - a.s); G.trails.length = TUNE.trailsMax; }
-  unlock('trail'); say('A scent trail! The others can follow it.');
+  unlock('trail');
+  if (!scout) say('A scent trail! The others can follow it.');
+  else if (G.trails.length === 1) say('A scout found food and left a scent trail.');
 }
 function stepTrails(dt) {
   for (const t of G.trails) t.s -= dt / TUNE.trailLife;
@@ -485,7 +508,7 @@ function stepTrails(dt) {
 // means give up). A task that can't go on is dropped, and whatever the ant
 // carries is put down where it stands.
 function stepAnt(a, dt) {
-  moveOn(a, dt, stepTime(a, TUNE.antStep));
+  if (moveOn(a, dt, stepTime(a, TUNE.antStep))) record(a);
   if (a.t < 1) return;
   if (a.path && a.path.length) {
     const n = a.path.shift();
@@ -507,10 +530,14 @@ function stepAnt(a, dt) {
   else if (s.fn && s.fn() === false) giveUp(a);
 }
 function giveUp(a) {
-  a.steps = []; a.path = null; a.dig = null; a.wait = 1;
+  a.steps = []; a.path = null; a.dig = null; a.wait = 1; a.rec = null;
   if (a.carry) putDown(a);
   G.items.forEach(i => { if (i.res === a.id) i.res = null; });
 }
+// where the brood lives: the nursery, or else wherever the queen is
+const homeRoom = () => room('nursery') || roomAt(G.queen.x, G.queen.y) || room('queen') || G.rooms[0];
+// a spot up top away from the doors, for trash carried out of the nest
+const outside = (x, y) => y === SURF && doors().every(d => Math.abs(d.x - x) > 3);
 const doors = () => { const d = []; for (let x = 1; x < W - 1; x++) if (walk(x, SURF + 1)) d.push({ x, y: SURF + 1 }); return d; };
 const anyOf = list => list[Math.floor(Math.random() * list.length)];
 function carryTo(a, it, goal, then) {
@@ -525,21 +552,26 @@ function trashJob(a) {
 function plan(a) {
   const nur = room('nursery'), pan = room('pantry');
   const foodIn = r => G.items.find(i => isFood(i) && i.by == null && i.res == null && inRoom(r, i.x, i.y));
+  // Decided 22 Nov, from the oldest kid tester's first play: the ants stood
+  // about until you'd made the rooms, and he thought he had to give them
+  // their jobs. Now they work from the start: before there's a nursery the
+  // brood lives with the queen (`homeRoom`), food goes there before there's a
+  // pantry, and trash goes out the door before there's a trash room (real
+  // ants carry their waste out of the nest).
+  const home = homeRoom();
+  const foodHome = () => (pan && foodIn(pan)) || G.items.find(i => isFood(i) && i.by == null && i.res == null && i.y > SURF && !inRoom(room('trash'), i.x, i.y));
   if (a.job === 'nurse') {
     if (nur) {
       const b = G.items.find(i => isBrood(i) && i.by == null && i.res == null && !inRoom(nur, i.x, i.y));
       if (b) return carryTo(a, b, freeIn(nur));
-      const t = G.items.find(i => isTrash(i) && i.by == null && i.res == null && inRoom(nur, i.x, i.y));
-      if (t && room('trash')) return carryTo(a, t, (x, y) => inRoom(room('trash'), x, y));
     }
-    if (pan) {
-      const lv = G.items.find(i => i.k === 'larva' && i.by == null && i.res == null && i.fed < TUNE.feeds);
-      const f = foodIn(pan);
-      if (lv && f) { lv.res = a.id; return carryTo(a, f, (x, y) => Math.abs(x - lv.x) <= 1 && y === lv.y, () => feed(lv, a)); }
-      if (f && G.queen.fed < 1 && !G.hungry) return carryTo(a, f, (x, y) => nearQueen({ x, y }), () => feedQueen(a));
-    }
-    const r = nur || room('queen') || G.rooms[0];
-    return [{ goal: (x, y) => inRoom(r, x, y) && Math.random() < .2 }, { wait: 2 + Math.random() * 2 }];
+    const t = G.items.find(i => isTrash(i) && i.by == null && i.res == null && inRoom(home, i.x, i.y));
+    if (t) return room('trash') ? carryTo(a, t, (x, y) => inRoom(room('trash'), x, y)) : carryTo(a, t, outside);
+    const lv = G.items.find(i => i.k === 'larva' && i.by == null && i.res == null && i.fed < TUNE.feeds);
+    const f = foodHome();
+    if (lv && f) { lv.res = a.id; return carryTo(a, f, (x, y) => Math.abs(x - lv.x) <= 1 && y === lv.y, () => feed(lv, a)); }
+    if (f && G.queen.fed < 1 && !G.hungry) return carryTo(a, f, (x, y) => nearQueen({ x, y }), () => feedQueen(a));
+    return [{ goal: (x, y) => inRoom(home, x, y) && Math.random() < .2 }, { wait: 2 + Math.random() * 2 }];
   }
   if (a.job === 'worker') {
     // a full pantry: no foraging until there's room (found 22 Nov: workers
@@ -559,6 +591,22 @@ function plan(a) {
           return true;
         },
       }];
+    }
+    // no trail to follow: scout up top for food and bring it home. Into the
+    // pantry, the scout's way home becomes a scent trail, as yours does.
+    const store = pan ? (room4 ? pan : null) : home;
+    const piled = store && G.items.filter(i => isFood(i) && i.by == null && inRoom(store, i.x, i.y)).length;
+    const d0 = doors();
+    if (store && d0.length && (pan || piled < 4)) {
+      const door = anyOf(d0);
+      let f = null, fd = 1e9;
+      for (const i of G.items) if (isFood(i) && i.by == null && i.res == null && i.y === SURF && Math.abs(i.x - door.x) < fd) { fd = Math.abs(i.x - door.x); f = i; }
+      if (f) {
+        f.res = a.id;
+        return [{ goal: cellGoal(f) }, { fn: () => { if (!pick(a, f)) return false; a.rec = [{ x: a.x, y: a.y }]; return true; } },
+          { goal: (x, y) => inRoom(store, x, y) && free(x, y) },
+          { fn: () => { const it = putDown(a); if (pan && it && inRoom(pan, it.x, it.y) && a.rec) makeTrail(a.rec, true); a.rec = null; return true; } }];
+      }
     }
     const tj = trashJob(a); if (tj) return tj;
     const d = doors(); if (!d.length) return [];
@@ -601,10 +649,21 @@ function stepQueen(dt) {
   const q = G.queen;
   if (moveOn(q, dt, TUNE.queenStep)) { }
   if (q.t >= 1 && q.path && q.path.length) { const n = q.path.shift(); if (walk(n.x, n.y)) startMove(q, n.x, n.y); else q.path = null; }
+  // a new queen feeds her first larvae from her own body, as a founding
+  // queen does, so the first ants hatch without anyone's help
+  if (q.fat > 0 && (q.feedT = (q.feedT || 0) + dt) >= TUNE.queenFeedEvery) {
+    q.feedT = 0;
+    const here = roomAt(q.x, q.y);
+    const lv = G.items.find(i => i.k === 'larva' && i.by == null && i.fed < TUNE.feeds && (inRoom(here, i.x, i.y) || (Math.abs(i.x - q.x) <= 2 && Math.abs(i.y - q.y) <= 1)));
+    if (lv) { lv.fed++; q.fat--; }
+  }
   const qr = room('queen'), home = qr && inRoom(qr, q.x, q.y);
   q.layT += dt;
   const brood = G.items.filter(isBrood).length;
-  if (q.t >= 1 && !(q.path && q.path.length) && q.fed >= 1 && !G.hungry && brood < TUNE.broodMax && q.layT >= (home ? TUNE.layRoom : TUNE.layAlone)) {
+  // without a nursery the colony grows slowly: the ants work on their own
+  // from the start (22 Nov), so the rooms have to be what makes it thrive
+  const cap = room('nursery') ? TUNE.broodMax : TUNE.broodCrowded;
+  if (q.t >= 1 && !(q.path && q.path.length) && q.fed >= 1 && !G.hungry && brood < cap && q.layT >= (home ? TUNE.layRoom : TUNE.layAlone)) {
     q.layT = 0; q.fed--; addItem('egg', q.x, q.y);
     if (home) unlock('mate');
   }
@@ -613,7 +672,10 @@ function stepBrood(dt) {
   const nur = room('nursery');
   for (const it of [...G.items]) {
     if (!isBrood(it) || it.by != null) continue;
-    const rate = G.germs && inRoom(nur, it.x, it.y) ? TUNE.germSlow : 1;
+    // a nursery is where brood does best. Without one, a farm with no rooms
+    // at all outgrew one with all four (22 Nov), so rooms didn't matter.
+    const inNur = inRoom(nur, it.x, it.y);
+    const rate = inNur ? (G.germs ? TUNE.germSlow : 1) : antCount() < TUNE.founding ? 1 : TUNE.untended;
     if (it.k === 'egg' && (it.t += dt * rate) >= TUNE.egg) { it.k = 'larva'; it.t = 0; unlock('stages'); }
     else if (it.k === 'larva' && it.fed >= TUNE.feeds && (it.t += dt * rate) >= TUNE.larva) { it.k = 'pupa'; it.t = 0; unlock('pupa'); }
     else if (it.k === 'pupa' && antCount() < TUNE.antsMax && (it.t += dt * rate) >= TUNE.pupa) hatch(it);
@@ -644,15 +706,17 @@ function checkGerms() {
   if (g) unlock('clean');
   G.germs = g;
 }
-// the colony eats from the pantry. Before there's a pantry there's nothing
-// to eat from, so meals start with it.
+// the colony eats once a minute: from the pantry, or before there is one,
+// whatever food is lying in the nest. Meals used to start only with a pantry,
+// and once the ants worked by themselves (22 Nov) a farm with no rooms at all
+// grew faster than one with all four, because only the pantry farm ever ate.
 function stepMeals() {
-  const pan = room('pantry');
-  if (!pan) { G.lastMeal = G.time; return; }
   if (G.time - G.lastMeal < TUNE.meal) return;
   G.lastMeal = G.time;
+  const pan = room('pantry');
   let need = Math.ceil(antCount() / TUNE.perMeal);
-  for (const i of [...G.items]) if (need > 0 && isFood(i) && i.by == null && inRoom(pan, i.x, i.y)) { removeItem(i); need--; if (Math.random() < TUNE.husk) addItem('trash', i.x, i.y, pan); }
+  const food = G.items.filter(i => isFood(i) && i.by == null && (pan ? inRoom(pan, i.x, i.y) : i.y > SURF));
+  for (const i of food) if (need > 0) { removeItem(i); need--; if (Math.random() < TUNE.husk) addItem('trash', i.x, i.y); }
   const was = G.hungry; G.hungry = need > 0;
   if (G.hungry && !was) say('The colony is hungry. The queen stops laying.');
 }
@@ -661,6 +725,7 @@ function stepMeals() {
 // Food turns up in places (a seed plant, a dropped cookie) and runs out;
 // a dead bug turns up now and then. A trail to a place that has run out fades.
 function stepTop(dt) {
+  for (const i of [...G.items]) if (isTrash(i) && i.by == null && i.y === SURF && (i.t += dt) > TUNE.trashBlows) removeItem(i);
   const near = s => G.items.filter(i => i.by == null && i.y === SURF && Math.abs(i.x - s.x) <= 2);
   for (const s of G.spots) {
     s.t += dt;
@@ -737,10 +802,59 @@ function openBook(go) {
   $('#bclose').onclick = closeCard;
   if (found.length > 1) { $('#bback').onclick = () => { bookAt--; openBook(1); $('#bback').focus(); }; $('#bnext').onclick = () => { bookAt++; openBook(1); $('#bnext').focus(); }; }
 }
+// ---------- How ants live ----------
+// Decided 22 Nov: the oldest kid tester didn't know what an ant colony needs,
+// or how it works and why, and the game only told him what to do next ("Make
+// a nursery"). This picture book says how a colony works before you start:
+// it opens by itself the first time a farm starts, then from the start card
+// and the ? help. Its pictures are the game's own sprites and room signs, so
+// what it shows is what you'll see on the farm.
+const GUIDE = [
+  { pics: ['queen'], t: 'The queen lays the eggs. The whole colony works to keep her and her eggs safe and fed.' },
+  { pics: ['egg', 'larva', 'pupa', 'ant'], steps: true, t: 'An ant grows in four stages: egg, larva, pupa, then ant.' },
+  { pics: ['seed', 'larva'], t: 'Larvae can\'t find food. Workers bring it in from outside, and nurses feed them.' },
+  { pics: ['ant', 'trail', 'seed'], t: 'An ant that finds food leaves a scent trail on the way home. Other ants follow it to the food.' },
+  { pics: ['crown', 'egg', 'seed', 'bin'], t: 'Ants dig rooms with jobs: the queen\'s room deep down, a nursery for the brood, a pantry for food, and a trash room. These signs show which is which.' },
+  { pics: ['bin', 'egg'], apart: true, t: 'The trash room goes far from the nursery, so germs from the trash don\'t reach the brood.' },
+  { pics: ['you'], t: 'You\'re one of the workers. Dig, find food and make the rooms, and the colony will grow.' },
+];
+// each picture at a whole-pixel scale that makes it about the same size (the
+// first try used the notebook's square pictures, and the queen came out tiny)
+function guidePic(n) {
+  const sp = n === 'you' ? sprite('ant', { map: kind.ant, glow: true }) : n === 'ant' || n === 'queen' ? sprite(n, { map: kind.ant }) : sprite(n);
+  const k = Math.max(4, Math.min(10, Math.round(56 / Math.max(sp.width, sp.height))));
+  return `<img class="gpic" src="${sp.toDataURL()}" width="${sp.width * k}" height="${sp.height * k}" alt="">`;
+}
+function openGuide(i = 0, done = closeCard) {
+  const g = GUIDE[i], last = i === GUIDE.length - 1;
+  const pics = g.pics.map(guidePic).join(g.steps ? '<span class="to" aria-hidden="true">▶</span>' : g.apart ? '<span class="gap" aria-hidden="true">· · · · ·</span>' : '');
+  card(`<h2>How ants live</h2><div class="guide">${pics}</div><p>${g.t}</p>
+    <p class="soft">Page ${i + 1} of ${GUIDE.length}</p>
+    <div class="row">${i ? '<button class="btn" id="gback">Back</button>' : ''}<button class="btn go" id="gnext">${last ? (screen === 'play' ? 'Play' : 'Done') : 'Next'}</button></div>`);
+  if (i) $('#gback').onclick = () => openGuide(i - 1, done);
+  $('#gnext').onclick = () => last ? done() : openGuide(i + 1, done);
+  S.guideSeen = true; persist();
+}
+
+// ---------- What the colony needs ----------
+// In the ? help, each need with why it matters, and Done or Needed in words.
+const NEEDS = [
+  { name: "Queen's room", why: 'Deep down, where she\'s safe. She lays faster there.', ok: () => room('queen') ? 'Done' : 'Needed' },
+  { name: 'Nursery', why: 'Eggs and larvae grow best where nurses look after them.', ok: () => room('nursery') ? 'Done' : 'Needed' },
+  { name: 'Pantry', why: 'Food stored for the whole colony. Scent trails lead the workers to more.', ok: () => room('pantry') ? 'Done' : 'Needed' },
+  { name: 'Trash room', why: 'Far from the nursery, so germs don\'t reach the brood.', ok: () => G.germs ? 'Germs!' : room('trash') ? 'Done' : 'Needed' },
+  { name: 'Food', why: 'Larvae need it to grow, and everyone eats once a minute.', ok: () => G.hungry ? 'Hungry' : 'Fed' },
+];
+function showNeeds() {
+  const html = NEEDS.map(n => { const st = n.ok(), good = st === 'Done' || st === 'Fed'; return `<li><span class="st ${good ? 'good' : 'bad'}">${st}</span><b>${n.name}:</b> ${n.why}</li>`; }).join('');
+  if ($('#needs').innerHTML !== html) $('#needs').innerHTML = html;
+}
+
 function toggleHelp(show) {
   if (screen !== 'play') return;
   const h = $('#help'); h.hidden = show === undefined ? !h.hidden : !show;
   $('#helpBtn').setAttribute('aria-expanded', String(!h.hidden));
+  if (!h.hidden) showNeeds();
   if (!h.hidden && !S.helpSeen) { S.helpSeen = true; persist(); }
 }
 function hud() {
@@ -753,6 +867,7 @@ function hud() {
   pill('#hFood', G.hungry ? '⚠️' : '🌾', G.hungry ? 'Hungry!' : 'Food', G.hungry ? '' : food);
   pill('#bookBtn', '📓', 'Notebook', `${pagesHere().filter(p => S.pages.includes(p.k)).length}/${pagesHere().length}`);
   const n = { nurse: 0, worker: 0, digger: 0, soldier: 0 }; G.ants.forEach(a => n[a.job]++);
+  if (!$('#help').hidden) showNeeds();
   $('#jobs').textContent = `You, ${n.worker} worker${n.worker === 1 ? '' : 's'}, ${n.nurse} nurse${n.nurse === 1 ? '' : 's'}, ${n.digger} digger${n.digger === 1 ? '' : 's'}, ${n.soldier} soldier${n.soldier === 1 ? '' : 's'}.`;
 }
 
@@ -788,8 +903,10 @@ function startPressed() {
     const has = !!localStorage.getItem(farmKey(k));
     return `<button class="btn" data-kind="${k}"><img class="pic" src="${dataURL('ant', { map: K.ant })}" alt=""><span>${K.name}<small>${K.blurb}${has ? ' Your farm is saved.' : ''}</small></span></button>`;
   }).join('');
-  card(`<h2>Pick your ants</h2><p>Each kind lives in its own farm.</p><div class="picks">${kinds}</div>`);
+  card(`<h2>Pick your ants</h2><p>Each kind lives in its own farm.</p><div class="picks">${kinds}</div>
+    <div class="row"><button class="btn" id="howBtn">How ants live</button></div>`);
   $('#card').querySelectorAll('[data-kind]').forEach(b => b.onclick = () => chooseKind(b.dataset.kind));
+  $('#howBtn').onclick = () => openGuide(0, () => { closeCard(); startPressed(); });
 }
 function chooseKind(k) {
   if (!localStorage.getItem(farmKey(k))) return play(k, null);
@@ -810,6 +927,7 @@ function play(k, saved) {
   unlock('workers');
   if (!S.helpSeen) toggleHelp(true);
   checkGoals(); hud(); resize();
+  if (!S.guideSeen) openGuide(0);
 }
 
 // ---------- Drawing ----------
@@ -921,8 +1039,11 @@ function drawTitle(time) {
 // The farm fits the window; on a touch screen it leaves room for the stick and
 // buttons (below it held upright, beside it turned sideways).
 function resize() {
-  const coarse = matchMedia('(pointer:coarse)').matches, sideways = innerWidth > innerHeight, ctl = coarse && screen === 'play';
-  const room2 = { w: innerWidth - (ctl && sideways ? 2 * 11 * 16 : 0) - 8, h: innerHeight - 56 - (ctl && !sideways ? 11 * 16 : 0) };
+  // the visible width, not innerWidth: on a phone anything wider than the
+  // screen (the bar, 22 Nov) widens innerWidth, and the farm grew to match
+  const vw = document.documentElement.clientWidth, vh = innerHeight;
+  const coarse = matchMedia('(pointer:coarse)').matches, sideways = vw > vh, ctl = coarse && screen === 'play';
+  const room2 = { w: vw - (ctl && sideways ? 2 * 11 * 16 : 0) - 8, h: vh - 56 - (ctl && !sideways ? 11 * 16 : 0) };
   let w = room2.w, h = w * lo.height / lo.width; if (h > room2.h) { h = room2.h; w = h * lo.width / lo.height; }
   const dpr = Math.min(2, devicePixelRatio || 1);
   cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
