@@ -40,7 +40,7 @@ const STR = {
   teamTurn: '{team} turn…',
   title: 'Conquest',
   howBtn: 'How to play',
-  gCured: 'Cured', gRunway: 'Runway: {n} of {of}',
+  gCured: 'Cured', gFallout: 'Fallout', gRunway: 'Runway: {n} of {of}',
   gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
   g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
   g_drag: 'Drag the map to look around. Pinch, or tap + and −, to zoom.',
@@ -93,6 +93,10 @@ const STR = {
   dWhy_industrial: 'Industrial: +{m} money a turn. Up to {max} in a city.',
   dFree: 'This city’s first district is free.',
   dCost: 'Each new district costs {m}.',
+  nukeHit: 'The nuclear bomb went off! {n} hit.',
+  nukeOne: 'Carries one nuclear bomb: 15 on the target and {m} on every square around it, yours too. Then land in a city, on a runway or a carrier to load another.',
+  nukeSpent: 'Bomb dropped. Land to load another.',
+  hotCity: 'Fallout from a nuclear bomb: this city makes half its money for {n} more turns, and your units in it lose health each turn.',
   vCity: 'This city has a virus: it makes half its money, and your units in it get sick. A hospital cures it.',
   vUnit: 'Sick: it loses 0.5 health a turn for {n} more turns. A hospital cures it.',
   vCaught: 'A city caught a virus!',
@@ -109,6 +113,7 @@ const STR = {
   dMaxIndustry: 'This city already has {max} industrial districts.',
   healed: '+{n}',
   g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. The first district is free, then each costs 1. Hospital heals your units next to it and cures viruses, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city).',
+  g_nuke_t: 'Nuclear bomber', g_nuke: 'It drops one big bomb on a ground target 1 square away: 15 there, and {m} to everything on the squares around it, yours too. A city in the blast gets fallout for {n} turns: half money, and units there lose health. Then land it to load another bomb.',
   g_virus_t: 'Viruses', g_virus: 'A city can catch a virus. Then it makes half its money, and your ground units in it get sick and lose health each turn. Build a hospital there to cure it. Quarantine keeps viruses out. A virus can also come down a trade route from a sick ally.',
   passTitle: '{team} turn',
   passBody: 'Pass the device to the {team} player.',
@@ -234,6 +239,7 @@ const UNITS = {
   interceptor:   { name: 'Interceptor',           img: 'interceptor',      hp: 3,   dmg: 2,   dmgA: 2,     rng: 3, spd: 4, cost: 3,   hits: 'GA', air: 'plane' },
   bomber:        { name: 'Bomber',                img: 'bomber',           hp: 4,   dmg: 4.5, dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane' },
   groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane', fire: true },
+  nuclearBomber: { name: 'Nuclear bomber',        img: 'nuclear-bomber',   hp: 4,   dmg: 15,  dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 12, hits: 'GA', air: 'plane', nuke: true },
   transportChopper: { name: 'Transport chopper', img: 'transport-chopper', hp: 4, dmg: 1,              rng: 3, spd: 4, cost: 3, hits: 'G',  air: 'heli',  holds: 4 },
   transportJet:  { name: 'Transport jet',         img: 'transport-jet',    hp: 4,   dmgA: 2,               rng: 3, spd: 3, cost: 4, hits: 'A',  air: 'plane', holds: 5, heals: 4 },
   // Decided 10 Nov: ships, his stats from 4 Nov and his sizes from 10 Nov
@@ -254,7 +260,7 @@ const UNITS = {
 const SHOP_GROUPS = [
   ['shopGround', ['soldier', 'tank', 'tankDestroyer', 'aaTank']],
   ['shopGuns', ['defenseGun', 'artillery', 'aaGun', 'missileAA']],
-  ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber', 'transportChopper', 'transportJet']],
+  ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber', 'nuclearBomber', 'transportChopper', 'transportJet']],
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
 // Ships are built like the field guns: on an empty water square touching one
@@ -294,7 +300,7 @@ const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
 // riding in it 4 a turn; units inside are lost if it goes down. The computer
 // teams don't buy transports yet.
 const ROOM = { soldier: 1, tank: 2, tankDestroyer: 2, aaTank: 2, defenseGun: 3, artillery: 3, aaGun: 3, missileAA: 3 };
-const AIR_ROOM = { attackJet: 2, interceptor: 2, bomber: 4, groundBomber: 4, transportJet: 4 };   // planes only: helicopters hover
+const AIR_ROOM = { attackJet: 2, interceptor: 2, bomber: 4, groundBomber: 4, nuclearBomber: 4, transportJet: 4 };   // planes only: helicopters hover
 const roomOf = (t, k) => UNITS[t.type].deck ? AIR_ROOM[k] : ROOM[k];
 const used = t => t.cargo.reduce((n, o) => n + roomOf(t, o.type), 0);
 const canLoad = (t, o) => !!t && !!UNITS[t.type].holds && t.side === o.side && o !== t && roomOf(t, o.type) !== undefined
@@ -439,6 +445,14 @@ const landOf = (x, y) => LAND[y * MW + x];
 const DISTRICTS = ['hospital', 'quarantine', 'industrial'];
 const MAX_INDUSTRY = 2, INDUSTRY_MONEY = .5, HOSPITAL_HEAL = 1, DISTRICT_COST = 1;
 const VIRUS_CHANCE = .02, VIRUS_HURT = .5, VIRUS_TURNS = 3, VIRUS_FLOOR = .5;
+// Decided 24 Nov, his answers for the nuclear bomber (his stats from 4 Nov:
+// hp 4, 2 air / 15 ground, range 3, speed 3, cost 12): the full 15 on the
+// target and less on the squares around it, any team's units (NUKE_SPLASH,
+// 5, ours); a city in the blast gets fallout like a virus (half money, units
+// in it get sick) for FALLOUT_TURNS rounds (3, ours); it carries one bomb
+// and has to land (city, runway or carrier) to load the next (u.spent).
+// The computer buys one rarely: late, with money to spare, one at a time.
+const NUKE_SPLASH = 5, FALLOUT_TURNS = 3;
 // the first district a city ever gets is free (old saves: a city that already
 // has one has used its free one)
 const dCost = c => c.dFree === false || (c.dFree === undefined && c.d.some(Boolean)) ? DISTRICT_COST : 0;
@@ -626,6 +640,11 @@ async function playReplay(evs) {
   const byId = id => G.units.find(u => u.id === id);
   for (const e of evs) {
     if (e.k === 'm') { const u = byId(e.id); if (!u) continue; if (seeTile(e.x, e.y)) await sleep(380); u.x = e.x; u.y = e.y; u.ang = e.ang; sfx('step'); await sleep(260); }
+    else if (e.k === 'n') {
+      blast(e.x, e.y);
+      for (const h of e.hits) fx.push({ kind: 'num', x: h.x, y: h.y, text: '-' + fmt(h.d), t0: performance.now() + 350, dur: 900 });
+      await sleep(600);
+    }
     else if (e.k === 'f') {
       const a = byId(e.a); if (a) a.ang = e.ang;
       if (seeTile(e.x1, e.y1)) await sleep(380);
@@ -771,9 +790,9 @@ function reach(u) {
 function targetsFrom(u, x, y) {
   if (u.acted || u.reloading) return [];
   const R = UNITS[u.type];
-  return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && reachGap(u, x, y, o) <= rangeTo(R, o));
+  return G.units.filter(o => !allied(o.side, u.side) && canHit(R, o) && !(R.nuke && u.spent && !isAir(o)) && reachGap(u, x, y, o) <= rangeTo(R, o));
 }
-const cityPay = c => ((c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY) * (c.sick ? .5 : 1);
+const cityPay = c => ((c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY) * (c.sick || c.hot ? .5 : 1);
 function income(side) {
   return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0) + routes(side).length * ROUTE_MONEY;
 }
@@ -822,6 +841,13 @@ function viruses(side) {
     if (open.length) { open[Math.floor(Math.random() * open.length)].sick = true; notes.push(t('vRoute', { team: tn(s) })); }
   }
   for (const c of G.cities.filter(c => c.sick)) for (const u of here(c)) u.sick = Math.max(u.sick || 0, VIRUS_TURNS);
+  // fallout hurts the units standing in it like a virus does, without making
+  // them sick: the first try did, and a sick unit carried a real virus into
+  // the city, so the fallout never wore off without a hospital
+  for (const c of G.cities.filter(c => c.hot)) for (const u of here(c)) {
+    const lose = r1(Math.min(VIRUS_HURT, u.hp - VIRUS_FLOOR));
+    if (lose > 0) { u.hp = r1(u.hp - lose); fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(lose), t0: performance.now(), dur: 900 }); }
+  }
   for (const u of G.units.filter(u => u.side === side && u.sick > 0)) {
     u.sick--;
     const lose = r1(Math.min(VIRUS_HURT, u.hp - VIRUS_FLOOR));
@@ -854,7 +880,7 @@ function startTurn(side) {
     u.moved = false; u.acted = false; u.fresh = false;
     if (UNITS[u.type].air === 'plane') {
       if (u.landed && !landsAt(side, u.x, u.y)) u.landed = false;   // its runway's city was taken
-      if (u.landed) u.fuel = FUEL;
+      if (u.landed) { u.fuel = FUEL; u.spent = false; }
       else if (!u.flew) u.fuel -= CIRCLE;   // circling in place still burns fuel; only helicopters can hover
       u.flew = false;
     }
@@ -869,8 +895,8 @@ function startTurn(side) {
   notes.push(...viruses(side));
   if (!isHuman(side)) { cpuDistricts(side); for (const s of TEAMS.filter(s => s !== side && allied(side, s))) lockRoute(side, s, hasVirus(s)); }
   hospitals(side);
-  for (const u of G.units.filter(u => u.side === side && UNITS[u.type].deck)) for (const o of u.cargo) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
-  for (const r of RUNWAYS.filter(r => rwOwner(r) === side)) for (const o of parkedOn(r)) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; }
+  for (const u of G.units.filter(u => u.side === side && UNITS[u.type].deck)) for (const o of u.cargo) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; o.spent = false; }
+  for (const r of RUNWAYS.filter(r => rwOwner(r) === side)) for (const o of parkedOn(r)) { o.fuel = FUEL; o.moved = o.acted = false; o.flew = false; o.spent = false; }
   for (const u of G.units.filter(u => u.side === side && u.cargo && UNITS[u.type].heals)) for (const o of u.cargo) o.hp = Math.min(UNITS[o.type].hp, r1(o.hp + UNITS[u.type].heals));
   for (const u of G.units.filter(u => u.side === side)) {
     if (UNITS[u.type].air === 'plane' && !u.landed && u.fuel <= 0) notes.push(remove(u, 'crashed'));
@@ -997,8 +1023,31 @@ function fire(a, b) {
   let msg = (aa ? aa + ' ' : '') + t('hit', { a: R.name, b: UNITS[b.type].name.toLowerCase() });
   if (b.hp <= 0) { msg += ' ' + remove(b, 'knocked'); G.stats[a.side].killed++; }
   else if (R.fire && !wasAir) { b.burn = BURN_TURNS; msg += ' ' + t('onFire'); }
+  if (R.nuke && !wasAir) msg += ' ' + nuke(a, b.x, b.y);
   log(msg);
   checkEnd();
+}
+// The nuclear bomb: the target already took the full 15 in fire(); every
+// other unit on the ground or water within 1 square (corners too) takes
+// NUKE_SPLASH, whoever's it is, and cities there get fallout.
+function nuke(a, x, y) {
+  a.spent = true;
+  const near = (px, py) => Math.abs(px - x) <= 1 && Math.abs(py - y) <= 1;
+  const hits = [], notes = [];
+  for (const o of G.units.filter(o => !isAir(o) && cells(o).some(([px, py]) => near(px, py)) && !cells(o).some(([px, py]) => px === x && py === y))) {
+    const d = r1(NUKE_SPLASH * (UNITS[o.type].fixed ? .5 : 1));
+    o.hp = r1(o.hp - d); hits.push({ x: o.x, y: o.y, d });
+    fx.push({ kind: 'num', x: o.x, y: o.y, text: '-' + fmt(d), t0: performance.now() + 350, dur: 900 });
+    if (o.hp <= 0) { notes.push(remove(o, 'knocked')); if (!allied(o.side, a.side)) G.stats[a.side].killed++; }
+  }
+  for (const c of G.cities.filter(c => near(c.x, c.y))) c.hot = FALLOUT_TURNS;
+  blast(x, y);
+  rec({ k: 'n', x, y, hits });
+  return [t('nukeHit', { n: hits.length + 1 }), ...notes].join(' ');
+}
+function blast(x, y) {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) fx.push({ kind: 'boom', x: x + dx, y: y + dy, t0: performance.now() + (dx || dy ? 150 : 0), dur: 900 });
+  sfx('boom'); setTimeout(() => sfx('boom'), 180);
 }
 // AA units fire on their own at an aircraft from a team that doesn't like
 // them (score below 0) when it comes into range, once each enemy turn. Called
@@ -1074,7 +1123,7 @@ function begin(side) {
 function nextTurn() {
   if (G.over) return;
   let i = TEAMS.indexOf(G.side);
-  for (let k = 0; k < TEAMS.length; k++) { i = (i + 1) % TEAMS.length; if (i === 0) G.turn++; if (!G.out[TEAMS[i]]) break; }
+  for (let k = 0; k < TEAMS.length; k++) { i = (i + 1) % TEAMS.length; if (i === 0) { G.turn++; for (const c of G.cities) if (c.hot) c.hot--; } if (!G.out[TEAMS[i]]) break; }
   begin(TEAMS[i]);
 }
 const myTurn = () => G && !G.over && !busy && isHuman(G.side) && G.side === G.view && (!ONLINE || (G.side === ONLINE.me && !G.waiting));
@@ -1223,6 +1272,9 @@ function cpuUnload(me) {
     while (sh.cargo.length && spots.length) dropOff(sh, 0, spots.shift());
   }
 }
+// one nuclear bomber a team, counting the ones parked on runways and carriers
+const hasNuke = me => G.units.some(u => u.side === me && (UNITS[u.type].nuke || u.cargo?.some(o => UNITS[o.type].nuke)))
+  || RUNWAYS.some(r => rwOwner(r) === me && parkedOn(r).some(o => UNITS[o.type].nuke));
 function cpuShip(me) {
   if (G.turn < lvl().air) return;
   if (cpuTrade(me)) return;
@@ -1269,7 +1321,8 @@ async function cpuTurn(me) {
     if (can.includes('artillery') && G.money[me] >= 7 && Math.random() < .3) pick = 'artillery';
     if (can.includes('tankDestroyer') && Math.random() < .2) pick = 'tankDestroyer';
     if (otherAir && Math.random() < .3) pick = can.includes('missileAA') && G.money[me] >= 6 ? 'missileAA' : near && can.includes('aaGun') ? 'aaGun' : 'aaTank';
-    if (G.turn > lvl().air && Math.random() < .3) { const air = AIR.filter(k => can.includes(k)); if (air.length) pick = air[Math.random() * air.length | 0]; }
+    if (G.turn > lvl().air && Math.random() < .3) { const air = AIR.filter(k => can.includes(k) && !UNITS[k].nuke); if (air.length) pick = air[Math.random() * air.length | 0]; }
+    if (G.turn > lvl().air + 10 && can.includes('nuclearBomber') && G.money[me] >= 16 && Math.random() < .08 && !hasNuke(me)) pick = 'nuclearBomber';
     if (!can.includes(pick)) pick = can[0];
     const p = spot(c, layerOfType(pick));
     G.money[me] = r1(G.money[me] - UNITS[pick].cost);
@@ -1303,6 +1356,14 @@ function bestTarget(u) {
   const ts = targetsFrom(u, u.x, u.y).filter(o => fairGame(u.side, o.side));
   if (!ts.length) return null;
   const R = UNITS[u.type], kill = o => o.hp <= dmgTo(R, o);
+  if (R.nuke) {   // the bomb hits round the target too: aim where it catches the most enemies and none of its own
+    const around = o => G.units.filter(e => !isAir(e) && e !== o && Math.abs(e.x - o.x) <= 1 && Math.abs(e.y - o.y) <= 1);
+    const worth = o => 1 + (o.hp >= 6 ? 1 : 0) + around(o).reduce((n, e) => n + (allied(e.side, u.side) ? -3 : 1), 0);
+    const ground = ts.filter(o => !isAir(o)).sort((a, b) => worth(b) - worth(a));
+    if (ground.length && worth(ground[0]) >= 2) return ground[0];
+    const air = ts.filter(isAir);
+    return air.length ? air.sort((a, b) => a.hp - b.hp)[0] : null;
+  }
   return ts.sort((a, b) => (kill(b) - kill(a)) || (a.hp - b.hp))[0];
 }
 function cpuPlan(u) {
@@ -1341,7 +1402,7 @@ function cpuPlan(u) {
       const decks = G.units.filter(d => d.side === me && UNITS[d.type].deck).flatMap(d => cells(d).map(([x, y]) => ({ x, y })));
       const strips = RUNWAYS.filter(r => cityAt(r.cx, r.cy)?.owner === me).flatMap(r => r.sq.map(([x, y]) => ({ x, y })));
       const home = Math.min(99, ...mine.map(m => dist(m, o)), ...decks.map(m => dist(m, o)), ...strips.map(m => dist(m, o)));
-      if (landing) s += u.fuel < FUEL * .6 ? 8 : 0;
+      if (landing) s += u.fuel < FUEL * .6 || u.spent ? 8 : 0;   // a dropped nuke goes home to load another
       else if (left < home) s -= 40;
       else if (left < home + 3) s -= 6;
     }
@@ -1511,6 +1572,15 @@ function drawCity(o, now = 0, c = ctx) {
     else if (k === 'industrial') { f('#2c2a22', x + 1, y + 7, w, w - 7); f('#6a645a', x, y + 6, w, w - 7); f('#3a372c', x + w - 6, y, 4, 8); for (let z = 0; z < 3; z++) f('#3a372c', x + 2 + z * 4, y + 10, 2, 2); const p = (now / 700) % 1; c.globalAlpha = 1 - p; f('#b9ad92', x + w - 6, y - 2 - p * 6, 4, 3); c.globalAlpha = 1; }
     else { f('#2c2a22', x + 3, y + 5, w - 6, w - 6); f('#8a826c', x + 2, y + 4, w - 6, w - 6); f('#3a372c', x + 4, y + 7, 2, 2); f('#c9b46a', x + 8, y + 7, 2, 2); }
   });
+  if (o.hot) {   // fallout: a yellow glow over the city and the radiation sign (three blades) in the middle
+    c.globalAlpha = .22 + .08 * Math.sin(now / 400); f('#d9c43a', X + 2, Y + 2, TS - 4, TS - 4); c.globalAlpha = 1;
+    const cx = X + TS / 2, cy = Y + TS / 2;
+    c.fillStyle = '#1b1a15'; c.beginPath(); c.arc(cx, cy, 10, 0, 7); c.fill();
+    c.fillStyle = '#e8c83a'; c.beginPath(); c.arc(cx, cy, 8, 0, 7); c.fill();
+    c.fillStyle = '#1b1a15';
+    for (let i = 0; i < 3; i++) { const a0 = -Math.PI / 2 + i * 2.094 - .5; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, 7, a0, a0 + 1); c.closePath(); c.fill(); }
+    c.beginPath(); c.arc(cx, cy, 1.6, 0, 7); c.fill();
+  }
   if (o.sick) {   // a virus: green germs bobbing over the city
     for (let i = 0; i < 3; i++) { const gx = X + 8 + i * (TS - 16) / 2, gy = Y + TS / 2 - 3 + Math.sin(now / 300 + i * 2) * 4; f('#1b1a15', gx - 4, gy - 4, 9, 9); f('#7fc24a', gx - 3, gy - 3, 7, 7); f('#3f6e22', gx - 1, gy - 1, 3, 3); }
   }
@@ -1709,7 +1779,8 @@ function panel() {
     if (u.sick > 0) notes.push(t('vUnit', { n: u.sick }));
     if (u.reloading) notes.push(t('reloading'));
     if (AA_AUTO.includes(u.type)) notes.push(t('autoFire'));
-    if (R.rngG !== undefined) notes.push(t('bombNear'));
+    if (R.nuke) notes.push(u.spent ? t('nukeSpent') : t('nukeOne', { m: NUKE_SPLASH }));
+    else if (R.rngG !== undefined) notes.push(t('bombNear'));
     if (R.fixed) notes.push(t('dugIn'));
     if (R.air === 'plane' && u.landed) notes.push(t('landed'));
     else if (R.air === 'plane' && u.fuel <= 4) notes.push(t('lowFuel'));
@@ -1761,7 +1832,7 @@ function panel() {
   }
   const c = sel.city;
   const name = c.hq ? (c.owner === v ? t('hqYours') : t('hqOf', { team: tn(c.owner) })) : c.owner === v ? t('cityYours') : c.owner ? t('cityOf', { team: tn(c.owner) }) : t('cityFree');
-  const half = c.sick ? .5 : 1, base = (c.hq ? HQ_MONEY : CITY_MONEY) * half, extra = countD(c, 'industrial') * INDUSTRY_MONEY * half;
+  const half = c.sick || c.hot ? .5 : 1, base = (c.hq ? HQ_MONEY : CITY_MONEY) * half, extra = countD(c, 'industrial') * INDUSTRY_MONEY * half;
   let body = `<p>${extra ? t('cityGivesMore', { m: fmt(base + extra), base: fmt(base), extra: fmt(extra) }) : t('cityGives', { m: fmt(base) })}</p>` + districtsHTML(c, c.owner === v && mine);
   if (c.owner && c.owner !== v && allied(c.owner, v)) body += `<p>${t('cityAlly')}</p>`;
   else if (c.owner !== v) body += `<p>${t('cityTake')}</p>${c.owner && rel(v, c.owner) >= 0 ? `<p class="warn">${t('cityNeutral', { team: tn(c.owner) })}</p>` : ''}`;
@@ -1789,7 +1860,7 @@ function districtsHTML(c, canSet) {
     }).join('') + '</div>';
   }).join('');
   const why = canSet ? `<p>${t('dSetHow')} ${dCost(c) ? t('dCost', { m: fmt(DISTRICT_COST) }) : t('dFree')}</p><p>${t('dWhy_hospital')} ${t('dWhy_quarantine')} ${t('dWhy_industrial', { m: fmt(INDUSTRY_MONEY), max: MAX_INDUSTRY })}</p>` : '';
-  const sick = c.sick ? `<p class="warn">${t('vCity')}</p>` : '';
+  const sick = (c.sick ? `<p class="warn">${t('vCity')}</p>` : '') + (c.hot ? `<p class="warn">${t('hotCity', { n: c.hot })}</p>` : '');
   return `${sick}<p class="grp">${t('districts')}</p>${why}${rows}`;
 }
 function setDistrict(c, i, k) {
@@ -2012,6 +2083,18 @@ const GUIDE = [
     if (k > 2.1 && k < 2.6) brackets(3, 1, '#e0553f', 1, 12, 4, c);
     gBoom(c, 3, 1, (k - 2.5) / .6);
   } },
+  { key: 'nuke', map: ['ppppp', 'ppppp', 'ppppc'], loop: 6.4, draw(c, k, now) {
+    // flies in next to the tank, drops the bomb: 15 on the tank, 5 on everything round it (the green soldier too), fallout on the city
+    const boom = k > 1.8, hot = k > 2.2;
+    drawCity({ x: 4, y: 2, hot }, now, c); drawFlag({ x: 4, y: 2, owner: 'red' }, c);
+    if (!hot) { drawUnit(c, gUnit('tank', 'red', 3, 1, { ang: -Math.PI / 2 }), now, false); drawUnit(c, gUnit('soldier', 'red', 4, 0, { ang: -Math.PI / 2 }), now, false); drawUnit(c, gUnit('soldier', 'green', 2, 2), now, false); }
+    drawUnit(c, gUnit('nuclearBomber', 'green', span(k, .3, 1.3) * 2, 1, { spent: boom }), now, false);
+    gShot(c, 2, 1, 3, 1, (k - 1.4) / .4);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) gBoom(c, 3 + dx, 1 + dy, (k - 1.8 - (dx || dy ? .15 : 0)) / .9);
+    gNum(c, '-15', 3, 1, (k - 1.9) / .9);
+    for (const [x, y] of [[4, 0], [2, 2]]) gNum(c, '-' + fmt(NUKE_SPLASH), x, y, (k - 2) / .9);
+    if (k > 3) gLabel(c, t('gFallout'), 6, TS * 2.3, '#e8c83a');
+  } },
   { key: 'build', map: ['ppppp', 'ppppp', 'ppfpp'], loop: 4.6, draw(c, k, now) {
     drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: true }), now, true);
     if (k > .4 && k < 2.6) gSquares(c, [[2, 1], [1, 0], [0, 1], [1, 2]]);
@@ -2085,6 +2168,7 @@ function guideText(pg, L, name) {
   if (pg.key === 'level') return t('g_level', { m: fmt(L.start), pay: frac(L.pay), buy: buy(L.buy), air: L.air });
   if (pg.key === 'city') return t('g_city', { m: fmt(L.start) });
   if (pg.key === 'move') return t('g_move') + ' ' + t('g_drag');
+  if (pg.key === 'nuke') return t('g_nuke', { m: NUKE_SPLASH, n: FALLOUT_TURNS });
   if (pg.key === 'air') return t('g_air', { n: RUNWAY_HOLDS });
   return t('g_' + pg.key);
 }
@@ -2112,7 +2196,7 @@ function guideDraw(now) {
   const pg = GUIDE[guideAt], [, L] = guideLevel();
   const g = guideTiles[pg.key] || (guideTiles[pg.key] = paintTiles(pg.map, 11 + guideAt));
   c.imageSmoothingEnabled = false; c.drawImage(g, 0, 0, GW * TS, GH * TS);
-  if (pg.key !== 'districts' && pg.key !== 'virus') pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
+  if (!['districts', 'virus', 'nuke'].includes(pg.key)) pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
   pg.draw(c, ((now - guideT0) / 1000) % pg.loop, now, L);
   return true;
 }
