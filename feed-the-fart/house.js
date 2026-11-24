@@ -80,7 +80,7 @@ const HOUSE = (() => {
     cv.style.width = VW * k + 'px'; cv.style.height = VH * k + 'px';
     cx.imageSmoothingEnabled = false;
   }
-  addEventListener('resize', () => { if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie') fitView(); });
+  addEventListener('resize', () => { if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie' || mode === 'date') fitView(); });
 
   // ---- the map: walls everywhere, rooms carved out, doors, then furniture ----
   const map = Array.from({ length: MH }, () => Array(MW).fill('#'));
@@ -765,7 +765,7 @@ const HOUSE = (() => {
   window.addEventListener('blur', () => { keys = {}; stick.letGo(); hold = null; });
   // the stick and the zoom block come from the kit, like the other steered games
   const stick = RDG.stick('#hStick', '#hStick i');
-  RDG.noZoom(() => mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie', ['#hStick', '#hFart', '#hUse', '#hc']);
+  RDG.noZoom(() => mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie' || mode === 'date', ['#hStick', '#hFart', '#hUse', '#hc']);
   // A game controller (#56): A farts, B is Use, X is F (a fart in the house,
   // the finger or waking him at dinner), Select is the ? help, Start is Enter,
   // and the left thumbstick drives the stick. The cross pad is the arrow keys.
@@ -808,7 +808,7 @@ const HOUSE = (() => {
         for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const k = (j + b) * MW2 + i + a; if (k >= 0 && k < N && !airtight(k)) gas[k] += amount * (a || b ? .07 : .44); }
       } };
   }
-  const walkKeys = {}, walking = () => mode === 'rest' || mode === 'movie';
+  const walkKeys = {}, walking = () => mode === 'rest' || mode === 'movie' || mode === 'date';
   document.addEventListener('keydown', e => {
     if (!walking() || document.querySelector('dialog[open]')) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -857,7 +857,7 @@ function toggleHelp(show, kind = 'help') {
   const box = $('#helpBox');
   if (show === undefined) show = box.hidden || box.dataset.kind !== kind;
   box.dataset.kind = kind;
-  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : mode === 'movie' ? T.movHint : T.dinnerHint;
+  if (kind === 'goals') box.innerHTML = HOUSE.goalsHTML(); else box.textContent = mode === 'house' ? T.houseHint : mode === 'car' || mode === 'rest' ? T.outHint : mode === 'wed' ? T.wedHint : mode === 'movie' ? T.movHint : mode === 'date' ? T.dateHint : T.dinnerHint;
   box.hidden = !show;
   $('#helpBtn').setAttribute('aria-expanded', String(show && kind === 'help')); $('#goalsBtn').setAttribute('aria-expanded', String(show && kind === 'goals'));
 }

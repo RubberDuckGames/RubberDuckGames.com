@@ -148,6 +148,9 @@ const SPRITES = {
   nachos: ['.....k....k.....', '....kyk..kyk....', '...kyYyk.kyyk...', '..kyyooyykyoyk..', '.kyoooooooooyyk.', '.kooooyoooyoook.', ...DISH],
   shake: ['..........kk....', '.....kk..kPk....', '....krRk.kPk....', '...kkwwwkPkkk...', '..khwwwwwwwwwk..', '..kwwwwwwwwwpk..', '..kkkkkkkkkkkk..',
     '...kBBBBBBBBk...', '...khBBBBBBBk...', '....kBBBBBBk....', '....khBBBBBk....', '.....kBBBBk.....', '......kkkk......', '.......kk.......', '.....kkkkkk.....'],
+  // for Date night (23 Nov): what he heats up; not on the Thanksgiving table
+  lasagna: ['..kkkkkkkkkkkk..', '.kyrYryrYryrYrk.', '.kooooooooooook.', '.kyyyyyyyyyyyyk.', '.krrRrrRrrRrrRk.', ...DISH],
+  garlic: ['.kkkkkkkkkkkkkk.', '.kbgbbgbbgbbgbk.', '.kyyyyyyyyyyyyk.', '.kbbbbbbbbbbbbk.', '.kOOOOOOOOOOOOk.', '.kkkkkkkkkkkkkk.', ...DISH.slice(1)],
   pizzabites: ['................', '................', '................', '.kkkk.kkkk.kkkk.', 'kyrhykyrhykyrhyk', 'kyyyYkyyyYkyyyYk', 'kYyyYkYyyYkYyyYk', '.kkkk.kkkk.kkkk.', 'kkkkkkkkkkkkkkkk', 'kphhhhhhhhhhhhpk', '.kkkkkkkkkkkkkk.'],
   bagel: ['....kkkkkkkk....', '..kkbbbbbbbbkk..', '.kbbwwwwwwwwbbk.', 'kbbwwwhhwwwwwbbk', 'kbwwwhwwkkwwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwk..kwwwbk', 'kbwwwwwwkkwwwwbk', 'kbbwwwwwwwwwwbbk', '.kbbwwwwwwwwbbk.', '..kkbbOObbbbkk..', '....kkkkkkkk....'],
   sardines: ['kkkkkkkkkkkk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwquuuuuuqwk....', 'kwqqqqqqqqwk....', 'kwwwwwwwwwwk....', 'kkkkkkkkkkkk....', '.kkkkkk.kkkkkkk.', '.koYoYk.koYoYok.', '.kooook.koooook.', '.koYoYk.koYoYok.', '.kkkkkk.kkkkkkk.'],
@@ -502,7 +505,7 @@ soundIcon();
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;   // the Menu dialog
   if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
-  if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie') return;   // the levels have their own keys
+  if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie' || mode === 'date') return;   // the levels have their own keys
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
   if (e.key === 'f' || e.key === 'F') { if (coma) wake(true); else pull(); }
   else if (e.key === 'c' || e.key === 'C') showColl();
