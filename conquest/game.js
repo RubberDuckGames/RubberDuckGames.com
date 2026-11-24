@@ -22,7 +22,7 @@
 // its cities lowers the score by half a point, at most once a turn; giving a
 // team 4 money raises it half a point. At +1 the two are allies (they can't
 // fire on each other or take each other's cities), as long as neither is
-// allied with a team the other doesn't like. At -2 they are enemies for good.
+// allied with a team the other doesn't like. At -2 they are enemies (since 24 Nov gifts can mend that back to neutral, never allies).
 // Decided 10 Nov, his next round: his own hand-drawn map. Five nations
 // (orange joins, on the big land in the middle) and 45 cities. The map is
 // bigger than the screen: drag it to look around, and it follows whoever
@@ -40,7 +40,7 @@ const STR = {
   teamTurn: '{team} turn…',
   title: 'Conquest',
   howBtn: 'How to play',
-  gCured: 'Cured', gFallout: 'Fallout', gRunway: 'Runway: {n} of {of}',
+  gCured: 'Cured', gFallout: 'Fallout', gTurns: 'Turns left: {n}', gStandoff: 'Standoff', gTreaty: 'Treaty', gRunway: 'Runway: {n} of {of}',
   gBack: 'Back', gNext: 'Next', gClose: 'Close', gPage: '{n} of {of}',
   g_move_t: 'Move', g_move: 'Tap one of your units, then tap a light square to move there.',
   g_drag: 'Drag the map to look around. Pinch, or tap + and −, to zoom.',
@@ -53,13 +53,13 @@ const STR = {
   g_build_t: 'Build guns', g_build: 'Tap an empty square next to one of your units to build a defense gun or AA gun there.',
   g_carry_t: 'Transports', g_carry: 'A transport chopper, transport jet or trade ship carries your ground units and guns. Walk onto a trade ship from the shore. Fly it onto one of your units to pick it up, then pick the transport, tap Drop off, and tap a green square. The jet only loads and drops off in a city.',
   g_aa_t: 'AA guns', g_aa: 'AA guns fire on their own at aircraft from teams that don’t like you, as soon as they fly in range.',
-  g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy for good.',
+  g_teams_t: 'Teams', g_teams: 'Every team starts in the middle. Firing on a team makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you’re allies. At −2 it’s your enemy, and it won’t make peace on its own. Gifts can bring an enemy back to neutral, but never to allies.',
   g_ally_t: 'Make an ally', g_ally: 'Tap Teams, then give a team 4 money, twice. At +1 you’re allies: you can’t fire on each other or take each other’s cities, and you win together. Allies share a trade route worth 1 money a turn each. If an ally has a virus, it can come down the route: tap Lock down to close it. A team won’t become your ally if it and one of your allies don’t get along.',
   g_level_t: 'Your level: {name}', g_level: 'You start with {m} money. The computer teams get {pay} of their city money, buy units in {buy} each turn, and start buying aircraft after turn {air}.',
   frac_half: 'half', frac_most: 'three quarters', frac_all: 'all',
   buy_half: 'half their cities', buy_most: 'three out of four of their cities', buy_all: 'every city',
   intro: 'Take every city, or be the last army on the map with only your allies left.',
-  how9: 'There are five teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy for good.',
+  how9: 'There are five teams, and every team starts neutral. Firing on a team or taking its cities makes it like you less. Giving it 4 money (in Teams) makes it like you more. At +1 you are allies. At −2 it is your enemy. Gifts can bring an enemy back to neutral, but you can never be allies again.',
   start: 'Start',
   startGame: 'Start game',
   keepPlaying: 'Keep playing',
@@ -94,6 +94,32 @@ const STR = {
   dFree: 'This city’s first district is free.',
   dCost: 'Each new district costs {m}.',
   nukeHit: 'The nuclear bomb went off! {n} hit.',
+  shopNuke: 'Nuclear',
+  reactorHow: 'Makes {m} money a turn. Turn it up for more money, but the higher it goes, the more likely it blows up (about 1 in {n} each turn).',
+  reactorLvl: 'Power {n}',
+  reactorBoom: 'A nuclear reactor blew up!',
+  siloEmpty: 'Empty. Build a missile to load it.',
+  siloLoaded: 'Loaded: one nuclear missile. It can reach anything up to {n} squares away.',
+  siloLoad: 'Build missile', siloLaunch: 'Launch',
+  siloAim: 'Tap where to send the missile, up to {n} squares away.',
+  siloAimFar: 'Too far: a missile reaches {n} squares.',
+  missileHow: 'On its way to the square with the red X. It gets there in {n} more of its team\'s turns. Anything that fires at aircraft can shoot it down.',
+  launched: '{team} launched a nuclear missile! It gets there in {n} turns.',
+  missileDown: 'The nuclear missile was shot down!',
+  missileHit: 'A nuclear missile hit! {n} hit.',
+  raceOn: 'A nuke was used. The arms race is on: teams start building nukes.',
+  needBomber: 'Bomber first',
+  needBomberWhy: 'A launch silo is the next step up: have a nuclear bomber first.',
+  breaksTreaty: 'Breaks treaty',
+  breakTitle: 'Break the nuke treaty?',
+  breakBody: 'You signed a treaty not to build more nukes. If you build this, every other team likes you less and likes each other more, and they can gang up on you.',
+  breakYes: 'Build it anyway',
+  cancel: 'Cancel',
+  brokeTreaty: '{team} broke the nuke treaty! Every other team likes {team} less.',
+  treatyBtn: 'Sign nuke treaty', treatyOn: 'Nuke treaty: neither of you builds more nukes.',
+  treatySigned: 'You and {team} signed a nuke treaty.',
+  treatyNo: '{team} won\'t sign.',
+  standoff: 'Has nukes: the computer teams won\'t attack it unless it used one.',
   nukeOne: 'Carries one nuclear bomb: 15 on the target and {m} on every square around it, yours too. Then land in a city, on a runway or a carrier to load another.',
   nukeSpent: 'Bomb dropped. Land to load another.',
   hotCity: 'Fallout from a nuclear bomb: this city makes half its money for {n} more turns, and your units in it lose health each turn.',
@@ -114,6 +140,9 @@ const STR = {
   healed: '+{n}',
   g_districts_t: 'City districts', g_districts: 'Every city has 4 districts. Tap your city to set them. The first district is free, then each costs 1. Hospital heals your units next to it and cures viruses, Quarantine keeps viruses out, and Industrial adds 0.5 money a turn (up to 2 in a city).',
   g_nuke_t: 'Nuclear bomber', g_nuke: 'It drops one big bomb on a ground target 1 square away: 15 there, and {m} to everything on the squares around it, yours too. A city in the blast gets fallout for {n} turns: half money, and units there lose health. Then land it to load another bomb.',
+  g_silo_t: 'Launch silos', g_silo: 'Once you have a nuclear bomber, you can build a launch silo next to your units. Load it with a missile, then launch it at anything up to 40 squares away. It takes 2 to 5 turns to get there, so others can shoot it down. Closer to the middle, the blast hurts more.',
+  g_treaty_t: 'Nuclear threats', g_treaty: 'The computer teams won\'t attack a team that has nukes, so nukes are mostly a threat: two teams with nukes stand off. Using one starts an arms race. In Teams you can sign a treaty to build no more. Break it and every other team gangs up on you.',
+  g_reactor_t: 'Nuclear reactors', g_reactor: 'A reactor makes money each turn, from 1 to 5. Tap it to turn it up, but the higher it goes, the more likely it blows up.',
   g_virus_t: 'Viruses', g_virus: 'A city can catch a virus. Then it makes half its money, and your ground units in it get sick and lose health each turn. Build a hospital there to cure it. Quarantine keeps viruses out. A virus can also come down a trade route from a sick ally.',
   passTitle: '{team} turn',
   passBody: 'Pass the device to the {team} player.',
@@ -131,7 +160,7 @@ const STR = {
   statTeam: '{team}: took {c} cities, knocked out {k} units, lost {l}.',
   pickHint: 'Tap one of your units or cities.',
   yours: 'Yours',
-  ally: 'Ally', neutral: 'Neutral', unfriendly: 'Unfriendly', foe: 'Enemy for good', out: 'Out of the game',
+  ally: 'Ally', neutral: 'Neutral', unfriendly: 'Unfriendly', foe: 'Enemy', exFoe: 'Neutral (was your enemy)', out: 'Out of the game',
   score: 'Score with you: {n}',
   hp: 'Health', dmg: 'Damage', rng: 'Range', spd: 'Speed', cost: 'Cost', hits: 'Fires at',
   ground: 'Ground', air: 'Air', groundAir: 'Ground and air', noGuns: 'Nothing (no guns)',
@@ -213,7 +242,8 @@ const STR = {
   gave: 'You gave {team} {m} money. Score with them: {n}.',
   nowAllies: 'You and {team} are allies now!',
   cantGivePoor: 'You need {m} money to give.',
-  cantGiveFoe: '{team} will never be your friend again.',
+  cantGiveFoe: '{team} was your enemy. You’re neutral now, but you can never be allies again.',
+  mended: '{team} doesn’t count you as an enemy any more.',
   cantGiveTurn: 'You can give money on your own turn.',
   blockedAlly: '{team} won’t be your ally while you are allies with {other}.',
 };
@@ -239,6 +269,11 @@ const UNITS = {
   interceptor:   { name: 'Interceptor',           img: 'interceptor',      hp: 3,   dmg: 2,   dmgA: 2,     rng: 3, spd: 4, cost: 3,   hits: 'GA', air: 'plane' },
   bomber:        { name: 'Bomber',                img: 'bomber',           hp: 4,   dmg: 4.5, dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane' },
   groundBomber:  { name: 'Ground attack bomber',  img: 'ground-bomber',    hp: 4,   dmg: 3,   dmgA: 2.4,   rng: 4, rngG: 1, spd: 3, cost: 4, hits: 'GA', air: 'plane', fire: true },
+  // Decided 24 Nov, his drawing: hp, cost and the boom's damage and reach are
+  // his; a reactor's and a missile's "range" is how far the blast reaches.
+  nuclearReactor: { name: 'Nuclear reactor',      img: 'nuclear-reactor',  hp: 6,   dmg: 0,                rng: 0, spd: 0, cost: 20, hits: '',   fixed: true, reactor: true, boomD: 10, boomR: 4 },
+  nuclearSilo:   { name: 'Nuclear launch silo',   img: 'nuclear-silo',     hp: 5,   dmg: 0,                rng: 40, spd: 0, cost: 30, hits: '',  fixed: true, silo: true },
+  nuclearMissile: { name: 'Nuclear missile',      img: 'nuclear-missile',  hp: 3,   dmg: 0,                rng: 0, spd: 0, cost: 20, hits: '',   air: 'missile', boomD: 15, boomR: 5 },
   nuclearBomber: { name: 'Nuclear bomber',        img: 'nuclear-bomber',   hp: 4,   dmg: 15,  dmgA: 2,     rng: 3, rngG: 1, spd: 3, cost: 12, hits: 'GA', air: 'plane', nuke: true },
   transportChopper: { name: 'Transport chopper', img: 'transport-chopper', hp: 4, dmg: 1,              rng: 3, spd: 4, cost: 3, hits: 'G',  air: 'heli',  holds: 4 },
   transportJet:  { name: 'Transport jet',         img: 'transport-jet',    hp: 4,   dmgA: 2,               rng: 3, spd: 3, cost: 4, hits: 'A',  air: 'plane', holds: 5, heals: 4 },
@@ -261,6 +296,7 @@ const SHOP_GROUPS = [
   ['shopGround', ['soldier', 'tank', 'tankDestroyer', 'aaTank']],
   ['shopGuns', ['defenseGun', 'artillery', 'aaGun', 'missileAA']],
   ['shopAir', ['groundChopper', 'attackChopper', 'attackJet', 'interceptor', 'bomber', 'groundBomber', 'nuclearBomber', 'transportChopper', 'transportJet']],
+  ['shopNuke', ['nuclearReactor', 'nuclearSilo']],
 ];
 const SHOP = SHOP_GROUPS.flatMap(g => g[1]);
 // Ships are built like the field guns: on an empty water square touching one
@@ -288,8 +324,8 @@ function shipFits(type, x, y, ang, self) {
 // Decided 4 Nov: defense guns and AA guns can be built on any empty square
 // next to one of your units, as long as no other team can fire on it.
 // Artillery guns only in cities. (Missile AA goes with the AA gun until he says.)
-const FIELD_GUNS = ['defenseGun', 'aaGun', 'missileAA'];
-const AIR = SHOP_GROUPS[2][1];
+const FIELD_GUNS = ['defenseGun', 'aaGun', 'missileAA', 'nuclearReactor', 'nuclearSilo'];
+const AIR = SHOP_GROUPS[2][1];   // the third group; the nuclear group is fourth
 const AA_AUTO = ['aaGun', 'missileAA', 'aaTank'];
 // Decided 6 Nov: the transports (his card: a transport chopper holds 4, the
 // transport jet holds 5 and heals 4). ROOM is his "basic unit": how much room
@@ -453,6 +489,36 @@ const VIRUS_CHANCE = .02, VIRUS_HURT = .5, VIRUS_TURNS = 3, VIRUS_FLOOR = .5;
 // and has to land (city, runway or carrier) to load the next (u.spent).
 // The computer buys one rarely: late, with money to spare, one at a time.
 const NUKE_SPLASH = 5, FALLOUT_TURNS = 3;
+// Decided 24 Nov, his next round, nukes as threats:
+// - Launch silos (his drawing: hp 5, cost 30, range 40, holds 1 missile) are
+//   the step up from the nuclear bomber: a team can build one once it has had
+//   a nuclear bomber (G.hadBomber). Built anywhere next to your units, or in a
+//   city. "Nukes need a storage area": the silo is the store, holding one
+//   missile (cost 20, his), bought at the silo (u.loaded).
+// - A missile (hp 3) flies from the silo to the square picked, slowly: 2 to
+//   5 of its team's turns by distance (missileTurns), so others can shoot it
+//   down (anything that fires at aircraft; AA fires at it by itself). The
+//   blast: his damage 15 and reach 5, closer hurts more (BANDS: the inner
+//   third full, the middle half, the outer quarter; the thirds are ours).
+// - Reactors (his: hp 6, cost 20, boom 10 reaching 4) make 1 to 5 money a
+//   turn, set by the owner ("you can crank it up"), and the higher the
+//   setting the likelier it blows up each turn (REACTOR_RISK, ours).
+// - A team with nukes (hasThreat) isn't attacked by the computer teams, and
+//   two such teams leave each other alone: a standoff. A team that has used
+//   a nuke loses that cover, and using one starts the arms race (G.race):
+//   the computer teams start building nukes.
+// - Treaties (G.treaty, two teams at a time, signed in Teams): neither
+//   builds more nukes. Building one anyway is allowed, and breaks it: every
+//   other team likes the breaker 1 point less and likes each other half a
+//   point more, so they can gang up on it.
+const BANDS = [[1 / 3, 1], [2 / 3, .5], [1, .25]];
+const REACTOR_RISK = [0, .005, .02, .04, .07, .12];   // by power 1 to 5
+const NUKE_KINDS = ['nuclearBomber', 'nuclearSilo', 'nuclearMissile'];
+const missileTurns = d => Math.max(2, Math.min(5, 1 + Math.ceil(d / 10)));
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const inTreaty = side => Object.keys(G.treaty || {}).some(k => k.split('|').includes(side));
+const hasThreat = side => hasNuke(side) || G.units.some(u => u.side === side && ((UNITS[u.type].silo && u.loaded) || UNITS[u.type].air === 'missile'));
+let THREAT = null;   // the teams with nukes, worked out once at the start of a computer turn
 // the first district a city ever gets is free (old saves: a city that already
 // has one has used its free one)
 const dCost = c => c.dFree === false || (c.dFree === undefined && c.d.some(Boolean)) ? DISTRICT_COST : 0;
@@ -525,6 +591,9 @@ function mkUnit(type, side, x, y) {
   const u = { id: uid++, type, side, x, y, px: x, py: y, hp: UNITS[type].hp, moved: false, acted: false, fresh: false, ang: y < MH / 2 ? Math.PI : 0 };
   if (UNITS[type].air === 'plane') { u.fuel = FUEL; u.landed = landsAt(side, x, y); }
   if (UNITS[type].holds) u.cargo = [];
+  if (UNITS[type].nuke && G) (G.hadBomber = G.hadBomber || {})[side] = 1;
+  if (UNITS[type].reactor) u.power = 1;
+  if (UNITS[type].reactor || UNITS[type].silo) u.ang = 0;   // wide buildings: his drawings stand the right way up only
   return u;
 }
 function save() {
@@ -640,6 +709,11 @@ async function playReplay(evs) {
   const byId = id => G.units.find(u => u.id === id);
   for (const e of evs) {
     if (e.k === 'm') { const u = byId(e.id); if (!u) continue; if (seeTile(e.x, e.y)) await sleep(380); u.x = e.x; u.y = e.y; u.ang = e.ang; sfx('step'); await sleep(260); }
+    else if (e.k === 'N') {
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) fx.push({ kind: 'boom', x: e.x + dx, y: e.y + dy, t0: performance.now() + (Math.abs(dx) + Math.abs(dy)) * 60, dur: 1000 });
+      sfx('boom'); await sleep(900);
+    }
+    else if (e.k === 'm') { const u = byId(e.id); if (u) { u.x = e.x; u.y = e.y; u.ang = e.ang; } await sleep(200); }
     else if (e.k === 'n') {
       blast(e.x, e.y);
       for (const h of e.hits) fx.push({ kind: 'num', x: h.x, y: h.y, text: '-' + fmt(h.d), t0: performance.now() + 350, dur: 900 });
@@ -700,14 +774,14 @@ function sour(a, b) {
   if (a === b || allied(a, b) || G.soured[b]) return;
   G.soured[b] = 1;
   const p = pk(a, b);
-  G.rel[p] = Math.max(FOE, r1((G.rel[p] || 0) - STEP));   // it stops at -2: enemies for good
+  G.rel[p] = Math.max(FOE, r1((G.rel[p] || 0) - STEP));   // it stops at -2: enemies
   if (G.rel[p] <= FOE) G.locked[p] = 1;
 }
 // Who stops a and b from becoming allies: a team one of them is allied with
 // that the other doesn't like.
 const allyBlock = (a, b) => TEAMS.find(x => x !== a && x !== b && !G.out[x] && ((allied(a, x) && rel(b, x) < 0) || (allied(b, x) && rel(a, x) < 0)));
 function aidProblem(from, to) {
-  if (G.locked[pk(from, to)]) return t('cantGiveFoe', { team: tn(to) });
+  if (G.locked[pk(from, to)] && rel(from, to) >= 0) return t('cantGiveFoe', { team: tn(to) });
   if (G.side !== from || busy) return t('cantGiveTurn');
   if (G.money[from] < AID) return t('cantGivePoor', { m: AID });
   return '';
@@ -716,13 +790,17 @@ function giveAid(from, to) {
   if (aidProblem(from, to)) return;
   G.money[from] = r1(G.money[from] - AID); G.money[to] = r1(G.money[to] + AID);
   const p = pk(from, to), was = rel(from, to);
-  let next = Math.min(ALLY, r1(was + STEP));
+  // Decided 24 Nov, his ask: an enemy (−2) can be mended with gifts, but only
+  // back to neutral (0), never allies again (G.locked remembers it). Before
+  // this, −2 was for good and gifts were refused.
+  let next = Math.min(G.locked[p] ? 0 : ALLY, r1(was + STEP));
   const block = next >= ALLY && was < ALLY && allyBlock(from, to);
   if (block) next = r1(ALLY - STEP);
   G.rel[p] = next;
   const msgs = [t('gave', { team: tn(to), m: AID, n: signed(next) })];
   if (block) msgs.push(t('blockedAlly', { team: tn(to), other: tn(block) }));
   else if (next >= ALLY && was < ALLY) { msgs.push(t('nowAllies', { team: tn(to) })); sfx('take'); }
+  else if (G.locked[p] && was <= FOE && next > FOE) { msgs.push(t('mended', { team: tn(to) })); sfx('take'); }
   else sfx('buy');
   log(msgs.join(' '));
   checkEnd(); render();
@@ -731,7 +809,8 @@ const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(Math.abs(n));
 function relWord(a, b) {
   if (G.out[b]) return t('out');
   if (allied(a, b)) return t('ally');
-  if (G.locked[pk(a, b)]) return t('foe');
+  if (rel(a, b) <= FOE) return t('foe');
+  if (G.locked[pk(a, b)] && rel(a, b) >= 0) return t('exFoe');
   return rel(a, b) < 0 ? t('unfriendly') : t('neutral');
 }
 
@@ -794,7 +873,8 @@ function targetsFrom(u, x, y) {
 }
 const cityPay = c => ((c.hq ? HQ_MONEY : CITY_MONEY) + countD(c, 'industrial') * INDUSTRY_MONEY) * (c.sick || c.hot ? .5 : 1);
 function income(side) {
-  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0) + routes(side).length * ROUTE_MONEY;
+  return G.cities.filter(c => c.owner === side).reduce((s, c) => s + cityPay(c), 0) + routes(side).length * ROUTE_MONEY
+    + G.units.filter(u => u.side === side && UNITS[u.type].reactor).reduce((s, u) => s + (u.power || 1), 0);
 }
 // Decided 15 Nov, his answer: trade routes bring in money, but a virus can
 // come down a route from a nation that has one, so you can lock the route
@@ -892,6 +972,7 @@ function startTurn(side) {
       fx.push({ kind: 'num', x: u.x, y: u.y, text: '-' + fmt(BURN), t0: performance.now(), dur: 900 });
     }
   }
+  notes.push(...nukeTurn(side));
   notes.push(...viruses(side));
   if (!isHuman(side)) { cpuDistricts(side); for (const s of TEAMS.filter(s => s !== side && allied(side, s))) lockRoute(side, s, hasVirus(s)); }
   hospitals(side);
@@ -1043,7 +1124,73 @@ function nuke(a, x, y) {
   for (const c of G.cities.filter(c => near(c.x, c.y))) c.hot = FALLOUT_TURNS;
   blast(x, y);
   rec({ k: 'n', x, y, hits });
-  return [t('nukeHit', { n: hits.length + 1 }), ...notes].join(' ');
+  return [t('nukeHit', { n: hits.length + 1 }), ...notes, usedNuke(a.side)].filter(Boolean).join(' ');
+}
+// A nuclear missile or a reactor going up: damage by how close (BANDS), to
+// every unit on the ground, the water or in the air, any team's.
+function bigBlast(x, y, D, Rr, side) {
+  const hits = [], notes = [];
+  for (const o of G.units.filter(o => Math.min(...cells(o).map(([a, b]) => Math.max(Math.abs(a - x), Math.abs(b - y)))) <= Rr)) {
+    const d = Math.min(...cells(o).map(([a, b]) => Math.max(Math.abs(a - x), Math.abs(b - y))));
+    const k = BANDS.find(([f]) => d <= Rr * f)[1];
+    const dmg = r1(D * k * (UNITS[o.type].fixed ? .5 : 1));
+    o.hp = r1(o.hp - dmg); hits.push(o);
+    fx.push({ kind: 'num', x: o.x, y: o.y, text: '-' + fmt(dmg), t0: performance.now() + 350, dur: 1100 });
+    if (o.hp <= 0) { notes.push(remove(o, 'knocked')); if (side && !allied(o.side, side)) G.stats[side].killed++; }
+  }
+  for (const c of G.cities.filter(c => cheb(c, { x, y }) <= Rr)) c.hot = FALLOUT_TURNS;
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (inMap(x + dx, y + dy)) fx.push({ kind: 'boom', x: x + dx, y: y + dy, t0: performance.now() + (Math.abs(dx) + Math.abs(dy)) * 60, dur: 1000 });
+  sfx('boom'); setTimeout(() => sfx('boom'), 200); setTimeout(() => sfx('boom'), 420);
+  rec({ k: 'N', x, y });
+  return { n: hits.length, notes };
+}
+function usedNuke(side) {
+  (G.nuked = G.nuked || {})[side] = 1;
+  const first = !G.race; G.race = 1;
+  return first ? t('raceOn') : '';
+}
+// at the start of a team's turn: its missiles fly on, and its reactors may blow
+function nukeTurn(side) {
+  const notes = [];
+  for (const m of G.units.filter(u => u.side === side && UNITS[u.type].air === 'missile')) {
+    if (m.left <= 1) {
+      G.units = G.units.filter(o => o !== m); rec({ k: 'x', id: m.id });
+      const R = UNITS[m.type], b = bigBlast(m.tx, m.ty, R.boomD, R.boomR, side);
+      notes.push(t('missileHit', { n: b.n }), ...b.notes);
+    } else {
+      const nx = Math.round(m.x + (m.tx - m.x) / m.left), ny = Math.round(m.y + (m.ty - m.y) / m.left);
+      m.ang = face(nx - m.x, ny - m.y); m.x = nx; m.y = ny; m.left--;
+      rec({ k: 'm', id: m.id, x: nx, y: ny, ang: m.ang });
+      const aa = aaReact(m); if (aa) notes.push(aa);
+      if (!G.units.includes(m)) notes.push(t('missileDown'));
+    }
+    m.moved = m.acted = true;
+  }
+  for (const r of G.units.filter(u => u.side === side && UNITS[u.type].reactor)) {
+    if (Math.random() >= REACTOR_RISK[r.power || 1]) continue;
+    G.units = G.units.filter(o => o !== r); rec({ k: 'x', id: r.id });
+    const R = UNITS[r.type], b = bigBlast(r.x, r.y, R.boomD, R.boomR, null);
+    notes.push(t('reactorBoom'), ...b.notes);
+  }
+  return notes;
+}
+function launch(silo, x, y) {
+  const d = cheb(silo, { x, y }), n = missileTurns(d);
+  const m = mkUnit('nuclearMissile', silo.side, silo.x, silo.y);
+  m.tx = x; m.ty = y; m.left = n; m.moved = m.acted = m.fresh = true; m.ang = face(x - silo.x, y - silo.y);
+  silo.loaded = false; silo.acted = silo.moved = true;
+  G.units.push(m); rec({ k: 'b', u: { ...m } });
+  const race = usedNuke(silo.side);
+  log([t('launched', { team: tn(silo.side), n }), race].filter(Boolean).join(' ')); sfx('boom');
+}
+// Building a nuke while in a treaty breaks it: everyone else likes the
+// breaker less and each other more.
+function breakTreaty(side) {
+  const others = TEAMS.filter(o => o !== side && !G.out[o]);
+  for (const o of others) { const p = pk(o, side); G.rel[p] = Math.max(FOE, r1(rel(o, side) - 1)); if (G.rel[p] <= FOE) G.locked[p] = 1; }
+  for (const a of others) for (const b of others) if (a < b) G.rel[pk(a, b)] = Math.min(G.locked[pk(a, b)] ? 0 : ALLY, r1(rel(a, b) + STEP));
+  for (const k of Object.keys(G.treaty || {})) if (k.split('|').includes(side)) delete G.treaty[k];
+  log(t('brokeTreaty', { team: tn(side) }));
 }
 function blast(x, y) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) fx.push({ kind: 'boom', x: x + dx, y: y + dy, t0: performance.now() + (dx || dy ? 150 : 0), dur: 900 });
@@ -1056,7 +1203,7 @@ function blast(x, y) {
 function aaReact(plane) {
   const msgs = [];
   if (!isAir(plane)) return '';
-  for (const g of G.units.filter(g => g.side !== plane.side && AA_AUTO.includes(g.type) && !g.aaShot && rel(g.side, plane.side) < 0)) {
+  for (const g of G.units.filter(g => g.side !== plane.side && AA_AUTO.includes(g.type) && !g.aaShot && (rel(g.side, plane.side) < 0 || (UNITS[plane.type].air === 'missile' && !allied(g.side, plane.side))))) {
     if (!G.units.includes(plane) || G.over) break;
     const R = UNITS[g.type];
     if (dist(g, plane) > R.rng) continue;
@@ -1139,6 +1286,11 @@ function tapTile(x, y) {
     sel = { unit: d.tr };
     if (p) { dropOff(d.tr, d.i, p); render(); return; }
   }
+  if (sel?.aim && sel.unit.side === me) {
+    const s = sel.unit;
+    if (cheb(s, { x, y }) <= UNITS[s.type].rng) { launch(s, x, y); sel = null; saveLocal(); render(); return; }
+    log(t('siloAimFar', { n: UNITS[s.type].rng })); render(); return;
+  }
   if (sel?.unit && sel.unit.side === me) {
     const s = sel.unit, ts = targetsFrom(s, s.x, s.y);
     const tg = here.find(o => ts.includes(o));
@@ -1197,9 +1349,19 @@ function canBuildSea(x, y, side = G.side) {
 }
 const shipFace = (k, x, y) => FACES.find(a => shipFits(k, x, y, a, null));
 const underFire = (x, y, side = G.side) => G.units.some(e => !allied(e.side, side) && UNITS[e.type].hits.includes('G') && gap(e, x, y) <= groundRange(UNITS[e.type]));
-function buy(type) {
+// Why a team can't buy a nuke right now ('' if it can). A treaty doesn't stop
+// it: buying through one breaks it (buy asks first).
+const nukeBlock = (side, type) => type === 'nuclearSilo' && !(G.hadBomber || {})[side] ? 'needBomber' : '';
+function askBreak(go) {
+  cardShow(`<h2>${t('breakTitle')}</h2><p>${t('breakBody')}</p><div class="row"><button class="btn quiet" id="bkNo">${t('cancel')}</button><button class="btn" id="bkYes">${t('breakYes')}</button></div>`);
+  $('#bkNo').onclick = cardHide;
+  $('#bkYes').onclick = () => { cardHide(); breakTreaty(G.side); go(); };
+}
+function buy(type, sure = false) {
   if (!myTurn()) return;
   const me = G.side, R = UNITS[type];
+  if (nukeBlock(me, type)) return;
+  if (NUKE_KINDS.includes(type) && inTreaty(me) && !sure) { askBreak(() => buy(type, true)); return; }
   let p = null;
   if (sel?.build) {
     const b = sel.build;
@@ -1220,6 +1382,15 @@ function buy(type) {
   if (sel.build) sel = { unit: u };
   render();
 }
+// a missile goes into the silo; it's a nuke, so a treaty asks first
+function loadSilo(silo, sure = false) {
+  if (!myTurn() || silo.side !== G.side || silo.loaded) return;
+  const cost = UNITS.nuclearMissile.cost;
+  if (G.money[G.side] < cost) return;
+  if (inTreaty(G.side) && !sure) { askBreak(() => loadSilo(silo, true)); return; }
+  G.money[G.side] = r1(G.money[G.side] - cost); silo.loaded = true;
+  rec({ k: 'l', id: silo.id }); saveLocal(); sfx('buy'); log(t('bought', { unit: UNITS.nuclearMissile.name.toLowerCase() })); render();
+}
 
 // ---------- the computer ----------
 // Decided 5 Nov: a computer team leaves neutral teams alone while there are
@@ -1228,6 +1399,7 @@ function buy(type) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function fairGame(me, other) {
   if (other === me || allied(me, other)) return false;
+  if (THREAT && THREAT.has(other) && !(G.nuked || {})[other]) return false;   // the standoff
   return rel(me, other) < 0 || !G.cities.some(c => !c.owner);
 }
 // Decided 14 Nov, his catch: the computer teams didn't build ships, so on his
@@ -1305,6 +1477,7 @@ async function cpuTurn(me) {
   busy = true; sel = null;
   startTurn(me);
   if (G.over) { busy = false; return; }
+  THREAT = new Set(TEAMS.filter(hasThreat));
   showBanner(t('teamTurn', { team: tn(me) }));
   seeHome(me);
   render();
@@ -1322,7 +1495,9 @@ async function cpuTurn(me) {
     if (can.includes('tankDestroyer') && Math.random() < .2) pick = 'tankDestroyer';
     if (otherAir && Math.random() < .3) pick = can.includes('missileAA') && G.money[me] >= 6 ? 'missileAA' : near && can.includes('aaGun') ? 'aaGun' : 'aaTank';
     if (G.turn > lvl().air && Math.random() < .3) { const air = AIR.filter(k => can.includes(k) && !UNITS[k].nuke); if (air.length) pick = air[Math.random() * air.length | 0]; }
-    if (G.turn > lvl().air + 10 && can.includes('nuclearBomber') && G.money[me] >= 16 && Math.random() < .08 && !hasNuke(me)) pick = 'nuclearBomber';
+    if (G.turn > lvl().air + 10 && can.includes('nuclearBomber') && G.money[me] >= 16 && Math.random() < (G.race ? .3 : .08) && !hasNuke(me) && !inTreaty(me)) pick = 'nuclearBomber';
+    if (G.race && can.includes('nuclearSilo') && !nukeBlock(me, 'nuclearSilo') && !inTreaty(me) && G.money[me] >= 34 && Math.random() < .3 && !G.units.some(u => u.side === me && UNITS[u.type].silo)) pick = 'nuclearSilo';
+    if (can.includes('nuclearReactor') && G.money[me] >= 26 && Math.random() < .15 && !G.units.some(u => u.side === me && UNITS[u.type].reactor)) pick = 'nuclearReactor';
     if (!can.includes(pick)) pick = can[0];
     const p = spot(c, layerOfType(pick));
     G.money[me] = r1(G.money[me] - UNITS[pick].cost);
@@ -1343,6 +1518,8 @@ async function cpuTurn(me) {
     if (tg) { fire(u, tg); render(); await sleep(480); }
   }
   cpuUnload(me);
+  cpuNukes(me);
+  THREAT = null;
   // a plane that stayed over its own carrier lands on it
   for (const pl of G.units.filter(u => u.side === me && AIR_ROOM[u.type] && !u.landed)) {
     const cr = G.units.find(d => d.side === me && UNITS[d.type].deck && covers(d, pl.x, pl.y));
@@ -1352,6 +1529,30 @@ async function cpuTurn(me) {
   if (G.over) return;
   nextTurn();
 }
+// The computer drops a nuke only on an enemy (-2), or on a team that has
+// used one: nukes are mostly a threat.
+const nukeOK = (me, s) => rel(me, s) <= FOE || !!(G.nuked || {})[s];
+// its silos: load in an arms race (not in a treaty), and launch at an enemy
+// it may nuke, where the blast catches the most of theirs and none of its own
+function cpuNukes(me) {
+  for (const silo of G.units.filter(u => u.side === me && UNITS[u.type].silo)) {
+    if (!silo.loaded) {
+      if (G.race && !inTreaty(me) && G.money[me] >= UNITS.nuclearMissile.cost + 2) { G.money[me] = r1(G.money[me] - UNITS.nuclearMissile.cost); silo.loaded = true; }
+      continue;
+    }
+    const R = UNITS.nuclearMissile, foes = TEAMS.filter(s => s !== me && !G.out[s] && !allied(me, s) && nukeOK(me, s));
+    if (!foes.length) continue;
+    const spots = [...G.cities.filter(c => foes.includes(c.owner)), ...G.units.filter(o => foes.includes(o.side) && !isAir(o))].filter(o => cheb(silo, o) <= UNITS[silo.type].rng);
+    let best = null, bestS = 2;
+    for (const o of spots) {
+      const sc = G.units.filter(e => cheb(e, o) <= R.boomR).reduce((n, e) => n + (foes.includes(e.side) ? 1 : allied(e.side, me) ? -4 : 0), 0)
+        + G.cities.filter(c => cheb(c, o) <= R.boomR).reduce((n, c) => n + (foes.includes(c.owner) ? 1 : c.owner && allied(c.owner, me) ? -4 : 0), 0);
+      if (sc > bestS) { bestS = sc; best = o; }
+    }
+    if (best) launch(silo, best.x, best.y);
+  }
+  for (const r of G.units.filter(u => u.side === me && UNITS[u.type].reactor)) r.power = G.money[me] < 6 ? 3 : 2;   // a little greedy when poor
+}
 function bestTarget(u) {
   const ts = targetsFrom(u, u.x, u.y).filter(o => fairGame(u.side, o.side));
   if (!ts.length) return null;
@@ -1359,7 +1560,7 @@ function bestTarget(u) {
   if (R.nuke) {   // the bomb hits round the target too: aim where it catches the most enemies and none of its own
     const around = o => G.units.filter(e => !isAir(e) && e !== o && Math.abs(e.x - o.x) <= 1 && Math.abs(e.y - o.y) <= 1);
     const worth = o => 1 + (o.hp >= 6 ? 1 : 0) + around(o).reduce((n, e) => n + (allied(e.side, u.side) ? -3 : 1), 0);
-    const ground = ts.filter(o => !isAir(o)).sort((a, b) => worth(b) - worth(a));
+    const ground = ts.filter(o => !isAir(o) && nukeOK(u.side, o.side)).sort((a, b) => worth(b) - worth(a));
     if (ground.length && worth(ground[0]) >= 2) return ground[0];
     const air = ts.filter(isAir);
     return air.length ? air.sort((a, b) => a.hp - b.hp)[0] : null;
@@ -1561,6 +1762,13 @@ function drawParked(r, c = ctx) {
   });
   c.fillStyle = '#1b1a15'; c.fillRect(X + 2, Y + 2, 13, 13); c.fillStyle = '#e8dfc8'; c.font = '9px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillText(list.length, X + 9, Y + 13);
 }
+// where a nuclear missile will land: a red X with the turns left
+function drawTargetX(c, x, y, n) {
+  const X = x * TS, Y = y * TS;
+  c.strokeStyle = '#1b1a15'; c.lineWidth = 7; c.beginPath(); c.moveTo(X + 8, Y + 8); c.lineTo(X + TS - 8, Y + TS - 8); c.moveTo(X + TS - 8, Y + 8); c.lineTo(X + 8, Y + TS - 8); c.stroke();
+  c.strokeStyle = '#d94a3a'; c.lineWidth = 4; c.stroke();
+  if (n) { c.font = '10px "Press Start 2P", monospace'; c.textAlign = 'center'; c.fillStyle = '#1b1a15'; c.fillText(n, X + TS / 2 + 1, Y + TS - 1); c.fillStyle = '#f2d98a'; c.fillText(n, X + TS / 2, Y + TS - 2); }
+}
 function drawCity(o, now = 0, c = ctx) {
   const X = o.x * TS, Y = o.y * TS, q = TS / 2, f = (col, x, y, w, h) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   f('#1b1a15', X + 1, Y + 1, TS - 2, TS - 2); f('#57533c', X + 2, Y + 2, TS - 4, TS - 4);
@@ -1711,6 +1919,7 @@ function frame(now) {
   ctx.drawImage(ground, 0, 0, MW * TS, MH * TS);   // the ground is painted at half size
   const seen = (x, y) => x > cam.x - 2 && y > cam.y - 2 && x < cam.x + VW + 1 && y < cam.y + VH + 1;
   for (const r of RUNWAYS) { drawRunway(r); drawParked(r); }
+  for (const m of G.units.filter(u => UNITS[u.type].air === 'missile')) drawTargetX(ctx, m.tx, m.ty, m.left);
   for (const c of G.cities) if (seen(c.x, c.y)) { drawCity(c, now); drawFlag(c); }
   const s = sel?.unit, mine = myTurn();
   if (s && s.side === G.side && mine && !sel.drop) {   // while dropping off, only the green squares show
@@ -1780,11 +1989,16 @@ function panel() {
     if (u.reloading) notes.push(t('reloading'));
     if (AA_AUTO.includes(u.type)) notes.push(t('autoFire'));
     if (R.nuke) notes.push(u.spent ? t('nukeSpent') : t('nukeOne', { m: NUKE_SPLASH }));
+    if (R.air === 'missile') notes.push(t('missileHow', { n: u.left }));
+    if (R.silo) notes.push(u.loaded ? t('siloLoaded', { n: R.rng }) : t('siloEmpty'));
+    if (R.reactor) notes.push(t('reactorHow', { m: u.power || 1, n: Math.round(1 / REACTOR_RISK[u.power || 1]) }));
+    if (u.side !== v && hasThreat(u.side) && !(G.nuked || {})[u.side] && (R.silo || R.nuke)) notes.push(t('standoff'));
     else if (R.rngG !== undefined) notes.push(t('bombNear'));
     if (R.fixed) notes.push(t('dugIn'));
     if (R.air === 'plane' && u.landed) notes.push(t('landed'));
     else if (R.air === 'plane' && u.fuel <= 4) notes.push(t('lowFuel'));
-    if (u.side === G.side && mine) {
+    if (u.side === G.side && mine && (R.silo || R.reactor || R.air === 'missile')) tip = '';   // their own lines and buttons say what they do
+    else if (u.side === G.side && mine) {
       if (u.fresh) tip = t('newUnit');
       else if (u.moved && u.acted) tip = t('unitDone');
       else { const m = reach(u).size, f = targetsFrom(u, u.x, u.y).length; tip = [m ? t('canMove') : '', f ? t('canFire') : ''].filter(Boolean).join(' ') || t('unitDone'); }
@@ -1802,6 +2016,15 @@ function panel() {
     }
     el.innerHTML = `<h2>${R.name} · ${whose(u.side)}</h2>
       ${statsHTML(u.type, u.hp, u)}${notes.map(n => `<p>${n}</p>`).join('')}${inside}${tip ? `<p>${tip}</p>` : ''}${u.side === v && cityAt(u.x, u.y)?.owner === v ? `<p>${t('cityAgain')}</p>` : ''}`;
+    const own = u.side === v && mine;
+    if (R.reactor && own) el.insertAdjacentHTML('beforeend', `<div class="shop">` + [1, 2, 3, 4, 5].map(n => `<button class="dbtn" data-pw="${n}" aria-pressed="${(u.power || 1) === n}">${t('reactorLvl', { n })}</button>`).join('') + '</div>');
+    if (R.silo && own) el.insertAdjacentHTML('beforeend', `<div class="row">` + (u.loaded
+      ? `<button class="btn" data-launch ${u.acted ? 'disabled' : ''}>${t('siloLaunch')}</button>`
+      : `<button class="btn" data-load ${G.money[v] < UNITS.nuclearMissile.cost ? 'disabled' : ''}>${t('siloLoad')} · ${G.money[v] < UNITS.nuclearMissile.cost ? t('need', { m: UNITS.nuclearMissile.cost }) : UNITS.nuclearMissile.cost}${inTreaty(v) ? ' · ' + t('breaksTreaty') : ''}</button>`) + '</div>'
+      + (sel.aim ? `<p class="warn">${t('siloAim', { n: R.rng })}</p>` : ''));
+    el.querySelectorAll('[data-pw]').forEach(b => b.onclick = () => { u.power = +b.dataset.pw; rec({ k: 'p', id: u.id, n: u.power }); saveLocal(); sfx('click'); render(); });
+    el.querySelector('[data-load]')?.addEventListener('click', () => loadSilo(u));
+    el.querySelector('[data-launch]')?.addEventListener('click', () => { sel = { unit: u, aim: true }; sfx('click'); render(); });
     el.querySelectorAll('[data-off]').forEach(b => b.onclick = () => { takeOff(u, +b.dataset.off); sel = null; render(); });
     el.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => { sel = { unit: u, drop: { tr: u, i: +b.dataset.drop } }; render(); });
     return;
@@ -1823,8 +2046,8 @@ function panel() {
       return `<button class="buy" data-buy="${k}" ${poor || full || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name} · ${t('sizeOf', { l: R.len, w: R.wid })}</span><b>${full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
     }).join('') + '</div>';
     else body = `<p>${t('buildHere')}</p><div class="shop">` + FIELD_GUNS.map(k => {
-      const R = UNITS[k], poor = G.money[v] < R.cost;
-      return `<button class="buy" data-buy="${k}" ${poor || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+      const R = UNITS[k], poor = G.money[v] < R.cost, nb = nukeBlock(v, k), tr = NUKE_KINDS.includes(k) && inTreaty(v);
+      return `<button class="buy" data-buy="${k}" ${poor || nb || !mine ? 'disabled' : ''}${nb ? ` title="${t('needBomberWhy')}"` : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${nb ? t(nb) : poor ? t('need', { m: fmt(R.cost) }) : tr ? `${fmt(R.cost)} · ${t('breaksTreaty')}` : fmt(R.cost)}</b></button>`;
     }).join('') + `</div><p>${t('artyCity')}</p>`;
     el.innerHTML = `<h2>${t(b.sea ? 'buildSea' : 'buildSpot')}</h2>${body}`;
     el.querySelectorAll('[data-buy]').forEach(btn => btn.onclick = () => buy(btn.dataset.buy));
@@ -1839,8 +2062,8 @@ function panel() {
   else if (!spot(c, 'ground') && !spot(c, 'air')) body += `<p>${t('cityBusy')}</p>`;
   else {
     body += `<p>${t('buyHere')}</p>` + SHOP_GROUPS.map(([g, list]) => `<p class="grp">${t(g)}</p><div class="shop">` + list.map(k => {
-      const R = UNITS[k], poor = G.money[v] < R.cost, full = !spot(c, layerOfType(k));
-      return `<button class="buy" data-buy="${k}" ${poor || full || !mine ? 'disabled' : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : fmt(R.cost)}</b></button>`;
+      const R = UNITS[k], poor = G.money[v] < R.cost, full = !spot(c, layerOfType(k)), nb = nukeBlock(v, k), tr = NUKE_KINDS.includes(k) && inTreaty(v);
+      return `<button class="buy" data-buy="${k}" ${poor || full || nb || !mine ? 'disabled' : ''}${nb ? ` title="${t('needBomberWhy')}"` : ''}><img src="units/${R.img}.png" alt=""><span>${R.name}</span><b>${nb ? t(nb) : full ? t('noRoom') : poor ? t('need', { m: fmt(R.cost) }) : tr ? `${fmt(R.cost)} · ${t('breaksTreaty')}` : fmt(R.cost)}</b></button>`;
     }).join('') + '</div>').join('');
   }
   el.innerHTML = `<h2>${name}</h2>${body}`;
@@ -1936,6 +2159,14 @@ function setupCard(sure = false) {
     if (PREFS.where === 'online') startOnline(); else { cardHide(); newGame(); }
   };
 }
+// A computer team signs if it doesn't dislike you, or if you have nukes (it
+// would rather not be in a race with you). Players on this device just sign.
+function signTreaty(a, b) {
+  if (!myTurn() || G.side !== a) return;
+  if (!isHuman(b) && rel(a, b) < 0 && !hasThreat(a)) { log(t('treatyNo', { team: tn(b) })); sfx('click'); return; }
+  (G.treaty = G.treaty || {})[pk(a, b)] = 1;
+  rec({ k: 't', a, b }); saveLocal(); sfx('take'); log(t('treatySigned', { team: tn(b) }));
+}
 function teamsCard() {
   if (!G) return;
   const v = G.view;
@@ -1946,11 +2177,13 @@ function teamsCard() {
     const rb = route ? `<button class="btn small" data-route="${s}" ${myTurn() && G.side === v ? '' : 'disabled'}>${t(shut ? 'routeOpenBtn' : 'routeShutBtn')}</button>` : '';
     return `<div class="tm"><div class="grow"><h3>${chip(s)}${tn(s)}</h3><p>${t(isHuman(s) ? 'player' : 'computer')} · ${relWord(v, s)}</p>
       <p>${t('score', { n: signed(rel(v, s)) })}</p>${why ? `<p>${why}</p>` : ''}${rp}</div>
-      ${G.out[s] ? '' : `<div class="col">${rb}<button class="btn small" data-aid="${s}" ${why ? 'disabled' : ''}>${t('give', { m: AID })}</button></div>`}</div>`;
+      ${(G.treaty || {})[pk(v, s)] ? `<p>${t('treatyOn')}</p>` : ''}
+      ${G.out[s] ? '' : `<div class="col">${rb}${(G.treaty || {})[pk(v, s)] ? '' : `<button class="btn small" data-treaty="${s}" ${myTurn() && G.side === v ? '' : 'disabled'}>${t('treatyBtn')}</button>`}<button class="btn small" data-aid="${s}" ${why ? 'disabled' : ''}>${t('give', { m: AID })}</button></div>`}</div>`;
   }).join('');
   cardShow(`<h2>${t('teamsTitle')}</h2><p>${t('how9')}</p>${rows}<div class="row"><button class="btn" id="close">${t('done')}</button></div>`);
   $('#close').onclick = cardHide;
   $('#card').querySelectorAll('[data-aid]').forEach(b => b.onclick = () => { giveAid(v, b.dataset.aid); teamsCard(); });
+  $('#card').querySelectorAll('[data-treaty]').forEach(b => b.onclick = () => { signTreaty(v, b.dataset.treaty); teamsCard(); render(); });
   $('#card').querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
     const s = b.dataset.route, shut = !(G.shut || {})[pk(v, s)];
     lockRoute(v, s, shut); sfx('click'); saveLocal(); log(t(shut ? 'routeShutLog' : 'routeOpenLog', { team: tn(s) })); teamsCard(); render();
@@ -2095,6 +2328,30 @@ const GUIDE = [
     for (const [x, y] of [[4, 0], [2, 2]]) gNum(c, '-' + fmt(NUKE_SPLASH), x, y, (k - 2) / .9);
     if (k > 3) gLabel(c, t('gFallout'), 6, TS * 2.3, '#e8c83a');
   } },
+  { key: 'silo', map: ['ppppp', 'ppppp', 'ppppp'], loop: 6.4, draw(c, k, now) {
+    // the missile leaves the silo, crawls across in two hops (two turns), then the blast, biggest in the middle
+    drawUnit(c, gUnit('nuclearSilo', 'green', 0, 1, { ang: 0 }), now, false);
+    const hop = k < 1.2 ? 0 : k < 2.4 ? 1 : 2, x = [.4, 2, 3.6][hop] + (hop < 2 ? span(k % 1.2, 0, .5) * 0 : 0);
+    if (k < 3.2) { drawTargetX(c, 4, 1, 2 - hop || null); drawUnit(c, gUnit('nuclearMissile', 'green', Math.min(x, 3.6), 1), now, false); }
+    if (k > .4 && k < 3) gLabel(c, t('gTurns', { n: 2 - hop || 1 }), 6, 6);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 0; dx++) gBoom(c, 4 + dx, 1 + dy, (k - 3.2 - (Math.abs(dx) + Math.abs(dy)) * .12) / 1);
+    gNum(c, '-15', 4, 1, (k - 3.3) / .9); gNum(c, '-7.5', 3, 2, (k - 3.5) / .9); gNum(c, '-3.8', 2, 0, (k - 3.7) / .9);
+  } },
+  { key: 'treaty', map: ['ppppp', 'pcpcp', 'ppppp'], loop: 6, draw(c, k, now) {
+    // two teams with silos stand off; then they sign and stop building
+    drawFlag({ x: 1, y: 1, owner: 'green' }, c); drawFlag({ x: 3, y: 1, owner: 'red' }, c);
+    drawUnit(c, gUnit('nuclearSilo', 'green', 0, 2, { ang: 0 }), now, false); drawUnit(c, gUnit('nuclearSilo', 'red', 4, 2, { ang: 0 }), now, false);
+    if (k < 3) gLabel(c, t('gStandoff'), 2 * TS - 28, 6, '#e0a040');
+    else gLabel(c, t('gTreaty'), 2 * TS - 22, 6, '#7fb069');
+    gTap(c, 2, 0, (k - 2.7) / .5);
+  } },
+  { key: 'reactor', map: ['ppppp', 'ppppp', 'ppppp'], loop: 6, draw(c, k, now) {
+    // turned up from 1 to 5: more money each turn, and then it blows
+    const pw = Math.min(5, 1 + Math.floor(k / .9)), up = k < 4.6;
+    if (up) drawUnit(c, gUnit('nuclearReactor', 'green', 2, 1, { ang: 0 }), now, false);
+    if (up) { gNum(c, '+' + pw, 2, 1, (k % .9) / .9); gLabel(c, t('reactorLvl', { n: pw }), 6, 6); }
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) gBoom(c, 2 + dx, 1 + dy, (k - 4.6 - (dx || dy ? .15 : 0)) / 1);
+  } },
   { key: 'build', map: ['ppppp', 'ppppp', 'ppfpp'], loop: 4.6, draw(c, k, now) {
     drawUnit(c, gUnit('soldier', 'green', 1, 1, { moved: true }), now, true);
     if (k > .4 && k < 2.6) gSquares(c, [[2, 1], [1, 0], [0, 1], [1, 2]]);
@@ -2196,7 +2453,7 @@ function guideDraw(now) {
   const pg = GUIDE[guideAt], [, L] = guideLevel();
   const g = guideTiles[pg.key] || (guideTiles[pg.key] = paintTiles(pg.map, 11 + guideAt));
   c.imageSmoothingEnabled = false; c.drawImage(g, 0, 0, GW * TS, GH * TS);
-  if (!['districts', 'virus', 'nuke'].includes(pg.key)) pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
+  if (!['districts', 'virus', 'nuke', 'silo', 'reactor'].includes(pg.key)) pg.map.forEach((row, y) => [...row].forEach((ch, x) => ch === 'c' && drawCity({ x, y }, now, c)));
   pg.draw(c, ((now - guideT0) / 1000) % pg.loop, now, L);
   return true;
 }
