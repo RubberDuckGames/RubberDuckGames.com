@@ -41,6 +41,8 @@ h1{font-size:2.6rem;margin:.5rem 0 0;line-height:1.2}
 .game.tug .info p{color:#d4e9f7}
 .game.fart{--lit:#9fd356;--bezel:#3a2414}
 .game.fart .info p{color:#f3e2cf}
+.game.pepper{--lit:#e8823a;--bezel:#3a2414}
+.game.pepper .info p{color:#f3e2cf}
 .game.md{--lit:#e6c77a;--bezel:#26301c}
 .game.md .info p{color:#e6ecd8}
 .game.pol{--lit:#7fd8b4;--bezel:#163b31}

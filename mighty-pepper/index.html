@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Mighty Pepper · Rubber Duck Games</title>
+<meta name="description" content="Pepper the cowgirl pup takes jobs from the Wanted board, wrangles the critters on the ranch and tries to win over the ranch cats.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="game.css">
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+<script src="../shared/kit.js"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <span class="pill meter" id="respect" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><span class="lbl" data-s="respect"></span> <span class="track"><i id="respectFill"></i></span> <b id="respectNum"></b></span>
+  <span class="pill" id="jobPill" hidden></span>
+  <button class="pill" id="helpBtn" type="button" hidden aria-expanded="false" aria-controls="help" data-s-label="helpBtn">?</button>
+  <button class="pill" id="soundBtn" type="button" data-s-label="soundBtn">🔔</button>
+</div>
+<div class="wrap">
+  <div class="stagebox" id="box">
+    <canvas id="cv" data-s-label="ranch"></canvas>
+    <aside class="help" id="help" hidden>
+      <div class="helpTop"><p class="goal" id="goalNow"></p><button class="pill" id="helpClose" type="button" data-s-label="closeHelp">✕</button></div>
+      <ul id="helpList"></ul>
+      <p class="stashH" data-s="stash"></p>
+      <div class="stash" id="stashList"></div>
+    </aside>
+    <p class="msg" id="msg" role="status" hidden><img id="msgFace" alt=""><span id="msgText"></span></p>
+    <div class="cover" id="cover" hidden><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
+  </div>
+</div>
+<div class="ctrl" id="ctrl" hidden>
+  <div class="stick" id="pad" data-s-label="stick"><i id="knob"></i></div>
+  <div class="btns">
+    <button class="rnd stay" id="stayBtn" type="button" data-s="stay"></button>
+    <button class="rnd bark" id="barkBtn" type="button" data-s="bark"></button>
+    <button class="rnd act" id="actBtn" type="button"></button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

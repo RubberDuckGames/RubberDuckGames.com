@@ -6,6 +6,7 @@
 //   const tone = RDG.sound({ on: () => S.sound, type: 'sine', vol: .06 });
 //   const stick = RDG.stick('#pad', '#knob');          // stick.x, stick.y, stick.on
 //   RDG.noZoom(() => playing, ['#pad', '#goBtn']);
+//   const img = RDG.sprite(ROWS, COLORS, { flip: true }); // pixel art from rows of letters
 const RDG = (() => {
   const el = q => typeof q === 'string' ? document.querySelector(q) : q;
 
@@ -179,6 +180,57 @@ const RDG = (() => {
     addEventListener('gamepaddisconnected', () => { Object.keys(held).forEach(k => hold(k, false)); if (o.stick && steering) { o.stick.x = o.stick.y = 0; o.stick.on = false; steering = false; } });
   }
 
+  // ---------- Pixel sprites ----------
+  // Moved here 22 Nov from Bread the Corgi, when The Mighty Pepper was the
+  // second game to need it. A sprite is written out as rows of letters, one
+  // letter a pixel, '.' see-through, and `colors` says which colour each
+  // letter is. It gets a 1-pixel outline round its edge, the 8-bit look
+  // (Bread, 28 Oct: smooth shapes still looked fuzzy). Returns a small canvas,
+  // kept, so drawing the same sprite again costs nothing. The cache goes by
+  // the rows and colours objects themselves, so build them once, not per frame.
+  //   flip: mirrored left to right; outline: false for none; line: its colour
+  const sprites = new WeakMap(), colorIds = new WeakMap();
+  let nextColorId = 1;
+  function sprite(rows, colors, opt = {}) {
+    const o = { flip: false, outline: true, line: '#2a1a10', ...opt };
+    if (!colorIds.has(colors)) colorIds.set(colors, nextColorId++);
+    const key = colorIds.get(colors) + '|' + o.flip + o.outline + o.line;
+    let byKey = sprites.get(rows);
+    if (!byKey) sprites.set(rows, byKey = new Map());
+    if (byKey.has(key)) return byKey.get(key);
+    const m = o.outline ? 1 : 0;
+    const w = Math.max(...rows.map(r => r.length)) + 2 * m, h = rows.length + 2 * m;
+    const at = (x, y) => (rows[y - m] || '')[x - m] || '.';
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let col = null; const ch = at(x, y);
+      if (ch !== '.') col = colors[ch];
+      else if (o.outline && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => at(x + a, y + b) !== '.')) col = o.line;
+      if (col) { g.fillStyle = col; g.fillRect(o.flip ? w - 1 - x : x, y, 1, 1); }
+    }
+    byKey.set(key, c);
+    return c;
+  }
+
+  // ---------- Painted tiles ----------
+  // tile(key, w, h, fn) paints a ground tile once and keeps it (Bread's 16-bit
+  // backgrounds, 15 Nov). fn(set, fill, rand) draws it: set(x, y, colour) is a
+  // pixel, fill(x, y, w, h, colour) a block, and rand() is seeded by the key,
+  // so the same tile always comes out the same.
+  const tiles = new Map();
+  function tile(key, w, h, fn) {
+    if (tiles.has(key)) return tiles.get(key);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    const set = (x, y, col) => { if (x < 0 || y < 0 || x >= w || y >= h) return; g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+    const fill = (x, y, a, b, col) => { g.fillStyle = col; g.fillRect(x, y, a, b); };
+    let n = [...key].reduce((a, ch) => a * 31 + ch.charCodeAt(0) | 0, 7) >>> 0 || 1;
+    fn(set, fill, () => (n = n * 16807 % 2147483647) / 2147483647);
+    tiles.set(key, c);
+    return c;
+  }
+
   // ---------- The studio database ----------
   // Decided 22 Nov: every game uses the one shared Supabase project
   // (RubberDuckGames; tables in db/). The publishable key is public by
@@ -207,5 +259,5 @@ const RDG = (() => {
   }
   played();
 
-  return { sound, stick, noZoom, pad, rpc, played };
+  return { sound, stick, noZoom, pad, sprite, tile, rpc, played };
 })();

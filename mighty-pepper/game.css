@@ -1,0 +1,87 @@
+/* The Mighty Pepper. Starts from shared/base.css; this adds the ranch look.
+   Laid out like Ant Farm (20 Nov): the ranch fills the screen, the bar floats
+   on top, the round stick and buttons sit at the bottom on touch screens. */
+:root{--ink:#2a1a10;--soft:#5e4632;--bg:#3a2616;--panel:#fff6e4;--line:#c98a4a;--accent:#b8362f;--gold:#f2c230;--shadow:#7a4a22}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overflow:hidden}
+html{touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow)}
+/* Respect is a word and a number as well as a bar, so colour isn't the only signal */
+.meter{display:flex;align-items:center;gap:.45rem}
+.meter .track{display:inline-block;width:5rem;height:.7rem;border:2px solid var(--ink);background:#e9d6b4}
+.meter .track i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.meter.star .track i{background:var(--gold)}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.stagebox{position:relative}
+canvas{display:block;width:100%;image-rendering:pixelated;background:#b5cc6a;touch-action:none}
+#jobPill .short{display:none}
+
+/* the ? help: what to do next, the controls and the stash. Nothing else is
+   left up on the ranch; it opens by itself only the first time on a device */
+.help{position:absolute;left:.5rem;right:.5rem;top:.5rem;z-index:6;background:var(--panel);border:3px solid var(--ink);padding:.6rem .9rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3);max-height:calc(100% - 1rem);overflow:auto}
+.helpTop{display:flex;gap:.75rem;align-items:flex-start}
+.help .goal{margin:0 0 .4rem;font-weight:800;flex:1}
+.help ul{margin:.2rem 0;padding-left:1.1rem}
+.help li{margin:.15rem 0}
+.stashH{margin:.6rem 0 .2rem;font-weight:800}
+.stash{display:flex;flex-wrap:wrap;gap:.5rem}
+.stash figure{margin:0;width:4.5rem;text-align:center;font-size:.8rem;color:var(--soft)}
+.stash img{display:block;width:3rem;height:3rem;margin:0 auto .2rem;padding:.25rem;image-rendering:pixelated;object-fit:contain;background:#f0dcb8;border:3px solid var(--line)}
+.stash .no img{filter:brightness(0);opacity:.3;border-style:dashed}   /* a dark shape until found, like Bread's closet */
+
+/* one short line at a time, with the face of whoever said it, inside the
+   ranch's bottom edge (Feed the Fart's reactions, 20 Nov) */
+.msg{position:absolute;left:50%;bottom:.6rem;transform:translateX(-50%);z-index:5;margin:0;max-width:calc(100% - 1rem);display:flex;align-items:center;gap:.6rem;background:var(--panel);border:3px solid var(--ink);padding:.35rem .8rem .35rem .4rem;font-weight:700;box-shadow:.25rem .25rem 0 rgba(0,0,0,.3)}
+.msg img{width:2.6rem;height:2.6rem;image-rendering:pixelated;background:#f0dcb8;border:2px solid var(--line);flex:none}
+.msg img[hidden]{display:none}
+
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(30,18,8,.55);z-index:9;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:40rem;width:100%;max-height:100%;overflow:auto;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
+.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.4rem 0}
+.card .soft{color:var(--soft)}
+.card .bigpic{display:block;margin:.4rem auto;width:6rem;height:6rem;image-rendering:pixelated;object-fit:contain}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.9rem}
+.btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{color:var(--soft);border-style:dashed;cursor:default;box-shadow:none}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.btn:not(:disabled):active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--shadow)}
+
+/* the Wanted board: a poster per job, on planks */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:.8rem;padding:.8rem;background:#8a5a30;border:4px solid #5e3a1c}
+.poster{position:relative;display:flex;flex-direction:column;background:#f3e2bc;border:3px solid #c9a46a;padding:.6rem;box-shadow:.2rem .2rem 0 #5e3a1c;text-align:center}
+.poster .w{font-family:"Press Start 2P",monospace;font-size:.8rem;letter-spacing:.1em;margin:0 0 .3rem}
+.poster img{width:5rem;height:4rem;margin:0 auto;image-rendering:pixelated;object-fit:contain}
+.poster h3{font-size:1rem;margin:.3rem 0 .2rem}
+.poster p{font-size:.95rem;margin:0 0 .5rem;color:var(--soft);flex:1}
+.poster .btn{font-size:.6rem;padding:.5rem .6rem}
+.poster .stamp{font-family:"Press Start 2P",monospace;font-size:.75rem;color:var(--accent);border:3px solid var(--accent);padding:.35rem;transform:rotate(-6deg);margin:.2rem auto 0}
+.poster .now{font-family:"Press Start 2P",monospace;font-size:.6rem;color:#2f6b2a;border:3px solid #2f6b2a;padding:.35rem;margin:.2rem auto 0}
+
+/* touch controls: the round stick on the left, round buttons on the right
+   (decided 15 Nov for every game you steer) */
+.ctrl{display:none}
+@media (pointer:coarse){.ctrl{display:flex}.ctrl[hidden]{display:none}}
+.ctrl{position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:flex-end;padding:1rem;padding-bottom:max(1rem,env(safe-area-inset-bottom));pointer-events:none}
+.ctrl>*{pointer-events:auto}
+.stick{position:relative;width:9rem;height:9rem;border-radius:50%;background:#2a1a10;border:3px solid #120a05;touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.8rem;height:3.8rem;margin:-1.9rem;border-radius:50%;background:#f3e2bc;box-shadow:0 .25rem 0 #a8743c;pointer-events:none}
+.btns{position:relative;width:12rem;height:11rem;pointer-events:none}
+.btns>*{pointer-events:auto}
+.rnd{position:absolute;border-radius:50%;color:#fff;font-family:"Press Start 2P",monospace;font-size:.55rem;line-height:1.4;padding:.3rem;touch-action:none;-webkit-user-select:none}
+.rnd.act{right:0;top:0;width:5.6rem;height:5.6rem;background:#b8362f;box-shadow:0 .35rem 0 #7a1f18}
+.rnd.bark{right:5.4rem;top:3.2rem;width:4.4rem;height:4.4rem;background:#8a5a30;box-shadow:0 .3rem 0 #4e2f1a}
+.rnd.stay{right:1rem;bottom:0;width:4.4rem;height:4.4rem;background:#3b5b8a;box-shadow:0 .3rem 0 #23385a}
+.rnd.held,.rnd:active{transform:translateY(.25rem);box-shadow:none}
+@media (pointer:coarse) and (orientation:portrait){.wrap{align-items:flex-start;padding-top:3.4rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* a phone: shorter labels in the bar, and cards over the whole screen, since
+   the ranch is small there */
+/* the short bar up to 56rem: a phone turned sideways (812 px) didn't fit the long one */
+@media (max-width:56rem){.bar{gap:.25rem;padding-left:.3rem;padding-right:.3rem}.bar .pill{padding:.3rem .35rem;font-size:.55rem;box-shadow:.15rem .15rem 0 var(--shadow)}.meter .lbl,#jobPill .long{display:none}#jobPill .short{display:inline}.meter .track{width:3rem}}
+@media (max-width:40rem){.cover{position:fixed;z-index:20;align-items:flex-start;overflow:auto}.card{max-height:none}}
