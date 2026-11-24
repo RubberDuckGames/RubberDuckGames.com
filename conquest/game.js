@@ -389,14 +389,20 @@ const DRAWN = [
   '......wwwwwwwwwwww......www',
   'w.....wwwwwwwwwwwwwwwwmm..w',
 ];
-const MW = 54, MH = 38, TS = 48;
-const MAP = DRAWN.flatMap(r => { const row = [...r].map(ch => ch + ch).join(''); return [row, row]; });
+const TS = 48;
+// Decided 24 Nov (the map maker, maker.js): the map can be swapped. Everything
+// about it is in a map definition, `{ w, h, rows, caps, towns, runways, name }`,
+// and `useMap` sets the values below from one. BUILTIN is his map; a game on
+// a made map carries its definition in `G.map` (null for his), so saves and
+// online games bring their map with them.
+let MW = 54, MH = 38;
+let MAP = DRAWN.flatMap(r => { const row = [...r].map(ch => ch + ch).join(''); return [row, row]; });
 // The cities, on game squares. The five capitals first, then the cities he
 // dotted on the map, and more on the same islands to make 45 in all: 8 for
 // each island nation and 13 in orange's sector (the top middle island counts
 // there).
-const CAPITALS = { red: [7, 8], blue: [44, 8], yellow: [5, 33], green: [44, 33], orange: [25, 17] };
-const TOWNS = [
+let CAPITALS = { red: [7, 8], blue: [44, 8], yellow: [5, 33], green: [44, 33], orange: [25, 17] };
+let TOWNS = [
   [5, 5], [1, 9], [5, 13], [11, 13], [1, 15], [9, 4], [17, 5],                        // red
   [42, 13], [47, 11], [45, 17], [41, 4], [48, 2], [53, 7], [39, 21],                  // blue
   [19, 7], [21, 9], [17, 13], [33, 17], [20, 21], [29, 23], [32, 8], [35, 12], [14, 20], [18, 25], [27, 29], [31, 3],   // orange
@@ -412,11 +418,12 @@ const TOWNS = [
 // lands on your runway parks there if there's room, fills up each turn, and
 // takes off from a free runway square. Take the city and the planes parked
 // on its runway are caught.
-const RUNWAY_CITIES = [[7, 8], [5, 13], [17, 5], [31, 3], [17, 13], [35, 12], [29, 23], [41, 4], [47, 11], [44, 22], [4, 27], [8, 24], [5, 33], [37, 33], [49, 36]];
+let RUNWAY_CITIES = [[7, 8], [5, 13], [17, 5], [31, 3], [17, 13], [35, 12], [29, 23], [41, 4], [47, 11], [44, 22], [4, 27], [8, 24], [5, 33], [37, 33], [49, 36]];
+const BUILTIN = { w: MW, h: MH, rows: MAP.slice(), caps: { ...CAPITALS }, towns: TOWNS.map(p => p.slice()), runways: RUNWAY_CITIES.map(p => p.slice()), builtin: true };
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 // each runway: the first 2 free land squares in a row next to its city
 // (side by side, then up and down), worked out once from the map
-const RUNWAYS = RUNWAY_CITIES.map(([cx, cy]) => {
+const findRunways = () => RUNWAY_CITIES.map(([cx, cy]) => {
   const all = [...Object.values(CAPITALS), ...TOWNS], land = (x, y) => tileAt(x, y) === '.' && !all.some(([a, b]) => a === x && b === y);
   for (const r of [1, 2]) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     const x = cx + dx, y = cy + dy;
@@ -425,6 +432,7 @@ const RUNWAYS = RUNWAY_CITIES.map(([cx, cy]) => {
   }
   return null;
 }).filter(Boolean);
+let RUNWAYS = findRunways();
 const runwayAt = (x, y) => RUNWAYS.find(r => r.sq.some(([a, b]) => a === x && b === y));
 const RUNWAY_HOLDS = 6;
 const rwOwner = r => cityAt(r.cx, r.cy)?.owner;
@@ -442,7 +450,7 @@ const moveCost = ch => ch === 'f' ? 2 : (ch === 'w' || ch === 'm') ? Infinity : 
 // Which piece of land each square is on (-1 for water and rock). The computer's
 // ground units only head for cities and units on their own island: on this
 // map most of them are across the sea, and the units piled up on the beach.
-const LAND = (() => {
+const findLand = () => {
   const id = Array(MW * MH).fill(-1); let n = 0;
   for (let i = 0; i < MW * MH; i++) {
     if (id[i] !== -1 || moveCost(MAP[i / MW | 0][i % MW]) === Infinity) continue;
@@ -457,7 +465,19 @@ const LAND = (() => {
     n++;
   }
   return id;
-})();
+};
+let LAND = findLand();
+// Swaps in a map definition (see BUILTIN above). Teams with no capital on it
+// sit the game out.
+let CUR = BUILTIN;
+function useMap(def, fit = true) {
+  CUR = def || BUILTIN;
+  MW = CUR.w; MH = CUR.h; MAP = CUR.rows.slice();
+  CAPITALS = { ...CUR.caps }; TOWNS = CUR.towns.map(p => p.slice()); RUNWAY_CITIES = CUR.runways.map(p => p.slice());
+  RUNWAYS = findRunways(); LAND = findLand();
+  if (ground) { paintGround(); if (fit) fitView(); }
+}
+const mapTeams = () => TEAMS.filter(s => CAPITALS[s]);
 const landOf = (x, y) => LAND[y * MW + x];
 // ---------- city districts ----------
 // Decided 10 Nov, his new city: each city is four little cities, its
@@ -552,12 +572,14 @@ const maxId = () => Math.max(0, ...G.units.map(u => u.id), ...G.units.flatMap(u 
 
 function newGame(online = false) {
   const cities = [
-    ...TEAMS.map(s => ({ x: CAPITALS[s][0], y: CAPITALS[s][1], hq: true, owner: s, d: [null, null, null, null] })),
+    ...mapTeams().map(s => ({ x: CAPITALS[s][0], y: CAPITALS[s][1], hq: true, owner: s, d: [null, null, null, null] })),
     ...TOWNS.map(([x, y]) => ({ x, y, hq: false, owner: null, d: [null, null, null, null] })),
   ];
   const ctrl = { ...PREFS.ctrl }, money = {}, stats = {};
   for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
-  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: TEAMS[0], view: TEAMS.find(s => ctrl[s] === 'human') || TEAMS[0], ctrl, money, rel: {}, locked: {}, soured: {}, out: {}, cities, units: [], stats };
+  const here = mapTeams(), out = {};
+  for (const s of TEAMS) if (!here.includes(s)) { out[s] = 1; ctrl[s] = 'cpu'; }
+  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: here[0], view: here.find(s => ctrl[s] === 'human') || here[0], ctrl, money, rel: {}, locked: {}, soured: {}, out, absent: { ...out }, cities, units: [], stats, map: CUR.builtin ? null : CUR };
   // Decided 14 Nov, his ask (early game was slow): each team starts owning
   // the two free cities nearest its capital, as well as the capital.
   for (const c of cities.filter(c => c.hq)) {
@@ -571,7 +593,7 @@ function newGame(online = false) {
   // online: the first team's turn starts on its player's device (or the
   // computer teams play first on the device that starts the game)
   if (online) { G.waiting = true; return; }
-  begin(TEAMS[0]);
+  begin(G.side);
 }
 // Free land squares near a square, nearest first, not counting it or any city.
 function landNear(x0, y0, n) {
@@ -658,6 +680,7 @@ async function joinOnline(id) {
   } catch (e) { cardShow(`<h2>${t('title')}</h2><p class="warn">${t('netFail')}</p><div class="row"><button class="btn" id="re">${t('tryAgain')}</button></div>`); $('#re').onclick = () => joinOnline(id); }
 }
 function loadOnline(state) {
+  useMap(state.map);
   G = state; uid = maxId() + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
   if (ONLINE.me) G.view = ONLINE.me;
@@ -1277,6 +1300,7 @@ const myTurn = () => G && !G.over && !busy && isHuman(G.side) && G.side === G.vi
 
 // ---------- the player ----------
 function tapTile(x, y) {
+  if (G?.editing) { makerTap(x, y); return; }
   if (!myTurn()) return;
   const me = G.side;
   cursor = { x, y };
@@ -1860,6 +1884,7 @@ function seeHome(side, now = false) {
 }
 function render() {
   if (!G) return;
+  if (G.editing) { makerRender(); return; }
   const v = G.view;
   $('#hTeam').innerHTML = `<span class="chip" style="background:${TEAM[v].flag}"></span>${tn(v)}`;
   $('#hTurn').textContent = t('turn', { n: G.turn });
@@ -2138,20 +2163,22 @@ function levelPick() {
 const chip = s => `<span class="chip" style="background:${TEAM[s].flag}"></span>`;
 // Decided 5 Nov: pick Player or Computer for each team; friends share the device.
 function setupCard(sure = false) {
-  const who = TEAMS.map(s => `<div class="who"><b>${chip(s)}${tn(s)}</b>${['human', 'cpu'].map(c =>
+  const who = mapTeams().map(s => `<div class="who"><b>${chip(s)}${tn(s)}</b>${['human', 'cpu'].map(c =>
     `<label><input type="radio" name="ctrl-${s}" value="${c}"${PREFS.ctrl[s] === c ? ' checked' : ''}> ${t(c === 'human' ? 'player' : 'computer')}</label>`).join('')}</div>`).join('');
   cardShow(`<h2>${t('setupTitle')}</h2>${sure ? `<p>${t('newSure')}</p>` : ''}<fieldset class="lvl"><legend>${t('whoPlays')}</legend>${who}</fieldset>${levelPick()}
     <fieldset class="lvl"><legend>${t('wherePlay')}</legend><label><input type="radio" name="where" value="here"${PREFS.where !== 'online' ? ' checked' : ''}> <b>${t('hereDevice')}</b></label><label><input type="radio" name="where" value="online"${PREFS.where === 'online' ? ' checked' : ''}> <b>${t('online')}</b> <span>${t('onlineWhy')}</span></label></fieldset>
+    ${mapPick()}
     <p class="warn" id="setupMsg" hidden>${t('needPlayer')}</p>
     <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
   $('#no').onclick = () => titleCard();
   const keep = () => { const card = $('#card'); PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here'; for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
   $('#card').querySelectorAll('input').forEach(i => i.onchange = keep);
+  $('#card').querySelectorAll('input[name=map]').forEach(i => i.onchange = () => { keep(); pickMap(i.value); setupCard(sure); });
   $('#how').onclick = () => { keep(); guideCard(0, () => setupCard(sure)); };
   $('#yes').onclick = () => {
     const card = $('#card'), ctrl = {};
-    for (const s of TEAMS) ctrl[s] = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value || 'cpu';
-    if (!TEAMS.some(s => ctrl[s] === 'human')) { $('#setupMsg').hidden = false; return; }
+    for (const s of TEAMS) ctrl[s] = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value || PREFS.ctrl[s] || 'cpu';
+    if (!mapTeams().some(s => ctrl[s] === 'human')) { $('#setupMsg').hidden = false; return; }
     PREFS.ctrl = ctrl;
     const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value;
     PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here';
@@ -2170,7 +2197,7 @@ function signTreaty(a, b) {
 function teamsCard() {
   if (!G) return;
   const v = G.view;
-  const rows = TEAMS.filter(s => s !== v).map(s => {
+  const rows = TEAMS.filter(s => s !== v && !(G.absent || {})[s]).map(s => {
     const why = G.out[s] ? '' : aidProblem(v, s);
     const route = !G.out[s] && s !== v && allied(v, s), shut = route && (G.shut || {})[pk(v, s)];
     const rp = route ? `<p>${t(shut ? 'routeShut' : 'routeOpen', { m: ROUTE_MONEY })}</p>${hasVirus(s) ? `<p class="warn">${t(shut ? 'routeSafe' : 'routeRisk', { team: tn(s) })}</p>` : ''}` : '';
@@ -2498,9 +2525,12 @@ function titleCard() {
   const f = $('#fresh');
   if (f) f.onclick = () => setupCard(true);
   $('#how').onclick = () => guideCard(0, titleCard);
+  $('#card .row').insertAdjacentHTML('afterbegin', `<button class="btn quiet" id="maker">${t('makerBtn')}</button>`);
+  $('#maker').onclick = makerCard;
   fillOnlineList();
 }
 function resume(s) {
+  useMap(s.map);
   G = s; uid = maxId() + 1;
   for (const u of G.units) { u.px = u.x; u.py = u.y; }
   sel = null; log(t('pickHint')); render(); seeHome(G.side, true);
@@ -2521,6 +2551,7 @@ cv.addEventListener('pointerdown', e => {
     return;
   }
   drag = { x: e.clientX, y: e.clientY, cx: camGo.x, cy: camGo.y, moved: false, id: e.pointerId };
+  if (G?.editing && makerPaints()) { M.last = null; drag.paint = true; drag.moved = true; const w = worldAt(e.clientX, e.clientY); makerStroke(Math.floor(w.x), Math.floor(w.y)); }
 });
 window.addEventListener('pointermove', e => {
   if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -2530,6 +2561,7 @@ window.addEventListener('pointermove', e => {
     return;
   }
   if (!drag || e.pointerId !== drag.id || pinch) return;
+  if (drag.paint) { const w = worldAt(e.clientX, e.clientY); makerStroke(Math.floor(w.x), Math.floor(w.y)); return; }
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (Math.hypot(dx, dy) > 8) drag.moved = true;
   if (!drag.moved) return;
@@ -2570,6 +2602,6 @@ $('#inviteBtn').textContent = t('invite');
 $('#inviteBtn').onclick = () => { if (ONLINE && $('#cover').hidden) shareCard(); };
 hud();
 loadArt().then(() => { fitView(); paintGround(); requestAnimationFrame(frame);
-  const gid = new URLSearchParams(location.search).get('game');
-  if (gid) joinOnline(gid); else titleCard();
+  const q = new URLSearchParams(location.search), gid = q.get('game'), mid = q.get('map');
+  if (gid) joinOnline(gid); else if (mid) openSharedMap(mid); else titleCard();
 });

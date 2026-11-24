@@ -72,3 +72,8 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 .gdots i{width:.5rem;height:.5rem;background:var(--line)}
 .gdots i.on{background:var(--accent)}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
+
+/* the map maker (maker.js): tool buttons wrap in rows; the share link fills the card */
+.tools { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin: .4rem 0; }
+.tools .dbtn { flex: 0 0 auto; }
+#link { width: 100%; font: inherit; padding: .4rem; background: #2f2d23; color: var(--ink); border: 2px solid var(--line); }
