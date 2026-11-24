@@ -64,3 +64,22 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add);
   else add();
 })();
+
+// Visit counts with GoatCounter (decided 24 Nov): which game pages get played
+// and which posts (tagged with utm_campaign) send people here. No cookies and
+// nothing about the player. Loaded from here because every game loads
+// menu.js, Treasure Trail included, which doesn't load the kit; a new game is
+// counted without a line of its own. count.js is GoatCounter's own script,
+// kept in shared/ so the page runs a pinned copy.
+// The counted path is the game's folder only, never the query: Conquest's
+// ?game=<id> is how a player rejoins an online game, so it stays off the
+// list of pages. The home page loads count.js itself.
+(() => {
+  if (location.hostname !== 'rubberduckgames.com' || window.goatcounter) return;
+  window.goatcounter = { path: location.pathname };
+  const s = document.createElement('script');
+  s.async = true;
+  s.dataset.goatcounter = 'https://rubberduckgames.goatcounter.com/count';
+  s.src = new URL('count.js?v=1', document.currentScript.src).href;
+  document.head.appendChild(s);
+})();
