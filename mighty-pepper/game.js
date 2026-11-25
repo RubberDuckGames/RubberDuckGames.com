@@ -40,7 +40,7 @@ const STR = {
   goalSquirrels: 'Bark at the Squirrel Gang to run them out of town, then fill in their holes.',
   goalWood: 'Get under the Knock-Knock Kid while it drums, then bark. Freeze when it looks round.',
   goalLizards: 'Sneak up on the lizards and pounce. Lizard Lou only shuts his eyes for a moment.',
-  goalLizardsNoSneak: 'The lizards are too quick for Pepper. Watch how Biscuit hunts.',
+  goalLizardsNoSneak: 'The lizards are too quick for Pepper. Stand still near Biscuit and watch her hunt.',
   goalCarry: 'Put the {item} in the stash under the porch, or take it back where it was.',
   goalDinner: 'Dinner on the porch. Cats first.',
   board: 'Wanted',
@@ -69,7 +69,7 @@ const STR = {
   woodGone: 'The Knock-Knock Kid flew off for good!',
   lizGone: ['Gotcha! Off the rocks!', 'Hey! I was tanning!', 'Fine, fine. We\'re going.'],
   louGone: 'Lizard Lou is off the ranch!',
-  lizQuick: 'Too quick! Maybe Biscuit knows a trick.',
+  lizQuick: 'Too quick! Stand still and watch how Biscuit does it.',
   swat: 'SWAT! Biscuit does not want to play.',
   crooked: 'Mrrow?! Tato runs off crooked.',
   ruin: 'It got away. Biscuit gives you The Look.',
@@ -914,12 +914,15 @@ function huntTarget() {
   if (S.job === 'lizards') list.push(...lizards.filter(l => !l.lou && l.mode === 'bask'));
   return list.sort((a, c) => dist(b, a) - dist(b, c))[0];
 }
+// until Pepper has learned the sneak, Biscuit hunts again soon, so there's
+// another lesson to watch
+function nextHunt() { return S.sneak ? randIn(TUNE.huntEvery) : TUNE.huntFirst; }
 function ruinHunt(swatted) {
   const b = cats.biscuit, now = performance.now();
   if (b.mode !== 'stalk' && b.mode !== 'go') return;
   const tg = b.target; b.target = null;
   if (tg && !gone(tg)) { if (tg.kind === 'sq') { if (tg.mode !== 'run') scatter(tg, P); } else if (tg.mode === 'bask') dart(tg); }
-  b.mode = 'stare'; b.t = 2.2; b.emote = { k: 'look', until: now + 2200 }; b.face = P.x < b.x ? -1 : 1; b.huntT = randIn(TUNE.huntEvery);
+  b.mode = 'stare'; b.t = 2.2; b.emote = { k: 'look', until: now + 2200 }; b.face = P.x < b.x ? -1 : 1; b.huntT = nextHunt();
   if (!swatted) { say('look', t('ruin')); respect(TUNE.respect.ruin); }
 }
 function stepBiscuit(dt, now) {
@@ -952,8 +955,12 @@ function stepBiscuit(dt, now) {
       b.x = b.from.x + (tg.x - b.from.x) * k; b.y = b.from.y + (tg.y - b.from.y) * k; b.hopY = Math.sin(k * Math.PI) * 6;
       if (b.t <= 0) {
         b.hopY = 0; tg.mode = 'caught'; tg.t = .9; b.target = null; b.mode = 'proud'; b.t = 1.6; b.emote = { k: 'heart', until: now + 1500 }; SFX.meow();
-        b.huntT = randIn(TUNE.huntEvery);
-        if (P.stay && dist(P, tg) < TUNE.watch) {
+        b.huntT = nextHunt();
+        // Watching is standing still (or sneaking) close by. It used to need
+        // Stay held as well, and nothing on screen said so, so watching taught
+        // nothing (Randi, 24 Nov: "we watch Biscuit pounce/stalk but can't do
+        // it ourselves"). Holding Stay is still how the sneak is done after.
+        if (P.quiet && dist(P, tg) < TUNE.watch) {
           respect(TUNE.respect.watched);
           if (!S.sneak) { S.sneak = true; save(); say('biscuit', t('learned'), 4200); fillHelp(); }
           else say('biscuit', t('watched'));
