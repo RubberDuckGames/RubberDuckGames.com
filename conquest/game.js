@@ -33,7 +33,9 @@
 const STR = {
   back: '← All games',
   turn: 'Turn {n}',
-  money: 'Money {m}',
+  money: 'Money {m}', moneyUnlimited: 'Money: unlimited',
+  creativePick: 'Creative mode', creativeLabel: 'Unlimited money for the players, and tap any empty square to put any unit there. For trying things out.',
+  spawnTitle: 'Put a unit here', spawnFor: 'For', placed: 'Put a {unit} on the map.',
   soundOn: '🔔', soundOff: '🔕', soundLabel: 'Sounds on or off',
   teams: 'Teams',
   endTurn: 'End turn',
@@ -420,11 +422,15 @@ let TOWNS = [
 // on its runway are caught.
 let RUNWAY_CITIES = [[7, 8], [5, 13], [17, 5], [31, 3], [17, 13], [35, 12], [29, 23], [41, 4], [47, 11], [44, 22], [4, 27], [8, 24], [5, 33], [37, 33], [49, 36]];
 const BUILTIN = { w: MW, h: MH, rows: MAP.slice(), caps: { ...CAPITALS }, towns: TOWNS.map(p => p.slice()), runways: RUNWAY_CITIES.map(p => p.slice()), builtin: true };
+// Decided 24 Nov, his ask: paintable tiles, "just blocks" for building things
+// like a runway out of concrete. Three colours (k concrete, a tarmac, s sand);
+// all of them are flat ground, like land.
+const FLAT = '.kas';
 const tileAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? 'm' : MAP[y][x];
 // each runway: the first 2 free land squares in a row next to its city
 // (side by side, then up and down), worked out once from the map
 const findRunways = () => RUNWAY_CITIES.map(([cx, cy]) => {
-  const all = [...Object.values(CAPITALS), ...TOWNS], land = (x, y) => tileAt(x, y) === '.' && !all.some(([a, b]) => a === x && b === y);
+  const all = [...Object.values(CAPITALS), ...TOWNS], land = (x, y) => FLAT.includes(tileAt(x, y)) && !all.some(([a, b]) => a === x && b === y);
   for (const r of [1, 2]) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     const x = cx + dx, y = cy + dy;
     if (land(x, y) && land(x + 1, y)) return { cx, cy, sq: [[x, y], [x + 1, y]] };
@@ -579,7 +585,7 @@ function newGame(online = false) {
   for (const s of TEAMS) { money[s] = ctrl[s] === 'human' ? LEVELS[PREFS.level].start : 3; stats[s] = { taken: 0, killed: 0, lost: 0 }; }
   const here = mapTeams(), out = {};
   for (const s of TEAMS) if (!here.includes(s)) { out[s] = 1; ctrl[s] = 'cpu'; }
-  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: here[0], view: here.find(s => ctrl[s] === 'human') || here[0], ctrl, money, rel: {}, locked: {}, soured: {}, out, absent: { ...out }, cities, units: [], stats, map: CUR.builtin ? null : CUR };
+  G = { v: SAVE_V, level: PREFS.level, turn: 1, side: here[0], view: here.find(s => ctrl[s] === 'human') || here[0], ctrl, money, rel: {}, locked: {}, soured: {}, out, absent: { ...out }, cities, units: [], stats, map: CUR.builtin ? null : CUR, creative: !!PREFS.creative };
   // Decided 14 Nov, his ask (early game was slow): each team starts owning
   // the two free cities nearest its capital, as well as the capital.
   for (const c of cities.filter(c => c.hq)) {
@@ -1327,6 +1333,7 @@ function tapTile(x, y) {
   const cur = sel ? stack.indexOf(sel.unit || sel.city || sel.runway) : -1;
   const next = cur === -1 ? stack[0] : stack[(cur + 1) % stack.length];
   sel = !next ? null : next.hp !== undefined ? { unit: next } : next.sq ? { runway: next } : { city: next };
+  if (!sel && G.creative && spawnKinds(x, y).length) sel = { spawn: { x, y, side: G.side } };
   if (!sel && (canBuildNear(x, y) || canBuildSea(x, y))) sel = { build: { x, y, sea: tileAt(x, y) === 'w' } };
   if (sel?.unit?.side === me) sfx('click');
   render();
@@ -1375,7 +1382,28 @@ const shipFace = (k, x, y) => FACES.find(a => shipFits(k, x, y, a, null));
 const underFire = (x, y, side = G.side) => G.units.some(e => !allied(e.side, side) && UNITS[e.type].hits.includes('G') && gap(e, x, y) <= groundRange(UNITS[e.type]));
 // Why a team can't buy a nuke right now ('' if it can). A treaty doesn't stop
 // it: buying through one breaks it (buy asks first).
-const nukeBlock = (side, type) => type === 'nuclearSilo' && !(G.hadBomber || {})[side] ? 'needBomber' : '';
+const nukeBlock = (side, type) => type === 'nuclearSilo' && !G.creative && !(G.hadBomber || {})[side] ? 'needBomber' : '';
+// Decided 24 Nov, his ask: creative mode, "unlimited money, you can spawn in
+// anything", for trying out units and for fun. Players' money is topped up to
+// CREATIVE_MONEY after every action (render), and an empty square opens
+// "Put a unit here" with every unit that fits there, for any team in the game,
+// ready to move at once. The computer teams play as normal, with normal money.
+const CREATIVE_MONEY = 99999;
+function spawnKinds(x, y) {
+  const ch = tileAt(x, y), air = AIR.filter(k => !unitAt(x, y, 'air'));
+  if (ch === 'w') return [...SHIPS.filter(k => !unitAt(x, y, 'ground') && shipFace(k, x, y) !== undefined), ...air];
+  if (moveCost(ch) === Infinity) return air;
+  const ground = unitAt(x, y, 'ground') ? [] : [...SHOP_GROUPS[0][1], ...SHOP_GROUPS[1][1], ...SHOP_GROUPS[3][1]];
+  return [...ground, ...air];
+}
+function spawnUnit(type, side, x, y) {
+  if (!G.creative || !myTurn() || !spawnKinds(x, y).includes(type)) return;
+  const u = mkUnit(type, side, x, y);
+  if (UNITS[type].len) u.ang = shipFace(type, x, y);
+  G.units.push(u); rec({ k: 'b', u: { ...u } }); saveLocal();
+  log(t('placed', { unit: UNITS[type].name.toLowerCase() })); sfx('buy');
+  sel = { unit: u }; render();
+}
 function askBreak(go) {
   cardShow(`<h2>${t('breakTitle')}</h2><p>${t('breakBody')}</p><div class="row"><button class="btn quiet" id="bkNo">${t('cancel')}</button><button class="btn" id="bkYes">${t('breakYes')}</button></div>`);
   $('#bkNo').onclick = cardHide;
@@ -1715,7 +1743,7 @@ function paintTiles(map, seed) {
   const fill = (col, px, py, w, h) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
   for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) {
     const ch = map[ty][tx], X = tx * half, Y = ty * half;
-    fill(ch === 'w' ? '#3a4852' : ch === 'm' ? '#6a645a' : '#6e6c46', X, Y, half, half);
+    fill(ch === 'w' ? '#3a4852' : ch === 'm' ? '#6a645a' : ch === 'k' ? '#8f8b80' : ch === 'a' ? '#3f3d38' : ch === 's' ? '#a89566' : '#6e6c46', X, Y, half, half);
     if (ch === 'f') for (let i = 0; i < 5; i++) { const cx = X + 3 + r() * 16, cy = Y + 3 + r() * 16; x.fillStyle = '#3d4628'; x.beginPath(); x.arc(cx, cy, 4 + r() * 2, 0, 7); x.fill(); x.fillStyle = '#4c5532'; x.fillRect(cx - 2, cy - 3, 2, 2); }
     if (ch === 'w') for (let i = 0; i < 3; i++) fill('#4d5d66', X + 2 + r() * 14, Y + 4 + i * 7, 6, 1);
     if (ch === 'm') { x.fillStyle = '#857e70'; x.beginPath(); x.moveTo(X + 2, Y + 21); x.lineTo(X + 10, Y + 4); x.lineTo(X + 19, Y + 21); x.fill(); x.fillStyle = '#b3ab98'; x.beginPath(); x.moveTo(X + 7, Y + 10); x.lineTo(X + 10, Y + 4); x.lineTo(X + 13, Y + 10); x.fill(); }
@@ -1729,6 +1757,17 @@ function paintTiles(map, seed) {
   x.globalCompositeOperation = 'color'; x.fillStyle = '#2f73b0'; x.globalAlpha = .6;   // full strength was a bright blue; .6 sits between that and the old grey
   for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) if (map[ty][tx] === 'w') x.fillRect(tx * half, ty * half, half, half);
   x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+  // the paintable blocks go on after the worn look too, or concrete came out
+  // the same dull colour as the land around it
+  for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) {
+    const ch = map[ty][tx]; if (!'kas'.includes(ch)) continue;
+    const X = tx * half, Y = ty * half;
+    x.globalAlpha = .85; fill(ch === 'k' ? '#b3b0a6' : ch === 'a' ? '#34332f' : '#c9b27a', X, Y, half, half); x.globalAlpha = 1;
+    const seam = ch === 'a' ? '#24231f' : ch === 'k' ? '#86837a' : '#a89466';
+    fill(seam, X, Y + half - 1, half, 1); fill(seam, X + half - 1, Y, 1, half);
+    if (ch === 'a') fill('#d8d0b8', X + 8, Y + 11, 6, 2);
+    if (ch === 's') { const rs = rng(seed + tx * 31 + ty); for (let i = 0; i < 4; i++) fill('#b09a64', X + rs() * 20, Y + rs() * 20, 2, 1); }
+  }
   const rw = rng(seed + 1);
   for (let ty = 0; ty < mh; ty++) for (let tx = 0; tx < mw; tx++) if (map[ty][tx] === 'w') for (let i = 0; i < 2; i++) fill('rgba(150,195,225,.28)', tx * half + 2 + rw() * 14, ty * half + 5 + i * 9, 5, 1);
   return c;
@@ -1888,7 +1927,8 @@ function render() {
   const v = G.view;
   $('#hTeam').innerHTML = `<span class="chip" style="background:${TEAM[v].flag}"></span>${tn(v)}`;
   $('#hTurn').textContent = t('turn', { n: G.turn });
-  $('#hMoney').textContent = t('money', { m: fmt(G.money[v]) });
+  if (G.creative) for (const s of TEAMS) if (isHuman(s)) G.money[s] = CREATIVE_MONEY;   // topped up after every action
+  $('#hMoney').textContent = G.creative && isHuman(v) ? t('moneyUnlimited') : t('money', { m: fmt(G.money[v]) });
   const endBtn = $('#endBtn');
   endBtn.textContent = ONLINE && isHuman(G.side) && G.side !== ONLINE.me ? t('waitFor', { team: tn(G.side) }) : isHuman(G.side) && G.side === G.view ? t('endTurn') : t('teamTurn', { team: tn(G.side) });
   endBtn.disabled = !myTurn() && !(ONLINE && !busy && G.side !== ONLINE.me);   // while waiting online, tapping it checks for the new turn
@@ -1952,7 +1992,7 @@ function frame(now) {
     for (const o of targetsFrom(s, s.x, s.y)) brackets(o.x, o.y, '#e0553f', 1, 12, 4);
   }
   if (sel?.runway) for (const [x, y] of sel.runway.sq) brackets(x, y, '#e8c35a');
-  else if (sel) { const p = sel.unit || sel.city || sel.build; brackets(p.x, p.y, '#e8c35a'); }
+  else if (sel) { const p = sel.unit || sel.city || sel.build || sel.spawn; brackets(p.x, p.y, '#e8c35a'); }
   if (sel?.drop && mine) for (const p of dropSpots(sel.drop.tr)) { ctx.fillStyle = 'rgba(127,176,105,.35)'; ctx.fillRect(p.x * TS + 3, p.y * TS + 3, TS - 6, TS - 6); }   // where they can get out
   // units slide to where they are; ground first, then anything flying above
   const order = [...G.units].sort((a, b) => isAir(a) - isAir(b));
@@ -2062,6 +2102,14 @@ function panel() {
     el.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => { takeOffRw(r, +b.dataset.rw); render(); });
     return;
   }
+  if (sel.spawn) {
+    const p = sel.spawn, kinds = spawnKinds(p.x, p.y);
+    el.innerHTML = `<h2>${t('spawnTitle')}</h2><div class="tools"><span>${t('spawnFor')}</span>${TEAMS.filter(s => !G.out[s]).map(s => `<button class="dbtn" data-for="${s}" aria-pressed="${p.side === s}">${chip(s)}${tn(s)}</button>`).join('')}</div>
+      <div class="shop">${kinds.map(k => `<button class="buy" data-spawn="${k}" ${mine ? '' : 'disabled'}><img src="units/${UNITS[k].img}.png" alt=""><span>${UNITS[k].name}</span></button>`).join('')}</div>`;
+    el.querySelectorAll('[data-for]').forEach(b => b.onclick = () => { p.side = b.dataset.for; render(); });
+    el.querySelectorAll('[data-spawn]').forEach(b => b.onclick = () => spawnUnit(b.dataset.spawn, p.side, p.x, p.y));
+    return;
+  }
   if (sel.build) {
     const b = sel.build;
     let body;
@@ -2168,10 +2216,11 @@ function setupCard(sure = false) {
   cardShow(`<h2>${t('setupTitle')}</h2>${sure ? `<p>${t('newSure')}</p>` : ''}<fieldset class="lvl"><legend>${t('whoPlays')}</legend>${who}</fieldset>${levelPick()}
     <fieldset class="lvl"><legend>${t('wherePlay')}</legend><label><input type="radio" name="where" value="here"${PREFS.where !== 'online' ? ' checked' : ''}> <b>${t('hereDevice')}</b></label><label><input type="radio" name="where" value="online"${PREFS.where === 'online' ? ' checked' : ''}> <b>${t('online')}</b> <span>${t('onlineWhy')}</span></label></fieldset>
     ${mapPick()}
+    <fieldset class="lvl"><legend>${t('creativePick')}</legend><label><input type="checkbox" id="creative"${PREFS.creative ? ' checked' : ''}> <span>${t('creativeLabel')}</span></label></fieldset>
     <p class="warn" id="setupMsg" hidden>${t('needPlayer')}</p>
     <div class="row"><button class="btn quiet" id="how">${t('howBtn')}</button><button class="btn quiet" id="no">${t('cancel')}</button><button class="btn" id="yes">${t('startGame')}</button></div>`);
   $('#no').onclick = () => titleCard();
-  const keep = () => { const card = $('#card'); PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here'; for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
+  const keep = () => { const card = $('#card'); PREFS.creative = !!$('#creative')?.checked; PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here'; for (const s of TEAMS) { const v = card.querySelector(`input[name=ctrl-${s}]:checked`)?.value; if (v) PREFS.ctrl[s] = v; } const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value; savePrefs(); };
   $('#card').querySelectorAll('input').forEach(i => i.onchange = keep);
   $('#card').querySelectorAll('input[name=map]').forEach(i => i.onchange = () => { keep(); pickMap(i.value); setupCard(sure); });
   $('#how').onclick = () => { keep(); guideCard(0, () => setupCard(sure)); };
@@ -2182,6 +2231,7 @@ function setupCard(sure = false) {
     PREFS.ctrl = ctrl;
     const r = card.querySelector('input[name=lvl]:checked'); if (r) PREFS.level = r.value;
     PREFS.where = card.querySelector('input[name=where]:checked')?.value || 'here';
+    PREFS.creative = !!$('#creative')?.checked;
     savePrefs();
     if (PREFS.where === 'online') startOnline(); else { cardHide(); newGame(); }
   };

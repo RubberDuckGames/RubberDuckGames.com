@@ -77,3 +77,4 @@ canvas{display:block;width:100%;min-width:46rem;height:auto;image-rendering:pixe
 .tools { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin: .4rem 0; }
 .tools .dbtn { flex: 0 0 auto; }
 #link { width: 100%; font: inherit; padding: .4rem; background: #2f2d23; color: var(--ink); border: 2px solid var(--line); }
+.tools input[type=number] { width: 4.5rem; font: inherit; padding: .2rem .3rem; background: #2f2d23; color: var(--ink); border: 2px solid var(--line); margin-left: .3rem; }

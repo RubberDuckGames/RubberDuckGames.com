@@ -8,13 +8,17 @@
 // - Names come from two word lists (MAP_ADJ, MAP_NOUN), stored as two
 //   numbers, so no typed text from anyone ever shows up on another device.
 // - Three sizes (MAP_SIZES): small and medium for quick games, big is the
-//   size of his map.
+//   size of his map. Decided 24 Nov, his next round: any size, from
+//   MAP_MIN to MAP_MAX, picked on the new map card or changed in the maker
+//   (Wider, Narrower, Taller, Shorter, two squares at a time); the three
+//   sizes stay as quick picks.
 // Maps made or opened on this device are kept under `conquest-maps` (up to
 // MAP_KEEP), saved as you go. A shared map can't change: editing one after
 // sharing it makes a new link the next time you share.
 // A map is { w, h, rows, caps, towns, runways, name: [adj, noun] }; rows are
 // strings of '.' land, 'w' water, 'm' rock (nobody walks through it), 'f'
-// forest (ground units use 2 moves to cross). It loads through cleanMap, which
+// forest (ground units use 2 moves to cross), and the paintable blocks (his
+// ask, 24 Nov): 'k' concrete, 'a' tarmac, 's' sand, all flat ground like land. It loads through cleanMap, which
 // throws out anything that isn't one of those, because a link can come from
 // anywhere.
 Object.assign(STR, {
@@ -26,10 +30,11 @@ Object.assign(STR, {
   newMap: 'New map', makeIt: 'Make it',
   sizePick: 'Size', startPick: 'Start with',
   size_s: 'Small (24 by 16)', size_m: 'Medium (36 by 26)', size_l: 'Big (54 by 38)',
+  mapW: 'Width', mapH: 'Height', sizeRange: 'From {a} to {b} squares across, {c} to {d} down.',
+  wider: 'Wider', narrower: 'Narrower', taller: 'Taller', shorter: 'Shorter', sizeNow: 'Size: {w} by {h}',
   start_w: 'All sea', start_l: 'All land', start_o: 'A copy of the original map',
   mapOriginal: 'The original map',
-  mapSize_s: 'small', mapSize_m: 'medium', mapSize_l: 'big',
-  mapLine: '{size} · {teams} teams · {cities} cities',
+  mapLine: '{w} by {h} · {teams} teams · {cities} cities',
   sharedMark: 'Shared',
   editBtn: 'Edit', playBtn: 'Play', removeBtn: 'Remove', backBtn: 'Back',
   removeTitle: 'Remove {name}?',
@@ -37,6 +42,10 @@ Object.assign(STR, {
   mapPickTitle: 'Map',
   newName: 'New name',
   tool_move: 'Move', tool_land: 'Land', tool_water: 'Sea', tool_rock: 'Rock', tool_forest: 'Forest',
+  tool_concrete: 'Concrete', tool_tarmac: 'Tarmac', tool_sand: 'Sand',
+  toolHow_concrete: 'Drag to paint concrete: flat ground, for building things like a runway or a base.',
+  toolHow_tarmac: 'Drag to paint dark tarmac, with a line down it: flat ground, good for runways and roads.',
+  toolHow_sand: 'Drag to paint sand: flat ground, for beaches and deserts.',
   tool_city: 'City', tool_cap: 'Capital', tool_rw: 'Runway', tool_clear: 'Clear',
   toolHow_move: 'Drag to look around the map.',
   toolHow_land: 'Drag on the map to paint land.',
@@ -65,13 +74,14 @@ Object.assign(STR, {
 const MAP_ADJ = ['Iron', 'Frozen', 'Golden', 'Stormy', 'Hidden', 'Burning', 'Misty', 'Thunder', 'Silver', 'Lonely', 'Twin', 'Broken', 'Emerald', 'Crimson', 'Shadow', 'Sunny'];
 const MAP_NOUN = ['Islands', 'Straits', 'Peaks', 'Bay', 'Coast', 'Valley', 'Reef', 'Highlands', 'Lakes', 'Fjords', 'Canyon', 'Atolls', 'Frontier', 'Shores', 'Ridge', 'Isles'];
 const MAP_SIZES = { s: [24, 16], m: [36, 26], l: [54, 38] };
+const MAP_MIN = [12, 10], MAP_MAX = [80, 60];
 const MAP_KEEP = 20, MAPS_KEY = 'conquest-maps';
-const TILE_OF = { land: '.', water: 'w', rock: 'm', forest: 'f' };
-const TOOLS = ['move', 'land', 'water', 'rock', 'forest', 'city', 'cap', 'rw', 'clear'];
+const TILE_OF = { land: '.', water: 'w', rock: 'm', forest: 'f', concrete: 'k', tarmac: 'a', sand: 's' };
+const TOOLS = ['move', 'land', 'water', 'rock', 'forest', 'concrete', 'tarmac', 'sand', 'city', 'cap', 'rw', 'clear'];
+const STAND = '.fkas';   // where a city can stand: anything a ground unit can walk on
 const rollName = () => [Math.random() * MAP_ADJ.length | 0, Math.random() * MAP_NOUN.length | 0];
 const mapName = def => !def || def.builtin ? t('mapOriginal') : `${MAP_ADJ[def.name[0]]} ${MAP_NOUN[def.name[1]]}`;
-const sizeKey = def => Object.keys(MAP_SIZES).find(k => MAP_SIZES[k][0] === def.w && MAP_SIZES[k][1] === def.h) || 'l';
-const mapLine = def => t('mapLine', { size: t('mapSize_' + sizeKey(def)), teams: Object.keys(def.caps).length, cities: Object.keys(def.caps).length + def.towns.length });
+const mapLine = def => t('mapLine', { w: def.w, h: def.h, teams: Object.keys(def.caps).length, cities: Object.keys(def.caps).length + def.towns.length });
 const readMaps = () => { try { const a = JSON.parse(localStorage.getItem(MAPS_KEY) || '[]'); return Array.isArray(a) ? a.map(m => ({ ...m, def: cleanMap(m.def) })).filter(m => m.def) : []; } catch (e) { return []; } };
 const writeMaps = list => { try { localStorage.setItem(MAPS_KEY, JSON.stringify(list.slice(0, MAP_KEEP))); } catch (e) { } };
 const packMap = def => ({ w: def.w, h: def.h, rows: def.rows, caps: def.caps, towns: def.towns, runways: def.runways, name: def.name });
@@ -80,10 +90,10 @@ const packMap = def => ({ w: def.w, h: def.h, rows: def.rows, caps: def.caps, to
 function cleanMap(d) {
   try {
     if (!d || typeof d !== 'object') return null;
-    const size = Object.values(MAP_SIZES).find(([w, h]) => w === d.w && h === d.h); if (!size) return null;
-    const [w, h] = size;
-    if (!Array.isArray(d.rows) || d.rows.length !== h || !d.rows.every(r => typeof r === 'string' && r.length === w && /^[.wmf]+$/.test(r))) return null;
-    const onLand = ([x, y]) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < w && y < h && '.f'.includes(d.rows[y][x]);
+    const w = d.w, h = d.h;
+    if (!Number.isInteger(w) || !Number.isInteger(h) || w < MAP_MIN[0] || h < MAP_MIN[1] || w > MAP_MAX[0] || h > MAP_MAX[1]) return null;
+    if (!Array.isArray(d.rows) || d.rows.length !== h || !d.rows.every(r => typeof r === 'string' && r.length === w && /^[.wmfkas]+$/.test(r))) return null;
+    const onLand = ([x, y]) => Number.isInteger(x) && Number.isInteger(y) && x >= 0 && y >= 0 && x < w && y < h && STAND.includes(d.rows[y][x]);
     const caps = {};
     for (const [s, p] of Object.entries(d.caps || {})) { if (TEAMS.includes(s) && Array.isArray(p) && onLand(p)) caps[s] = [p[0], p[1]]; }
     const towns = (Array.isArray(d.towns) ? d.towns : []).slice(0, 120).filter(p => Array.isArray(p) && onLand(p)).map(p => [p[0], p[1]]);
@@ -94,9 +104,9 @@ function cleanMap(d) {
     return { w, h, rows: d.rows.slice(), caps, towns, runways, name };
   } catch (e) { return null; }
 }
-function blankMap(size, start) {
+function blankMap(w, h, start) {
   if (start === 'o') { const o = packMap(BUILTIN); return cleanMap({ ...o, name: rollName() }); }
-  const [w, h] = MAP_SIZES[size], ch = start === 'l' ? '.' : 'w';
+  const ch = start === 'l' ? '.' : 'w';
   return { w, h, rows: Array.from({ length: h }, () => ch.repeat(w)), caps: {}, towns: [], runways: [], name: rollName() };
 }
 
@@ -105,7 +115,7 @@ function mapProblems(def) {
   const out = [], caps = Object.entries(def.caps);
   if (caps.length < 2) out.push(t('probCaps'));
   const cities = [...caps.map(([, p]) => p), ...def.towns], isCity = (x, y) => cities.some(([a, b]) => a === x && b === y);
-  const walk = (x, y) => x >= 0 && y >= 0 && x < def.w && y < def.h && '.f'.includes(def.rows[y][x]);
+  const walk = (x, y) => x >= 0 && y >= 0 && x < def.w && y < def.h && STAND.includes(def.rows[y][x]);
   for (const [s, [cx, cy]] of caps) {   // the same search newGame uses to place the first 3 units
     let n = 0; const seen = new Set([cx + ',' + cy]), q = [[cx, cy]];
     while (q.length && n < 3) { const [x, y] = q.shift(); for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) { const nx = x + dx, ny = y + dy, k = nx + ',' + ny; if (seen.has(k) || !walk(nx, ny)) continue; seen.add(k); q.push([nx, ny]); if (!isCity(nx, ny)) n++; } }
@@ -152,7 +162,7 @@ const makerPaints = () => !!M && !!TILE_OF[M.tool];
 function setTile(def, x, y, ch) {
   if (x < 0 || y < 0 || x >= def.w || y >= def.h || def.rows[y][x] === ch) return false;
   def.rows[y] = def.rows[y].slice(0, x) + ch + def.rows[y].slice(x + 1);
-  if (!'.f'.includes(ch)) dropCity(def, x, y);   // no cities in the sea or in rock
+  if (!STAND.includes(ch)) dropCity(def, x, y);   // no cities in the sea or in rock
   return true;
 }
 function dropCity(def, x, y) {
@@ -176,7 +186,7 @@ function makerStroke(x, y) {
 }
 function makerTap(x, y) {
   if (!M) return;
-  const d = M.entry.def, land = '.f'.includes(d.rows[y]?.[x]), at = p => p[0] === x && p[1] === y;
+  const d = M.entry.def, land = STAND.includes(d.rows[y]?.[x] || 'w'), at = p => p[0] === x && p[1] === y;
   const capHere = Object.keys(d.caps).find(s => at(d.caps[s])), townHere = d.towns.some(at);
   M.last = null;
   if (TILE_OF[M.tool]) { makerStroke(x, y); return; }
@@ -197,6 +207,18 @@ function makerTap(x, y) {
   } else return;
   sfx('click'); makerChanged();
 }
+// Grows or shrinks the map from its right and bottom edges; new squares are
+// sea, and cities that end up off the map go.
+function makerResize(dw, dh) {
+  const d = M.entry.def, w = Math.max(MAP_MIN[0], Math.min(MAP_MAX[0], d.w + dw)), h = Math.max(MAP_MIN[1], Math.min(MAP_MAX[1], d.h + dh));
+  if (w === d.w && h === d.h) return;
+  const rows = [];
+  for (let y = 0; y < h; y++) rows.push(((d.rows[y] || '').slice(0, w)).padEnd(w, 'w'));
+  const inside = p => p[0] < w && p[1] < h;
+  for (const s of Object.keys(d.caps)) if (!inside(d.caps[s])) delete d.caps[s];
+  Object.assign(d, { w, h, rows, towns: d.towns.filter(inside), runways: d.runways.filter(inside) });
+  M.entry.id = null; useMap(d); G.cities = makerG().cities; makerSave(); sfx('click'); render();
+}
 function makerRender() {
   const d = M.entry.def;
   $('#hTeam').textContent = t('makerTitle');
@@ -209,10 +231,12 @@ function makerRender() {
     ${M.tool === 'cap' ? `<div class="tools">${TEAMS.map(s => `<button class="dbtn" data-team="${s}" aria-pressed="${M.team === s}">${chip(s)}${tn(s)}${d.caps[s] ? ' ✓' : ''}</button>`).join('')}</div>` : ''}
     ${TILE_OF[M.tool] ? `<div class="tools"><span>${t('brush')}</span>${[1, 3].map(n => `<button class="dbtn" data-brush="${n}" aria-pressed="${M.brush === n}">${t('brush' + n)}</button>`).join('')}</div>` : ''}
     <p>${t('toolHow_' + M.tool)}</p>
+    <div class="tools"><span>${t('sizeNow', { w: d.w, h: d.h })}</span><button class="dbtn" data-rs="2,0">${t('wider')}</button><button class="dbtn" data-rs="-2,0">${t('narrower')}</button><button class="dbtn" data-rs="0,2">${t('taller')}</button><button class="dbtn" data-rs="0,-2">${t('shorter')}</button></div>
     ${probs.length ? probs.map(p => `<p class="warn">${p}</p>`).join('') : `<p>${t('mapReady')}</p>`}
     <div class="row"><button class="btn quiet" id="mkDone">${t('doneBtn')}</button><button class="btn quiet" id="mkShare" ${probs.length ? 'disabled' : ''}>${t('shareMap')}</button><button class="btn" id="mkPlay" ${probs.length ? 'disabled' : ''}>${t('playHere')}</button></div>`;
   el.querySelectorAll('[data-tool]').forEach(b => b.onclick = () => { M.tool = b.dataset.tool; sfx('click'); render(); });
   el.querySelectorAll('[data-team]').forEach(b => b.onclick = () => { M.team = b.dataset.team; sfx('click'); render(); });
+  el.querySelectorAll('[data-rs]').forEach(b => b.onclick = () => { const [dw, dh] = b.dataset.rs.split(',').map(Number); makerResize(dw, dh); });
   el.querySelectorAll('[data-brush]').forEach(b => b.onclick = () => { M.brush = +b.dataset.brush; render(); });
   $('#mkName').onclick = () => { d.name = rollName(); makerSave(); render(); };
   $('#mkDone').onclick = () => makerClose(makerCard);
@@ -280,14 +304,18 @@ function makerCard() {
     <div class="col"><button class="btn small quiet" data-edit="${m.uid}">${t('editBtn')}</button><button class="btn small quiet" data-share="${m.uid}" ${mapProblems(m.def).length ? 'disabled' : ''}>${t('shareMap')}</button><button class="btn small quiet" data-rm="${m.uid}">${t('removeBtn')}</button><button class="btn small" data-play="${m.uid}" ${mapProblems(m.def).length ? 'disabled' : ''}>${t('playBtn')}</button></div></div>`).join('') : `<p>${t('noMaps')}</p>`;
   const radios = (name, keys, pre, pick) => keys.map(k => `<label><input type="radio" name="${name}" value="${k}"${k === pick ? ' checked' : ''}> <b>${t(pre + k)}</b></label>`).join('');
   cardShow(`<h2>${t('makerTitle')}</h2><p>${t('makerIntro')}</p><h3>${t('myMaps')}</h3>${rows}
-    <fieldset class="lvl"><legend>${t('newMap')}: ${t('sizePick')}</legend>${radios('msize', ['s', 'm', 'l'], 'size_', 'm')}</fieldset>
+    <fieldset class="lvl"><legend>${t('newMap')}: ${t('sizePick')}</legend>${radios('msize', ['s', 'm', 'l'], 'size_', 'm')}
+      <div class="tools"><label>${t('mapW')} <input type="number" id="mw" min="${MAP_MIN[0]}" max="${MAP_MAX[0]}" value="36"></label><label>${t('mapH')} <input type="number" id="mh" min="${MAP_MIN[1]}" max="${MAP_MAX[1]}" value="26"></label></div>
+      <p>${t('sizeRange', { a: MAP_MIN[0], b: MAP_MAX[0], c: MAP_MIN[1], d: MAP_MAX[1] })}</p></fieldset>
     <fieldset class="lvl"><legend>${t('startPick')}</legend>${radios('mstart', ['w', 'l', 'o'], 'start_', 'w')}</fieldset>
     <div class="row"><button class="btn quiet" id="back">${t('backBtn')}</button><button class="btn" id="make">${t('makeIt')}</button></div>`);
   const card = $('#card');
   $('#back').onclick = titleCard;
+  card.querySelectorAll('input[name=msize]').forEach(r => r.onchange = () => { const [w, h] = MAP_SIZES[r.value]; $('#mw').value = w; $('#mh').value = h; });
   $('#make').onclick = () => {
-    const start = card.querySelector('input[name=mstart]:checked').value, size = start === 'o' ? 'l' : card.querySelector('input[name=msize]:checked').value;
-    makerOpen({ uid: Math.random().toString(36).slice(2), def: blankMap(size, start), id: null });
+    const start = card.querySelector('input[name=mstart]:checked').value;
+    const num = (el, i) => Math.max(MAP_MIN[i], Math.min(MAP_MAX[i], Math.round(+el.value) || MAP_MIN[i]));
+    makerOpen({ uid: Math.random().toString(36).slice(2), def: blankMap(num($('#mw'), 0), num($('#mh'), 1), start), id: null });
   };
   const find = uid => readMaps().find(m => m.uid === uid);
   card.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => makerOpen(find(b.dataset.edit)));
