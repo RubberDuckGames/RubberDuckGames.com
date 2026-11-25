@@ -684,10 +684,22 @@ function stepPepper(dt, now) {
   }
   if (P.knock) { moveBy(P, P.knock.vx * dt, P.knock.vy * dt); if ((P.knock.t -= dt) <= 0) P.knock = null; P.moving = false; return; }
   if (P.chase) {
-    const tw = P.chase.tw, dx = tw.x - P.x, dy = tw.y - P.y, l = Math.hypot(dx, dy) || 1;
-    moveBy(P, dx / l * TUNE.chaseRun * dt, dy / l * TUNE.chaseRun * dt);
-    P.face = dx < 0 ? -1 : 1; P.dir = { x: dx / l, y: dy / l }; P.moving = true; P.quiet = false; P.walkT += dt * 1.6;
-    if ((P.chase.t -= dt) <= 0 || tw.dead) { P.chase = null; P.emote = { k: 'sweat', until: now + 1800 }; say('pepper', t('pant')); }
+    // She runs for a spot just behind the tumbleweed (it rolls west, so to its
+    // east) and keeps pace there. The first version ran at the tumbleweed
+    // itself at full speed: once she caught it she overshot, turned, and
+    // overshot again every frame, flipping back and forth on top of it
+    // (Randi, 24 Nov: "she kinda glitches"). The step is capped at the
+    // distance left, and she turns only when it's clearly on her other side.
+    const tw = P.chase.tw, gx = tw.x + .9, gy = tw.y, dx = gx - P.x, dy = gy - P.y, l = Math.hypot(dx, dy);
+    if (l > .01) {
+      const sp = Math.min(l, TUNE.chaseRun * dt);
+      if (moveBy(P, dx / l * sp, dy / l * sp)) P.chase.stuck += dt; else P.chase.stuck = 0;
+      P.dir = { x: dx / l, y: dy / l };
+    }
+    if (Math.abs(tw.x - P.x) > .4) P.face = tw.x < P.x ? -1 : 1;
+    P.moving = true; P.quiet = false; P.walkT += dt * 1.6;
+    // tumbleweeds roll over fences and rocks; Pepper can't, so a wall ends it
+    if ((P.chase.t -= dt) <= 0 || tw.dead || P.chase.stuck > .4) { P.chase = null; P.emote = { k: 'sweat', until: now + 1800 }; say('pepper', t('pant')); }
     return;
   }
   const d = inputDir();
@@ -728,7 +740,7 @@ function stepPepper(dt, now) {
       say('pepper', t('resist')); P.urge = null; P.emote = { k: 'heart', until: now + 1000 };
     } else if ((P.urge.t -= dt) <= 0) {
       const u = P.urge; P.urge = null;
-      if (u.kind === 'tumble') { u.tw.tempted = true; P.chase = { tw: u.tw, t: TUNE.chase }; say('pepper', t('tumble'), 1600); noise(99); }
+      if (u.kind === 'tumble') { u.tw.tempted = true; P.chase = { tw: u.tw, t: TUNE.chase, stuck: 0 }; say('pepper', t('tumble'), 1600); noise(99); }
       else if (!P.carry) { const it = u.item; it.state = 'carried'; it.grabbed = now; it.called = false; it.away = false; P.carry = it; SFX.grab(); say('guilty', t('grab', { item: t(`items.${it.id}`) })); }
     }
   } else if (!stay && !P.carry) {
