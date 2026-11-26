@@ -11,11 +11,15 @@
 // and candles on the table help. The score is the food and the smell when
 // she sits down. It borrows the house's canvas, buttons, sprites, gas grid
 // and walking (HOUSE.kit), like the theater.
+// Changed 26 Nov, too easy: she comes in every 14 to 22 seconds, and comes
+// running when she hears a loud fart. She smells the whole kitchen, not just
+// the doorway. He fills faster and tastes more, the lasagna takes longer, and
+// a fart while she is in the kitchen near him costs points.
 Object.assign(T, {
   dateBtn: 'Date night',
   dateIntro: 'Make dinner for your wife before she gets hungry. Take the food out of the fridge and heat it up!',
   wife: 'His wife',
-  dateHint: 'Date night: he "cooks" dinner for his wife. He heats. Walk with the arrows or the stick (or hold a finger on the kitchen). Use (E) does what fits where he stands: take the next thing from the fridge, put it in the oven, microwave or toaster, take it out when it dings, and serve it at the table. Lasagna goes in the oven, mac and cheese in the microwave, garlic bread in the toaster. Leave it in too long and it burns, and the smoke alarm brings her running. Farts (Space, F or the Fart button) hang in the kitchen: open the window, turn on the fan over the stove, or fart out the open back door. Light the candles on the table. When the time is up or all three are served, she sits down to eat.',
+  dateHint: 'Date night: he "cooks" dinner for his wife. He heats. Walk with the arrows or the stick (or hold a finger on the kitchen). Use (E) does what fits where he stands: take the next thing from the fridge, put it in the oven, microwave or toaster, take it out when it dings, and serve it at the table. Lasagna goes in the oven, mac and cheese in the microwave, garlic bread in the toaster. Leave it in too long and it burns, and the smoke alarm brings her running. Farts (Space, F or the Fart button) hang in the kitchen: open the window, turn on the fan over the stove, or fart out the open back door. Light the candles on the table. She checks on him every so often, and a loud fart brings her running. When the time is up or all three are served, she sits down to eat.',
   useFridge: 'Fridge', usePut: 'Put in', useTake: 'Take out', useServe: 'Serve', useCandles: 'Candles', useWindow: 'Window', useDoor: 'Door', useFan: 'Fan',
   dishes: { lasagna: 'the lasagna', mac: 'the mac and cheese', garlic: 'the garlic bread' },
   apps: { O: 'oven', W: 'microwave', T: 'toaster' },
@@ -24,11 +28,11 @@ Object.assign(T, {
   handsFull: 'His hands are full.',
   wrongApp: '{food} doesn\'t go in the {app}.',
   notDone: 'Not done yet.',
-  ding: 'Ding! {food} is ready.',
+  dateDing: 'Ding! {food} is ready.',
   burnt: ['{food} is burning!', 'Is that smoke?!', 'Oh no, {food}!'],
   burnMac: 'The mac and cheese exploded in the microwave!',
   alarm: 'BEEP BEEP BEEP! The smoke alarm!',
-  served: 'Served {food}.',
+  dateServed: 'Served {food}.',
   servedBurnt: 'Served {food}. Crispy.',
   allServed: 'Dinner\'s ready!',
   candlesLit: 'Candles. Fancy.',
@@ -40,6 +44,8 @@ Object.assign(T, {
   peek: 'How\'s it going in there?',
   peekSmell: ['What IS that smell?!', 'Did something die in here?', 'Oh wow. Okay. I\'ll wait out here.'],
   peekOk: 'Smells... interesting.',
+  heardIt: 'What was that noise?!',
+  inFront: ['Really?! Right in front of me?', 'Ew! I saw that!', 'Oh come ON.'],
   peekGood: 'Ooh, smells good!',
   peekSmoke: 'Is something BURNING?!',
   sits: 'Okay, I\'m starving. What\'s for dinner?',
@@ -75,10 +81,10 @@ const DATE = (() => {
   const C = (i, j) => [(i + .5) * TS, (j + .5) * TS];
   // what can be used, and where he has to stand to use it
   const SPOTS = { F: C(1.5, 2.4), W: C(5, 1.4), T: C(7, 1.4), O: C(9.5, 1.4), H: C(11, 1.4), N: C(0.4, 5.5), B: C(0.4, 10.5), X: C(15.5, 6.5) };
-  const ITEMS = { lasagna: { app: 'O', cook: 30, burn: 14 }, mac: { app: 'W', cook: 10, burn: 7 }, garlic: { app: 'T', cook: 7, burn: 4 } };
+  const ITEMS = { lasagna: { app: 'O', cook: 40, burn: 14 }, mac: { app: 'W', cook: 10, burn: 7 }, garlic: { app: 'T', cook: 7, burn: 4 } };
   const ORDER = ['lasagna', 'mac', 'garlic'];
   const MIX = { lasagna: { dairy: 2, savory: 2 }, mac: { dairy: 3 }, garlic: { bread: 3 }, snack: { sweet: 2 } };
-  const LENGTH = 110, PEEK_AT = 45, SEAT = C(18, 6.1), DOOR = C(17.5, 13.6), PEEK = C(17.5, 11.5);
+  const LENGTH = 110, FILL = 3, TASTE = 20, LOUD = ['trumpet', 'machine', 'rumbler', 'duck', 'squeaker'], SEAT = C(18, 6.1), DOOR = C(17.5, 13.6), PEEK = C(17.5, 11.5);
   const plateAt = n => [(14.7 + n * 1.3) * TS, 6.6 * TS];
   let G = null, raf = 0, last = 0, msgT = 0, ended = false;
   const img = {}; for (const id of ['lasagna', 'mac', 'garlic']) { img[id] = new Image(); img[id].src = spriteURL(id); img[id + '-b'] = new Image(); img[id + '-b'].src = spriteURL(id, true); }
@@ -90,7 +96,7 @@ const DATE = (() => {
     G = { time: 0, x: 6 * TS, y: 5 * TS, dir: 'up', step: 0, frozen: 0, moving: false, done: false, bar: 20, score: 0, puffs: [], smoke: [],
       hand: null, next: 0, apps: { O: null, W: null, T: null }, plates: [], window: false, door: false, fan: false, candles: false,
       alarm: false, alarmT: 0, snackT: 0, belly: { gas: 100, total: 2, dairy: 1, sulfur: 0, bread: 0, sweet: 0, savory: 1, ate: new Set() },
-      wife: { x: DOOR[0], y: DOOR[1] + 20, state: 'away', t: 0, peeked: false, why: '' }, endAt: 0, callAt: 0 };
+      wife: { x: DOOR[0], y: DOOR[1] + 20, state: 'away', t: 0, why: '', next: 12 + Math.random() * 6 }, endAt: 0, callAt: 0 };
     mode = 'date';
     document.body.classList.add('housePlay', 'outPlay');
     $('#dinner').hidden = true; $('#house').hidden = false; K.fitView();
@@ -108,7 +114,7 @@ const DATE = (() => {
     for (const a of 'OWT') {
       const s = G.apps[a]; if (!s) continue;
       s.t += dt; const it = ITEMS[s.id];
-      if (s.state === 'cook' && s.t >= it.cook) { s.state = 'ready'; say(fill(T.ding, { food: cap(T.dishes[s.id]) }), 2000); tone(1320, .08, 'triangle', 0, .1); tone(1760, .2, 'triangle', .1, .1); }
+      if (s.state === 'cook' && s.t >= it.cook) { s.state = 'ready'; say(fill(T.dateDing, { food: cap(T.dishes[s.id]) }), 2000); tone(1320, .08, 'triangle', 0, .1); tone(1760, .2, 'triangle', .1, .1); }
       else if (s.state === 'ready' && s.t >= it.cook + it.burn) { s.state = 'burnt'; s.burntT = 0; say(s.id === 'mac' ? T.burnMac : cap(fill(pick(T.burnt), { food: T.dishes[s.id] })), 2400, true); tone(220, .3, 'sawtooth', 0, .08); }
       if (s.state === 'burnt') {
         s.burntT += dt; const [x, y] = C(a === 'O' ? 9.5 : a === 'W' ? 5 : 7, 1);
@@ -119,7 +125,7 @@ const DATE = (() => {
     }
     if (G.alarm) { G.alarmT += dt; if (Math.floor(G.alarmT * 4) !== Math.floor((G.alarmT - dt) * 4)) tone(2600, .08, 'square', 0, .05); if (!'OWT'.split('').some(a => G.apps[a] && G.apps[a].state === 'burnt')) G.alarm = false; }
     // the bar: he's nervous and keeps tasting things
-    G.bar = Math.min(100, G.bar + dt * 1.6);
+    G.bar = Math.min(100, G.bar + dt * FILL);
     if (G.bar >= 100 && !G.done) { say('Uh oh.', 1200); fart(true); }
     // the gas: the window, the back door, the fan and the candles each clear the air near them
     let gs = (G.gasT || 0) + dt; while (gs > .05) { gs -= .05; GG.step(); vents(); } G.gasT = gs;
@@ -146,18 +152,18 @@ const DATE = (() => {
     const w = G.wife;
     if (why === 'sit') { w.state = 'tosit'; w.why = 'sit'; w.route = null; return; }
     if (w.state !== 'away') return;
-    w.state = 'in'; w.why = why; w.peeked = true;
+    w.state = 'in'; w.why = why;
   }
   function wifeStep(dt) {
     const w = G.wife;
-    if (!w.peeked && G.time >= PEEK_AT && w.state === 'away' && !G.done) visit('peek');
+    if (G.time >= w.next && w.state === 'away' && !G.done) visit('peek');
     const walk = (tx, ty, sp = 45) => { const dx = tx - w.x, dy = ty - w.y, d = Math.hypot(dx, dy); if (d <= sp * dt) { w.x = tx; w.y = ty; return true; } w.x += dx / d * sp * dt; w.y += dy / d * sp * dt; w.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); return false; };
     if (w.state === 'in') {
-      if (walk(PEEK[0], PEEK[1], w.why === 'smoke' ? 80 : 45)) { w.state = 'look'; w.t = 0; react(); }
+      if (walk(PEEK[0], PEEK[1], w.why === 'peek' ? 45 : 80)) { w.state = 'look'; w.t = 0; react(); }
     } else if (w.state === 'look') {
       w.t += dt; if (w.t > 3) w.state = 'out';
     } else if (w.state === 'out') {
-      if (walk(DOOR[0], DOOR[1] + 20)) w.state = 'away';
+      if (walk(DOOR[0], DOOR[1] + 20)) { w.state = 'away'; w.next = G.time + 14 + Math.random() * 8; }
     } else if (w.state === 'tosit') {
       G.done = true;   // dinner's on: he stops and watches
       // up from the door, across below the table, then up to her chair on its right
@@ -167,10 +173,11 @@ const DATE = (() => {
     }
   }
   function react() {
-    const w = G.wife, smell = smellAt(w.x, w.y, 2), smoke = 'OWT'.split('').some(a => G.apps[a] && G.apps[a].state === 'burnt');
+    const w = G.wife, smell = Math.max(smellAt(w.x, w.y, 2), roomSmell()), smoke = 'OWT'.split('').some(a => G.apps[a] && G.apps[a].state === 'burnt');
     let line, pts = 0;
     if (w.why === 'smoke' || smoke) { line = T.peekSmoke; pts = -50; }
     else if (smell > 1.2) { line = pick(T.peekSmell); pts = -60; }
+    else if (w.why === 'heard') { line = T.heardIt; pts = -20; }
     else if (smell > .5) line = T.peekOk;
     else { line = T.peekGood; pts = 20; }
     G.score += pts;
@@ -183,6 +190,8 @@ const DATE = (() => {
     return n ? s / n : 0;
   }
 
+  // the whole kitchen: a thin haze everywhere is still a smell
+  const roomSmell = () => smellAt(10 * TS, 7 * TS, 9) * 2.5;
   // what Use would do where he stands: the nearest thing in reach
   function target() {
     let best = null, bd = 30;
@@ -219,7 +228,7 @@ const DATE = (() => {
       return;
     }
     if (t === 'X') {
-      if (G.hand && G.hand.state !== 'raw') { G.plates.push(G.hand); say(fill(G.hand.state === 'burnt' ? T.servedBurnt : T.served, { food: T.dishes[G.hand.id] }), 1800); G.hand = null; tone(784, .1, 'triangle', 0, .1); }
+      if (G.hand && G.hand.state !== 'raw') { G.plates.push(G.hand); say(fill(G.hand.state === 'burnt' ? T.servedBurnt : T.dateServed, { food: T.dishes[G.hand.id] }), 1800); G.hand = null; tone(784, .1, 'triangle', 0, .1); }
       else if (!G.hand && !G.candles) { G.candles = true; say(T.candlesLit, 1600); tone(988, .12, 'sine', 0, .08); }
       return;
     }
@@ -230,7 +239,7 @@ const DATE = (() => {
   }
   function taste(id) {
     const b = G.belly, m = MIX[id]; for (const k in m) { b[k] += m[k]; b.total += m[k]; } b.ate.add(id);
-    G.bar = Math.min(100, G.bar + (id === 'snack' ? 20 : 14));
+    G.bar = Math.min(100, G.bar + (id === 'snack' ? 25 : TASTE));
   }
   function fart(forced) {
     if (G.done || G.frozen > 0) return;
@@ -240,6 +249,9 @@ const DATE = (() => {
     playType(type, .3 + G.bar / 250); discover(type);
     G.bar = Math.max(0, G.bar - 40);
     if (G.door && Math.hypot(G.x - SPOTS.B[0], G.y - 6 - SPOTS.B[1]) < 26) { G.score += 25; say(fill(T.outBack, { n: 25 }), 1600); return; }   // out into the yard
+    const w = G.wife;
+    if ((w.state === 'in' || w.state === 'look' || w.state === 'out') && Math.hypot(G.x - w.x, G.y - w.y) < 48) { G.score -= 40; say(fill(T.quote, { who: T.wife, line: pick(T.inFront) }), 2200, true); }   // she saw that
+    if (LOUD.includes(type) && w.state === 'away') visit('heard');   // she heard that from the living room
     GG.add(px, py, out * 2.4);
     G.puffs.push({ x: px, y: py, t: 0, color: TYPES[type].color, r: 5 + out * .1 });
   }
@@ -265,13 +277,13 @@ const DATE = (() => {
       else if (p.state === 'burnt') { G.score += 30; ate.push(fill(T.ateBurnt, { food })); }
       else { G.score += 100; ate.push(fill(T.ateOk, { food })); }
     }
-    const smell = smellAt(SEAT[0], SEAT[1], 2) * (G.candles ? .5 : 1);
+    const smell = Math.max(smellAt(SEAT[0], SEAT[1], 2), roomSmell()) * (G.candles ? .5 : 1);
     let sm;
     if (smell < .4) { G.score += 100; sm = T.smellFresh; } else if (smell < 1.2) sm = T.smellBit; else { G.score -= 100; sm = T.smellBad; }
     if (G.candles) { G.score += 50; sm += ' ' + T.candlesLit; }
     if (G.window || G.door) { G.score -= 20; sm += ' ' + T.cold; }
     if (G.callAt) G.score += Math.round(Math.max(0, LENGTH - G.callAt) * 2);   // done early
-    const v = !G.plates.length ? 3 : G.score >= 400 ? 0 : G.score >= 250 ? 1 : G.score >= 100 ? 2 : 3;   // no dinner at all is pizza night
+    const v = !G.plates.length ? 3 : G.score >= 550 ? 0 : G.score >= 300 ? 1 : G.score >= 100 ? 2 : 3;   // no dinner at all is pizza night
     const best = Math.max(+store.get('feed-the-fart:dateBest') || 0, G.score); store.set('feed-the-fart:dateBest', best);
     $('#hdTitle').textContent = T.verdict[v];
     $('#hdText').textContent = fill(T.dateText, { score: G.score, ate: ate.join(' '), smell: sm, best });
@@ -388,5 +400,5 @@ const DATE = (() => {
   $('#hdAgain').onclick = () => { if (ended) { ended = false; $('#houseDone').hidden = true; start(); } else prevAgain(); };
   $('#dateBtn').textContent = T.dateBtn;
   $('#dateBtn').onclick = () => { audio(); $('#startCover').hidden = true; start(); };
-  return { start, peek: () => G, step, draw, fart, use, target, SPOTS, LENGTH };   // for checking from the console
+  return { start, peek: () => G, step, draw, fart, use, target, smell: () => [smellAt(G.wife.x, G.wife.y, 2), roomSmell()], SPOTS, LENGTH };   // for checking from the console
 })();

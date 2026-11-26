@@ -42,13 +42,13 @@ Object.assign(T, {
   crewEw: ['Dude!', 'Was that the drain?', 'Smells like a sewer line in here.', 'Somebody open the dock!', 'Oh, come ON.'],
   blamed: 'The foreman blames {who}! +{n}',
   blameLine: ['Really? On the job?', 'Go take a walk.', 'Was that you? Unbelievable.'],
-  caught: 'Was that you, plumber?',
-  heard: 'I heard that.',
+  jobCaught: 'Was that you, plumber?',
+  jobHeard: 'I heard that.',
   complain: ['Ew! Something smells in this aisle!', 'Is there a sewer leak?', 'I\'m shopping somewhere else.'],
-  strikes: 'Strikes {n}/3',
+  jobStrikes: 'Strikes {n}/3',
   sentHome: 'Three strikes. The foreman sends him home.',
   jobCount: 'Jobs {n}/5',
-  verdict: ['Employee of the month!', 'Good night\'s work.', 'The foreman wants a word.', 'Sent home early.'],
+  jobVerdict: ['Employee of the month!', 'Good night\'s work.', 'The foreman wants a word.', 'Sent home early.'],
   jobText: 'Score {score}. Jobs done {jobs} of 5. {extra}Best score {best}.',
   extraFound: 'Farts found by others: {n}. ',
   extraBlamed: 'Blamed on the crew: {n}. ',
@@ -185,7 +185,7 @@ const JOB = (() => {
     if (gasAt(f.x, f.y) > .5 && f.cool <= 0 && !G.done) {
       f.cool = 10;
       const near = [{ who: 'him', x: G.x, y: G.y }, G.elec, G.tech, G.lab].map(p => ({ p, d: Math.hypot(p.x - f.x, p.y - f.y) })).sort((a, b) => a.d - b.d)[0].p;
-      if (near.who === 'him') strike(T.caught);
+      if (near.who === 'him') strike(T.jobCaught);
       else { G.score += 75; G.blamedN++; near.ew = 3; say(fill(T.blamed, { who: T.crew[near.id].replace(/^The /, 'the '), n: 75 }) + ' "' + pick(T.blameLine) + '"', 2600); tone(523, .08, 'square', 0, .1); tone(659, .12, 'square', .1, .1); }
     }
   }
@@ -240,7 +240,7 @@ const JOB = (() => {
   function strike(line, who = T.crew.foreman) {
     if (G.done) return;
     G.strikes++; G.score -= 50;
-    say(fill(T.quote, { who, line }) + ' ' + fill(T.strikes, { n: G.strikes }), 2600, true);
+    say(fill(T.quote, { who, line }) + ' ' + fill(T.jobStrikes, { n: G.strikes }), 2600, true);
     tone(330, .12, 'square', 0, .1); tone(262, .18, 'square', .12, .1);
     if (G.strikes >= 3) { G.done = true; G.sent = true; G.endAt = G.time + 3; setTimeout(() => { if (mode === 'job') say(T.sentHome, 3000, true); }, 1800); }
   }
@@ -295,7 +295,7 @@ const JOB = (() => {
     GG.add(px, py, out * 2.4);
     G.puffs.push({ x: px, y: py, t: 0, color: TYPES[type].color, r: 5 + out * .1 });
     const f = G.foreman;
-    if (Math.hypot(f.x - px, f.y - 6 - py) < 34) strike(T.heard);
+    if (Math.hypot(f.x - px, f.y - 6 - py) < 34) strike(T.jobHeard);
     for (const p of [G.elec, G.tech, G.lab]) if (Math.hypot(p.x - px, p.y - 6 - py) < 30) p.dose += out * .08;
     for (const c of G.customers) if (Math.hypot(c.x - px, c.y - 6 - py) < 30) c.dose += 3;
   }
@@ -307,7 +307,7 @@ const JOB = (() => {
     $('#hMeter').setAttribute('aria-valuenow', g); $('#hMeter').setAttribute('aria-valuetext', `${g}%, ${T.barWords[w]}`);
     $('#hRoom').textContent = clock();
     $('#hScore').textContent = fill(T.score, { n: G.score });
-    $('#hFood').textContent = fill(T.jobCount, { n: G.jobs.filter(j => j.done).length }) + (G.strikes ? ' · ' + fill(T.strikes, { n: G.strikes }) : '');
+    $('#hFood').textContent = fill(T.jobCount, { n: G.jobs.filter(j => j.done).length }) + (G.strikes ? ' · ' + fill(T.jobStrikes, { n: G.strikes }) : '');
     const t = target();
     $('#hUse').disabled = !t || G.done; $('#hUse').textContent = useLabel(t);
   }
@@ -318,7 +318,7 @@ const JOB = (() => {
     if (G.allAt && !G.sent && !G.sharted) G.score += Math.round(Math.max(0, LENGTH - G.allAt) * 2);   // done early
     const v = G.sent || G.sharted ? 3 : G.score >= 900 ? 0 : G.score >= 500 ? 1 : 2;
     const best = Math.max(+store.get('feed-the-fart:jobBest') || 0, G.score); store.set('feed-the-fart:jobBest', best);
-    $('#hdTitle').textContent = G.sharted ? T.shart + ' ' + T.shartGo : G.sent ? T.sentHome : T.verdict[v];
+    $('#hdTitle').textContent = G.sharted ? T.shart + ' ' + T.shartGo : G.sent ? T.sentHome : T.jobVerdict[v];
     const extra = (G.found ? fill(T.extraFound, { n: G.found }) : '') + (G.blamedN ? fill(T.extraBlamed, { n: G.blamedN }) : '');
     $('#hdText').textContent = fill(T.jobText, { score: G.score, jobs: n, extra, best });
     $('#hdFoods').innerHTML = '';

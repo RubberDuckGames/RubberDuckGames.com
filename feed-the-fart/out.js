@@ -10,7 +10,7 @@ Object.assign(T, {
   outBtn: 'Out to dinner',
   carIntro: "Off to the restaurant! He's driving. Fart in the car; Use locks the windows.",
   lock: 'Lock', unlock: 'Unlock',
-  locked: 'Windows locked.', unlocked: 'Windows unlocked.',
+  outLocked: 'Windows locked.', unlocked: 'Windows unlocked.',
   unlockPlz: ['Unlock the windows!!', 'Let me roll it down!', 'Why are the windows locked?!'],
   carEw: ['Ew! Who farted?!', 'Roll the window down!', 'I can taste it!', 'Was that the dog?', 'Are we there yet?!'],
   rolled: '{who} rolled the window down.',
@@ -21,7 +21,7 @@ Object.assign(T, {
   eta: 'There in {n}',
   timeLeft: 'Hold it {n}',
   seated: 'Table for six! Your food is here.',
-  cheese: 'Extra cheese, please.',
+  outCheese: 'Extra cheese, please.',
   restAlert: 'Shart alert! The bathroom is at the back! {n}',
   occupied: 'Occupied! Hang on...',
   free: "It's free!",
@@ -119,7 +119,7 @@ const OUT = (() => {
   function carUse() {
     G.lock = !G.lock; tone(G.lock ? 330 : 440, .08, 'square', 0, .1);
     if (G.lock) { G.open = [0, 0, 0]; G.openT = [0, 0, 0]; }   // the lock rolls them all up, too
-    say(G.lock ? T.locked : T.unlocked, 1400); hud();
+    say(G.lock ? T.outLocked : T.unlocked, 1400); hud();
   }
   function carDraw() {
     const [W, H] = K.view(), t = G.time, road = Math.round(H * .64);
@@ -259,7 +259,7 @@ const OUT = (() => {
   function restStep(dt) {
     G.restT += dt;
     // the food comes, he orders extra cheese, and then it hits him (game time, so it waits with the game)
-    if (!G.served && G.restT > 2.6) { G.served = true; say(T.cheese, 1600); tone(392, .1, 'square', 0, .1); }
+    if (!G.served && G.restT > 2.6) { G.served = true; say(T.outCheese, 1600); tone(392, .1, 'square', 0, .1); }
     if (!G.alert && !G.done && G.restT > 4.3) { G.alert = 18; G.alertStart = G.time; G.occ = 4 + Math.random() * 5; G.bar = 100; tone(523, .18, 'square', 0, .12); tone(392, .3, 'square', .22, .12); }
     if (G.endAt && G.time >= G.endAt) { G.endAt = 0; return finish(G.won); }
     if (G.oopsAt && G.time >= G.oopsAt) { G.oopsAt = 0; say(T.oops, 2200); }
