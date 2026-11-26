@@ -188,3 +188,19 @@ svg.coma #him{display:none}
 @keyframes zz{0%{transform:translate(0,6px);opacity:0}20%{opacity:1}100%{transform:translate(10px,-14px);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pull.ready,#tip,#flyLoop,#flyWing,svg.noses .fanHand,.steam path,#fish,.fall,.zz path,.tvA,.tvB,.tvBall{animation:none}}
 .startKeys{color:var(--soft);font-size:1rem}
+
+/* the start card as a scene: him in the middle, a thing for each place round him (25 Nov) */
+.stage{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:"dinner house out" "mov him wed" "date him job";gap:.5rem;margin-top:.8rem;align-items:center}
+#dinnerBtn{grid-area:dinner}#startBtn{grid-area:house}#outBtn{grid-area:out}#movBtn{grid-area:mov}#wedBtn{grid-area:wed}#dateBtn{grid-area:date}#jobBtn{grid-area:job}#pokeBtn{grid-area:him}
+.item{display:flex;flex-direction:column;align-items:center;gap:.3rem;background:none;border:2px solid transparent;padding:.4rem .2rem;cursor:pointer;color:var(--ink);font:inherit;font-family:"Press Start 2P",monospace;font-size:.6rem;line-height:1.5;text-align:center}
+.item img{width:3.5rem;height:3.5rem;image-rendering:pixelated;transition:transform .15s}
+.item:hover img,.item:focus-visible img{transform:translateY(-.25rem) scale(1.08)}
+.item:hover,.item:focus-visible{border-color:var(--ink);background:rgba(255,255,255,.4)}
+.item:focus-visible,.poke:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.poke{position:relative;background:none;border:0;padding:0;cursor:pointer;justify-self:center}
+.poke img{width:5.5rem;height:auto;image-rendering:pixelated;display:block}
+.poke:active img{transform:translateY(.15rem)}
+.poke .say{position:absolute;left:50%;top:-.4rem;transform:translate(-50%,-100%);background:#fff;border:2px solid var(--ink);padding:.25rem .45rem;font-size:.8rem;white-space:nowrap;z-index:1}
+.poke .puff{position:absolute;left:30%;top:62%;width:2rem;height:1.4rem;border-radius:50%;opacity:.75;pointer-events:none;animation:pokePuff 1.2s ease-out forwards}
+@keyframes pokePuff{to{transform:translate(-1.6rem,-1rem) scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.poke .puff{animation-duration:.01s}.item img{transition:none}}

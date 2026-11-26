@@ -505,7 +505,7 @@ soundIcon();
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;   // the Menu dialog
   if (!$('#collCover').hidden && e.key === 'Escape') return closeColl();
-  if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie' || mode === 'date') return;   // the levels have their own keys
+  if (mode === 'house' || mode === 'car' || mode === 'rest' || mode === 'wed' || mode === 'movie' || mode === 'date' || mode === 'job') return;   // the levels have their own keys
   if (!$('#startCover').hidden || !$('#winCover').hidden || !$('#collCover').hidden) return;
   if (e.key === 'f' || e.key === 'F') { if (coma) wake(true); else pull(); }
   else if (e.key === 'c' || e.key === 'C') showColl();

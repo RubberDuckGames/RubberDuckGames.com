@@ -303,7 +303,13 @@
     <h2>Feed the Fart</h2>
     <p id="startText"></p>
     <p id="startKeys" class="startKeys"></p>
-    <div class="row"><button class="btn plain" id="dinnerBtn"></button><button class="btn plain" id="outBtn"></button><button class="btn plain" id="wedBtn"></button><button class="btn plain" id="movBtn"></button><button class="btn plain" id="dateBtn"></button><button class="btn" id="startBtn"></button></div>
+    <div class="stage">
+      <button class="item" id="dinnerBtn"></button><button class="item" id="startBtn"></button><button class="item" id="outBtn"></button>
+      <button class="item" id="movBtn"></button>
+      <button class="poke" id="pokeBtn"><img id="pokeImg" alt="" width="26" height="50"><span class="say" id="pokeSay" hidden></span></button>
+      <button class="item" id="wedBtn"></button>
+      <button class="item" id="dateBtn"></button><button class="item" id="jobBtn"></button>
+    </div>
     <div class="row"><a class="btn plain" href="../">← All games</a></div>
   </div>
 </div>
@@ -344,4 +350,6 @@
 <script src="wedding.js"></script>
 <script src="theater.js"></script>
 <script src="date.js"></script>
+<script src="job.js"></script>
+<script src="start.js"></script>
 </body>
