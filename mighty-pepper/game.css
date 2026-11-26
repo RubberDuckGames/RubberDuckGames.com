@@ -31,6 +31,9 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#b5cc6a;tou
 .stash{display:flex;flex-wrap:wrap;gap:.5rem}
 .stash figure{margin:0;width:4.5rem;text-align:center;font-size:.8rem;color:var(--soft)}
 .stash img{display:block;width:3rem;height:3rem;margin:0 auto .2rem;padding:.25rem;image-rendering:pixelated;object-fit:contain;background:#f0dcb8;border:3px solid var(--line)}
+.stories{margin:.2rem 0 0;padding-left:1.2rem}
+.stories li{margin:.25rem 0}
+.stories .none{list-style:none;margin-left:-1.2rem;color:var(--soft)}
 .stash .no img{filter:brightness(0);opacity:.3;border-style:dashed}   /* a dark shape until found, like Bread's closet */
 
 /* one short line at a time, with the face of whoever said it, inside the
