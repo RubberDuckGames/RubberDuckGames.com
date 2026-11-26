@@ -412,8 +412,10 @@ function soggy(x, y) { oval(x, y, 9, 4, C.paperD); dith(x - 7, y - 3, 14, 6, '#9
 function flag(L, x, y, w = 18, h = 12) {
   const half = w >> 1;
   switch (L) {
-    case 'A': R(x, y, half, h, C.white); R(x + half, y, w - half, h, C.blue);
-      for (let j = 0; j < h; j++) { const cut = Math.round(5 * (1 - Math.abs(j - (h - 1) / 2) / ((h - 1) / 2))); R(x + w - cut, y + j, cut, 1, '#000'); }
+    case 'A': R(x, y, half, h, C.white);
+      // the swallowtail: the notch is left undrawn, so whatever is behind
+      // shows through (it was painted black, a black wedge on the chart's paper)
+      for (let j = 0; j < h; j++) { const cut = Math.round(5 * (1 - Math.abs(j - (h - 1) / 2) / ((h - 1) / 2))); R(x + half, y + j, w - half - cut, 1, C.blue); }
       break;
     case 'D': R(x, y, w, h, C.yellow); R(x, y + 3, w, h - 6, C.blue); break;
     case 'E': R(x, y, w, h >> 1, C.blue); R(x, y + (h >> 1), w, h - (h >> 1), C.red); break;

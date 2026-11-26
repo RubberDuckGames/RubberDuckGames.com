@@ -53,5 +53,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offse
 /* the notes are paper with handwriting-ish spacing, still in the game's font */
 .card .paper{background:#fbf3dc;border:2px solid #d8c9a0;padding:.8rem 1rem;white-space:pre-line;line-height:1.6}
 .card .sign{text-align:right;font-style:italic}
-.card img.chart{display:block;width:100%;max-width:26rem;margin:.4rem auto;image-rendering:pixelated;border:2px solid #d8c9a0}
+/* height:auto: the height attribute alone held it at 52 px while the width
+   grew, and the flags came out squashed flat */
+.card img.chart{display:block;width:100%;height:auto;max-width:26rem;margin:.4rem auto;image-rendering:pixelated;border:2px solid #d8c9a0}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
