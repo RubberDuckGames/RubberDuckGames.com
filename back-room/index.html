@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Back Room · Rubber Duck Games</title>
+<meta name="description" content="A puzzle box of a back room: turn odd old ranch finds over, find the hidden drawers, dials and latches, and open the crate somebody left for you.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="game.css">
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+<script src="../shared/kit.js"></script>
+</head>
+<body>
+<div class="bar" id="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <button class="pill" id="soundBtn" type="button" data-s-label="soundBtn">🔔</button>
+</div>
+<main class="play" id="play">
+  <div class="stage" id="stage">
+    <canvas id="cv" role="img"></canvas>
+    <div class="spots" id="spots"></div>
+  </div>
+  <div class="panel" id="panel">
+    <p class="msg" id="msg" role="status"><canvas id="msgFace" width="34" height="30" hidden></canvas><span id="msgText"></span></p>
+    <div class="inv" id="inv" role="group" data-s-label="inv"></div>
+    <div class="acts">
+      <button class="btn" id="turnL" type="button" data-s-label="turnL" hidden>◀</button>
+      <button class="btn" id="turnR" type="button" data-s-label="turnR" hidden>▶</button>
+      <button class="btn" id="backBtn" type="button" data-s="back" hidden></button>
+      <button class="btn doc" id="docBtn" type="button"><canvas id="docFace" width="34" height="30"></canvas><span data-s="crankDoc"></span></button>
+    </div>
+  </div>
+</main>
+<div class="cover" id="cover" hidden><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
+
+<script src="game.js"></script>
+</body>
+</html>

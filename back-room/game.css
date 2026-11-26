@@ -1,0 +1,57 @@
+/* The Back Room. Starts from shared/base.css; this adds the back room look:
+   a dim shop at night, warm paper panels, brass. The scene is pixel art on a
+   canvas; every thing you can touch is a real <button> laid over it (game.js
+   says why), so these styles are mostly for those, the panel and the cards. */
+:root{--ink:#2a1a10;--soft:#6b5640;--bg:#140d08;--panel:#f3e7cc;--line:#a87a48;--accent:#a8322a;--gold:#e8c45a;--shadow:#000}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1rem;line-height:1.45;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.bar{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 var(--shadow)}
+
+/* game.js sizes the stage and puts the panel under it (phone held upright)
+   or beside it (sideways, and most computers), whichever gives the bigger
+   picture */
+.play{display:flex;gap:.6rem;padding:0 .6rem .6rem;justify-content:center;align-items:flex-start}
+.play.below{flex-direction:column;align-items:center}
+.stage{position:relative;flex:none;border:3px solid #000;box-shadow:0 0 0 2px #3a2616}
+#cv{display:block;width:100%;height:100%;image-rendering:pixelated;background:#000}
+.spots{position:absolute;inset:0}
+/* No outline until it's picked with the keyboard or a controller: a puzzle
+   box doesn't light up its secrets. The ring is still a ring (parent rules). */
+.spot{position:absolute;padding:0;margin:0;background:transparent;border-radius:3px}
+.spot:focus-visible{outline:3px solid var(--gold);outline-offset:0;box-shadow:0 0 0 6px rgba(0,0,0,.75)}
+
+/* max-width: before game.js sizes it, a long line in the panel made a phone's
+   page wider than the screen, and the page was then laid out that wide */
+.panel{max-width:calc(100vw - 1.2rem);display:flex;flex-direction:column;gap:.6rem;background:var(--panel);border:3px solid var(--line);padding:.6rem;box-shadow:.25rem .25rem 0 var(--shadow);flex:none}
+.msg{margin:0;min-height:3.2rem;display:flex;align-items:center;gap:.6rem;font-weight:600}
+.msg canvas{width:2.8rem;height:2.5rem;image-rendering:pixelated;flex:none;background:#3a2616;border:2px solid var(--line)}
+.inv{display:flex;flex-wrap:wrap;gap:.4rem;min-height:3.6rem}
+.inv:empty::before{content:attr(data-empty);color:var(--soft);font-size:.9rem;align-self:center}
+.item{display:flex;flex-direction:column;align-items:center;gap:.1rem;width:4.2rem;padding:.25rem .1rem;background:#e9d9b4;border:3px solid var(--line);font-size:.7rem;line-height:1.2;text-align:center}
+.item img{width:2rem;height:2rem;image-rendering:pixelated}
+/* held: a thicker dark border and a word, so colour isn't the only signal */
+.item[aria-pressed="true"]{border-color:var(--ink);background:var(--gold);box-shadow:inset 0 0 0 2px var(--panel)}
+.item .held{font-weight:800}
+.acts{display:flex;flex-wrap:wrap;gap:.5rem;justify-content:flex-end;align-items:center}
+
+.btn{background:var(--panel);border:3px solid var(--line);padding:.55rem .8rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 var(--shadow);min-height:2.75rem;min-width:2.75rem}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.btn:active{transform:translate(.15rem,.15rem);box-shadow:.05rem .05rem 0 var(--shadow)}
+.btn.doc{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem .3rem .3rem;background:#e9c9b4;border-color:var(--accent)}
+.btn.doc canvas{width:2.8rem;height:2.5rem;image-rendering:pixelated;background:#3a2616}
+
+.cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,6,3,.72);z-index:20;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:34rem;width:100%;max-height:100%;overflow:auto;box-shadow:.4rem .4rem 0 #000}
+.card h2{margin:0 0 .7rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.5rem 0}
+.card .soft{color:var(--soft)}
+/* the notes are paper with handwriting-ish spacing, still in the game's font */
+.card .paper{background:#fbf3dc;border:2px solid #d8c9a0;padding:.8rem 1rem;white-space:pre-line;line-height:1.6}
+.card .sign{text-align:right;font-style:italic}
+.card img.chart{display:block;width:100%;max-width:26rem;margin:.4rem auto;image-rendering:pixelated;border:2px solid #d8c9a0}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}
