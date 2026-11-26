@@ -1,5 +1,5 @@
-// Cottonwood Barn (named 26 Nov; it was The Back Room, too close to The Room
-// games), Trello #57. A puzzle box of a room for older
+// Barn Secrets (named 26 Nov; it was The Back Room, too close to The Room
+// games, then Cottonwood Barn for an hour), Trello #57. A puzzle box of a room for older
 // kids and grown-ups, designed by Randi: the back room of Cottonwood Barn,
 // a shop that buys what ranches and farms clear out. A crate has turned up
 // with a note, "For whoever finally sorts the back room." You look closer at
@@ -47,7 +47,7 @@ const PUZZLES = ['washer', 'adder', 'register', 'drawer', 'grinder', 'secret', '
 
 // ---------- Strings ----------
 const STR = {
-  title: 'Cottonwood Barn',
+  title: 'Barn Secrets',
   shop: 'Cottonwood Barn',
   soundBtn: 'Sound on', soundOff: 'Sound off',
   inv: "Things you're carrying", invEmpty: 'Nothing in your pockets yet.',
