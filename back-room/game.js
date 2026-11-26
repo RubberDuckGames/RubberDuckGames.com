@@ -1,5 +1,6 @@
-// The Back Room (working title), Trello #57. A puzzle box of a room for older
-// kids and grown-ups, designed by Randi: the back room of Cottonwood Crossing,
+// Cottonwood Barn (named 26 Nov; it was The Back Room, too close to The Room
+// games), Trello #57. A puzzle box of a room for older
+// kids and grown-ups, designed by Randi: the back room of Cottonwood Barn,
 // a shop that buys what ranches and farms clear out. A crate has turned up
 // with a note, "For whoever finally sorts the back room." You look closer at
 // the odd old things in the room, find their drawers, dials and latches, and
@@ -46,14 +47,14 @@ const PUZZLES = ['washer', 'adder', 'register', 'drawer', 'grinder', 'secret', '
 
 // ---------- Strings ----------
 const STR = {
-  title: 'The Back Room',
-  shop: 'Cottonwood Crossing',
+  title: 'Cottonwood Barn',
+  shop: 'Cottonwood Barn',
   soundBtn: 'Sound on', soundOff: 'Sound off',
   inv: "Things you're carrying", invEmpty: 'Nothing in your pockets yet.',
-  turnL: 'Turn it left', turnR: 'Turn it right',
+  turnL: 'Turn it left', turnR: 'Turn it right', turn: 'Turn',
   back: 'Back', crankDoc: 'Crank Doc',
   held: 'Holding',
-  startLine: 'Cottonwood Crossing buys what ranches and farms clear out. In the back room, behind fifty years of it, a crate has turned up with a note on top.',
+  startLine: 'Cottonwood Barn buys what ranches and farms clear out. In the back room, behind fifty years of it, a crate has turned up with a note on top.',
   startHow: 'Tap anything to look closer. Doc, the old red dentist’s machine in the corner, gives hints when you crank him.',
   startNew: 'Open the back room', startGo: 'Keep sorting', startOver: 'Start over',
   overTitle: 'Start over?', overLine: 'Everything in the back room goes back where it was, and the crate shuts again. Rubber ducks you found stay found.',

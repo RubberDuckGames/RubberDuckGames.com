@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>The Back Room · Rubber Duck Games</title>
+<title>Cottonwood Barn · Rubber Duck Games</title>
 <meta name="description" content="A puzzle box of a back room: turn odd old ranch finds over, find the hidden drawers, dials and latches, and open the crate somebody left for you.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -28,8 +28,8 @@
     <p class="msg" id="msg" role="status"><canvas id="msgFace" width="34" height="30" hidden></canvas><span id="msgText"></span></p>
     <div class="inv" id="inv" role="group" data-s-label="inv"></div>
     <div class="acts">
-      <button class="btn" id="turnL" type="button" data-s-label="turnL" hidden>◀</button>
-      <button class="btn" id="turnR" type="button" data-s-label="turnR" hidden>▶</button>
+      <button class="btn" id="turnL" type="button" data-s-label="turnL" hidden><span aria-hidden="true">◀</span> <span data-s="turn"></span></button>
+      <button class="btn" id="turnR" type="button" data-s-label="turnR" hidden><span data-s="turn"></span> <span aria-hidden="true">▶</span></button>
       <button class="btn" id="backBtn" type="button" data-s="back" hidden></button>
       <button class="btn doc" id="docBtn" type="button"><canvas id="docFace" width="34" height="30"></canvas><span data-s="crankDoc"></span></button>
     </div>
