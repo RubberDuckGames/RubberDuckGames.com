@@ -901,12 +901,14 @@ function scaleSpots() {
     id: 'tray-' + id, x: TRAYX[i] - 11, y: 138, w: 22, h: 26, label: fmt(STR.sSTray, { item: STR['i_' + id], w: A.weights[id] }),
     act: () => { if (s.pan.length >= 4) return say('sFull'); s.tray.splice(s.tray.indexOf(id), 1); s.pan.push(id); sfx.clunk(); say('sPut', { item: inm(id), w: A.weights[id] }); weigh(); done(); },
   }));
+  const putSash = id => { if (id !== 'sash') return false; if (s.pan.length >= 4) return say('sFull'); useUp('sash'); s.pan.push('sash'); sfx.clunk(); say('sPut', { item: inm('sash'), w: A.weights.sash }); weigh(); done(); };
+  out.push({ id: 'pan', x: 218, y: ry - 34, w: 64, h: 40, label: fmt(STR.sSPan, { w: panWeight() }), act: () => say('sSPan', { w: panWeight() }), use: putSash });
+  // after the pan, so they sit on top of it: listed first, the pan covered
+  // them and a tap on a weight only said what the pan held (found 26 Nov)
   s.pan.forEach((id, i) => out.push({
     id: 'pan-' + id, x: 250 + [-13, 13, -13, 13][i] - 12, y: ry - 16 - (i > 1 ? 13 : 0), w: 24, h: 15, label: fmt(STR.sSOn, { item: STR['i_' + id], w: A.weights[id] }),
     act: () => { s.pan.splice(s.pan.indexOf(id), 1); s.tray.push(id); sfx.click(); say('sOff', { item: inm(id) }); weigh(); done(); },
   }));
-  const putSash = id => { if (id !== 'sash') return false; if (s.pan.length >= 4) return say('sFull'); useUp('sash'); s.pan.push('sash'); sfx.clunk(); say('sPut', { item: inm('sash'), w: A.weights.sash }); weigh(); done(); };
-  out.push({ id: 'pan', x: 218, y: ry - 34, w: 64, h: 40, label: fmt(STR.sSPan, { w: panWeight() }), act: () => say('sSPan', { w: panWeight() }), use: putSash });
   out.push({ id: 'trayAll', x: 200, y: 164, w: 100, h: 10, label: STR.sSTrayAll, act: () => setMsg(''), use: putSash });
   out.push({ id: 'sack', x: 40, y: 60 + k, w: 60, h: 36, label: STR.sSSack, act: () => say('sSack') });
   if (s.open && !got('dime')) out.push({ id: 'dime', x: 148, y: 164, w: 24, h: 18, label: STR.i_dime, act: () => { give('dime'); say('got', { item: inm('dime') }); done(); } });
@@ -1051,8 +1053,8 @@ function shipSpots() {
     { id: 'tag', x: 286, y: 106, w: 34, h: 16, label: STR.sTag, act: () => say('tagSays', { price: money(A.tags.ship) }) },
   ];
   return [
-    ...[...A.flags].map((L, i) => ({ id: 'flag' + i, x: FLAG_AT(i)[0] - 3, y: FLAG_AT(i)[1] - 3, w: 26, h: 19, label: fmt(STR.sFlag, { n: i + 1, desc: STR['f' + L] }), act: () => say(fmt(STR.sFlag, { n: i + 1, desc: STR['f' + L] }) + '.') })),
     { id: 'ship', x: 40, y: 100, w: 200, h: 52, label: STR.sSail, act: () => say('shipSays') },
+    ...[...A.flags].map((L, i) => ({ id: 'flag' + i, x: FLAG_AT(i)[0] - 3, y: FLAG_AT(i)[1] - 3, w: 26, h: 19, label: fmt(STR.sFlag, { n: i + 1, desc: STR['f' + L] }), act: () => say(fmt(STR.sFlag, { n: i + 1, desc: STR['f' + L] }) + '.') })),
   ];
 }
 
@@ -1257,6 +1259,8 @@ function refresh() {
   const v = VIEWS[view];
   const keep = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
   const box = $('#spots'); box.textContent = '';
+  // later spots sit on top of earlier ones, so a big spot goes before the
+  // small ones inside it
   for (const sp of v.spots()) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'spot'; b.dataset.id = sp.id;
