@@ -41,6 +41,11 @@ const STR = {
     '<b>The play corner:</b> set up a working computer and a game cartridge or two in the corner, and players pay $15 a go while the shop is open.',
     '<b>Other flippers:</b> sometimes a rival is at the sales too. He buys what he likes, so a good find won\'t wait for you. What he passes on tells you something too.',
     '<b>Bidding:</b> now and then a second buyer wants the same find and offers more at the register. Take it, or stick with the first.',
+    '<b>Tools:</b> the swap meet has stalls of used tools (check for broken ones) and cheap new tools of who-knows-where (check for knockoffs).',
+    '<b>Car parts:</b> hubcaps, whitewall tires, hood ornaments and more from the 1930s to the 1970s. Chrome shines; the copies don\'t.',
+    '<b>The workbench:</b> buy one at the online store. Leave a find on it to clean (better condition) or fix (it works again). Jobs take hours of shop time, parts cost money up front, and a fix can fail. The bench holds 3. Copies can\'t be fixed. With a bench, the sales show how long a fix would take.',
+    '<b>Be kind:</b> sometimes a seller is hunting for something another stall has. Buy it and bring it to them.',
+    '<b>The online store:</b> at the desk. Everything costs too much and there\'s no haggling, but sometimes it\'s the only place to get what you need.',
     '<b>Quiet days:</b> some days are slow, and around lunch the street goes quiet. Not everyone who comes in buys.',
     '<b>Battleships:</b> three big models are out there. Keep one in the ship case and it\'s yours for good; sell it and it may turn up again.',
     '<b>Help:</b> H or ?. A controller works too.',
@@ -89,6 +94,17 @@ const STR = {
     cat: ['Hairball sculptures! Fresh this morning!', 'The cats are very proud of their work.'],
     boxes: ['Sealed boxes! What\'s inside? Nobody knows!', 'Every box a surprise!'],
     junk: ['Everything a dollar or two. Well, mostly.', 'Junk! Beautiful junk!'],
+    // these stalls had no lines, so their sellers said "undefined" (fixed 27 Nov)
+    trains: ['All aboard! Trains and train things.', 'My grandpa ran a model railroad.'],
+    surplus: ['Army surplus! The real stuff, mostly.', 'Canteens, shovels, you name it.'],
+    books: ['Books and comics. Check the dates!', 'A dollar a book. Rare ones cost more.'],
+    ducks: ['Rubber ducks! Squeak, squeak!', 'Old ducks and new ducks.'],
+    models: ['Built every one of these by hand.', 'Careful, they\'re heavy.'],
+    computers: ['Old computers! Some even turn on.', 'They don\'t make them beige any more.'],
+    games: ['Game cartridges! Blow in them first.', 'Gold ones are rare. Most are paint.'],
+    carparts: ['Parts from old cars! 1930s to 1970s.', 'Hubcaps, lamps, you name it.', 'Off cars older than your grandpa.'],
+    usedtools: ['Second-hand tools. Some work great!', 'Used, not abused. Mostly.', 'If it\'s broken, it\'s a dollar off.'],
+    newtools: ['Brand new tools! Still in the box!', 'Cheaper than the store. Way cheaper.', 'Where are they from? Uh... a warehouse.'],
     shady: ['No questions, okay?', 'Brand new. Don\'t ask where from.', 'Cash only. Quick, quick.'],
   },
   // your own table at the swap meet (the oldest kid tester's ask, 26 Nov)
@@ -122,6 +138,44 @@ const STR = {
   // a second buyer bidding at the register (27 Nov)
   bidSay: ['Wait! I\'ll pay ${n} for that!', 'Hold on! I\'ll give you ${n}!'], bidText: 'Another buyer wants it too, and offers ${n}.',
   bidSell: 'Sell to the other buyer ${n}', bidCut: ['Hey! I was first!', 'No fair!'], bidAw: ['Aw, too slow.', 'Next time, then.'],
+  // the workbench (his ask, 27 Nov)
+  actBench: 'Bench', benchTitle: 'The workbench', benchText: 'Leave finds on the bench to clean or fix. The bench works while the shop is open, parts are paid up front, and it holds {n}.',
+  benchOn: 'On the bench', benchFrom: 'From the back room', benchEmpty: 'Nothing on the bench.', benchNone: 'Nothing in the back room the bench can help with. Snap finds at the desk first.',
+  benchFull: 'The bench is full. Wait for a job to finish, or take something off.',
+  benchClean: 'Clean · {d} · ${n}', benchFix: 'Fix · {d} · ${n}', oneHour: '1 hour', manyHours: '{n} hours', shopDays: '{n} hours (about {d} shop days)',
+  benchCleaning: 'Cleaning · {h} left', benchFixing: 'Fixing · {h} left', benchTake: 'Take it off',
+  benchStarted: 'On the bench. It needs {h} of shop time.', benchLook: 'Bench: if it\'s broken, a fix takes {h} and about ${n} in parts.', benchTook: 'Off the bench. The parts money is gone.',
+  noParts: 'Nobody makes parts for this any more. It can\'t be fixed.',
+  benchCleaned: 'The bench: the {item} is clean. {cond} now, worth ${n}.',
+  benchFixed: 'The bench: fixed! The {item} works again. Worn, but worth ${n}.',
+  benchFail: 'The bench: the {item} was beyond saving. The parts are spent, and it still doesn\'t work.',
+  storeBench: 'Workbench with a vise and tools', storeBenchNote: 'Clean and fix finds in the shop.', benchArrives: 'The workbench arrives. It\'s by the rack.',
+  // the dump lady and the tank (his idea, 27 Nov)
+  ladyLost: '“I\'ve lost my locket somewhere in these heaps. Gold, shaped like a heart. It was my mother\'s. Have you seen it?”',
+  ladyAgain: '“Still no locket? Keep your eyes open, dear.”', ladyFound: 'You hold up the gold heart locket. Her hands fly to her mouth. “My mother\'s locket!”', ladyGive: 'Give her the locket', locketFound: 'A gold heart locket! It must be the dump lady\'s.',
+  ladyThanks: '“My locket! Oh, thank you. Nobody ever brings anything back here.” She wipes her eyes. “Follow me. I\'ve got something I\'ve kept hidden for years.”',
+  ladyHere: 'She points at the biggest heap in the dump. “Under there. Sweep it off.”', ladyDone: '“Take good care of her.”',
+  actLady: 'Talk', actHeap: 'Sweep', ladyName: 'The dump lady',
+  tankTitle2: 'A tank!', tankFound: 'Under the heap is an old army tank. “My husband drove her home from the war,” says the dump lady. “She\'s yours now.” It doesn\'t fire, and it never will, but it runs.',
+  tankMuseum: 'Sell it to the museum ${n}', tankKeep: 'Keep it', tankKept: 'The tank rumbles home and parks outside the shop. People come just to see it.',
+  tankSold: 'The museum sends a truck. ${n}, and a plaque with your name on it.', tankOut: ['Is that a TANK?', 'Whoa, a real tank!', 'Can I sit in it?'],
+  // the frogs, their tank and the online store (his ideas)
+  actTank: 'Frogs', openHotel: 'Open the box', hotelNote: 'An old hotel box, taped shut. Stamped 1958. Something inside is... croaking?',
+  frogsTitle: 'Frogs!', frogsText: 'Five live frogs hop out of the box. From 1958? How? They need a glass tank. The online store at the desk has one.',
+  frogsInTank: 'Five live frogs hop out of the box. From 1958? How? Into the tank they go.',
+  frogsWait: 'The frogs are waiting in their box. They need a glass tank: the online store at the desk sells one.',
+  storeBtn: 'Online store', storeTitle: 'The online store', storeSearch: 'You searched: glass tank',
+  storeNote: 'No haggling, and everything costs too much. A tank like this is about ${n} anywhere else.',
+  storeJunk: ['Glass tank top, size XXL', 'Tank engine toy, wheels sold separately', 'Think tank: a book about thinking', 'Fish tank cleaner, pack of 99'],
+  storeJunkPrice: ['$35', '$60', '$28', '$99'], storeNope: 'Not what you need',
+  storeTank: 'Glass tank, 20 gallons', storeBuy: 'Buy ${n}', storeHave: 'Bought',
+  tankArrives: 'The tank arrives. The frogs move in!', tankEmpty: 'The tank arrives. It\'s empty for now.',
+  tankTitle: 'The frog tank', tankText: 'Five frogs from 1958, alive and well. People come in just to see them. They\'re not for sale.',
+  tankNone: 'An empty glass tank.', frogSeen: ['Ooh, frogs!', 'Look at the frogs!', 'Ribbit!'],
+  // a seller looking for something another stall has (Randi, 27 Nov)
+  wishShout: 'Anyone seen a {item}?', wishNote: '“I\'ve been looking all over for a {item}. Have you seen one anywhere?”',
+  wishGive: 'Give them the {item}', wishThanks: 'Oh, thank you! That\'s so kind. Here, take this. It was my great-grandma\'s.',
+  wishThanksAgain: 'Oh, thank you! That\'s so kind. Here, for your trouble.', wishGot: 'You got the {what}.', wishTip: 'They give you ${n}.',
   // the kid selling sporks (his idea, 27 Nov)
   kidTitle: 'A kid selling sporks', kidHello: ['Sporks! A dollar each! It\'s a spoon AND a fork!', 'Get your sporks! Only one dollar!'],
   kidBuy: 'Buy a spork $1', kidAsk: 'Ask about the sporks', kidBought: 'Thank you! Enjoy your spork!',
@@ -212,6 +266,9 @@ const STR = {
     canteen: 'army surplus canteen', comics: 'comic book', book: 'old book', plush: 'stuffed bear', present: 'wrapped present',
     milk: 'carton of expired milk', lint: 'ball of lint', pills: 'suspicious bottle',
     computer: 'old computer', cart: 'gold game cartridge', spork: 'spork', card: 'old baseball card',
+    drill: 'old electric drill', handdrill: 'hand crank drill', mangle: 'clothes mangle', wrench: 'set of wrenches', saw: 'hand saw', toolbox: 'metal toolbox', toolset: 'new tool set in its case',
+    hotelbox: 'old hotel box', globe: '1920s snow globe',
+    musket: 'Revolutionary War musket', hubcap: 'chrome hubcap', tire: 'whitewall tire', hoodorn: 'hood ornament', headlamp: 'old car headlamp', license: 'old license plate',
   },
   pcName: '{d} home computer',
   shipName: 'model battleship {name}',
@@ -279,6 +336,21 @@ const STR = {
     cart: ['A real gold cartridge. Only a few were ever made, and collectors want every one.', 'Gold paint over grey plastic. See where it\'s flaking?'],
     spork: ['A plastic spork. A spoon and a fork. Worth about a dollar.', 'A plastic spork. A spoon and a fork. Worth about a dollar.'],
     card: ['A 1950s baseball card, the year the player was new. Collectors pay a lot for these.', 'A 1950s baseball card, the year the player was new. Collectors pay a lot for these.'],
+    drill: ['A 1950s electric drill, all metal. Plug it in and it still roars.', 'The cord has been cut off. It won\'t run.'],
+    handdrill: ['A hand crank drill. Turn the knob and the gears spin the bit. No plug needed!', 'The crank knob is gone and the gears slip.'],
+    mangle: ['A cast-iron clothes mangle from about 1900. Turn the big wheel and the wooden rollers squeeze the water out of the washing.', 'The wooden rollers are split. Nice to look at, but it won\'t squeeze.'],
+    wrench: ['Chrome wrenches, every size there. Tools like this last forever.', 'Rusted solid. Half the sizes are missing, too.'],
+    saw: ['Sharp, straight and every tooth there.', 'Bent, with teeth missing. It won\'t cut straight.'],
+    toolbox: ['A solid steel toolbox. The latches still snap shut.', 'Dented and rusted through at the bottom.'],
+    toolset: ['A real tool set, new in its case. Chrome, not paint.', 'A knockoff. The "chrome" is grey plastic, and it bends.'],
+    musket: ['A real Revolutionary War musket, from about 1776. Rusted solid, it hasn\'t fired in two hundred years and never will. A piece of history.', 'A decorator copy from the 1970s. The wood is shiny and new and the metal is one cast piece. It never fired at all.'],
+    hubcap: ['A 1950s chrome hubcap. See how it shines?', 'A plastic copy, painted silver. No shine at all.'],
+    tire: ['A whitewall tire from the 1940s, still round and the white still white.', 'Cracked all over. Nobody can drive on this.'],
+    hoodorn: ['A chrome hood ornament off a 1930s car. Collectors fight over these.', 'A new copy in cheap grey metal. You can see the seam.'],
+    headlamp: ['A 1930s headlamp. The glass is whole.', 'The glass is cracked right across.'],
+    license: ['A real 1960s license plate, stamped metal.', 'A souvenir copy, printed on thin plastic.'],
+    hotelbox: ['An old hotel box, taped shut. Stamped 1958.', 'An old hotel box, taped shut. Stamped 1958.'],
+    globe: ['A glass snow globe from the 1920s. Shake it and it still snows on the little tree.', 'A glass snow globe from the 1920s. Shake it and it still snows on the little tree.'],
     pills: ['Something illegal is inside. Turn it in to the police. Selling it gets you arrested.', 'Something illegal is inside. Turn it in to the police. Selling it gets you arrested.'],
   },
   boxIn: { peanuts: 'packing peanuts and a teacup', marbles: 'a bag of old marbles', comics: 'a stack of old comic books', watch: 'a silver pocket watch', rare: 'a rare first edition comic' },
@@ -358,6 +430,30 @@ const KINDS = {
   cart: { ask: [5, 25], worth: 120, dud: 6, real: .35 },
   // the kid's sporks, and his dad's baseball card (always real, never worn out)
   spork: { ask: [1, 1], worth: 1, dud: 1, real: 0 },
+  // tools (Randi, 27 Nov: swap meets have stall after stall of used tools and
+  // cheap new ones of questionable source). A dud is broken, or for the new
+  // set a knockoff. All ours.
+  drill: { ask: [5, 20], worth: 60, dud: 3, real: .5 },
+  wrench: { ask: [5, 15], worth: 45, dud: 4, real: .5 },
+  saw: { ask: [3, 10], worth: 30, dud: 2, real: .5 },
+  toolbox: { ask: [10, 25], worth: 70, dud: 8, real: .5 },
+  handdrill: { ask: [5, 15], worth: 55, dud: 4, real: .5 },
+  // too big for a table: the glass case only, like the battleships
+  mangle: { ask: [20, 60], worth: 260, dud: 15, real: .45, big: true },
+  toolset: { ask: [15, 30], worth: 90, dud: 10, real: .35 },
+  // the 1958 hotel box with five live frogs (his idea: $40, and the frogs
+  // aren't for sale), and the 1920s snow globe a seller gives you (ours)
+  hotelbox: { ask: [40, 40], worth: 0, dud: 0, real: 1 },
+  // car parts from the 1930s to the 1970s (Randi, 27 Nov). Numbers ours.
+  hubcap: { ask: [5, 15], worth: 60, dud: 3, real: .5 },
+  // Revolutionary War muskets (Randi, 27 Nov: very rare and not working). A
+  // relic: it never fires, and there's no ammo anywhere. Numbers ours.
+  musket: { ask: [40, 90], worth: 1500, dud: 40, real: .45 },
+  tire: { ask: [10, 25], worth: 80, dud: 5, real: .45 },
+  hoodorn: { ask: [10, 30], worth: 150, dud: 8, real: .4 },
+  headlamp: { ask: [10, 25], worth: 90, dud: 6, real: .5 },
+  license: { ask: [3, 10], worth: 40, dud: 2, real: .5 },
+  globe: { ask: [0, 0], worth: 300, dud: 300, real: 1 },
   card: { ask: [0, 0], worth: 1000, dud: 1000, real: 1 },
 };
 const PC_WORTH = { '1970s': 700, '1980s': 300, '1990s': 120 }, PC_ODDS = [['1970s', .2], ['1980s', .45], ['1990s', .35]];
@@ -366,8 +462,19 @@ const PC_WORTH = { '1970s': 700, '1980s': 300, '1990s': 120 }, PC_ODDS = [['1970
 // least $80, 5 at least $150. The 4 and 5 multipliers are ours. Duds have a
 // condition too, but it doesn't save them.
 const QUAL = { odds: [.15, .25, .3, .2, .1], mult: [.25, .5, 1, 1.25, 1.5], floor: [0, 0, 0, 80, 150], cap: [10, 1e9, 1e9, 1e9, 1e9] };
-const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk', 'tablet', 'spork']);
-const DUMP_FINDS = ['computer', 'computer', 'cart', 'shovel', 'iron', 'sharpener', 'typewriter', 'lantern', 'grinder', 'canteen', 'tincar', 'truck', 'enlarger', 'boxcam', 'moviecam', 'insulator', 'scale', 'shiplamp'];
+const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk', 'tablet', 'spork', 'hotelbox']);
+const TOOLS = ['drill', 'handdrill', 'wrench', 'saw', 'toolbox'];
+// broken but real, so the bench can fix them; everything else is a copy
+// [hours of shop time, parts $, chance it fails]; the shop day is 8 hours.
+// Days at first; hours since 27 Nov, so a quick fix is done the same day. Ours.
+const FIX = {
+  drill: [4, 20, .2], handdrill: [2, 10, .15], lantern: [1, 12, .15], shiplamp: [3, 20, .2], folding: [10, 25, .25], enlarger: [6, 25, .2],
+  moviecam: [12, 35, .35], tlr: [8, 30, .25], computer: [16, 40, .35], headlamp: [2, 15, .15], camera: [6, 25, .2], grinder: [2, 10, .15],
+};
+const FIXABLE = new Set(Object.keys(FIX));
+const rareMusket = () => Math.random() < TUNE.musket ? ['musket'] : [];
+const CAR_PARTS = ['hubcap', 'tire', 'hoodorn', 'headlamp', 'license'];
+const DUMP_FINDS = ['computer', 'computer', 'cart', ...TOOLS, ...TOOLS, ...CAR_PARTS, 'shovel', 'iron', 'sharpener', 'typewriter', 'lantern', 'grinder', 'canteen', 'tincar', 'truck', 'enlarger', 'boxcam', 'moviecam', 'insulator', 'scale', 'shiplamp'];
 const TOYS = ['robot', 'tincar', 'figure', 'sub', 'truck', 'plane', 'biplane'];
 // Five things in every mystery box (his list, 26 Nov). The odds are ours.
 const BOX_LOOT = [
@@ -419,6 +526,13 @@ const TUNE = {
   // the play corner: $15 a go is his; the rest ours
   play: 15, playTime: [8, 12], cornerCarts: 4, gamer: .3, gamerPerCart: .07,
   kidChance: .15,
+  // the tank (overpriced, his rule) and how much the frogs draw people in; a
+  // seller's wish at the swap meet. Ours.
+  tank: 150, tankElsewhere: 40,
+  // the workbench, its jobs, a musket's rarity, the dump tank (all ours)
+  // the bench (his ask, 27 Nov: jobs take time and parts, a fix is a gamble,
+  // and it fills up). Ours.
+  bench: 200, benchSlots: 3, cleanCost: 5, cleanShare: .2, cleanHours: 1, noParts: .15, musket: .02, museum: 5000, armorMagnet: .8, frogMagnet: .75, wishChance: .4, wishTip: 20,
   // the rival flipper (27 Nov): at half the yard sales and every swap meet you
   // buy at. He has a good eye but not a perfect one. All ours.
   rivalYard: .5, rivalStart: [5, 9], rivalLook: [2.5, 4], rivalRest: [1.5, 3.5], rivalWalk: 2.6,
@@ -577,6 +691,23 @@ const PIX = {
   // one has its cursor and power light on.
   computer: ['.TTTTTTTTTT.', '.TbbbbbbbbT.', '.TbGGbbbbbT.', '.TbbbbbbbbT.', '.TbbbbbbbbT.', '.TTTTTTTTGT.', '...TTTTTT...', 'XXXXXXXXXXXX', 'XTXTXTXTXTXX', 'XXTXTXTXTXTX', 'XXXXXXXXXXXX'],
   cart: ['BBBBBBBB', 'BQQQQQQB', 'BQnnnnQB', 'BQnVVnQB', 'BQnnnnQB', 'BQQQQQQB', 'BBBBBBBB', '.iSiSiS.'],
+  // drawn from Randi's photos of real 1950s tools (shapes and colours only)
+  drill: ['...iIIIIIIIi..', 'OOiIIbIIIIbIi.', 'OOiIIbIIIIbIIi', 'OOiIIbIIIIbIi.', '...iIIIIIIIIi.', '........iIIi..', '.......iIIi...', '.......iIIi...', '.......iiii...', '........b.....', '........bb....'],
+  handdrill: ['..iiiii...', '.i.....i..', '.i.....i..', '..iiiii...', '...iSi....', '.iiiiiii..', 'iSSSSSSSi.', 'iSSOOSSSib', 'iSSSSSSSi.', '.iiiiiii..', '....S.....', '....O.....', '....n.....'],
+  mangle: ['.....bbbb.....', '.AAAAAAAAAA...', '.A........A...', '.AXXXXXXXXAOO.', '.AxxxxxxxxAOO.', '.AXXXXXXXXAOOb', '.AxxxxxxxxA.bb', '.AXXXXXXXXA...', '.A..A..A..A...', '.A...AA...A...', '.A..A..A..A...', 'AA........AA..'],
+  wrench: ['LLLLLLLLLL', 'LSLSLSLSLL', 'LSLSLSLSLL', 'LSLSLSLSLL', 'LLLLLLLLLL'],
+  saw: ['mmm.........', 'mmmSSSSSSSSS', 'mmmSSSSSSSS.', '..SnSnSnSnS.'],
+  toolbox: ['...bbbbbb...', '...b....b...', 'VVVVVVVVVVVV', 'VVVVVVVVVVVV', 'VSSVVVVVVSSV', 'VVVVVVVVVVVV', 'VVVVVVVVVVVV'],
+  toolset: ['yyyyyyyyyyyy', 'yhhhhhhhhhhy', 'yhSSShSShhhy', 'yhSSShSShhhy', 'yhhhhhhhhhhy', 'yVVVVVVVVVVy', 'yyyyyyyyyyyy'],
+  musket: ['iiiiiiiiiiKwww....', '.........iwwmwwwww', '...........bwmmmww', '.............mmmmw'],
+  armor: ['.......HHHHH........', '......HAAAAAH.......', '.....HAAAAAAAHHHHHHH', '..HHHHHHHHHHHHH.....', '.HAAAAAAAAAAAAAH....', 'HAAAAAAAAAAAAAAAH...', 'HbbbbbbbbbbbbbbbH...', 'bbObObObObObObObbb..', '.bbbbbbbbbbbbbbbb...'],
+  hubcap: ['...SSSS...', '.SSOOOOSS.', '.SOShhSOS.', 'SOShSSSSOS', 'SOSSbbSSOS', 'SOSSbbSSOS', 'SOSSSSSSOS', '.SOSSSSOS.', '.SSOOOOSS.', '...SSSS...'],
+  tire: ['...bbbbbb...', '.bbbbbbbbbb.', '.bbnnnnnnbb.', 'bbnnbbbbnnbb', 'bbnbbSSbbnbb', 'bbnbSSSSbnbb', 'bbnbSSSSbnbb', 'bbnbbSSbbnbb', 'bbnnbbbbnnbb', '.bbnnnnnnbb.', '.bbbbbbbbbb.', '...bbbbbb...'],
+  hoodorn: ['.......SS.', '.....SSShS', '..SSSSSSS.', 'SSSShSSS..', '.SSSSSS...', '..bbbbbb..'],
+  headlamp: ['..SSSSSS..', '.SnnhnnnS.', 'SnnhhnnnnS', 'SnnnnnnnnS', 'SnnnnnnnnS', '.SnnnnnnS.', '..SSSSSS..', '....bb....', '...bbbb...'],
+  license: ['yyyyyyyyyyyy', 'ybbybbbybbby', 'ybbybybybyby', 'ybbybbbybbby', 'yyyyyyyyyyyy'],
+  hotelbox: ['..LLLLLL..', 'LLLLLLLLLL', 'LBBBBBBBBL', 'LBnnnnnnBL', 'LBBBBBBBBL', 'LLLLLLLLLL', 'LLLLLLLLLL'],
+  globe: ['..hhhh..', '.hhzhhh.', 'hhzhhzhh', 'hhhgghhh', '.hhgghh.', '..hhhh..', '.mmmmmm.', 'mmmmmmmm'],
   spork: ['r.r.r', 'rrrrr', 'rrrrr', '.rrr.', '..r..', '..r..', '..r..', '..r..'],
   card: ['nnnnnnnn', 'nVVVVVVn', 'nhhsshhn', 'nhsssshn', 'nhhPPhhn', 'nhPPPPhn', 'nhPPPPhn', 'nGGGGGGn', 'nnnnnnnn'],
   pills: ['..bb..', '..LL..', '.LLLL.', 'LLLLLL', 'LnnnnL', 'LnVVnL', 'LnnnnL', 'LLLLLL', 'LLLLLL'],
@@ -585,6 +716,7 @@ const PIX = {
 const SHIP_C = { Missouri: { O: '#7a7e88' }, Bismarck: { O: '#a8acb4' }, Yamato: { O: '#5e626c' } };
 // the light mill's vanes, turning (a real one spins in daylight; the copy's are glued)
 const MILL = [PIX.radiometer, edit(PIX.radiometer, [[2, 4, 'h'], [2, 5, 'h'], [6, 4, 'h'], [6, 5, 'h']]), edit(PIX.radiometer, [[2, 4, 'b'], [3, 4, 'b'], [2, 5, 'b'], [3, 5, 'b'], [5, 4, 'n'], [6, 4, 'n'], [5, 5, 'n'], [6, 5, 'n']])];
+const FROG = ['G.G..', 'GGGG.', 'gGGGg', 'g...g'];
 const MOUSE = ['...d.d.', '.ddddd.', 'dddddbd', '.dddddr', 'd......'];
 // the cat lady's sculptures: a few shapes of plain hairball, and the duck
 const ART = [
@@ -631,6 +763,20 @@ const LOOK = {
   computer: [PIX.computer, edit(PIX.computer, [[3, 2, 'b'], [4, 2, 'b'], [9, 5, 'i']])],
   cart: [PIX.cart, edit(PIX.cart, [[2, 1, 'i'], [6, 4, 'i'], [3, 5, 'i'], [1, 3, 'i']])],
   spork: [PIX.spork, PIX.spork], card: [PIX.card, PIX.card],
+  drill: [PIX.drill, PIX.drill.slice(0, 9)],
+  handdrill: [PIX.handdrill, edit(PIX.handdrill, [[9, 7, '.'], [4, 6, 'O'], [5, 8, 'O']])],
+  mangle: [PIX.mangle, edit(PIX.mangle, [[4, 3, 'm'], [5, 4, 'm'], [6, 5, 'm'], [7, 6, 'm'], [8, 7, 'm']])],
+  wrench: [PIX.wrench, swap(edit(PIX.wrench, [[3, 2, 'L'], [7, 1, 'L']]), 'S', 'R')],
+  saw: [PIX.saw, edit(PIX.saw, [[5, 3, '.'], [7, 3, '.'], [10, 1, 'n'], [11, 1, '.']])],
+  toolbox: [PIX.toolbox, edit(PIX.toolbox, [[2, 3, 'K'], [6, 2, 'K'], [8, 5, 'K'], [4, 6, 'K'], [10, 6, 'K']])],
+  toolset: [PIX.toolset, swap(PIX.toolset, 'S', 'd')],
+  hotelbox: [PIX.hotelbox, PIX.hotelbox], globe: [PIX.globe, PIX.globe],
+  musket: [PIX.musket, swap(swap(swap(PIX.musket, 'm', 'x'), 'w', 'X'), 'K', 'i')],
+  hubcap: [PIX.hubcap, swap(swap(swap(PIX.hubcap, 'S', 'd'), 'h', 'd'), 'O', 'i')],
+  tire: [PIX.tire, edit(PIX.tire, [[3, 2, 'K'], [4, 2, 'b'], [2, 5, 'K'], [9, 6, 'b'], [10, 4, 'K'], [6, 9, 'b'], [7, 9, 'K']])],
+  hoodorn: [PIX.hoodorn, swap(swap(PIX.hoodorn, 'S', 'I'), 'h', 'I')],
+  headlamp: [PIX.headlamp, edit(PIX.headlamp, [[2, 2, 'b'], [3, 3, 'b'], [4, 3, 'b'], [5, 4, 'b'], [6, 4, 'b'], [7, 5, 'b']])],
+  license: [PIX.license, swap(swap(PIX.license, 'y', 'n'), 'b', 'V')],
   present: [PIX.present, PIX.present], tablet: [PIX.tablet, PIX.tablet], milk: [PIX.milk, PIX.milk], lint: [PIX.lint, PIX.lint], pills: [PIX.pills, PIX.pills],
 };
 // Condition shows, a little: a worn or broken find has scuffs, a mint one a
@@ -704,7 +850,8 @@ function makeFind(kind, hot = false) {
     if (kind === 'computer' && f.good) { let r = Math.random(); f.decade = PC_ODDS.find(([, p]) => (r -= p) < 0)?.[0] || '1990s'; }
     let base = (f.decade ? PC_WORTH[f.decade] : f.good ? K.worth : K.dud) * rand(1 - TUNE.jitter, 1 + TUNE.jitter);
     if (!NO_Q.has(kind)) {
-      f.q = kind === 'ship' ? 4 : kind === 'card' ? Math.max(3, rollQ()) : rollQ();
+      f.q = kind === 'ship' ? 4 : kind === 'card' || kind === 'globe' ? Math.max(3, rollQ()) : rollQ();
+      if (f.good) f.base = base;
       if (f.good) base = Math.min(QUAL.cap[f.q - 1], Math.max(QUAL.floor[f.q - 1], base * QUAL.mult[f.q - 1]));
     }
     if (kind === 'ship') f.ship = pick(shipsLeft());
@@ -730,7 +877,7 @@ const worthTo = f => f.kind === 'box' && !f.opened ? TUNE.boxWorth : f.value;
 const byUid = uid => S.stock.find(f => f.uid === uid);
 const spotOf = f => S.spots.indexOf(f.uid);
 const inCorner = f => S.corner.pc === f.uid || S.corner.carts.includes(f.uid);
-const inBack = () => S.stock.filter(f => spotOf(f) < 0 && !inCorner(f));
+const inBack = () => S.stock.filter(f => spotOf(f) < 0 && !inCorner(f) && !onBench(f));
 
 // ---------- The shop ----------
 // Laid out 26 Nov: the desk with the camera top left, three tables, the glass
@@ -750,6 +897,10 @@ const SHOP = [
   { id: 'fleet', x: 16.2, y: 8.4, w: 2.6, h: 1.6, stand: { x: 17.5, y: 10.5 }, act: 'actFleet' },
   // the play corner, bottom left (27 Nov)
   { id: 'corner', x: 1, y: 6.8, w: 2.2, h: 1.3, stand: { x: 2.1, y: 9 }, act: 'actCorner' },
+  // the frog tank, once it's bought (27 Nov)
+  // the workbench, once it's bought, by the rack (27 Nov)
+  { id: 'bench', x: 16.4, y: 6.4, w: 2.4, h: 1, stand: { x: 17.4, y: 7.8 }, act: 'actBench', only: () => S.bench },
+  { id: 'tank', x: 7.8, y: 6.9, w: 2.8, h: 1.4, stand: { x: 9.2, y: 8.9 }, act: 'actTank', only: () => S.tank },
 ];
 const SHOP_DOOR = { x: 10, y: 11.8 }, REG_FRONT = { x: 14.5, y: 9.6 };
 // ---------- Where to buy ----------
@@ -757,7 +908,7 @@ const SHOP_DOOR = { x: 10, y: 11.8 }, REG_FRONT = { x: 14.5, y: 9.6 };
 // each with its own mix, and the swap meet, walked stall to stall. `MK` is
 // the place you're at: its finds, slots, sellers, what's solid.
 const SALES = {
-  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'shiplamp', 'radiometer', 'computer', 'computer']).slice(0, 5), ...(Math.random() < .6 ? ['box'] : [])] },
+  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'shiplamp', 'radiometer', 'computer', 'computer', ...TOOLS, ...CAR_PARTS, ...(frogsLeft() ? ['hotelbox'] : [])]).slice(0, 5), ...rareMusket(), ...(Math.random() < .6 ? ['box'] : [])] },
   toys: { house: '#d8e4f0', siding: '#b8c8d8', yes: .5, finds: () => ['junk', 'junk', 'junk', ...shuffle([...TOYS, 'train']).slice(0, 2), pick(['figure', 'duck', 'box', 'present', 'plush', 'comics', 'cart', 'cart'])] },
   cat: { house: '#f0d8e0', siding: '#d8b8c4', yes: .15, cats: true, finds: () => ['hairball', 'hairball', 'hairball', 'hairball', ...shuffle(['plate', 'lantern', 'scale', 'camera']).slice(0, 2)] },
   swap: { fee: 5 },
@@ -768,8 +919,16 @@ const STALLS = {
   surplus: { sign: 'SURPLUS', canopy: '#6a7a4a', finds: () => ['canteen', pick(['canteen', 'shovel', 'sharpener'])] },
   books: { sign: 'BOOKS', canopy: '#5e3a1c', finds: () => shuffle(['comics', 'book', 'comics', 'plush']).slice(0, 2) },
   glass: { sign: 'GLASS', canopy: '#4a9a6a', finds: () => shuffle(['plate', pick(['plate', 'lantern', 'insulator', 'radiometer']), 'insulator', 'radiometer']).slice(0, 2) },
-  tools: { sign: 'TOOLS', canopy: '#8a5a30', finds: () => ['shovel', pick(['grinder', 'iron'])] },
-  old: { sign: 'OLD STUFF', canopy: '#8a4ab0', finds: () => shuffle(['grinder', 'scale', 'lantern', 'typewriter', 'typewriter', 'iron', 'sharpener', 'bottle', 'boxcam', 'shiplamp']).slice(0, 2) },
+  tools: { sign: 'TOOLS', canopy: '#8a5a30', finds: () => shuffle(['shovel', 'grinder', 'iron', ...TOOLS]).slice(0, 2) },
+  // 27 Nov: used tools, many broken, and cheap new ones, many knockoffs
+  carparts: { sign: 'CAR PARTS', canopy: '#a83a2a', finds: () => shuffle(CAR_PARTS).slice(0, 2) },
+  usedtools: { sign: 'USED TOOLS', canopy: '#a85a20', finds: () => shuffle([...TOOLS, ...TOOLS]).slice(0, 2) },
+  newtools: { sign: 'NEW TOOLS', canopy: '#d8a832', finds: () => ['toolset', pick(['toolset', 'drill'])] },
+  old: { sign: 'OLD STUFF', canopy: '#8a4ab0', finds: () => {
+    const a = shuffle(['grinder', 'scale', 'lantern', 'typewriter', 'typewriter', 'iron', 'sharpener', 'bottle', 'boxcam', 'shiplamp', 'mangle', ...(frogsLeft() ? ['hotelbox', 'hotelbox'] : [])]).slice(0, 2);
+    if (Math.random() < TUNE.musket * 2) a[1] = 'musket';   // twice as likely here as anywhere else
+    return a;
+  } },
   ducks: { sign: 'DUCKS', canopy: '#ffd040', finds: () => ['duck', 'duck'] },
   cameras: { sign: 'CAMERAS', canopy: '#3b6ea8', finds: () => shuffle(['camera', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'junk']).slice(0, 2) },
   cat: { sign: 'CAT ART', canopy: '#e05a9a', yes: .15, finds: () => ['hairball', 'hairball'] },
@@ -824,7 +983,8 @@ function buildYard(id) {
 const PER_ROW = 6;
 function buildSwap(mine = null) {
   const n = PER_ROW * 2, myAt = PER_ROW + 1;
-  let list = shuffle(Object.keys(STALLS).filter(k => k !== 'shady' && k !== 'models')).slice(0, n);
+  const toolStalls = ['tools', 'usedtools', 'newtools'];
+  let list = shuffle([...toolStalls, ...shuffle(Object.keys(STALLS).filter(k => !['shady', 'models', ...toolStalls].includes(k))).slice(0, n - toolStalls.length)]);
   if (shipsLeft().length && Math.random() < TUNE.shipChance) list[pick([...Array(n).keys()].filter(i => i !== PER_ROW - 1 && i !== myAt))] = 'models';
   if (Math.random() < TUNE.shadyChance) { list = list.slice(0, n - 1); list.splice(PER_ROW - 1, 0, 'shady'); }
   if (mine) list[myAt] = 'mine';
@@ -853,14 +1013,21 @@ function buildSwap(mine = null) {
   M.objs.push({ id: 'car', x: 2, y: 9, w: 3, h: 2, stand: { x: 3.5, y: 8.6 }, act: 'actCar' });
   M.solid.push({ x: 2, y: 9, w: 3, h: 2.2 }, { x: 2, y: 2, w: 3, h: 2 });
   if (mine) M.selling = { t: TUNE.meetSell, spawn: 2 };
+  // a seller hunting for something another stall has (Randi, 27 Nov)
+  if (!mine && Math.random() < TUNE.wishChance) {
+    const ok = M.stalls.filter(s => !['shady', 'models', 'mine', 'cat'].includes(s.sid));
+    const who = pick(ok), items = M.items.map((f, i) => ({ f, i })).filter(({ f, i }) => f && !f.hot && !isBig(f) && !['box', 'junk', 'hotelbox', 'hairball'].includes(f.kind) && M.slots[i].vendor !== who.vendor);
+    if (who && items.length) { const { f } = pick(items); M.wish = { vendor: who.vendor, kind: f.kind, t: 2 }; }
+  }
   return M;
 }
 let scene = 'shop';
-const objs = () => scene === 'shop' ? SHOP : MK.objs.filter(o => o.slot == null || MK.items[o.slot]);
+const here = o => !o.only || o.only();
+const objs = () => scene === 'shop' ? SHOP.filter(here) : MK.objs.filter(o => (o.slot == null || MK.items[o.slot]) && here(o));
 function solidAt(x, y) {
   if (scene === 'shop') {
     if (x < 1 || x >= W - 1 || y < 2 || y >= H - 1.2) return true;
-    return SHOP.some(o => !o.wall && x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h);
+    return SHOP.some(o => !o.wall && here(o) && x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h);
   }
   if (x < 1 || x >= W - 1 || y < MK.top || y >= MK.bottom) return true;
   return MK.solid.some(o => x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h);
@@ -1027,6 +1194,8 @@ function act() { const o = inReach(); if (o) use(o); }
 function use(o) {
   if (scene === 'yard') {
     if (o.pile != null) return sweep(o.pile);
+    if (o.id === 'lady') return ladyCard();
+    if (o.id === 'heap') return sweepHeap();
     if (o.id === 'kid') return kidCard();
     if (o.mine) return firstWaiting() ? regCard() : say(t('meetMine'));
     if (o.slot != null) return lookCard(o.slot);
@@ -1041,6 +1210,8 @@ function use(o) {
   if (o.id === 'door') return doorCard();
   if (o.id === 'fleet') return fleetCard();
   if (o.id === 'corner') return cornerCard();
+  if (o.id === 'tank') return tankCard();
+  if (o.id === 'bench') return benchCard();
 }
 
 // ---------- Cards ----------
@@ -1077,6 +1248,17 @@ $('#card').addEventListener('click', e => {
   else if (a === 'doorBack') doorCard();
   else if (a === 'love') { closeCard(); showBar(); }
   else if (a === 'kidBuy') kidBuy();
+  else if (a === 'wishGive') wishGive(byUid(+b.dataset.uid));
+  else if (a === 'openHotel') openHotel(f);
+  else if (a === 'store') storeCard();
+  else if (a === 'buyTank') buyTank();
+  else if (a === 'buyBench') { if (!S.bench && S.pocket >= TUNE.bench) { S.pocket -= TUNE.bench; S.bench = true; save(); SFX.ching(); showBar(); say(t('benchArrives')); closeCard(); } }
+  else if (a === 'clean') benchJob(byUid(+b.dataset.uid), 'clean');
+  else if (a === 'benchOff') benchOff(+b.dataset.uid);
+  else if (a === 'fix') benchJob(byUid(+b.dataset.uid), 'fix');
+  else if (a === 'giveLocket') giveLocket();
+  else if (a === 'museum') armorChoice('sold');
+  else if (a === 'keepArmor') armorChoice('kept');
   else if (a === 'kidAsk') kidAsk();
   else if (a === 'cornerAdd') cornerAdd(byUid(+b.dataset.uid));
   else if (a === 'cornerOut') cornerOut(+b.dataset.uid);
@@ -1164,7 +1346,7 @@ function goBuying(id, mine = null) {
 // What buyers take is rung up at the table; the rest comes home.
 let picking = [];
 function pickCard() {
-  const can = S.stock.filter(f => f.tag && !isBig(f) && f.kind !== 'pills' && !inCorner(f));
+  const can = S.stock.filter(f => f.tag && !isBig(f) && f.kind !== 'pills' && !inCorner(f) && !onBench(f));
   picking = picking.filter(u => can.some(f => f.uid === u));
   const rows = can.map(f => `<button class="it" type="button" data-act="pickT" data-uid="${f.uid}" aria-pressed="${picking.includes(f.uid)}"><img src="${picSrc(rowsOf(f), colOf(f))}" alt=""><span>${picking.includes(f.uid) ? '✓ ' : ''}${Name(f)}<small>${t('tag')} $${f.tag}</small></span></button>`).join('');
   const poor = S.pocket < TUNE.tableFee;
@@ -1241,6 +1423,155 @@ function stepRival(dt) {
     r.mode = 'rest'; r.t = randIn(TUNE.rivalRest);
   } else if (r.mode === 'leave') { if (walk(r, dt, r.speed)) r.gone = true; }
 }
+// ----- being kind at the swap meet (Randi, 27 Nov) -----
+// Give a seller the thing they're hunting for. The first time, it's a 1920s
+// snow globe that was their great-grandma's; after that, a few dollars.
+function wishGive(f) {
+  if (!f || !MK.wish) return;
+  const v = MK.vendors[MK.wish.vendor]; MK.wish.done = true;
+  S.stock = S.stock.filter(x => x !== f); const i = spotOf(f); if (i >= 0) S.spots[i] = null;
+  let what, pic;
+  if (!S.globe) { const g = makeFind('globe'); delete g.ask; g.cost = 0; S.stock.push(g); S.globe = true; what = nameOf(g); pic = picHtml(g); SFX.wow(); }
+  else { S.pocket += TUNE.wishTip; what = t('wishTip', { n: TUNE.wishTip }); SFX.ching(); }
+  save(); showBar(); v.say = { text: t('thanks'), t: 2 };
+  openCard(`${h2(t('thanks'))}<p>${S.globe && pic ? t('wishThanks') : t('wishThanksAgain')}</p>${pic || ''}<p>${pic ? t('wishGot', { what }) : what}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+}
+// ----- the frogs (his idea) -----
+// One 1958 hotel box per save turns up at a garage sale or the OLD STUFF
+// stall. Opened at the desk, five live frogs. They need a glass tank, and the
+// only place that sells one is the online store, at its price. In their
+// tank they draw people in. They're never for sale.
+const frogsLeft = () => !S.frogs && !S.stock.some(f => f.kind === 'hotelbox');
+function openHotel(f) {
+  S.stock = S.stock.filter(x => x !== f); S.frogs = true; save(); SFX.rip();
+  for (let i = 0; i < 5; i++) tone(180 + i * 30, .09, 'square', i * .15, .05, 120);
+  openCard(`${h2(t('frogsTitle'))}<div class="pic"><img src="${picSrc(FROG)}" alt=""></div><p>${t(S.tank ? 'frogsInTank' : 'frogsText')}</p><div class="row">${S.tank ? '' : btn('store', t('storeBtn'))}${btn('desk', t('done'), true)}</div>`, null, 'desk');
+}
+function storeCard() {
+  const junk = STR.storeJunk.map((n, i) => `<li><span>${n} · ${STR.storeJunkPrice[i]}</span> <small>${t('storeNope')}</small></li>`);
+  junk.splice(2, 0, `<li><b>${t('storeTank')} · $${TUNE.tank}</b> ${btn('buyTank', S.tank ? t('storeHave') : t('storeBuy', { n: TUNE.tank }), !S.tank, S.tank || S.pocket < TUNE.tank ? 'disabled' : '')}</li>`);
+  const bench = `<ul class="store"><li><span><b>${t('storeBench')} · $${TUNE.bench}</b><br><small>${t('storeBenchNote')}</small></span> ${btn('buyBench', S.bench ? t('storeHave') : t('storeBuy', { n: TUNE.bench }), false, S.bench || S.pocket < TUNE.bench ? 'disabled' : '')}</li></ul>`;
+  openCard(`${h2(t('storeTitle'))}${bench}<p class="soft">${t('storeSearch')}</p><ul class="store">${junk.join('')}</ul><p class="note">${t('storeNote', { n: TUNE.tankElsewhere })}</p>
+    ${S.frogs && !S.tank ? `<p>${t('frogsWait')}</p>` : ''}<div class="row">${btn('desk', t('back'), true)}</div>`, null, 'desk');
+}
+function buyTank() {
+  if (S.tank || S.pocket < TUNE.tank) return;
+  S.pocket -= TUNE.tank; S.tank = true; save(); SFX.ching(); showBar();
+  say(t(S.frogs ? 'tankArrives' : 'tankEmpty')); closeCard();
+}
+function tankCard() {
+  openCard(`${h2(t('tankTitle'))}${S.frogs ? `<div class="pic"><img src="${picSrc(FROG)}" alt=""></div>` : ''}<p>${t(S.frogs ? 'tankText' : 'tankNone')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+}
+// ----- the workbench (his ask, 27 Nov) -----
+// A find left on the bench is out of stock until its job is done. Clean
+// raises a real find's condition one step, up to Crisp (mint is only ever
+// found); it costs a fifth of what it adds, at least $5 (at a flat $5,
+// cleaning a worn camera doubled its worth for almost nothing). Fix makes
+// something broken but real (FIX) work again at Worn, after a few days and
+// with the parts paid up front; it can fail, which you find out only when
+// it's done, and some can't be fixed at all because nobody makes the parts.
+// Copies and knockoffs can't be fixed. The bench holds `benchSlots`, so jobs
+// pile up. It was one instant job a day at first; he wanted time and parts.
+function setQ(f, q) {
+  const base = f.base ?? f.value / QUAL.mult[f.q - 1];
+  f.base = base; f.q = q;
+  const v = Math.min(QUAL.cap[q - 1], Math.max(QUAL.floor[q - 1], base * QUAL.mult[q - 1]));
+  f.value = v < 10 ? Math.round(v) : round5(v);
+}
+function cleanCost(f) {
+  const base = f.base ?? f.value / QUAL.mult[f.q - 1], q = f.q + 1;
+  const v = Math.min(QUAL.cap[q - 1], Math.max(QUAL.floor[q - 1], base * QUAL.mult[q - 1]));
+  return Math.max(TUNE.cleanCost, round5((v - f.value) * TUNE.cleanShare));
+}
+const canClean = f => known(f) && f.good && f.q && f.q < 4 && !f.cleaned;
+const canFix = f => known(f) && !f.good && FIXABLE.has(f.kind) && !f.fixed;
+const onBench = f => (S.benchJobs || []).some(j => j.uid === f.uid);
+const cleanHours = f => f.kind === 'musket' ? 6 : TUNE.cleanHours;
+const hoursText = n => { n = Math.max(1, Math.ceil(n)); return n === 1 ? t('oneHour') : n >= 8 ? t('shopDays', { n, d: Math.round(n / 8) }) : t('manyHours', { n }); };
+function benchCard(msg) {
+  const jobs = S.benchJobs || [], full = jobs.length >= TUNE.benchSlots;
+  const on = jobs.map(j => { const f = byUid(j.uid); return f ? `<li><span><img src="${picSrc(rowsOf(f), colOf(f))}" alt=""> ${Name(f)}<br><small>${t(j.job === 'clean' ? 'benchCleaning' : 'benchFixing', { h: hoursText(j.left) })}</small></span> ${btn('benchOff', t('benchTake'), false, `data-uid="${f.uid}"`)}</li>` : ''; }).join('');
+  const list = inBack().filter(f => canClean(f) || canFix(f));
+  const rows = list.map(f => {
+    const clean = canClean(f), cost = clean ? cleanCost(f) : FIX[f.kind][1], hours = clean ? cleanHours(f) : FIX[f.kind][0];
+    return `<li><span><img src="${picSrc(rowsOf(f), colOf(f))}" alt=""> ${Name(f)}<br><small>${f.q ? condText(f) + ' · ' : ''}${t('worth')} $${f.value}</small></span>
+    ${btn(clean ? 'clean' : 'fix', t(clean ? 'benchClean' : 'benchFix', { d: hoursText(hours), n: cost }), false, `data-uid="${f.uid}" ${full || S.pocket < cost ? 'disabled' : ''}`)}</li>`;
+  }).join('');
+  openCard(`${h2(t('benchTitle'))}<p>${t('benchText', { n: TUNE.benchSlots })}</p>${msg ? `<p class="note" role="status">${msg}</p>` : full ? `<p class="soft">${t('benchFull')}</p>` : ''}
+    <h3>${t('benchOn')} (${jobs.length}/${TUNE.benchSlots})</h3>${on ? `<ul class="store bench">${on}</ul>` : `<p class="soft">${t('benchEmpty')}</p>`}
+    <h3>${t('benchFrom')}</h3>${rows ? `<ul class="store bench">${rows}</ul>` : `<p class="soft">${t('benchNone')}</p>`}<div class="row">${btn('close', t('done'), true)}</div>`);
+}
+function benchJob(f, job) {
+  const jobs = S.benchJobs = S.benchJobs || [];
+  if (!f || jobs.length >= TUNE.benchSlots) return;
+  if (job === 'fix') {
+    if (!canFix(f)) return;
+    // the first look tells you whether parts exist at all
+    if (f.parts == null) f.parts = Math.random() >= TUNE.noParts;
+    if (!f.parts) { f.fixed = true; save(); SFX.no(); return benchCard(t('noParts')); }
+  } else if (!canClean(f)) return;
+  const cost = job === 'clean' ? cleanCost(f) : FIX[f.kind][1], hours = job === 'clean' ? cleanHours(f) : FIX[f.kind][0];
+  if (S.pocket < cost) return;
+  S.pocket -= cost; const i = spotOf(f); if (i >= 0) S.spots[i] = null;
+  jobs.push({ uid: f.uid, job, left: hours });
+  save(); showBar(); SFX.coin(); benchCard(t('benchStarted', { h: hoursText(hours) }));
+}
+function benchOff(uid) {
+  S.benchJobs = (S.benchJobs || []).filter(j => j.uid !== uid); save(); benchCard(t('benchTook'));
+}
+// the bench works while the shop is open; a job that's done comes off the
+// bench there and then, fixed or not
+function benchTick(hours) {
+  const jobs = S.benchJobs || []; if (!jobs.length) return;
+  for (const j of jobs) j.left -= hours;
+  const due = jobs.filter(j => j.left <= 0);
+  if (!due.length) return;
+  S.benchJobs = jobs.filter(j => j.left > 0);
+  const bn = SHOP.find(o => o.id === 'bench'); float(bn.x + 1.2, bn.y - .4, '!', '#2f7a4a');
+  for (const j of due) {
+    const f = byUid(j.uid); if (!f) continue;
+    if (j.job === 'clean') { f.cleaned = true; setQ(f, f.q + 1); say(t('benchCleaned', { item: nameOf(f), cond: STR.cond[f.q - 1], n: f.value })); continue; }
+    f.fixed = true;
+    if (Math.random() < FIX[f.kind][2]) { say(t('benchFail', { item: nameOf(f) })); continue; }
+    if (f.kind === 'computer') f.decade = pick(['1970s', '1980s', '1980s', '1990s', '1990s']);
+    f.good = true; f.base = (f.decade ? PC_WORTH[f.decade] : KINDS[f.kind].worth) * rand(1 - TUNE.jitter, 1 + TUNE.jitter); f.q = 2; setQ(f, 2);
+    say(t('benchFixed', { item: nameOf(f), n: f.value }));
+  }
+  save(); SFX.wow();
+}
+// ----- the dump lady, her locket, and the tank (his idea, 27 Nov) -----
+// Once a save. She lives at the dump and has lost her mother's locket in one
+// of the piles. Sweep it up and give it back, and she walks you to the
+// biggest heap; sweep that and there's an old army tank her husband drove
+// home from the war. It runs but never fires. Sell it to the museum, or keep
+// it parked outside the shop (the next round makes it something to drive).
+const LADY = { ...C, h: '#e8e8ee', t: '#7a5a8a', s: '#f0c49a', p: '#5a4a3a' };
+function ladyCard() {
+  const L = S.lady || {};
+  if (L.stage === 'found') return openCard(`${h2(t('ladyName'))}<p>${t('ladyFound')}</p><div class="row">${btn('close', t('back'))}${btn('giveLocket', t('ladyGive'), true)}</div>`);
+  if (L.stage === 'given' || L.stage === 'done') { say(t(L.stage === 'done' ? 'ladyDone' : 'ladyHere')); return; }
+  openCard(`${h2(t('ladyName'))}<p>${L.asked ? t('ladyAgain') : t('ladyLost')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+  S.lady = { ...L, stage: 'lost', asked: true }; save();
+}
+function giveLocket() {
+  S.lady.stage = 'given'; save(); SFX.wow();
+  openCard(`${h2(t('ladyName'))}<p>${t('ladyThanks')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+  const v = MK.vendors.find(v => v.lady), h = MK.heap;
+  v.route = path(v, { x: h.x - .6, y: h.y + 1.6 }) || [{ x: h.x - .6, y: h.y + 1.6 }];
+}
+function sweepHeap() {
+  const h = MK.heap; if (h.done) return;
+  if (--h.hits > 0) { SFX.rip(); return; }
+  h.done = true; S.lady.stage = 'done'; save(); SFX.wow();
+  openCard(`${h2(t('tankTitle2'))}<div class="pic wide"><img src="${picSrc(PIX.armor)}" alt=""></div><p>${t('tankFound')}</p>
+    <div class="row">${btn('museum', t('tankMuseum', { n: TUNE.museum }))}${btn('keepArmor', t('tankKeep'), true)}</div>`, null, 'none');
+}
+function armorChoice(what) {
+  S.armor = what;
+  if (what === 'sold') { S.pocket += TUNE.museum; SFX.ching(); }
+  save(); showBar();
+  openCard(`${h2(t('tankTitle2'))}<p>${what === 'sold' ? t('tankSold', { n: TUNE.museum }) : t('tankKept')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+}
 // ----- the kid selling sporks (his idea, 27 Nov) -----
 // Now and then a kid has a little table at a yard sale, selling sporks for a
 // dollar. Ask him about them and he gives you his dad's old baseball card,
@@ -1308,6 +1639,17 @@ function buildDump() {
   }
   M.objs.push({ id: 'car', x: 2, y: 9, w: 3, h: 2, stand: { x: 3.5, y: 8.6 }, act: 'actCar' });
   M.solid.push({ x: 2, y: 9, w: 3, h: 2.2 });
+  // the dump lady and her locket, until the tank is found
+  const L = S.lady || {};
+  if (L.stage !== 'done') {
+    M.w += 4;
+    M.vendors.push({ x: 5.6, y: 3.9, look: LADY, rows: CUST, lady: true, face: 1, walkT: 0, speed: 1.6 });
+    M.objs.push({ id: 'lady', x: 5, y: 2.6, w: 1.2, h: 1.4, stand: { x: 5.6, y: 5 }, act: 'actLady', only: () => !MK.vendors.find(v => v.lady).route?.length });
+    if (!L.stage || L.stage === 'lost') M.locket = Math.floor(Math.random() * M.piles.length);
+    M.heap = { x: M.w - 5, y: 4.6, hits: TUNE.dumpHits * 2, done: false };
+    M.solid.push({ x: M.heap.x + .1, y: M.heap.y + .3, w: 2.6, h: 1.6 });
+    M.objs.push({ id: 'heap', x: M.heap.x, y: M.heap.y, w: 2.8, h: 2, stand: { x: M.heap.x + 1.4, y: M.heap.y + 2.6 }, act: 'actHeap', only: () => S.lady && S.lady.stage === 'given' });
+  }
   return M;
 }
 function sweep(i) {
@@ -1317,6 +1659,11 @@ function sweep(i) {
   // three sweeps of the broom to get to the bottom of a pile
   if (--pl.hits > 0) { SFX.rip(); return; }
   pl.swept = true; SFX.rip();
+  if (MK.locket === i && (!S.lady || S.lady.stage !== 'given')) {
+    S.lady = { ...(S.lady || {}), stage: 'found' }; MK.locket = null; save(); SFX.wow(); say(t('locketFound'));
+    float(pl.x + .8, pl.y, '♥', '#d8a832'); return;
+  }
+  if (Math.random() < TUNE.musket) { const m = makeFind('musket'); delete m.ask; m.cost = 0; S.stock.push(m); MK.bought++; save(); SFX.wow(); say(t('dumpFound', { item: nameOf(m) })); return; }
   const r = Math.random(), o = TUNE.dumpOdds;
   if (r < o.jet) { say(t('dumpJet')); SFX.wow(); return; }
   if (r < o.jet + o.nothing) { say(t('dumpNothing')); return; }
@@ -1326,6 +1673,11 @@ function sweep(i) {
   float(pl.x + .8, pl.y, f.kind === 'tablet' ? '...' : '!', '#2f7a4a');
 }
 function stepDump(dt) {
+  // the dump lady walking you to the big heap
+  const v = MK.vendors.find(v => v.lady);
+  if (v && v.route && v.route.length) { walk(v, dt, v.speed); if (!v.route.length) say(t('ladyHere')); }
+  // no clock on the heap: once she's shown you, take your time
+  if (S.lady && S.lady.stage === 'given') return;
   if (MK.dumpT <= 0) return;
   MK.dumpT -= dt;
   if (MK.dumpT <= 0) { say(t('dumpOver')); SFX.bell(); }
@@ -1334,12 +1686,15 @@ function lookCard(slot) {
   const f = MK.items[slot]; if (!f) return;
   const sl = MK.slots[slot], v = MK.vendors[sl.vendor];
   sl.line = sl.line || t(v.lines);
-  const note = f.kind === 'box' ? `<p class="note">${t('sealedNote')}</p>` : f.hot ? `<p class="note">${t('hotNote')}</p>` : '';
+  let note = f.kind === 'box' ? `<p class="note">${t('sealedNote')}</p>` : f.hot ? `<p class="note">${t('hotNote')}</p>` : '';
+  const w = MK.wish && !MK.wish.done && sl.vendor === MK.wish.vendor ? MK.wish : null, have = w && S.stock.find(x => x.kind === w.kind && !inCorner(x));
+  if (w) note += `<p class="note">${t('wishNote', { item: t(`kinds.${w.kind}`) })}</p>`;
+  if (S.bench && FIX[f.kind]) note += `<p class="soft">${t('benchLook', { h: hoursText(FIX[f.kind][0]), n: FIX[f.kind][1] })}</p>`;
   const poor = S.pocket < f.ask;
   const rough = S.guide && f.q ? `<dt>${t('condLbl')}</dt><dd>${STR.guideSays[f.q - 1]}</dd>` : '';
   openCard(`${h2(Name(f))}<div class="look">${picHtml(f)}<div class="facts"><dl><dt>${t('ask')}</dt><dd>$${f.ask}</dd>${rough}</dl><p class="soft">${t('yourPocket', { n: S.pocket })}</p></div></div>${note}
     <p id="sellerSays" class="soft" role="status">“${f.reply || (f.free ? t('giveaway') : sl.line)}”</p>
-    <div class="row">${btn('close', t('leave'))}${f.free ? '' : btn('askLess', t('askLess'), false, `data-slot="${slot}" ${f.asked ? 'disabled' : ''}`)}${btn('buy', f.free ? t('takeFree') : t('buy', { n: f.ask }), true, `data-slot="${slot}" ${poor ? 'disabled' : ''}`)}</div>`);
+    <div class="row">${btn('close', t('leave'))}${have ? btn('wishGive', t('wishGive', { item: t(`kinds.${w.kind}`) }), false, `data-uid="${have.uid}"`) : ''}${f.free ? '' : btn('askLess', t('askLess'), false, `data-slot="${slot}" ${f.asked ? 'disabled' : ''}`)}${btn('buy', f.free ? t('takeFree') : t('buy', { n: f.ask }), true, `data-slot="${slot}" ${poor ? 'disabled' : ''}`)}</div>`);
 }
 // Ask for less: a timing bar instead of a coin flip (Randi, 26 Nov). One try per
 // find. Where the green sits moves each time, so it can't be learned by heart.
@@ -1416,6 +1771,7 @@ function confiscate(list, title, words) {
 function stepMarket(dt) {
   for (const v of [...MK.vendors, ...(MK.cops ? MK.cops.officers : [])]) if (v.say) { v.say.t -= dt; if (v.say.t <= 0) v.say = null; }
   if (MK.kind !== 'swap') return;
+  if (MK.wish && !MK.wish.done && (MK.wish.t -= dt) <= 0) { MK.wish.t = 7; MK.vendors[MK.wish.vendor].say = { text: t('wishShout', { item: t(`kinds.${MK.wish.kind}`) }), t: 2.6 }; }
   const sh = MK.stalls.find(s => s.sid === 'shady'); if (!sh) return;
   const thief = MK.vendors[sh.vendor];
   if (thief.run && !thief.gone) { thief.x += TUNE.thiefRun * dt; thief.walkT += dt; thief.face = 1; if (thief.x > W + 2) thief.gone = true; }
@@ -1461,7 +1817,8 @@ function deskCard() {
   const list = inBack();
   const guide = S.guide ? `<p class="soft">${t('guideHave')}</p>` : `<p class="soft">${t('guideNote')}</p>`;
   openCard(`${h2(t('deskTitle'))}<p>${list.length ? t('deskText') : t('deskEmpty')}</p><div class="list">${list.map(rowHtml).join('')}</div>${guide}
-    <div class="row">${S.guide ? '' : btn('guide', t('guideBuy', { n: TUNE.guide }), false, S.pocket < TUNE.guide ? 'disabled' : '')}${btn('close', t('done'), true)}</div>`, '.it');
+    ${S.frogs && !S.tank ? `<p class="note">${t('frogsWait')}</p>` : ''}
+    <div class="row">${S.guide ? '' : btn('guide', t('guideBuy', { n: TUNE.guide }), false, S.pocket < TUNE.guide ? 'disabled' : '')}${btn('store', t('storeBtn'))}${btn('close', t('done'), true)}</div>`, '.it');
 }
 function spotCard(i) {
   const o = SHOP.find(o => o.spot === i), f = byUid(S.spots[i]);
@@ -1474,6 +1831,9 @@ function spotCard(i) {
 // its price tag, and what you can do with it from here
 function findCard(f, from, spot = null) {
   cardFind = f; cardFrom = from; cardSpot = spot;
+  // the hotel box only opens; nobody would buy it taped shut
+  if (f.kind === 'hotelbox') return openCard(`${h2(Name(f))}<div class="look">${picHtml(f)}<div class="facts"><dl><dt>${t('paid')}</dt><dd>$${f.cost}</dd></dl></div></div><p class="note">${t('hotelNote')}</p>
+    <div class="row">${btn('desk', t('back'))}${from === 'desk' ? btn('openHotel', t('openHotel'), true) : ''}</div>`, null, 'desk');
   const onSpot = spotOf(f) >= 0, atDesk = from === 'desk';
   const worth = known(f) ? `$${f.value}` : t('worthUnknown');
   const cond = known(f) && f.q ? `<dt>${t('condLbl')}</dt><dd>${condText(f)}</dd>` : '';
@@ -1594,9 +1954,10 @@ const inLull = () => S.lull && S.clock >= S.lull.at && S.clock < S.lull.at + S.l
 function stepDay(dt) {
   if (S.phase !== 'open') return;
   S.clock += dt;
+  if (S.clock <= TUNE.dayLen) benchTick(dt / TUNE.dayLen * 8);
   if (S.clock < TUNE.dayLen) {
     if (inLull()) { if (!S.lull.said) { S.lull.said = true; say(t('lull')); } }
-    else { spawnT -= dt; if (spawnT <= 0) { spawnT = randIn(TUNE.custEvery) * moodGap(); spawnCust(); } }
+    else { spawnT -= dt; if (spawnT <= 0) { spawnT = randIn(TUNE.custEvery) * moodGap() * (S.tank && S.frogs ? TUNE.frogMagnet : 1) * (S.armor === 'kept' ? TUNE.armorMagnet : 1); spawnCust(); } }
   } else if (!stepDay.closing) { stepDay.closing = true; say(t('closing')); }
   if (S.clock >= TUNE.dayLen && !custs.length) { stepDay.closing = false; endDay(); }
   if (Math.floor(S.clock) % 5 === 0 && Math.floor(S.clock) !== stepDay.saved) { stepDay.saved = Math.floor(S.clock); save(); }
@@ -1671,6 +2032,8 @@ function spawnCust() {
   const c = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look, kind, rows: kind === 'collector' ? COLLECTOR : CUST, mode: 'in', t: 0, walkT: 0, face: 1, route: null, find: null, say: null };
   if (kind === 'collector') c.say = { text: t('collectorIn'), t: 2 };
   if (kind === 'catfan') c.say = { text: t('catFanIn'), t: 2.4 };
+  if (!c.say && S.tank && S.frogs && Math.random() < .3) c.say = { text: t('frogSeen'), t: 2 };
+  if (!c.say && S.armor === 'kept' && Math.random() < .3) c.say = { text: t('tankOut'), t: 2 };
   const free = S.spots.map((u, i) => u != null && !custs.some(o => o.spot === i) ? i : -1).filter(i => i >= 0);
   if (kind === 'catfan' && free.includes(art)) { c.spot = art; c.route = path(c, SHOP.find(o => o.spot === art).stand, true); }
   else if (free.length) { c.spot = free[Math.floor(Math.random() * free.length)]; c.route = path(c, SHOP.find(o => o.spot === c.spot).stand, true); }
@@ -1967,6 +2330,7 @@ function drawShop(now) {
     if (rain) for (let k = 0; k < 6; k++) px(wx * T + 4 + k * 10, 11 * T + 4 + ((now / 40 + k * 5) % 8), 1, 2, '#d8e4ec'); px(wx * T + 6, 11 * T + 4, 10, 2, '#e8f8ff');
     px(wx * T, 11 * T + 3, 4 * T, 1, '#2a1a10');
   }
+  if (S.armor === 'kept') { px(13 * T + 10, 11 * T + 6, 30, 6, '#4e5a3a'); px(13 * T + 18, 11 * T + 3, 12, 4, '#6a7a4a'); px(13 * T + 30, 11 * T + 4, 14, 2, '#4e5a3a'); px(13 * T + 10, 11 * T + 11, 30, 2, '#1a1a1a'); }
   const open = S.phase === 'open';
   px(4 * T + 6, 11 * T + 4, 32, 8, open ? '#2f7a4a' : '#7a2a22');
   textC(open ? 'OPEN' : 'CLOSED', 4 * T + 22, 11 * T + 5, '#fff');
@@ -1998,6 +2362,26 @@ function drawShop(now) {
     if (f) {
       drawItemAt(f, x + w / 2, y + h / 2 - (o.kind === 'rack' ? 4 : 2), now);
       tagAt(f.tag, x + w / 2, o.kind === 'rack' ? y + h - 6 : y + h + 3);
+    }
+  }
+  // the workbench: a wooden bench, a vise, a pegboard of tools
+  if (S.bench) {
+    const bn = SHOP.find(o => o.id === 'bench'), bx = bn.x * T, by = bn.y * T;
+    px(bx, by + 2, bn.w * T, bn.h * T - 2, '#8a5a30'); px(bx, by + 2, bn.w * T, 2, '#c99460');
+    px(bx + 2, by + bn.h * T, 3, 4, '#4e2f1a'); px(bx + bn.w * T - 5, by + bn.h * T, 3, 4, '#4e2f1a');
+    px(bx + 4, by - 3, 8, 6, '#5e626c'); px(bx + 6, by - 5, 4, 2, '#80848e');
+    px(bx + 18, by, 6, 2, '#c84a3a'); px(bx + 26, by + 1, 8, 1, '#a8acb4');
+    (S.benchJobs || []).forEach((j, i) => { const f = byUid(j.uid); if (f) { const img = itemImg(f); put(img, bx + 6 + i * 11 - img.width / 4, by - img.height + 6); } });
+  }
+  // the frog tank: glass, water, gravel, a plant and five frogs hopping about
+  if (S.tank) {
+    const tk = SHOP.find(o => o.id === 'tank'), tx = tk.x * T, ty = tk.y * T, tw = tk.w * T, th = tk.h * T;
+    px(tx, ty, tw, th, '#3a3a42'); px(tx + 2, ty + 2, tw - 4, th - 4, '#7ac0d8'); px(tx + 2, ty + th - 6, tw - 4, 4, '#c8b48a');
+    px(tx + 6, ty + 5, 2, th - 10, '#4f8f46'); px(tx + 4, ty + 7, 2, 3, '#6fae4a'); px(tx + 8, ty + 9, 2, 3, '#6fae4a');
+    px(tx + 3, ty + 3, 8, 1, '#d8f0f8');
+    if (S.frogs) for (let i = 0; i < 5; i++) {
+      const hop = Math.max(0, Math.sin(now / 300 + i * 1.7)) * 4, fx = tx + 11 + i * (tw - 20) / 4 + Math.sin(now / 900 + i * 2.3) * 2;
+      put(spr(FROG, C, (i + Math.floor(now / 2300)) % 2 === 0), fx, ty + th - 11 - hop);
     }
   }
   // the play corner: a little desk, the computer and its cartridges
@@ -2136,6 +2520,21 @@ function drawDump(now) {
     const top = (3 - p.hits) * 3;
     px(x + 2, y + 6 + top / 2, 22, 10 - top / 2, '#6a5a4a'); if (p.hits > 1) px(x + 6, y + 2 + top, 14, 6, '#6a5a4a'); if (p.hits > 2) px(x + 10, y, 6, 3, '#6a5a4a');
     for (let k = 0; k < 3 + p.hits * 2; k++) { const sd = (p.seed * 31 + k * 17) % 97; px(x + 3 + sd % 19, y + 2 + top + (sd * 7) % Math.max(4, 12 - top), 2 + sd % 3, 2, JUNK_C[(sd + k) % JUNK_C.length]); }
+  }
+  // the dump lady's shack, and the big heap (or the tank, once it's swept)
+  if (MK.vendors.some(v => v.lady)) {
+    px(4.4 * T, 2 * T, 2.6 * T, 1.3 * T, '#7a6a5a'); px(4.4 * T, 2 * T, 2.6 * T, 3, '#5e626c'); px(5.1 * T, 2.4 * T, 8, 9, '#3a2616');
+    for (let k = 0; k < 3; k++) px(4.6 * T + k * 13, 2 * T + 4, 2, 2, ['#e05a9a', '#ffd040', '#5aa6e4'][k]);
+  }
+  if (MK.heap) {
+    const h = MK.heap, x = h.x * T, y = h.y * T;
+    if (h.done) put(spr(PIX.armor), x + 3, y + 10);
+    else {
+      const k = h.hits / (TUNE.dumpHits * 2);
+      px(x, y + 30 - 26 * k, 44, 26 * k + 2, '#6a5a4a'); px(x + 8, y + 24 - 24 * k, 28, 8, '#6a5a4a');
+      for (let j = 0; j < 14 * k; j++) px(x + 3 + (j * 13) % 38, y + 30 - 24 * k + (j * 7) % Math.max(4, 24 * k), 3, 2, JUNK_C[j % JUNK_C.length]);
+      if (k < 1) put(spr(PIX.armor), x + 3, y + 10 + 12 * k), px(x, y + 30 - 26 * k, 44, 26 * k + 2, '#6a5a4a');
+    }
   }
   drawCar(2 * T, 9 * T + 2);
 }

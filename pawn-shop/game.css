@@ -101,3 +101,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;tou
 .haggle .hz.g{background:#7fbf68;border-left:2px solid var(--line);border-right:2px solid var(--line)}
 .haggle .hz span{font-size:.75rem;font-weight:700;color:#1a120c;white-space:nowrap}
 .haggle .hm{position:absolute;top:-2px;bottom:-2px;width:4px;margin-left:-2px;background:#1a120c}
+/* the online store: silly search results, and the one thing you need */
+.store{list-style:none;margin:.4rem 0;padding:0;display:grid;gap:.35rem}
+.store li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
+.store small{opacity:.75}
