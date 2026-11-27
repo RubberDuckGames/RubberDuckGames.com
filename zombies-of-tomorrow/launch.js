@@ -290,7 +290,7 @@ function win() {
         <h1 style="font-size:44px">ZOMBIES OF TOMORROW</h1>
         <p>${how} Hull ${G.hull} of 5.</p>
         <p class="small">${NAME ? NAME + ", y" : "Y"}ou write the title in your notebook. A.R.P.F.'s star map draws a line to HOMETOWN.<br>End of round one.</p>`,
-    [["On to the Harvest Ring", () => { location.href = "flight.html"; }], ["Launch again", start], ["Play round one again", () => { location.href = "index.html"; }]]);
+    [["Climb down to the hangar", () => { location.href = "index.html#hangar"; }], ["Launch again", start], ["Play round one again", () => { location.href = "index.html"; }]]);
 }
 function lose() {
   G.on = false;

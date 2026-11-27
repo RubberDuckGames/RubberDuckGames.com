@@ -70,6 +70,7 @@ const WALLCHARS = {
   "#": "paper", p: "poster", w: "window", m: "starmap", k: "tile", K: "kwindow", d: "door",
   c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome", o: "silo", n: "silo7",
   e: "hedge", g: "gate", D: "egodoor", B: "basedoor", G: "glass", V: "portrait",
+  q: "hull", Q: "hullplain", M: "board", N: "heronote", U: "ladderup",
 };
 // A.R.P.F.'s clean path through the dust in Ego House: from the basement
 // door along the hall and into the greenhouse
@@ -130,6 +131,26 @@ const LEVELS = {
     light: 1,
     start: { x: 6.5, y: 11.6, a: -Math.PI / 2 },
   },
+  // Added 26 Nov: Ship Seven's hangar deck (novel ch 21). Round, like
+  // everything on the ship: four capsules in a ring, the mission board and
+  // Ivan's note on the north wall, the ladder up on the south.
+  hangar: {
+    map: [
+      "QQQQqMNqQQQ",
+      "QQQq...qQQQ",
+      "Qq.......qQ",
+      "Qq.......qQ",
+      "q.........q",
+      "q.........q",
+      "q.........q",
+      "Qq.......qQ",
+      "Qq.......qQ",
+      "QQQq...qQQQ",
+      "QQQQqUqqQQQ",
+    ],
+    ceil: () => "hangarceil", floor: () => "hangarflr", light: 0.95,
+    start: { x: 5.5, y: 8.6, a: -Math.PI / 2 },
+  },
   // Added 26 Nov: the silo under the estate, round as a grid allows, with
   // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
   // so the ship climbs up out of sight.
@@ -161,7 +182,7 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts }[name]();
+  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts }[name]();
 }
 
 // ---------- the story: home ----------
@@ -493,6 +514,81 @@ function watchFlowers() {
   }, (i) => { if (i === 3) { bloom.spr = "bloom1"; SFX.static(); } });
 }
 
+// ---------- the story: the hangar (added 26 Nov, as in the novel's ch 21) ----------
+// You reach it from the launch (launch.html sends you to index.html#hangar),
+// and the flight brings you back to it.
+function hangarEnts() {
+  const tag = (L) => () => say([["", `A tag tied to the ladder with string, in tiny, neat handwriting: CAPSULE ${L}. Fuel checked. Seals checked. Ready. H.M.`]]);
+  return [
+    ent({ id: "capsA", spr: "capsA", x: 4.0, y: 4.0, r: 0.55, label: "Climb into Capsule A", use: useCapsuleA }),
+    ent({ id: "capsB", spr: "capsB", x: 7.0, y: 4.0, r: 0.55, label: "Look at Capsule B", use: tag("B") }),
+    ent({ id: "capsC", spr: "capsC", x: 4.0, y: 6.8, r: 0.55, label: "Look at Capsule C", use: tag("C") }),
+    ent({ id: "capsD", spr: "capsD", x: 7.0, y: 6.8, r: 0.55, label: "Look at Capsule D", use: tag("D") }),
+    ent({ id: "arpf", spr: "arpfon", x: 5.5, y: 5.4, r: 0.4, label: "Talk to A.R.P.F.", use: () => say(
+      flag("board") ? [["A.R.P.F.", "Capsule A. It's the one with the tag. It's always the one with the tag."]]
+                    : [["A.R.P.F.", "The board! Ivan's board! Go and look. I am not crying. Trash cans do not cry."]]) }),
+    ent({ id: "radio", spr: "radio", x: 8.9, y: 5.5, r: 0.25, label: "Call home on the radio", use: useHangarRadio }),
+  ];
+}
+
+function enterHangar(back) {
+  loadLevel("hangar");
+  try { S.name = sessionStorage.getItem("zot-name") || S.name; } catch (e) { /* fine without it */ }
+  if (back) {                                                       // home from the flight
+    set("board");
+    say([["", "Capsule A clamps back into its place in the ring with a clunk you feel in your teeth. Home. Well. The ship."],
+         ["A.R.P.F.", "The Harvest Ring is next! Inside, it's... well. You'll see. The next part isn't built yet. Ivan never finished anything on time either."]],
+        () => hint("Capsule A goes back out whenever you're ready"));
+    return;
+  }
+  card(`<p>Ship Seven, in orbit, with the Earth behind you.</p>
+        <p>A.R.P.F. sets the course. One g, all the way: four days to the asteroid belt,
+        with a flip in the middle so you can slow down.</p>
+        <p>Weird Kid Weekly, Issue 388. You remember the drawing.</p>`, "Climb down to the hangar", 0, () => {
+    say([["", "At the bottom of the ladder, a round room with a striped floor, like a parking lot. HANGAR DECK."],
+         ["", "And four little ships, round and silver, each one about the size of a car standing on its end. A. B. C. D."],
+         ["A.R.P.F.", "Capsules! The big ship is too big to go in between the wheels. The little ships go in, and come back. That was the plan."],
+         ["", "It's still the plan. It's just going to be you."]], () => hint("Look at the mission board on the far wall"));
+  });
+}
+
+function useBoard() {
+  set("board");
+  say([
+    ["", "A big black panel the size of a door: MISSION BOARD. The names of places, in white paint, each with a little round light.", "art/look-board.png"],
+    ["", "FOUNDER'S STATION. HOMETOWN. HARVEST RING. And blank rows under them, as if someone left room for places not built yet.", "art/look-board.png"],
+    ["", "In one of the blank rows, in pencil, very small, in the handwriting from the comic: a question mark.", "art/look-board.png"],
+    ["", "Then one of the lights blinks on. Green. Steady. Beside HARVEST RING.", "art/look-board.png"],
+  ], () => {
+    SFX.ok();
+    addPage("The mission board", "On Ship Seven's hangar deck: FOUNDER'S STATION, HOMETOWN, HARVEST RING, and blank rows, one with a penciled question mark. HARVEST RING's light is green: go there first.", "art/look-board.png");
+    hint("Read the note beside the board, then take Capsule A");
+  });
+}
+
+function useHeroNote() {
+  say([["", "Next to the board, held up with tape gone brown, a page from a notebook:", "art/look-hero.png"],
+       ["", "THE WHEELS SPIN. THE BIG SHIP WAITS. TAKE A CAPSULE IN, BRING IT BACK. ONE PLACE AT A TIME. DON'T BE A HERO. I.P.", "art/look-hero.png"],
+       ["", "And under that, added later, in the same hand but shakier: BE A LITTLE BIT OF A HERO.", "art/look-hero.png"],
+       ["", "You laugh out loud. It echoes around the hangar."]],
+      () => addPage("Ivan's note", "DON'T BE A HERO. And under it, later, shakier: BE A LITTLE BIT OF A HERO. I.P.", "art/look-hero.png"));
+}
+
+function useHangarRadio() {
+  say([["", "You switch on the radio and say hello. Then you wait. One second. Two."],
+       ["Mom", "...hello, baby. We can hear you. There's a little gap before you answer. Is that normal?"],
+       ["", "It's normal. Weird Kid Weekly, Issue 371: the speed of light. Your voice takes a moment to get there, and the farther you go, the longer it takes."],
+       ["Grandma Rosie", "Keep looking up, kiddo. We are."]]);
+}
+
+function useCapsuleA() {
+  if (!flag("board")) { say([["", "Capsule A. A tag on its ladder: CAPSULE A. Fuel checked. Seals checked. Ready. H.M. Sixty-two lines of it."], ["", "But where to? Maybe the board on the wall knows."]], () => hint("Look at the mission board")); return; }
+  say([["", "Capsule A is the size of a phone booth inside. One seat, a bubble window, a stick between your knees. A.R.P.F. doesn't fit. It comes anyway."],
+       ["A.R.P.F.", "Harvest Ring! Mind the rocks. There are a great many rocks."]], () => {
+    card(`<p>The hangar door opens under you, and Capsule A drops out into space.</p>`, null, 1800, () => { location.href = "flight.html"; });
+  });
+}
+
 // ---------- the story: the silo (added 26 Nov, as in the novel's ch 19) ----------
 function siloEnts() {
   return [
@@ -672,10 +768,15 @@ function target() {
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
   }
-  if (!best && (L.name === "home" || L.name === "mansion")) {
+  if (!best && ["home", "mansion", "hangar"].includes(L.name)) {
     for (let s = 0.2; s <= 1.8; s += 0.1) {
       const w = wallAt(P.x + Math.cos(P.a) * s, P.y + Math.sin(P.a) * s);
       if (L.name === "home" && w === "d") return { label: "Open the front door", use: useDoor };
+      if (L.name === "hangar") {
+        if (w === "M") return { label: "Look at the mission board", use: useBoard };
+        if (w === "N") return { label: "Read the note", use: useHeroNote };
+        if (w === "U") return { label: "The ladder up", use: () => say([["", "The ladder goes up through the rings of seats to the cockpit. The ship knows the way. The hangar is where you're needed."]]) };
+      }
       if (L.name === "mansion") {
         if (w === "g") return { label: "Unlock the gate", use: useGate };
         if (w === "D") return { label: "Open the front door", use: useFrontDoor };
@@ -876,13 +977,19 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 
-loadLevel("home");
-card(`<h1>ZOMBIES OF TOMORROW</h1>
-      <p class="small">Round one: bedroom to liftoff. A test build.</p>
-      <p>You dream of stars. A great wheel turns slowly in the dark.<br>Someone, very far away, is saying your name. A corgi barks.</p>
-      <p class="small"><a href="flight.html" style="color:#e8b33c">Or skip ahead to the flight test</a></p>`,
-     "Wake up", 0, () => {
-       SFX.buzz();
-       say([["", "BZZZZZ. BZZZZZ. Your radio clock is buzzing."]], () => hint("Turn off the alarm clock by your bed (walk up to it, press E)"));
-     });
+// The launch and the flight send you here as index.html#hangar; everyone
+// else starts in bed. (Saves aren't built yet, so the guide book starts empty.)
+if (location.hash === "#hangar" || location.hash === "#hangar-back") {
+  enterHangar(location.hash === "#hangar-back");
+} else {
+  loadLevel("home");
+  card(`<h1>ZOMBIES OF TOMORROW</h1>
+        <p class="small">Round one: bedroom to liftoff. A test build.</p>
+        <p>You dream of stars. A great wheel turns slowly in the dark.<br>Someone, very far away, is saying your name. A corgi barks.</p>
+        <p class="small"><a href="#hangar" onclick="location.hash='hangar';location.reload();return false" style="color:#e8b33c">Or skip ahead to the hangar</a></p>`,
+       "Wake up", 0, () => {
+         SFX.buzz();
+         say([["", "BZZZZZ. BZZZZZ. Your radio clock is buzzing."]], () => hint("Turn off the alarm clock by your bed (walk up to it, press E)"));
+       });
+}
 requestAnimationFrame(frame);

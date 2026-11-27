@@ -289,14 +289,14 @@ function win() {
         <p>${stars} Hull ${G.hull} of 5.</p>
         <p>Scrap collected: ${G.scrap}. Supply crates: ${G.crates}. Corgis rescued: ${G.corgis}.</p>
         <p class="small">Inside, the silver-blue towers have grown up through the ceiling grates. Something in there is watching the airlock.</p>`,
-    [["Fly again", start], ["Back to round one", () => { location.href = "index.html"; }]]);
+    [["Back to the hangar", () => { location.href = "index.html#hangar-back"; }], ["Fly again", start]]);
 }
 function lose() {
   G.on = false;
   card(`<h1>HULL BREACHED</h1>
         <p>A.R.P.F. flies out in the spare capsule, hooks on a tow line, and hauls you back to the hangar.</p>
         <p class="small">"You did very well. For a person. Again?"</p>`,
-    [["Fly again", start], ["Back to round one", () => { location.href = "index.html"; }]]);
+    [["Fly again", start], ["Back to the hangar", () => { location.href = "index.html#hangar-back"; }]]);
 }
 
 let last = 0;
