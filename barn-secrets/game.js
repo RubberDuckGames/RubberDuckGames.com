@@ -47,14 +47,19 @@ const ROOMS = {
     build: ['screw', 'blade', 'plate', 'ring'],                    // the grinder goes together in this order
     grinderTurns: 4,
     flags: 'HERD',                                                 // the ship's hoist, top to bottom
+    // the hens' eggs in Juniper's stall: each one's pencil letter and its grade
+    // (an index into GRADES); in grade order they read D A E C B, the order the
+    // feed room's thin drawers open in
+    eggs: { A: 1, B: 4, C: 3, D: 0, E: 2 },
     wringTaps: 6,                                                  // crank taps to feed the receipt through
     wringGap: 260,                                                 // ms; quicker than this and it bunches
   },
 };
 const A = ROOMS.barn;
 // what fills Doc's gauges, in the order the barn usually gives them up
-const PUZZLES = ['washer', 'adder', 'register', 'lamp', 'ledger', 'secret', 'scale', 'meters', 'lock', 'arm', 'shelf', 'grinder', 'box', 'gauge'];
-const PARTS_OF_DOC = ['lamp', 'arm', 'gauge'];
+const PUZZLES = ['washer', 'adder', 'register', 'lamp', 'ledger', 'secret', 'scale', 'meters', 'lock', 'arm', 'shelf', 'grinder', 'box', 'drill', 'eggs', 'cabinet', 'suction', 'sage', 'trough', 'gauge'];
+const PARTS_OF_DOC = ['lamp', 'arm', 'drill', 'suction', 'gauge'];
+const GRADES = ['peewee', 'small', 'medium', 'large', 'jumbo'];   // egg grades, lightest first
 
 // ---------- Strings ----------
 const STR = {
@@ -72,6 +77,32 @@ const STR = {
   overGo: 'Start over', cancel: 'Cancel', close: 'Close',
   // places and close-ups
   vBarn: 'The barn floor', vBench: 'The workbench', vTack: 'The tack room', vLoft: 'The hayloft',
+  vFeed: 'The feed room', vCabinet: 'The cabinet of thin drawers', vEggs: 'The egg scale and the carton',
+  vDusty: 'Dusty’s stall', vJuniper: 'Juniper’s stall', vSage: 'Sage’s stall',
+  faceBarnFront: 'the big doors', faceBarnBack: 'the back end, the stalls and the feed room',
+  n_dusty: 'DUSTY', n_juniper: 'JUNIPER', n_sage: 'SAGE', sStall: '{name}’s stall',
+  sBlanket: 'A horse blanket over the rail', blanket: 'A horse blanket, moth-eaten, with a yellow stripe.',
+  sRack: 'The hay rack', rack: 'A hay rack with a little old hay still in it.',
+  sNails: 'A tin of horseshoe nails', nails: 'A tin of horseshoe nails, square and rusty.',
+  sNest: 'A nest box in the straw', nestEggs: 'The hens are long gone, but they left eggs. You take the basket of eggs.', nestEmpty: 'An empty nest, a few feathers.',
+  sTrough: 'The water trough', troughSays: 'A dry water trough. The drain at the end is plugged solid.', sDrainPlug: 'The trough’s drain',
+  troughPlugged: 'Plugged solid with old muck. You can’t get a finger in.',
+  troughSuck: 'Doc trundles over and puts his hose to the drain. SHHHLURP! Out comes a lump of muck, and in it, something round: his gauge!',
+  troughClear: 'The drain runs clear now.',
+  sageShut: 'The stall door’s bolt is screwed down with four rusty screws. Not a screwdriver in sight.',
+  sageOpen: 'Doc whirs his drill at the bolt plate. One, two, three, four screws drop in the straw, and Sage’s stall door swings open.',
+  sSacks: 'Sacks of oats', sacks: 'Old sacks of oats. Something has been nibbling them.',
+  sSeparator: 'A red cream separator', separator: 'A hand-cranked cream separator. It splits milk from cream, if you crank it just right.',
+  sTray: 'The egg tray', trayEggs: 'Eggs waiting to be weighed.', trayEmpty: 'An empty egg tray.', basketOut: 'You set the eggs out on the tray.',
+  sEgg: 'An egg marked {l}', eggWeigh: 'The egg marked {l} goes on the scale. The pointer swings to {g}.',
+  sEggScale: 'The egg scale', eggScale: 'An egg scale. Its dial reads, lightest to heaviest: peewee, small, medium, large, jumbo.',
+  sCup: 'The {g} cup in the carton', cupEmpty: 'The {g} cup. Put an egg on the scale first, then it goes in a cup.',
+  cartonDone: 'The carton is full, every egg in the cup for its grade.',
+  sThin: 'Drawer {l}', thinSeeds: 'Packets of old seed: beans, corn, squash, sunflowers.',
+  thinSlam: 'Clack! The drawers all slide back in by themselves.',
+  thinOpen: 'The last drawer slides out, and with a click a hidden lid pops up at the top of the cabinet.',
+  sHose: 'Something coiled, in the hidden space at the top',
+  gr_peewee: 'PEEWEE', gr_small: 'SMALL', gr_medium: 'MEDIUM', gr_large: 'LARGE', gr_jumbo: 'JUMBO',
   vWasher: 'The wringer washer', vAdder: 'The adding machine', vRegister: 'The cash register',
   vDresser: 'The tack chest', vScale: 'The balance scale', vGrinder: 'The meat grinder', vShip: 'The ship model',
   vCrate: 'The crate', vMeters: 'The parking meters',
@@ -82,11 +113,11 @@ const STR = {
   // items
   i_soggy: 'Soggy paper', i_receipt: 'Receipt', i_penny: 'Penny', i_nickel: 'Nickel', i_dime: 'Dime',
   i_crank: 'Crank handle', i_sash: 'Iron weight', i_chart: 'Flag chart', i_ledger: 'Ledger page',
-  i_lamp: 'Doc’s lamp', i_arm: 'Doc’s arm', i_gauge: 'Doc’s gauge',
-  holding: 'You’re holding the {item}. Tap where it goes.',
-  letGo: 'You put the {item} back in your pocket.',
-  noGo: 'The {item} doesn’t do anything there.',
-  got: 'You take the {item}.',
+  i_lamp: 'Doc’s lamp', i_arm: 'Doc’s arm', i_gauge: 'Doc’s gauge', i_drill: 'Doc’s drill', i_suction: 'Doc’s suction hose', i_basket: 'Basket of eggs',
+  holding: 'You’re holding {item}. Tap where it goes.',
+  letGo: 'You put {item} back in your pocket.',
+  noGo: '{Item} doesn’t do anything there.',
+  got: 'You take {item}.',
   // the barn floor
   loftDark: 'You climb up a few rungs. It’s pitch dark up there. You can’t see a thing.',
   loftLit: 'Doc rolls under the hatch and shines his lamp up into the hayloft.',
@@ -99,9 +130,11 @@ const STR = {
   // the hayloft
   hay: 'Bales and bales of old hay. It tickles your nose.',
   // Doc
-  docNoUse: 'Doc looks at the {item} politely. "Not one of mine, I’m afraid."',
+  docNoUse: 'Doc looks at {item} politely. "Not one of mine, I’m afraid."',
   docLamp: 'Ahh, light! I remember now... a little office over the feed store in town. Ranch kids in my chair, scared stiff, and I’d shine this lamp on the ceiling so they had something to look at.',
   docArm: 'My arm! Oh, that’s better. I remember the office closing, the year the new clinic opened. Everything went to auction, and a rancher bought me for two dollars, to drill holes in tractor parts.',
+  docDrill: 'My drill! Bzzzt. I remember the barn full: three horses in the stalls, Dusty, Juniper and Sage, and hens nesting wherever they pleased.',
+  docSuction: 'SHHHLURP. Oh, pardon me. I remember the spring the creek came up and flooded the stalls. I sucked the drains clear all night. Sage was Wren’s horse, and Wren sat up with me till morning.',
   docGauge: 'Both eyes! It’s all coming back. That rancher was Wren’s father. He brought me out to this barn and forgot about me. Wren never did. Every Sunday Wren cranked me up, and I kept every secret this barn has.',
   ledgerDim: 'Doc squints. "One line’s scratched out. My eyes aren’t what they were, and it’s too dark to read without my lamp."',
   ledgerLit: 'Doc holds the page under his lamp, and the scratches show through: "Grinder parts, No. 22, 50¢."',
@@ -152,7 +185,7 @@ const STR = {
   sSPan: 'The right pan, holding {w} pounds', sSSack: 'The sack on the left pan', sSTray: '{item} on the tray, stamped {w}', sSOn: '{item} on the right pan, stamped {w}', sSDrawer: 'A drawer in the base', sSTrayAll: 'The tray',
   i_flatiron: 'Flatiron', i_horseshoe: 'Horseshoe', i_insulator: 'Glass insulator',
   sSack: 'A sack stamped 9 LB.',
-  sPut: 'The {item} goes on the right pan. It’s stamped {w}.', sOff: 'The {item} goes back on the tray.',
+  sPut: '{Item} goes on the right pan. It’s stamped {w}.', sOff: '{Item} goes back on the tray.',
   sFull: 'The right pan is full.',
   sOpen: 'The beam levels out. Click! A drawer in the base slides open.',
   sDrawerShut: 'A little drawer in the base. It won’t pull open.', sDrawerEmpty: 'An empty little drawer.',
@@ -179,11 +212,11 @@ const STR = {
   fA: 'white and blue, with a notch cut in the end', fD: 'yellow, blue and yellow stripes across', fE: 'blue over red', fH: 'white and red, side by side', fK: 'yellow and blue, side by side', fW: 'a blue border, then white, with a red square in the middle',
   // crate
   sCUp: 'Turn the {col} dial up, now {d}', sCDown: 'Turn the {col} dial down, now {d}', colSilver: 'silver', colGreen: 'green', colRed: 'red',
-  sCLid: 'The crate lid', sCWUp: 'Turn letter wheel {n} up, now {l}', sCWDown: 'Turn letter wheel {n} down, now {l}', sCLock: 'The padlock', sCArm: 'Something rusty in the straw', sCGauge: 'Something wrapped in a rag',
+  sCLid: 'The crate lid', sCWUp: 'Turn letter wheel {n} up, now {l}', sCWDown: 'Turn letter wheel {n} down, now {l}', sCLock: 'The padlock', sCArm: 'Something rusty in the straw', sCDrill: 'Something long, wrapped in a rag',
   cLocked: 'The padlock holds the lid shut.',
   cUnlocked: 'Clunk. The padlock springs open.',
   cLid: 'The lid creaks up. In the straw: a rusty jointed arm, and a little box with four letter wheels.',
-  cBox: 'Click. The little box opens. Something round is inside, wrapped in a rag.',
+  cBox: 'Click. The little box opens. Something long is inside, wrapped in a rag.',
   // meters
   sMeter: 'The {col} meter. {reads}', mExpired: 'It reads EXPIRED.', mReads: 'Its needle points to {n}.',
   mSlot: 'It reads EXPIRED. The coin slot is stamped {coin}.',
@@ -200,16 +233,16 @@ const STR = {
   chartLine: 'Ship’s flags, each with the letter it stands for.',
   chartAlt: 'Ten flags and their letters. A: white and blue, with a notch cut in the end. D: yellow, blue and yellow stripes across. E: blue over red. H: white and red, side by side. K: yellow and blue, side by side. O: cut corner to corner, yellow and red. R: red with a yellow cross. S: white with a blue square in the middle. T: red, white and blue stripes up and down. W: a blue border, then white, with a red square in the middle.',
   endTitle: 'Doc is back together',
-  endMore: 'You’ve found them all now, I think. Well... nearly all. There’s still the stalls, and the feed room.',
-  endNext: 'The stalls and the feed room are still being built.',
+  endMore: 'That’s all of me back together, and every secret in this barn found. Thank you, truly.',
+  endNext: 'That’s the whole barn, for now.',
   ducks: 'Rubber ducks found: {n} of {m}.',
   keepLooking: 'Keep looking around',
   // Doc's voice
-  docHello: '*creak* ...Oh! A visitor. Forgive me, I’m in pieces: my lamp, my arm, one of my eyes, all lost somewhere in this barn. ',
+  docHello: '*creak* ...Oh! A visitor. Forgive me, I’m in pieces: my lamp, my arm, my drill, my suction hose, one of my eyes, all lost somewhere in this barn. ',
   docOpen: ['Open wide... ', 'Just a little pressure... ', 'Rinse, please... ', 'Mm-hmm, mm-hmm... ', 'Bite down gently... ', 'Comfortable? Good... '],
   docDone: 'Lovely. Not a single cavity in the whole barn.',
   // canvas words
-  art_expired: 'EXPIRED', art_limit: 'LIMIT 60 MIN', art_plaque: 'SHE SPEAKS IN FLAGS', art_sack: '9 LB', art_noSale: 'NO SALE', art_up: 'THIS SIDE UP', art_tack: 'TACK',
+  art_expired: 'EXPIRED', art_limit: 'LIMIT 60 MIN', art_plaque: 'SHE SPEAKS IN FLAGS', art_sack: '9 LB', art_noSale: 'NO SALE', art_up: 'THIS SIDE UP', art_tack: 'TACK', art_feed: 'FEED', art_oats: 'OATS', art_nails: 'NAILS',
 };
 
 // Doc's hints, three to a step: a nudge, a clearer nudge, then nearly the
@@ -246,13 +279,29 @@ const HINTS = {
   'grinder.take': ['Something’s poking out the front of that grinder.', 'Go on, pull it out.', 'Tap the rolled-up paper at the front of the grinder.'],
   'box.nochart': ['Four letter wheels. A four-letter word, somewhere in this barn.', 'Ships talk without saying a word.', 'You’ll need a flag chart. The meat grinder has one, once it works.'],
   'box': ['Four letter wheels. Ships talk without saying a word.', 'Turn the ship around and look at its flags.', 'Match each flag, top to bottom, to the chart from the grinder.'],
-  'gauge.take': ['Something round, in a rag. Could it be...?', 'Go on, unwrap it.', 'Tap the thing in the little box.'],
+  'drill.take': ['Something long, in a rag. Could it be...?', 'Go on, unwrap it.', 'Tap the thing in the little box.'],
+  'drill': ['My drill! Oh, I’ve missed it.', 'Hand it to me, would you?', 'Pick my drill, then tap me, or the Give to Doc button.'],
+  'back': ['This barn has another end, you know.', 'Turn around on the barn floor.', 'On the barn floor, tap Turn.'],
+  'sage': ['Sage’s stall is screwed shut, and screws want a drill.', 'I have one of those again.', 'Tap Sage’s stall door, and I’ll do the rest.'],
+  'eggs.find': ['Somebody’s hens left eggs about.', 'Look in the stalls at the back of the barn.', 'Juniper’s stall, the middle one. Take the eggs.'],
+  'eggs.tray': ['Eggs belong by the egg scale.', 'The feed room has an egg scale and a carton.', 'Pick the basket of eggs and tap the tray by the egg scale.'],
+  'eggs': ['Eggs are graded by weight, you know.', 'The scale grades each one: peewee, small, medium, large, jumbo.', 'Weigh each egg, then put it in the carton cup for its grade.'],
+  'cabinet': ['Those thin drawers want opening in the right order.', 'Look at the pencil letters on the eggs, in the carton.', 'Pull the drawers in the order the carton reads, left to right.'],
+  'suction.take': ['Something coiled, at the top of that cabinet.', 'Go on, take it.', 'Tap the hidden space at the top of the cabinet.'],
+  'suction': ['My suction hose! Shhlurp.', 'Hand it to me, would you?', 'Pick my hose, then tap me, or the Give to Doc button.'],
+  'trough': ['That trough drain is plugged with forty years of muck.', 'I’m rather good at drains, when I’m all there.', 'In Sage’s stall, tap the trough’s drain.'],
   'gauge': ['Is that... my other eye?', 'Hand it to me, would you? Gently.', 'Pick my gauge, then tap me, or the Give to Doc button.'],
 };
 
-// an item's name inside a sentence: "the penny", but "Doc’s lamp" keeps its capital
-const inm = id => { const n = STR['i_' + id]; return n.startsWith('Doc') ? n : n[0].toLowerCase() + n.slice(1); };
-const fmt = (s, v = {}) => s.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
+// an item's name inside a sentence, with its article: "the penny", but
+// "Doc’s lamp" ("the Doc’s drill" read wrong). {Item} in a string is the
+// same with a capital, for the start of a sentence.
+const inm = id => { const n = STR['i_' + id]; return n.startsWith('Doc') ? n : 'the ' + n[0].toLowerCase() + n.slice(1); };
+const fmt = (s, v = {}) => s.replace(/\{(\w+)\}/g, (m, k) => {
+  if (v[k] != null) return v[k];
+  const low = k[0].toLowerCase() + k.slice(1), x = v[low];
+  return x != null ? String(x)[0].toUpperCase() + String(x).slice(1) : m;
+});
 const money = c => '$' + (c / 100).toFixed(2);
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const $ = q => document.querySelector(q);
@@ -263,9 +312,10 @@ const $ = q => document.querySelector(q);
 const KEY = 'barn-secrets';
 function fresh(old = {}) {
   return {
-    v: 2, started: false, done: false, inv: [], got: [], held: null, solved: {}, hints: {},
+    v: 3, started: false, done: false, inv: [], got: [], held: null, solved: {}, hints: {},
     duck: !!old.duck, docOn: false, sound: old.sound ?? true,
-    parts: { lamp: false, arm: false, gauge: false }, loftSeen: false, ledgerLit: false,
+    parts: { lamp: false, arm: false, drill: false, suction: false, gauge: false }, loftSeen: false, ledgerLit: false, backSeen: false, sage: false,
+    eggs: { tray: [], scale: null, carton: [null, null, null, null, null] }, cabinet: { pulled: [], open: false },
     washer: { lid: false, drained: false, noteIn: false, feed: 0 },
     adder: { cols: [0, 0, 0], tape: [], total: 0 },
     reg: { keys: [0, 0, 0], flags: null, open: false },
@@ -278,7 +328,7 @@ function fresh(old = {}) {
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { }
-if (!S || S.v !== 2) S = fresh();
+if (!S || S.v !== 3) S = fresh();   // 3 since the stalls and the feed room (26 Nov)
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
 
 const has = id => S.inv.includes(id);
@@ -519,6 +569,8 @@ function drawDoc(x, now) {   // the whole of him standing on the barn floor, x i
   if (S.parts.arm) { line(x + 30, 64, x + 48, 56, C.rustL, 2); disc(x + 49, 56, 2, C.rust); line(x + 49, 57, x + 54, 72, C.rustL, 2); R(x + 53, 72, 3, 5, C.steelD); }
   else { R(x + 31, 63, 4, 4, C.rustD); line(x + 34, 66, x + 37, 80, C.ink); }   // a stub and a loose wire
   line(x + 31, 98, x + 42, 98, C.ironD, 2); oval(x + 46, 96, 7, 3, C.enamelDD); oval(x + 46, 95, 6, 2, C.enamel); oval(x + 46, 96, 3, 1, C.enamelD);
+  if (S.parts.drill) { line(x + 31, 84, x + 40, 112, C.ink); line(x + 40, 112, x + 38, 126, C.ink); R(x + 35, 124, 5, 12, C.steel); R(x + 36, 135, 2, 4, C.steelD); }
+  if (S.parts.suction) { ringO(x + 8, 132, 7, 6, C.ironD); ringO(x + 8, 132, 6, 5, C.iron); line(x + 12, 96, x + 8, 126, C.ironD, 2); }
   const ca = AN.dCrank; disc(x + 5, 114, 4, C.ironD); line(x + 5, 114, x + 5 + Math.cos(ca) * 7, 114 + Math.sin(ca) * 7, C.iron, 2);
   docHead(x + 7, 32, now);
 }
@@ -535,12 +587,12 @@ function duckSprite(x, y) {
 // you go Back to, and `at`, where it sits in that parent's picture (the zoom
 // goes in and out of that rectangle).
 const say = (k, v, who) => setMsg(fmt(STR[k] ?? k, v), who);
-const face = { dresser: 0, ship: 0 };
+const face = { dresser: 0, ship: 0, barn: 0 };
 let view = 'barn';
 const onDoc = id => giveDoc(id);
 
 // ----- the barn floor -----
-function drawBarn(now) {
+function drawBarnFront(now) {
   cached('barn', r => {
     planks(0, 0, W, 150, 14, r); floor(152, r);
     for (let i = 0; i < 260; i++) px((r() * W) | 0, 152 + ((r() * 48) | 0), r() < .5 ? '#c9a84a' : '#a8883a');
@@ -593,7 +645,7 @@ function ladder() {
   S.loftSeen = true; go('loft');
   if (first) { say('loftLit', null, 'doc'); save(); }
 }
-const barnSpots = () => [
+const barnFrontSpots = () => [
   { id: 'bench', x: 0, y: 44, w: 58, h: 104, label: STR.vBench, act: () => go('bench') },
   { id: 'doc', x: 60, y: 24, w: 46, h: 138, label: STR.sDoc, act: crankDoc, use: onDoc },
   { id: 'meters', x: 102, y: 66, w: 28, h: 88, label: STR.vMeters, act: () => go('meters') },
@@ -1206,6 +1258,7 @@ function armItem(x, y) {   // Doc's swing arm, lying down: two rusty bars and a 
   line(x - 1, y - 1, x + 30, y - 7, C.ink, 5); line(x + 31, y - 6, x + 52, y + 3, C.ink, 5);   // dark edges so it shows on the straw
   line(x, y, x + 30, y - 6, C.rustL, 3); disc(x + 31, y - 6, 3, C.rust); line(x + 32, y - 5, x + 52, y + 4, C.rustL, 3); R(x + 50, y + 2, 6, 5, C.steelD);
 }
+function drillItem(x, y) { R(x, y - 2, 26, 5, C.steel); R(x, y - 2, 26, 1, C.steelL); R(x + 26, y - 1, 6, 3, C.steelD); R(x + 32, y, 4, 1, C.steelD); line(x, y, x - 8, y + 6, C.ink, 2); }
 function gaugeItem(cx, cy) { disc(cx, cy, 8, C.ironD); disc(cx, cy, 7, C.white); line(cx, cy, cx - 4, cy - 3, C.red); px(cx, cy, C.ink); R(cx - 2, cy + 7, 4, 3, C.ironD); }
 function drawCrate() {
   const c = S.crate;
@@ -1229,7 +1282,7 @@ function drawCrate() {
       });
     } else {
       R(126, 90, 152, 72, '#2a1a0c'); bev(122, 66, 160, 22, C.wood, C.woodL, C.woodDD);
-      if (!got('gauge')) { oval(202, 130, 22, 12, '#a89c78'); dith(182, 120, 40, 22, '#8a7a5a', 3); gaugeItem(202, 126); }
+      if (!got('drill')) { oval(202, 130, 26, 10, '#a89c78'); dith(178, 122, 48, 18, '#8a7a5a', 3); drillItem(186, 128); }
     }
   } else {
     R(36, 40, 248, 152, C.wood);
@@ -1260,7 +1313,7 @@ function crateSpots() {
       out.push({ id: 'wu' + i, x: WHEELX[i] - 17, y: 92, w: 34, h: 26, label: fmt(STR.sCWUp, { n: i + 1, l: L }), act: () => turnWheel(i, 1) });
       out.push({ id: 'wd' + i, x: WHEELX[i] - 17, y: 128, w: 34, h: 26, label: fmt(STR.sCWDown, { n: i + 1, l: L }), act: () => turnWheel(i, -1) });
     });
-    else if (!got('gauge')) out.push({ id: 'gauge', x: 178, y: 112, w: 48, h: 34, label: STR.sCGauge, act: () => { give('gauge'); say('got', { item: inm('gauge') }); done(); } });
+    else if (!got('drill')) out.push({ id: 'drill', x: 174, y: 114, w: 56, h: 30, label: STR.sCDrill, act: () => { give('drill'); say('got', { item: inm('drill') }); done(); } });
     return out;
   }
   if (!c.unlocked) c.lock.forEach((d, i) => {
@@ -1327,8 +1380,231 @@ function meterSpots() {
   });
 }
 
+// ----- the back end of the barn -----
+// Turn round on the barn floor (26 Nov, the stalls and the feed room): three
+// stalls, Dusty's, Juniper's and Sage's, and the feed room door.
+const STALLS = [['dusty', 12], ['juniper', 86], ['sage', 160]];
+function drawBarnBack(now) {
+  cached('barnBack', r => {
+    planks(0, 0, W, 150, 14, r); floor(152, r);
+    for (let i = 0; i < 260; i++) px((r() * W) | 0, 152 + ((r() * 48) | 0), r() < .5 ? '#c9a84a' : '#a8883a');
+    R(0, 0, W, 28, C.woodDD); for (let x = 20; x < W; x += 40) R(x, 0, 6, 28, '#2a170a');
+    bev(0, 28, W, 6, C.wood, C.woodL, C.woodD);
+    for (let x = 0; x < W; x += 3) if (r() < .7) R(x, 34, 1, 1 + ((r() * 4) | 0), r() < .5 ? '#c9a84a' : '#e0c060');
+    for (const [, x] of STALLS) {
+      R(x, 56, 70, 96, C.woodDD); R(x + 4, 60, 62, 40, '#120a05');
+      for (let bx = x + 8; bx < x + 66; bx += 7) R(bx, 60, 2, 40, C.ironD);   // the bars on the upper half
+      bev(x, 56, 70, 5, C.wood, C.woodL, C.woodD);
+    }
+    // the feed room door
+    R(244, 56, 70, 94, C.woodDD); planks(248, 60, 62, 90, 8, r, [C.wood, C.woodD, '#7a4e28']);
+    bev(262, 70, 34, 11, C.paper, C.white, C.paperD); textC(STR.art_feed, 279, 73, C.ink);
+    disc(254, 108, 2, C.brass);
+  });
+  for (const [id, x] of STALLS) {
+    const open = id !== 'sage' || S.sage;
+    if (open && id === 'sage') {   // the door swung open into the aisle
+      R(x + 4, 100, 62, 50, '#1a100a'); dith(x + 6, 136, 58, 14, '#8a7030', 3);
+      bev(x + 60, 98, 14, 54, C.wood, C.woodL, C.woodDD);
+    } else {
+      bev(x + 2, 100, 66, 50, C.wood, C.woodL, C.woodDD); line(x + 4, 102, x + 66, 148, C.woodD, 2); line(x + 66, 102, x + 4, 148, C.woodD, 2);
+    }
+    const name = STR['n_' + id];
+    bev(x + 35 - (tw(name) >> 1) - 4, 104, tw(name) + 8, 10, C.brass, C.brassL, C.brassD); textC(name, x + 36, 106, C.ink);
+    if (id === 'sage' && !S.sage) {   // the bolt, its plate screwed down
+      R(x + 50, 120, 22, 6, C.steelD); bev(x + 46, 116, 10, 14, C.steel, C.steelL, C.steelD);
+      for (const [sx, sy] of [[x + 48, 118], [x + 53, 118], [x + 48, 127], [x + 53, 127]]) px(sx, sy, C.ink);
+    }
+  }
+  shade(160, 70, 220, .8);
+}
+function sageDoor() {
+  if (S.sage) return go('sage');
+  if (!S.parts.drill) { sfx.no(); return say('sageShut'); }
+  S.sage = true; sfx.whirr(); solve('sage'); say('sageOpen', null, 'doc'); done();
+}
+const barnBackSpots = () => [
+  { id: 'dusty', x: 12, y: 56, w: 70, h: 96, label: fmt(STR.sStall, { name: STR.n_dusty }), act: () => go('dusty') },
+  { id: 'juniper', x: 86, y: 56, w: 70, h: 96, label: fmt(STR.sStall, { name: STR.n_juniper }), act: () => go('juniper') },
+  { id: 'sage', x: 160, y: 56, w: 76, h: 96, label: fmt(STR.sStall, { name: STR.n_sage }), act: sageDoor },
+  { id: 'feed', x: 244, y: 56, w: 70, h: 94, label: STR.vFeed, act: () => go('feed') },
+];
+
+// ----- inside the stalls -----
+function stallBg(key) {
+  cached('stall', r => {
+    planks(0, 0, W, 160, 18, r, ['#5a3a20', '#4e321c', '#634228']);
+    R(0, 160, W, 40, '#6a5028'); for (let i = 0; i < 900; i++) px((r() * W) | 0, 158 + ((r() * 42) | 0), r() < .5 ? '#c9a84a' : '#a8883a');
+    bev(130, 20, 60, 34, C.woodD, C.wood, C.woodDD); R(134, 24, 52, 26, '#9cc4d8'); R(159, 24, 2, 26, C.woodD);   // a little window
+  });
+}
+function drawDusty() {
+  stallBg();
+  // a hay rack, a blanket over the rail, a brush and a tin of nails
+  R(20, 40, 80, 4, C.woodD); for (let x = 22; x < 100; x += 8) R(x, 44, 2, 40, C.woodD); R(20, 84, 80, 4, C.woodD);
+  dith(24, 60, 72, 24, '#c9a84a', 2);
+  R(200, 90, 110, 6, C.woodL); R(214, 90, 70, 50, '#6a2a3a'); dith(214, 90, 70, 50, '#8a3a4a', 3); R(214, 112, 70, 3, '#e0c060');
+  R(40, 170, 30, 10, C.woodL); for (let x = 42; x < 68; x += 2) R(x, 166, 1, 4, C.ink);
+  R(110, 168, 18, 16, C.steelD); R(110, 168, 18, 3, C.steel); textC(STR.art_nails, 119, 174, C.paper);
+  shade(160, 40, 220, .7);
+}
+const dustySpots = () => [
+  { id: 'blanket', x: 200, y: 86, w: 112, h: 58, label: STR.sBlanket, act: () => say('blanket') },
+  { id: 'rack', x: 18, y: 38, w: 84, h: 52, label: STR.sRack, act: () => say('rack') },
+  { id: 'nails', x: 104, y: 162, w: 30, h: 26, label: STR.sNails, act: () => say('nails') },
+];
+function eggSprite(cx, cy, L) {   // an egg, sized by its grade, with its pencil letter
+  const g = A.eggs[L], rx = 5 + (g >> 1), ry = 7 + (g >> 1);
+  oval(cx, cy, rx + 1, ry + 1, '#8a7a5a'); oval(cx, cy, rx, ry, '#f0e6d2'); px(cx - 2, cy - 3, C.white); px(cx - 2, cy - 2, C.white);
+  textC(L, cx + 1, cy - 1, '#6a6a6a');
+}
+function drawJuniper(now) {
+  stallBg();
+  // the nest box the hens took over
+  bev(90, 110, 140, 56, C.wood, C.woodL, C.woodDD); R(96, 116, 128, 34, '#2a1a0c'); dith(96, 134, 128, 16, '#c9a84a', 2);
+  if (!got('basket')) Object.keys(A.eggs).forEach((L, i) => eggSprite(112 + i * 24, 136, L));
+  for (let i = 0; i < 6; i++) { R(30 + i * 9, 150 + (i % 3) * 4, 6, 2, C.white); }   // feathers
+  shade(160, 40, 220, .7);
+}
+const juniperSpots = () => [
+  { id: 'nest', x: 88, y: 108, w: 144, h: 60, label: STR.sNest, act: () => { if (got('basket')) return say('nestEmpty'); give('basket'); say('nestEggs'); done(); } },
+];
+function drawSage() {
+  stallBg();
+  // the water trough and its plugged drain
+  R(60, 120, 200, 46, C.steelD); R(64, 120, 192, 6, C.steel); R(64, 126, 192, 36, '#3a3e42'); dith(64, 140, 192, 22, '#4a3a20', 2);
+  for (let x = 70; x < 256; x += 30) R(x, 126, 2, 36, '#2e3236');
+  R(64, 162, 8, 22, C.steelD); R(248, 162, 8, 22, C.steelD);
+  R(242, 150, 12, 10, '#2a2010'); if (!got('gauge')) dith(242, 150, 12, 10, '#5a4a20', 2);
+  shade(160, 40, 220, .7);
+}
+function trough() {
+  if (got('gauge')) return say('troughClear');
+  if (!S.parts.suction) { sfx.no(); return say('troughPlugged'); }
+  give('gauge'); sfx.whirr(); solve('trough'); say('troughSuck', null, 'doc'); done();
+}
+const sageSpots = () => [
+  { id: 'trough', x: 58, y: 116, w: 180, h: 52, label: STR.sTrough, act: () => say('troughSays') },
+  { id: 'drain', x: 236, y: 144, w: 24, h: 22, label: STR.sDrainPlug, act: trough },
+];
+
+// ----- the feed room -----
+function drawFeed(now) {
+  cached('feed', r => {
+    planks(0, 0, W, 176, 16, r); floor(178, r);
+    for (const [x, y] of [[8, 132], [44, 132], [26, 104], [8, 76]]) { R(x, y, 34, 30, C.sack); R(x, y, 34, 3, C.sackD); dith(x, y, 34, 30, C.sackD, 4); textC(STR.art_oats, x + 17, y + 12, '#4a3a20'); }
+    R(170, 122, 144, 6, C.woodL); R(170, 128, 144, 4, C.woodD); R(176, 132, 6, 46, C.woodD); R(302, 132, 6, 46, C.woodD);
+    // the cream separator, red, in the corner
+    R(60, 60, 4, 40, C.redD); disc(62, 54, 12, C.red); disc(62, 52, 10, C.redL); R(48, 98, 30, 6, C.ironD);
+  });
+  // the oak cabinet of thin drawers
+  bev(96, 46, 60, 124, C.wood, C.woodL, C.woodDD);
+  'ABCDE'.split('').forEach((L, i) => { const out = S.cabinet.pulled.includes(L) ? 3 : 0; bev(100, 56 + i * 21 + out, 52, 17, C.woodL, '#d09a5a', C.woodD); textC(L, 127, 62 + i * 21 + out, C.ink); });
+  if (S.cabinet.open) R(100, 48, 52, 6, '#120a05');
+  // the egg scale and the carton on the bench
+  R(196, 104, 4, 18, C.ironD); disc(198, 100, 7, C.ironD); disc(198, 100, 6, C.white); line(198, 100, 202, 96, C.red); oval(206, 92, 8, 2, C.steel);
+  R(236, 112, 66, 10, C.paperD); for (let i = 0; i < 5; i++) oval(242 + i * 13, 112, 5, 2, '#8a7a5a');
+  S.eggs.carton.forEach((L, i) => { if (L) oval(242 + i * 13, 109, 3, 4, '#f0e6d2'); });
+  shade(160, 40, 220, .7);
+}
+const feedSpots = () => [
+  { id: 'sacks', x: 4, y: 70, w: 80, h: 96, label: STR.sSacks, act: () => say('sacks') },
+  { id: 'separator', x: 44, y: 38, w: 40, h: 68, label: STR.sSeparator, act: () => say('separator') },
+  { id: 'cabinet', x: 92, y: 42, w: 68, h: 132, label: STR.vCabinet, act: () => go('cabinet') },
+  { id: 'eggs', x: 180, y: 80, w: 130, h: 46, label: STR.vEggs, act: () => go('eggs') },
+];
+
+// ----- the egg scale and the carton -----
+// Grade every egg by weight and put it in its cup; read left to right, the
+// pencil letters on them are the order for the cabinet's drawers.
+const CUPX = i => 64 + i * 48, TRAYX2 = i => 156 + i * 30;
+function drawEggs(now) {
+  bgBench(118);
+  // the egg scale: a cup on top, a dial of grades
+  R(60, 60, 10, 58, C.ironD); disc(66, 96, 26, C.ironD); disc(66, 96, 24, '#efe8d8');
+  GRADES.forEach((g, i) => { const a = Math.PI * (1 - i / 4), x = 66 + Math.cos(a) * 18, y = 98 - Math.sin(a) * 17; textC(STR['gr_' + g][0], x + 1, y - 2, C.ink); });
+  const gi = S.eggs.scale ? A.eggs[S.eggs.scale] : -1;
+  const an = Math.PI * (1 - Math.max(0, gi) / 4) + (gi < 0 ? .5 : 0);
+  line(66, 100, 66 + Math.cos(an) * 15, 100 - Math.sin(an) * 14, C.red, 2); disc(66, 100, 2, C.ink);
+  oval(66, 52, 22, 5, C.steelD); oval(66, 51, 20, 4, C.steel); R(64, 54, 4, 8, C.steelD);
+  if (S.eggs.scale) eggSprite(66, 42, S.eggs.scale);
+  // the tray of eggs still to weigh
+  bev(140, 50, 160, 30, C.wood, C.woodL, C.woodDD);
+  S.eggs.tray.forEach((L, i) => eggSprite(TRAYX2(i), 62, L));
+  // the carton, a cup a grade
+  R(36, 140, 248, 44, C.paperD); R(36, 140, 248, 3, C.paper);
+  GRADES.forEach((g, i) => { oval(CUPX(i), 156, 16, 8, '#a89c78'); oval(CUPX(i), 157, 13, 6, '#8a7a5a'); textC(STR['gr_' + g], CUPX(i) + 1, 172, C.ink); if (S.eggs.carton[i]) eggSprite(CUPX(i), 150, S.eggs.carton[i]); });
+  shade(160, 90, 210, .6);
+}
+function eggsSpots() {
+  const e = S.eggs, out = [];
+  out.push({
+    id: 'tray', x: 138, y: 46, w: 164, h: 38, label: STR.sTray,
+    act: () => say(e.tray.length ? 'trayEggs' : 'trayEmpty'),
+    use: id => { if (id !== 'basket') return false; useUp('basket'); e.tray = Object.keys(A.eggs); sfx.pick(); say('basketOut'); done(); },
+  });
+  e.tray.forEach((L, i) => out.push({
+    id: 'tray-' + L, x: TRAYX2(i) - 12, y: 48, w: 24, h: 30, label: fmt(STR.sEgg, { l: L }),
+    act: () => { if (e.scale) e.tray.push(e.scale); e.scale = L; e.tray = e.tray.filter(x => x !== L); sfx.clunk(); say('eggWeigh', { l: L, g: STR['gr_' + GRADES[A.eggs[L]]] }); done(); },
+  }));
+  out.push({ id: 'scale', x: 38, y: 30, w: 58, h: 92, label: STR.sEggScale, act: () => e.scale ? say('eggWeigh', { l: e.scale, g: STR['gr_' + GRADES[A.eggs[e.scale]]] }) : say('eggScale') });
+  GRADES.forEach((g, i) => out.push({
+    id: 'cup' + i, x: CUPX(i) - 22, y: 136, w: 44, h: 46, label: fmt(STR.sCup, { g: STR['gr_' + g] }) + (e.carton[i] ? ', ' + fmt(STR.sEgg, { l: e.carton[i] }) : ''),
+    act: () => {
+      if (e.carton[i]) { e.tray.push(e.carton[i]); e.carton[i] = null; sfx.click(); setMsg(''); return done(); }
+      if (!e.scale) return say('cupEmpty', { g: STR['gr_' + g] });
+      e.carton[i] = e.scale; e.scale = null; sfx.click(); setMsg('');
+      if (e.carton.every((L, k) => L && A.eggs[L] === k)) { solve('eggs'); say('cartonDone'); }
+      done();
+    },
+  }));
+  return out;
+}
+
+// ----- the cabinet of thin drawers -----
+const cabinetOrder = () => Object.keys(A.eggs).sort((a, b) => A.eggs[a] - A.eggs[b]);
+function drawCabinet() {
+  bgFloor();
+  bev(96, 14, 128, 176, C.wood, C.woodL, C.woodDD); bev(90, 10, 140, 10, C.woodL, '#d09a5a', C.woodD);
+  if (S.cabinet.open) { R(104, 22, 112, 16, '#120a05'); if (!got('suction')) { line(110, 32, 150, 28, C.ironD, 4); line(150, 28, 200, 34, C.ironD, 4); disc(204, 34, 4, C.steel); } }
+  else bev(104, 22, 112, 16, C.wood, C.woodD, C.woodL);
+  'ABCDE'.split('').forEach((L, i) => {
+    const out = S.cabinet.pulled.includes(L), y = 44 + i * 28 + (out ? 6 : 0), gx = out ? 4 : 0;
+    if (out) { R(108, y - 6, 104, 6, '#2a1a0c'); for (let k = 0; k < 4; k++) R(114 + k * 24, y - 5, 18, 4, [C.green, C.red, C.paper, C.yellow][k]); }
+    bev(104 - gx, y, 112 + 2 * gx, 24, C.woodL, '#d09a5a', C.woodD);
+    bev(150, y + 7, 20, 10, C.brass, C.brassL, C.brassD); textC(L, 161, y + 9, C.ink);
+    disc(124 - gx, y + 12, 2, C.brassD); disc(196 + gx, y + 12, 2, C.brassD);
+  });
+  shade(160, 80, 200, .7);
+}
+function cabinetSpots() {
+  const c = S.cabinet, out = [];
+  'ABCDE'.split('').forEach((L, i) => out.push({
+    id: 'drawer' + L, x: 100, y: 42 + i * 28, w: 120, h: 28, label: fmt(STR.sThin, { l: L }),
+    act: () => {
+      if (c.open) return say('thinSeeds');
+      if (c.pulled.includes(L)) return say('thinSeeds');
+      if (cabinetOrder()[c.pulled.length] !== L) { c.pulled = []; sfx.clunk(); say('thinSlam'); return done(); }
+      c.pulled.push(L); sfx.creak();
+      if (c.pulled.length === 5) { c.open = true; setTimeout(sfx.clunk, 150); solve('cabinet'); say('thinOpen'); } else say('thinSeeds');
+      done();
+    },
+  }));
+  if (c.open && !got('suction')) out.push({ id: 'suction', x: 104, y: 20, w: 112, h: 20, label: STR.sHose, act: () => { give('suction'); say('got', { item: inm('suction') }); done(); } });
+  return out;
+}
+
+// the barn floor turns round: its front (Doc, the doors) or its back end
+const drawBarn = now => face.barn ? drawBarnBack(now) : drawBarnFront(now);
+const barnSpots = () => face.barn ? barnBackSpots() : barnFrontSpots();
 const VIEWS = {
-  barn: { title: 'vBarn', draw: drawBarn, spots: barnSpots },
+  barn: { title: 'vBarn', draw: drawBarn, spots: barnSpots, faces: () => ['faceBarnFront', 'faceBarnBack'] },
+  dusty: { title: 'vDusty', draw: drawDusty, spots: dustySpots, parent: 'barn', at: [12, 56, 70, 96] },
+  juniper: { title: 'vJuniper', draw: drawJuniper, spots: juniperSpots, parent: 'barn', at: [86, 56, 70, 96] },
+  sage: { title: 'vSage', draw: drawSage, spots: sageSpots, parent: 'barn', at: [160, 56, 76, 96] },
+  feed: { title: 'vFeed', draw: drawFeed, spots: feedSpots, parent: 'barn', at: [244, 56, 70, 94] },
+  eggs: { title: 'vEggs', draw: drawEggs, spots: eggsSpots, parent: 'feed', at: [180, 80, 130, 46] },
+  cabinet: { title: 'vCabinet', draw: drawCabinet, spots: cabinetSpots, parent: 'feed', at: [92, 42, 68, 132] },
   bench: { title: 'vBench', draw: drawBench, spots: benchSpots, parent: 'barn', at: [0, 44, 58, 104] },
   tack: { title: 'vTack', draw: drawTack, spots: tackSpots, parent: 'barn', at: [272, 56, 48, 94] },
   loft: { title: 'vLoft', draw: drawLoft, spots: loftSpots, parent: 'barn', at: [232, 14, 42, 28] },
@@ -1356,8 +1632,8 @@ function giveDoc(id) {
   S.held = null; S.docOn = true; AN.flick = performance.now();
   if (PARTS_OF_DOC.includes(id)) {
     useUp(id); S.parts[id] = true; solve(id); sfx.whirr();
-    if (id === 'gauge') { S.done = true; done(); return endCard(); }
-    say(id === 'lamp' ? 'docLamp' : 'docArm', null, 'doc');
+    if (PARTS_OF_DOC.every(p => S.parts[p])) { S.done = true; done(); return endCard(); }
+    say({ lamp: 'docLamp', arm: 'docArm', drill: 'docDrill', suction: 'docSuction', gauge: 'docGauge' }[id], null, 'doc');
     return done();
   }
   if (id === 'ledger') {
@@ -1391,7 +1667,17 @@ const STEPS = [
     key: () => { const gr = S.grinder; if (gr.jam) return 'grinder.jam'; if (gr.built.length < 4) return S.ledgerLit ? 'grinder.parts' : 'grinder.which'; if (!gr.crank) return 'grinder.crank'; if (!gr.out) return 'grinder.turn'; return 'grinder.take'; } },
   { view: 'crate', left: () => !S.solved.box, ready: () => S.crate.lid, key: () => got('chart') ? 'box' : 'box.nochart' },
   { view: 'ship', left: () => !S.solved.box, ready: () => got('chart'), key: () => 'box' },
-  { view: 'crate', left: () => !got('gauge'), ready: () => !!S.solved.box, key: () => 'gauge.take' },
+  { view: 'crate', left: () => !got('drill'), ready: () => !!S.solved.box, key: () => 'drill.take' },
+  { view: 'barn', left: () => !S.parts.drill, ready: () => has('drill'), key: () => 'drill' },
+  { view: 'barn', left: () => !S.backSeen, ready: () => true, key: () => 'back' },
+  { view: 'barn', left: () => !S.sage, ready: () => S.parts.drill, key: () => 'sage' },
+  { view: 'juniper', left: () => !got('basket'), ready: () => S.backSeen, key: () => 'eggs.find' },
+  { view: 'feed', left: () => has('basket'), ready: () => has('basket'), key: () => 'eggs.tray' },
+  { view: 'eggs', left: () => !S.solved.eggs, ready: () => S.eggs.tray.length + S.eggs.carton.filter(Boolean).length + (S.eggs.scale ? 1 : 0) > 0, key: () => 'eggs' },
+  { view: 'cabinet', left: () => !S.solved.cabinet, ready: () => !!S.solved.eggs, key: () => 'cabinet' },
+  { view: 'cabinet', left: () => !got('suction'), ready: () => !!S.solved.cabinet, key: () => 'suction.take' },
+  { view: 'barn', left: () => !S.parts.suction, ready: () => has('suction'), key: () => 'suction' },
+  { view: 'sage', left: () => !got('gauge'), ready: () => S.sage && S.parts.suction, key: () => 'trough' },
   { view: 'barn', left: () => !S.parts.gauge, ready: () => has('gauge'), key: () => 'gauge' },
 ];
 function hintNow() {
@@ -1489,6 +1775,9 @@ function icon(id) {
     case 'lamp': lampItem(10, 12); break;
     case 'arm': line(2, 16, 11, 9, C.rustL, 2); disc(12, 9, 2, C.rust); line(12, 10, 20, 18, C.rustL, 2); break;
     case 'gauge': gaugeItem(12, 11); break;
+    case 'drill': drillItem(4, 12); break;
+    case 'suction': ringO(12, 12, 8, 7, C.ironD); ringO(12, 12, 7, 6, C.iron); ringO(12, 12, 4, 3, C.iron); disc(20, 12, 2, C.steel); break;
+    case 'basket': R(4, 12, 16, 9, '#a8844a'); for (let x = 5; x < 20; x += 3) R(x, 12, 1, 9, '#7a5a2a'); ringO(12, 12, 7, 7, '#7a5a2a', Math.PI, Math.PI * 2); oval(9, 11, 3, 3, '#f0e6d2'); oval(15, 11, 3, 3, '#f0e6d2'); break;
     case 'chart': R(3, 5, 18, 14, C.paper); flag('S', 5, 7, 6, 4); flag('R', 13, 7, 6, 4); flag('T', 5, 13, 6, 4); flag('O', 13, 13, 6, 4); break;
     case 'penny': case 'nickel': case 'dime': coin(12, 12, id); break;
     case 'crank': R(3, 14, 15, 3, C.iron); R(16, 6, 3, 10, C.iron); R(15, 3, 5, 5, C.woodL); break;
@@ -1522,7 +1811,7 @@ const ACTS = {
   start: () => { S.started = true; save(); closeCard(); setMsg(STR.startHow); },
   over: () => card(`<h2 id="cardTitle">${esc(STR.overTitle)}</h2><p>${esc(STR.overLine)}</p><div class="row"><button class="btn" type="button" data-act="startCard">${esc(STR.cancel)}</button><button class="btn go" type="button" data-act="wipe">${esc(STR.overGo)}</button></div>`),
   showDoc: () => { closeCard(); giveDoc('ledger'); },
-  wipe: () => { S = fresh(S); S.started = true; save(); view = 'barn'; face.dresser = face.ship = 0; AN.needles = [0, 0, 0]; AN.tilt = 0; closeCard(); setMsg(STR.startHow); },
+  wipe: () => { S = fresh(S); S.started = true; save(); view = 'barn'; face.dresser = face.ship = face.barn = 0; AN.needles = [0, 0, 0]; AN.tilt = 0; closeCard(); setMsg(STR.startHow); },
   startCard: () => startCard(),
 };
 function startCard() {
@@ -1570,6 +1859,7 @@ function turn(step) {
   const faces = VIEWS[view].faces && VIEWS[view].faces();
   if (!faces) return;
   face[view] = (face[view] + step + faces.length) % faces.length;
+  if (view === 'barn' && face.barn === 1 && !S.backSeen) { S.backSeen = true; save(); }
   sfx.creak(); setMsg(STR[VIEWS[view].title] + ', ' + STR[faces[face[view]]] + '.');
   refresh();
 }
