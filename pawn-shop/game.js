@@ -48,6 +48,7 @@ const STR = {
     '<b>Downtown:</b> houses with a sign out are having a yard sale, and your rival has a shop. He prices high, but sometimes he gets one wrong.',
     '<b>Your rival:</b> he comes into your shop too, and snaps up anything you\'ve priced far too low.',
     '<b>Good deeds:</b> tell a seller their find is worth more, let a kid have a toy for what they have, mail a photo album home, help your rival, give things away at the box by the door. Sometimes kindness comes back to you. Sometimes it doesn\'t. Your good deeds are listed at the bottom of this help.',
+    '<b>Bigger shops:</b> at the rent board, move to a bigger shop once you\'ve paid enough rents on time: more places to put things out, more customers, more rent. Pick a landlord when you move: cheap and strict, fair, or kind.',
     '<b>Be kind:</b> sometimes a seller is hunting for something another stall has. Buy it and bring it to them.',
     '<b>The online store:</b> at the desk. Everything costs too much and there\'s no haggling, but sometimes it\'s the only place to get what you need.',
     '<b>Quiet days:</b> some days are slow, and around lunch the street goes quiet. Not everyone who comes in buys.',
@@ -273,6 +274,18 @@ const STR = {
   spotTitle: { table: 'A table', case: 'The glass case', rack: 'The rack' },
   spotEmpty: 'Empty. Put a find out here?', spotNone: 'Nothing in the back room to put out.',
   // the rent board
+  // bigger shops and landlords (his asks)
+  boardMove: 'Move to a new shop', moveTitle: 'Shops for rent', moveText: 'A bigger shop has more places to put things out, and more people come in. Moving costs a deposit of one week\'s rent.',
+  shops: { 1: { name: 'A little shop', line: '{n} places to put things out.' }, 2: { name: 'The corner thrift', line: '{n} places to put things out, and more people walk by.' }, 3: { name: 'A store on Main Street', line: '{n} places to put things out, on the busiest street in town.' } },
+  moveNeed: 'Pay {n} rents on time first.', moveHere: 'You\'re here.', moveLook: 'See landlords',
+  lordTitle: 'Pick a landlord', lordText: '{shop}. Moving costs a deposit of one week\'s rent.',
+  lords: {
+    crabtree: { name: 'Mr. Crabtree', line: 'Cheapest rent in town. Late? That\'s a ${late} fee, and every new lease costs ${up} more a week.' },
+    kettle: { name: 'Mrs. Kettle', line: 'Fair rent. A ${late} late fee, and ${up} more a week each new lease.' },
+    bealou: { name: 'Bea and Lou', line: 'A bit more rent, but they never raise it, and once a lease, if you\'re short, there\'s no late fee.' },
+  },
+  lordRent: 'Rent ${n} a week', lordPick: 'Move in (deposit ${n})', moved: 'Moved in! {shop}, with {who} as your landlord.',
+  boardLord: 'Your landlord is {who}.', rentShortNoFee: 'You\'re ${n} short. It carries over to next time.', forgiven: 'Bea and Lou say: pay the rest when you can. No late fee this time.',
   boardTitle: 'Rent', boardText: 'Rent is ${rent}, due on day {day}. The Rent Pool has ${pool}.',
   boardOwed: 'Still owed from last time: ${n}.', boardSplit: 'Each sale puts what you paid for the find into the Rent Pool. Only the profit goes in your pocket.',
   // customers and the register
@@ -533,6 +546,12 @@ const RIDES = {
 };
 const NEED = { swap: 1, downtown: 1, dump: 2, sell: 2 };
 const ride = () => RIDES[S.ride] || RIDES.car;
+// landlords: rent times this, the late fee, the rise each new lease, and
+// whether a short week once a lease goes without a fee. Mrs. Kettle's numbers
+// are the old rules, so every shop from before has her. Ours.
+const LORDS = { crabtree: { mult: .85, late: 50, up: 50 }, kettle: { mult: 1, late: 10, up: 25 }, bealou: { mult: 1.1, late: 0, up: 0, forgive: true } };
+const lord = () => LORDS[S.landlord] || LORDS.kettle;
+const tier = () => TUNE.tiers[(S.tier || 1) - 1];
 const CAR_PARTS = ['hubcap', 'tire', 'hoodorn', 'headlamp', 'license'];
 const DUMP_FINDS = ['computer', 'computer', 'cart', ...TOOLS, ...TOOLS, ...CAR_PARTS, 'shovel', 'iron', 'sharpener', 'typewriter', 'lantern', 'grinder', 'canteen', 'tincar', 'truck', 'enlarger', 'boxcam', 'moviecam', 'insulator', 'scale', 'shiplamp'];
 const TOYS = ['robot', 'tincar', 'figure', 'sub', 'truck', 'plane', 'biplane'];
@@ -586,6 +605,11 @@ const TUNE = {
   // the play corner: $15 a go is his; the rest ours
   play: 15, playTime: [8, 12], cornerCarts: 4, gamer: .3, gamerPerCart: .07,
   kidChance: .15,
+  // bigger shops (his tiers: a starter, a corner thrift, a Main Street store):
+  // places to put things out, width, base rent, rents paid on time to get
+  // there, and how much more often customers come. His: the tiers and 12, then
+  // 20 places. The rest ours.
+  tiers: [{ spots: 5, w: 20, rent: 300, need: 0, busy: 1 }, { spots: 12, w: 30, rent: 450, need: 2, busy: .85 }, { spots: 20, w: 36, rent: 650, need: 5, busy: .7 }],
   // good deeds: how often each comes up and what sometimes comes back. Ours.
   kidShop: .12, kidHas: 3, kidMax: 30, rivalTrouble: .3, stamps: 3, friendChance: .15,
   honestKeep: .5, honestFair: .6, honestFriend: .4, kidFriend: .3, mailOdds: { letter: .5, gift: .2 }, mailGift: 10, rivalOdds: { tip: .35, thanks: .3 },
@@ -641,6 +665,7 @@ function useFile(n, m) {
   Object.assign(S, fresh(), { sound: true, seenHelp: false }, d);
   // a shop from before rides (27 Nov) keeps the car it had; only new files start on foot
   if (d.day && !('ride' in d)) S.ride = d.armor === 'kept' ? 'tank' : 'car';
+  layoutShop();
   if (!S.today) S.today = pickToday();
   SaveFiles.badge($('#whoBtn'), n, m);
 }
@@ -958,7 +983,7 @@ const inBack = () => S.stock.filter(f => spotOf(f) < 0 && !inCorner(f) && !onBen
 // Laid out 26 Nov: the desk with the camera top left, three tables, the glass
 // case and the rack, the register counter by the door. The back wall holds
 // the rent board.
-const SHOP = [
+let SHOP = [
   { id: 'desk', x: 1, y: 2, w: 3, h: 2, stand: { x: 2.5, y: 4.6 }, act: 'actDesk' },
   { id: 'spot0', x: 5, y: 4, w: 2, h: 1, stand: { x: 6, y: 5.6 }, spot: 0, kind: 'table', act: 'actTable' },
   { id: 'spot1', x: 9, y: 4, w: 2, h: 1, stand: { x: 10, y: 5.6 }, spot: 1, kind: 'table', act: 'actTable' },
@@ -979,6 +1004,15 @@ const SHOP = [
   { id: 'bench', x: 16.4, y: 6.4, w: 2.4, h: 1, stand: { x: 17.4, y: 7.8 }, act: 'actBench', only: () => S.bench },
   { id: 'tank', x: 7.8, y: 6.9, w: 2.8, h: 1.4, stand: { x: 9.2, y: 8.9 }, act: 'actTank', only: () => S.tank },
 ];
+// a bigger shop is wider, with more tables to the right (27 Nov)
+const BASE_SHOP = SHOP;
+// three columns for the corner thrift, five for Main Street; three rows each
+const EXTRA_TABLES = [20, 23.2, 26.4, 29.6, 32.8].flatMap(x => [4, 7, 9].map(y => [x, y]));
+function layoutShop() {
+  const n = tier().spots;
+  SHOP = [...BASE_SHOP, ...EXTRA_TABLES.slice(0, n - 5).map(([x, y], i) => ({ id: 'spot' + (5 + i), x, y, w: 2, h: 1, stand: { x: x + 1, y: y + 1.6 }, spot: 5 + i, kind: 'table', act: 'actTable' }))];
+  while (S.spots.length < n) S.spots.push(null);
+}
 const SHOP_DOOR = { x: 10, y: 11.8 }, REG_FRONT = { x: 14.5, y: 9.6 };
 // ---------- Where to buy ----------
 // Decided 26 Nov (Randi's asks): a different pair of yard sales each morning,
@@ -1336,6 +1370,9 @@ $('#card').addEventListener('click', e => {
   else if (a === 'love') { closeCard(); showBar(); }
   else if (a === 'kidBuy') kidBuy();
   else if (a === 'buyRide') buyRide();
+  else if (a === 'moveList') moveCard();
+  else if (a === 'lordList') lordCard(+b.dataset.tier);
+  else if (a === 'moveIn') moveIn(+b.dataset.tier, b.dataset.lord);
   else if (a === 'honest') honest(+b.dataset.slot);
   else if (a === 'helpRival') helpRival();
   else if (a === 'donate') donate(byUid(+b.dataset.uid));
@@ -2018,7 +2055,7 @@ function backToShop() {
   if (hot.length) { SFX.siren(); confiscate(hot, 'copsShopTitle', 'copsShop'); endAfterCops = selling; }
   else if (selling) endDay();
 }
-function enterShop() { queue.length = 0; scene = 'shop'; MK = null; custs = []; floats = []; P.route = null; setWidth(20); }
+function enterShop() { queue.length = 0; scene = 'shop'; MK = null; custs = []; floats = []; P.route = null; layoutShop(); setWidth(tier().w); }
 // stolen things go back to their owner, and what you paid for them is gone
 function confiscate(list, title, words) {
   S.stock = S.stock.filter(f => !list.includes(f)); save();
@@ -2202,7 +2239,32 @@ function fleetOut(name) {
 }
 // ----- the rent board -----
 function boardCard() {
-  openCard(`${h2(t('boardTitle'))}<p>${t('boardText', { rent: S.rent, day: S.rentDay, pool: S.pool })}</p>${S.owed ? `<p>${t('boardOwed', { n: S.owed })}</p>` : ''}<p class="note">${t('boardSplit')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+  openCard(`${h2(t('boardTitle'))}<p>${t('boardText', { rent: S.rent, day: S.rentDay, pool: S.pool })}</p>${S.owed ? `<p>${t('boardOwed', { n: S.owed })}</p>` : ''}<p class="soft">${t('boardLord', { who: t(`lords.${S.landlord || 'kettle'}.name`) })}</p><p class="note">${t('boardSplit')}</p>
+    <div class="row">${btn('moveList', t('boardMove'))}${btn('close', t('done'), true)}</div>`);
+}
+// Bigger shops and landlords (his asks, 27 Nov). Moving keeps everything you
+// have; the lease starts over and the deposit is one week of the new rent.
+function moveCard() {
+  const rows = TUNE.tiers.map((tr, i) => {
+    const n = i + 1, here = n === (S.tier || 1), locked = S.paidRents < tr.need, small = n < (S.tier || 1);
+    if (small) return '';
+    return `<li><span><b>${t(`shops.${n}.name`)}</b><br><small>${t(`shops.${n}.line`, { n: tr.spots })} ${locked ? t('moveNeed', { n: tr.need }) : here ? t('moveHere') : ''}</small></span> ${btn('lordList', t('moveLook'), false, `data-tier="${n}" ${locked ? 'disabled' : ''}`)}</li>`;
+  }).join('');
+  openCard(`${h2(t('moveTitle'))}<p>${t('moveText')}</p><ul class="store">${rows}</ul><div class="row">${btn('close', t('done'), true)}</div>`);
+}
+const lordRent = (n, id) => round5(TUNE.tiers[n - 1].rent * LORDS[id].mult);
+function lordCard(n) {
+  const rows = Object.keys(LORDS).map(id => {
+    const L = LORDS[id], rent = lordRent(n, id), same = n === (S.tier || 1) && id === (S.landlord || 'kettle');
+    return `<li><span><b>${t(`lords.${id}.name`)}</b> · ${t('lordRent', { n: rent })}<br><small>${t(`lords.${id}.line`, { late: L.late, up: L.up })}</small></span> ${btn('moveIn', same ? t('moveHere') : t('lordPick', { n: rent }), !same, `data-tier="${n}" data-lord="${id}" ${same || S.pocket < rent ? 'disabled' : ''}`)}</li>`;
+  }).join('');
+  openCard(`${h2(t('lordTitle'))}<p>${t('lordText', { shop: t(`shops.${n}.name`) })}</p><ul class="store">${rows}</ul><div class="row">${btn('moveList', t('back'), true)}</div>`, null, 'moveList');
+}
+function moveIn(n, id) {
+  const rent = lordRent(n, id); if (S.pocket < rent) return;
+  S.pocket -= rent; S.tier = n; S.landlord = id; S.rent = rent; S.rentN = 0; S.rentDay = S.day + TUNE.rentEvery; S.forgiven = false;
+  save(); closeCard(); enterShop(); P.x = 10; P.y = 9.5; SFX.wow(); showBar();
+  say(t('moved', { shop: t(`shops.${n}.name`), who: t(`lords.${id}.name`) }));
 }
 
 // ---------- The day ----------
@@ -2227,7 +2289,7 @@ function stepDay(dt) {
   if (S.clock <= TUNE.dayLen) benchTick(dt / TUNE.dayLen * 8);
   if (S.clock < TUNE.dayLen) {
     if (inLull()) { if (!S.lull.said) { S.lull.said = true; say(t('lull')); } }
-    else { spawnT -= dt; if (spawnT <= 0) { spawnT = randIn(TUNE.custEvery) * moodGap() * (S.tank && S.frogs ? TUNE.frogMagnet : 1) * (S.armor === 'kept' ? TUNE.armorMagnet : 1); spawnCust(); } }
+    else { spawnT -= dt; if (spawnT <= 0) { spawnT = randIn(TUNE.custEvery) * tier().busy * moodGap() * (S.tank && S.frogs ? TUNE.frogMagnet : 1) * (S.armor === 'kept' ? TUNE.armorMagnet : 1); spawnCust(); } }
   } else if (!stepDay.closing) { stepDay.closing = true; say(t('closing')); }
   if (S.clock >= TUNE.dayLen && !custs.length) { stepDay.closing = false; endDay(); }
   if (Math.floor(S.clock) % 5 === 0 && Math.floor(S.clock) !== stepDay.saved) { stepDay.saved = Math.floor(S.clock); save(); }
@@ -2244,17 +2306,20 @@ function rentCard() {
   const due = S.rent + S.owed;
   const fromPool = Math.min(S.pool, due), fromPocket = Math.min(S.pocket, due - fromPool), short = due - fromPool - fromPocket;
   S.pool -= fromPool; S.pocket -= fromPocket;
-  S.owed = short ? short + TUNE.late : 0;
+  // Bea and Lou let one short week a lease go without a fee
+  const kind = short && lord().forgive && !S.forgiven;
+  if (kind) S.forgiven = true;
+  S.owed = short ? short + (kind ? 0 : lord().late) : 0;
   if (!short) S.paidRents++;
   S.rentDay += TUNE.rentEvery; S.rentN = (S.rentN || 0) + 1;
   const newLease = S.rentN % TUNE.lease === 0;
-  if (newLease) S.rent += TUNE.rentUp;
+  if (newLease) { S.rent += lord().up; S.forgiven = false; }
   save();
   if (short) SFX.no(); else SFX.ching();
   const paid = t('rentPaid', { rent: fromPool + fromPocket, fromPool, more: fromPocket ? t('rentMore', { n: fromPocket }) : '' });
   const won = !S.won && S.paidRents >= TUNE.winAfter;
   if (won) { S.won = true; save(); }
-  openCard(`${h2(t('rentTitle'))}<p>${paid}</p>${short ? `<p>${t('rentShort', { n: short, fee: TUNE.late })}</p>` : ''}<p class="soft">${newLease ? t('leaseNew', { rent: S.rent }) + ' ' : ''}${t('rentNext', { rent: S.rent, day: S.rentDay })} ${newLease ? '' : t('leaseLeft', { n: TUNE.lease - S.rentN % TUNE.lease })}</p>
+  openCard(`${h2(t('rentTitle'))}<p>${paid}</p>${short ? `<p>${kind ? t('forgiven') : lord().late ? t('rentShort', { n: short, fee: lord().late }) : t('rentShortNoFee', { n: short })}</p>` : ''}<p class="soft">${newLease ? t('leaseNew', { rent: S.rent }) + ' ' : ''}${t('rentNext', { rent: S.rent, day: S.rentDay })} ${newLease ? '' : t('leaseLeft', { n: TUNE.lease - S.rentN % TUNE.lease })}</p>
     ${won ? `<p class="note"><b>${t('wonTitle')}</b> ${t('wonText')}</p>` : ''}<div class="row">${btn('nextDay', t('nextDay'), true)}</div>`, null, 'none');
   if (won) SFX.wow();
   showBar();
@@ -2608,7 +2673,7 @@ function drawTag(n, x, y) {
   text(s, x - w / 2 + 2, y + 2, '#2a1a10');
 }
 function drawShop(now) {
-  for (let j = 2; j < 11; j++) for (let i = 1; i < 19; i++) put(floorTile((i * 7 + j * 3) % 4), i * T, j * T);
+  for (let j = 2; j < 11; j++) for (let i = 1; i < W - 1; i++) put(floorTile((i * 7 + j * 3) % 4), i * T, j * T);
   // the back wall: wallpaper over dark wood, shelves of odds and ends
   px(0, 0, W * T, 22, '#e8d8b0');
   for (let i = 0; i < W * T; i += 8) px(i, 0, 2, 22, '#dcc89c');
@@ -2628,7 +2693,7 @@ function drawShop(now) {
   px(0, 11 * T, W * T, T, '#4e2f1a');
   // the windows look grey and wet on a slow, rainy day
   const rain = S.phase === 'open' && S.mood === 'slow';
-  for (const wx of [3, 13]) {
+  for (const wx of [3, 13, 21, 29].filter(x => x + 4 < W)) {
     px(wx * T, 11 * T + 3, 4 * T, 10, rain ? '#8a98a4' : '#a8d8f0');
     if (rain) for (let k = 0; k < 6; k++) px(wx * T + 4 + k * 10, 11 * T + 4 + ((now / 40 + k * 5) % 8), 1, 2, '#d8e4ec'); px(wx * T + 6, 11 * T + 4, 10, 2, '#e8f8ff');
     px(wx * T, 11 * T + 3, 4 * T, 1, '#2a1a10');
