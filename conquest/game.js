@@ -85,7 +85,8 @@ const STR = {
   gameGone: 'This game link doesn’t work. It may have a typo.',
   yourOnline: 'Your online games', olPlay: 'Play', olYou: 'You are {team}',
   olYourTurn: 'your turn (turn {n})', olWaiting: 'waiting for {team} (turn {n})', olOffline: 'couldn’t check it right now',
-  localSaved: 'This device has a game in progress (turn {n}). Tap Keep playing to go on with it.',
+  localSaved: 'This file has a game in progress (turn {n}). Tap Keep playing to go on with it.',
+  pickFile: 'Pick a file', fileTurn: 'Turn {n} · {level}', fileNone: 'No game in progress',
   needPlayer: 'Pick Player for at least one team.',
   team_green: 'Green', team_red: 'Red', team_yellow: 'Yellow', team_blue: 'Blue', team_orange: 'Orange',
   districts: 'Districts', district: 'District {n}', dEmpty: 'Empty',
@@ -562,10 +563,27 @@ const lvl = () => LEVELS[G.level] || LEVELS.normal;
 
 // ---------- state ----------
 const KEY = 'conquest', SAVE_V = 3;   // v1 was the two-team map, v2 the four-team one; neither fits his map
-const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-const PREFS = Object.assign({ sound: true, level: 'easy' }, read().prefs);
-PREFS.ctrl = Object.assign({ green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu', orange: 'cpu' }, PREFS.ctrl);   // orange came on 10 Nov
-const savePrefs = () => { const s = read(); s.prefs = PREFS; try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { } };
+// Decided 26 Nov: three save files, like Bread (shared/files.js). A file is
+// { prefs, game }: the game in progress and the setup picks (level, who
+// plays, map, creative), which belong to whoever plays it. Sound is this
+// computer's. The online seats (`conquest-online:<id>`) and the maker's maps
+// (`conquest-maps`) stay one per device: an online game is joined by its
+// link, and a map made here is there for every file to pick.
+const store = SaveFiles.split(KEY, ['sound']);
+// The one save before files kept sound inside prefs, where split() doesn't
+// look, so it's carried over by hand the first time.
+try { if (localStorage.getItem(KEY + '-device') === null) { const p = (JSON.parse(localStorage.getItem(KEY)) || {}).prefs; if (p && 'sound' in p) localStorage.setItem(KEY + '-device', JSON.stringify({ sound: p.sound })); } } catch (e) { }
+let me = null;   // the open file's number: null until one is picked, and for an online game opened by its link
+const read = () => (me && SaveFiles.load(KEY, me)) || {};
+const PREFS = {};
+function loadPrefs(p) {
+  for (const k in PREFS) delete PREFS[k];
+  Object.assign(PREFS, { level: 'easy' }, p, { sound: store.settings().sound ?? true });   // a file copied from the old save has a sound of its own; the device's wins
+  PREFS.ctrl = Object.assign({ green: 'human', red: 'cpu', yellow: 'cpu', blue: 'cpu', orange: 'cpu' }, PREFS.ctrl);   // orange came on 10 Nov
+}
+loadPrefs({});
+const write = game => { const { sound, ...prefs } = PREFS; store.save(me, { sound, prefs, game }); };
+const savePrefs = () => write(read().game || null);
 let G = null;          // the game in play
 let sel = null;        // { unit } or { city } or { build }
 let busy = false;      // true while a computer team moves
@@ -626,9 +644,7 @@ function mkUnit(type, side, x, y) {
 }
 function save() {
   if (ONLINE) { onlineSave(); return; }
-  const s = read(); s.prefs = PREFS;
-  s.game = G && !G.over ? { ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) } : null;
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { }
+  write(G && !G.over ? { ...G, units: G.units.map(u => ({ ...u, px: u.x, py: u.y })) } : null);
 }
 
 // ---------- online ----------
@@ -669,6 +685,7 @@ async function startOnline() {
   cardShow(`<h2>${t('online')}</h2><p>${t('makingGame')}</p>`);
   newGame(true);
   G.online = true; G.seats = {};
+  $('#whoBtn').hidden = true;   // the game now lives online, not in the file
   try {
     const id = await rpc('match_create', { p_game: 'conquest', p_state: packG() });
     ONLINE = { id, ver: 1, me: null };
@@ -2564,6 +2581,22 @@ async function fillOnlineList() {
   }).join('');
   box.hidden = false;
 }
+// Pick a file comes first on a plain load (the Menu button reloads to it). A
+// ?game= link skips it, since the online game is the link's, not a file's;
+// a ?map= link asks for a file first, because playing the map saves there.
+const fileLine = d => { const g = d.game; return g && g.v === SAVE_V && !g.over ? t('fileTurn', { n: g.turn, level: t(g.level in LEVELS ? g.level : 'normal') }) : t('fileNone'); };
+function showWho(then = titleCard) {
+  cardShow(`<h2>${t('pickFile')}</h2><div id="who"></div>`);
+  SaveFiles.mount($('#who'), { game: KEY, summary: fileLine, onPick: (n, m) => { useFile(n, m); then(); } });
+  $('#who .file')?.focus({ preventScroll: true });
+}
+function useFile(n, m) {
+  me = n; loadPrefs(read().prefs); hud();
+  SaveFiles.badge($('#whoBtn'), n, m);
+}
+// Changing file mid-game: the game is already saved after every action, so
+// it only has to stop. Not while a computer team moves, or online.
+$('#whoBtn').onclick = () => { if (busy || ONLINE) return; G = null; sel = null; showWho(); };
 function titleCard() {
   let saved = read().game;
   if (saved && saved.v !== SAVE_V) saved = null;   // the two-team game from before 5 Nov
@@ -2653,5 +2686,5 @@ $('#inviteBtn').onclick = () => { if (ONLINE && $('#cover').hidden) shareCard();
 hud();
 loadArt().then(() => { fitView(); paintGround(); requestAnimationFrame(frame);
   const q = new URLSearchParams(location.search), gid = q.get('game'), mid = q.get('map');
-  if (gid) joinOnline(gid); else if (mid) openSharedMap(mid); else titleCard();
+  if (gid) joinOnline(gid); else if (mid) showWho(() => openSharedMap(mid)); else showWho();
 });

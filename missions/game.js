@@ -127,6 +127,8 @@ const STR = {
   title: 'Mission Directive',
   titleSub: 'Start at headquarters. Get the mission folder, pick your weapons, fly in, hit the target and fly out.',
   start: 'Start',
+  pickFile: 'Pick a file',
+  fileSum: '${money} · Missions: {n}',
   folderTab: 'Mission {n}',
   directiveHead: 'Directive',
   directive_barracks: 'Fly in by helicopter. Blow up the DE barracks circled on the map. Fly back out.',
@@ -705,9 +707,20 @@ function drawGunIcon(g, kind, side) {
 
 // ---- Game state ----
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-let S = { best: null, money: 0, owned: {} };
-try { S = Object.assign(S, JSON.parse(localStorage.getItem('mission-directive') || '{}')); } catch (e) { }
-const save = () => { try { localStorage.setItem('mission-directive', JSON.stringify(S)); } catch (e) { } };
+// Decided 26 Nov: three save files, like Bread (shared/files.js). Everything
+// here is a player's progress (money, guns bought, best time, which missions
+// are done), so it all goes in the file; there's no sound or help setting to
+// keep per computer. The old one-save key becomes File 1 the first time.
+const KEY = 'mission-directive';
+const DEF = { best: null, money: 0, owned: {} };
+let S = structuredClone(DEF);
+let me = null;   // the open file's number; nothing is saved until one is picked
+function useFile(n, m) {
+  me = n; S = Object.assign(structuredClone(DEF), SaveFiles.load(KEY, n) || {});
+  next = null; pick = { gun: 'rifle', boom: 'c4' };   // the last file's folder and guns
+  SaveFiles.badge(whoBtn, n, m); whoBtn.hidden = true;
+}
+const save = () => { if (me) SaveFiles.save(KEY, me, S); };
 let pick = { gun: 'rifle', boom: 'c4' };
 // 17 Nov, his rules: any barracks can be the target; the bunker takes the
 // nuke, which that mission gives you; never the same mission 3 times running.
@@ -1336,7 +1349,7 @@ function walk(p, dt) {
   const m = Math.hypot(mx, my);
   if (m > .15) { mx /= Math.max(1, m); my /= Math.max(1, m); tryMove(p, mx * p.speed * dt, my * p.speed * dt); p.a = Math.atan2(my, mx); }
 }
-function leaveHq() { phase = 'hqout'; G.player.gone = true; G.copter.a = 0; hud(); }
+function leaveHq() { whoBtn.hidden = true; phase = 'hqout'; G.player.gone = true; G.copter.a = 0; hud(); }
 function stepHq(dt) {
   const c = G.copter;
   if (phase === 'hqout') {
@@ -1603,8 +1616,20 @@ function titleCard() {
   phase = 'title'; G = null; L = MAPL; showHud(false);
   const touch = matchMedia('(pointer:coarse)').matches;
   showCard(`<h1 id="cardTitle">${t('title')}</h1><p class="soft" style="text-align:center">${t('titleSub')}</p><p class="keys">${touch ? t('keysTouch') : t('keysDesk')}</p><div class="row">${btn('go', t('start'))}</div>`);
-  on('go', enterHq);
+  on('go', fileCard);
 }
+// Pick a file comes after the title card and before headquarters, every time
+// the page loads (Menu reloads it, so that's the way to another file). The
+// file pill in the bar comes back here, but only at headquarters: mid-mission
+// it would throw the mission away.
+function fileCard() {
+  phase = 'title'; G = null; L = MAPL; showHud(false);
+  showCard(`<h2 id="cardTitle">${t('pickFile')}</h2><div id="who"></div>`);
+  SaveFiles.mount(document.getElementById('who'), { game: KEY, summary: d => t('fileSum', { money: d.money || 0, n: d.count || 0 }), onPick: (n, m) => { useFile(n, m); enterHq(); } });
+  const f = card.querySelector('.file'); if (f) f.focus();
+}
+const whoBtn = document.getElementById('whoBtn');
+whoBtn.addEventListener('click', () => { if (G && G.kind === 'hq' && phase === 'hq' && cover.hidden) fileCard(); });
 function newHq() {
   L = HQL;
   const gun = STATS.guns.NA[pick.gun];
@@ -1612,7 +1637,7 @@ function newHq() {
     player: { x: HQ_START.x, y: HQ_START.y, a: -Math.PI / 2, side: 'NA', hp: STATS.troop.NA.hp, speed: STATS.troop.NA.speed, gun, ammo: gun.mag, cool: 0, reload: 0 },
     copter: { x: HQ_PAD.x, y: HQ_PAD.y, a: -Math.PI / 2, alt: 0, rotor: .6 } };
 }
-function enterHq() { newHq(); phase = 'hq'; hideCard(); showHud(true); }
+function enterHq() { newHq(); phase = 'hq'; hideCard(); showHud(true); whoBtn.hidden = false; }
 // picked up from the desk at headquarters
 function folderCard() {
   G.folder = true;
@@ -1713,6 +1738,7 @@ function wallCard() {
   on('go', hideCard);
 }
 function startMission() {
+  whoBtn.hidden = true;
   newMission(); L = MAPL; G.fresh = true; phase = 'flyin'; hideCard(); showHud(true);
 }
 function lose(why) {

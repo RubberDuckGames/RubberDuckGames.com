@@ -16,9 +16,21 @@ const PIX = '"Press Start 2P", monospace';
 // ---------- Saved progress (this browser only) ----------
 // The tugboat's name is typed in once and kept here, so the kid's name is only
 // ever on the family's own device, never on the public site.
+// Decided 26 Nov: three save files, like Bread (shared/files.js). The boat's
+// name and party month are the file's, since each kid has their own boat and
+// birthday; sound is the computer's.
 const KEY = 'tugboat';
-const S = Object.assign({ name: '', trips: 0, sparkles: 0, stickers: [], sound: true, abc: 0, num: 0, partyMonth: -1 }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
-function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+const DEF = { name: '', trips: 0, sparkles: 0, stickers: [], abc: 0, num: 0, partyMonth: -1 };
+const store = SaveFiles.split(KEY, ['sound']);
+const S = Object.assign(structuredClone(DEF), { sound: true }, store.settings());
+let me = null;   // the open file's number
+function useFile(n, m) {
+  me = n;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, structuredClone(DEF), { sound: true }, store.load(n));
+  SaveFiles.badge($('#whoBtn'), n, m); hud();
+}
+function persist() { store.save(me, S); }
 function hud() { $('#hStars').textContent = `⭐ ${S.trips}`; $('#hJar').textContent = `✨ ${S.sparkles}`; $('#soundBtn').textContent = S.sound ? '🔔' : '🔕'; }
 // The party harbor: balloons on the tugboat, a party horn, cake and present
 // crates, bunting on the shore, and a birthday cake that gets a candle per
@@ -528,22 +540,34 @@ function drawPress(t) {
 }
 
 // ---------- Screens ----------
-function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#nameBtn').hidden = false; $('#pickBtn').hidden = true; }
+function showPress() { screen = 'press'; G = null; pressT = 0; $('#docket').hidden = true; $('#ctrl').hidden = true; $('#pickBtn').hidden = true; }
 function pressStart() {
-  if (screen !== 'press' || pressT) return;
-  if (!S.name && !S.asked) return askName(true);
+  if (screen !== 'press' || pressT || !$('#cover').hidden) return;
   pressT = performance.now(); sfx.start();
-  setTimeout(play, 900);
+  setTimeout(showWho, 900);
 }
+// Pick a file comes after PRESS START, as in Bread; a new boat is asked its
+// name first.
+function showWho() {
+  showPress(); resize();
+  $('#card').innerHTML = '<h2>Pick a file</h2><div id="who"></div>';
+  $('#cover').hidden = false;
+  SaveFiles.mount($('#who'), { game: KEY, summary: d => `⭐ ${d.trips || 0} · ✨ ${d.sparkles || 0}`, onPick: (n, m) => {
+    useFile(n, m);
+    if (!S.name && !S.asked) askName(play); else play();
+  } });
+}
+$('#whoBtn').onclick = showWho;
 function play() {
-  screen = 'play'; $('#nameBtn').hidden = true; $('#pickBtn').hidden = false; $('#ctrl').hidden = false; resize();
+  screen = 'play'; $('#pickBtn').hidden = false; $('#ctrl').hidden = false; $('#cover').hidden = true; resize();
   newHarbor(); showPick();
 }
 // Harbor or river: big buttons a grown-up can read out, and the arrow keys
 // and Space work on them too.
 function showPick(focus) {
-  $('#card').innerHTML = `<h2>Where to?</h2><div class="picks"><button class="btn" data-pick="harbor">⚓ Harbor</button><button class="btn" data-pick="abc">🔤 River A B C</button><button class="btn" data-pick="num">🔢 River 1 2 3</button></div>`;
+  $('#card').innerHTML = `<h2>Where to?</h2><div class="picks"><button class="btn" data-pick="harbor">⚓ Harbor</button><button class="btn" data-pick="abc">🔤 River A B C</button><button class="btn" data-pick="num">🔢 River 1 2 3</button></div><div class="row"><button class="btn" id="nameBtn">Boat name</button></div>`;
   $('#cover').hidden = false;
+  $('#nameBtn').onclick = () => askName(() => showPick(focus));
   $('#card').querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => {
     $('#cover').hidden = true; const k = btn.dataset.pick;
     if (k === 'harbor') newHarbor(); else newRiver(k);
@@ -551,16 +575,17 @@ function showPick(focus) {
   ($('#card').querySelector(`[data-pick="${focus || 'harbor'}"]`) || $('#card').querySelector('[data-pick]')).focus();
 }
 $('#pickBtn').onclick = () => { if (screen === 'play') showPick(G?.kind); };
-// Asked once, for a grown-up to type: the tugboat's name (the kid's name, say).
-function askName(thenStart) {
+// Asked once per file, for a grown-up to type: the tugboat's name (the kid's
+// name, say). Boat name on the Where to? card changes it; it was a pill in the
+// top bar until the file pill took its place there.
+function askName(then) {
   $('#card').innerHTML = `<h2>What's your tugboat's name?</h2><p>For a grown-up to type. It stays on this device.</p><form><input name="n" maxlength="16" autocomplete="off" value="${S.name.replace(/"/g, '&quot;')}" aria-label="Tugboat name"><label for="pm">Party month: balloons and cake in the harbor</label><select id="pm" name="pm"><option value="-1">No party</option>${MONTHS.map((m, i) => `<option value="${i}"${S.partyMonth === i ? ' selected' : ''}>${m}</option>`).join('')}</select><div class="row"><button type="button" class="btn" id="skipName">Skip</button><button class="btn go">Save</button></div></form>`;
   $('#cover').hidden = false;
   const f = $('#card form'); f.n.focus();
-  const done = () => { S.asked = true; persist(); $('#cover').hidden = true; if (thenStart) { pressT = 0; pressStart(); } };
+  const done = () => { S.asked = true; persist(); $('#cover').hidden = true; then(); };
   $('#skipName').onclick = done;
   f.onsubmit = e => { e.preventDefault(); S.name = f.n.value.trim().slice(0, 16); S.partyMonth = +f.pm.value; done(); };
 }
-$('#nameBtn').onclick = () => askName(false);
 
 // ---------- Input ----------
 addEventListener('keydown', e => {

@@ -24,7 +24,8 @@ const $ = s => document.querySelector(s);
 const STR = {
   title: 'The Mighty Pepper',
   intro: 'Pepper is a cowgirl pup. Take a job from the Wanted board by the barn, wrangle the critters that plague the ranch, and win over the ranch cats.',
-  play: 'Play', startOver: 'Start over', cancel: 'Cancel', close: 'Close', keepPlaying: 'Keep playing',
+  play: 'Play', startOver: 'Start over', pickFile: 'Pick a file',
+  fileSum: 'Respect {r} · Jobs {j}', fileStar: '{sum} · ⭐', cancel: 'Cancel', close: 'Close', keepPlaying: 'Keep playing',
   startOverAsk: 'Start over? Respect, the jobs and the sneak go back to the start. Pepper keeps her stash and Izzy\'s stories.',
   respect: 'Respect', ranch: 'The ranch', stick: 'Walking stick', helpBtn: 'How to play', closeHelp: 'Close help', soundBtn: 'Sounds on or off',
   stay: 'Stay', bark: 'Bark',
@@ -164,12 +165,20 @@ const TUNE = {
 };
 
 // ---------- Save ----------
-// One save per device, under `mighty-pepper`. The stash is a collection, like
-// Feed the Fart's farts: how many of each kind Pepper has ever squirrelled away.
+// The stash is a collection, like Feed the Fart's farts: how many of each kind
+// Pepper has ever squirrelled away.
+// Decided 26 Nov: three save files, like Bread (shared/files.js), under
+// `mighty-pepper:file<n>`; the one save from before became File 1. Sound and
+// the help having opened once are this computer's (`mighty-pepper-device`);
+// Respect, the jobs, the sneak, the stash, Izzy's stories and Sid's blinks
+// are the file's. The day still isn't saved.
 const KEY = 'mighty-pepper';
-const S = Object.assign({ respect: TUNE.respect.start, star: false, sneak: false, job: null, done: {}, stash: {}, stories: 0, blinks: 0, sound: true, seenHelp: false, started: false }, load());
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+const DEF = { respect: TUNE.respect.start, star: false, sneak: false, job: null, done: {}, stash: {}, stories: 0, blinks: 0, started: false };
+const DEV = { sound: true, seenHelp: false };
+const store = SaveFiles.split(KEY, Object.keys(DEV));
+const S = Object.assign(structuredClone(DEF), DEV, store.settings());
+let me = null;                                  // the open file's number; none yet writes only the device's settings
+function save() { store.save(me, S); }
 
 // ---------- Screen ----------
 // Decided 22 Nov: Bread's 8-bit way, 16 pixels to a tile on a small canvas
@@ -1633,11 +1642,37 @@ $('#card').addEventListener('click', e => {
   if (a === 'play') startPlay();
   else if (a === 'over') openCard(`<h2 id="cardTitle">${t('startOver')}</h2><p>${t('startOverAsk')}</p><div class="row"><button class="btn" data-act="title">${t('cancel')}</button><button class="btn go" data-act="reset">${t('startOver')}</button></div>`);
   else if (a === 'title') titleCard();
-  else if (a === 'reset') { Object.assign(S, { respect: TUNE.respect.start, star: false, sneak: false, job: null, done: {}, started: false }); save(); spawn(); startDawn(); phase = 'day'; rabbitsLeft = 0; queue.length = 0; startPlay(); }
+  else if (a === 'reset') { Object.assign(S, { respect: TUNE.respect.start, star: false, sneak: false, job: null, done: {}, started: false }); save(); freshDay(); startPlay(); }
   else if (a === 'job') takeJob(b.dataset.job);
   else if (a === 'again') { S.done = {}; S.job = null; save(); spawn(); boardCard(); }
   else if (a === 'close') closeCard();
 });
+// Pick a file is the first card, before the title card's Play and Start over
+// (which now act on the open file only). Menu reloads the page, so it comes
+// up again there; the file pill in the bar brings it back mid-day, and the
+// day starts over, since the day was never saved.
+function pickCard() {
+  mode = 'title'; if (!$('#help').hidden) toggleHelp(false);
+  $('#helpBtn').hidden = true; $('#ctrl').hidden = true; showRespect(); showJob();
+  openCard(`<h2 id="cardTitle">${t('title')}</h2><img class="bigpic" src="${picSrc(PEPPER.a)}" alt=""><h3>${t('pickFile')}</h3><div id="who"></div>`);
+  SaveFiles.mount($('#who'), { game: KEY, summary: fileSum, onPick: (n, m) => { useFile(n, m); titleCard(); } });
+  const f = $('#who button'); if (f) f.focus();
+}
+function fileSum(d) {
+  const sum = t('fileSum', { r: d.respect ?? TUNE.respect.start, j: Object.values(d.done || {}).filter(Boolean).length });
+  return d.star ? t('fileStar', { sum }) : sum;
+}
+function useFile(n, m) {
+  me = n;
+  for (const k in S) delete S[k];
+  Object.assign(S, structuredClone(DEF), DEV, store.load(n));
+  SaveFiles.badge($('#whoBtn'), n, m);
+  freshDay();
+}
+$('#whoBtn').addEventListener('click', pickCard);
+// a new morning on the ranch: the critters the open file hasn't run out yet,
+// and nothing in Pepper's mouth
+function freshDay() { P.carry = null; spawn(); startDawn(); phase = 'day'; rabbitsLeft = 0; queue.length = 0; }
 function titleCard() {
   openCard(`<h2 id="cardTitle">${t('title')}</h2><img class="bigpic" src="${picSrc(PEPPER.a)}" alt=""><p>${t('intro')}</p><div class="row">${S.started ? `<button class="btn" data-act="over">${t('startOver')}</button>` : ''}<button class="btn go" data-act="play">${t('play')}</button></div>`);
 }
@@ -1729,7 +1764,7 @@ function stepRanch(dt, now) {
 document.querySelectorAll('[data-s]').forEach(e => e.textContent = t(e.dataset.s));
 document.querySelectorAll('[data-s-label]').forEach(e => { e.setAttribute('aria-label', t(e.dataset.sLabel)); e.title = t(e.dataset.sLabel); });
 $('#soundBtn').textContent = S.sound ? '🔔' : '🔕';
-spawn(); resize(); titleCard();
+spawn(); resize(); pickCard();
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;

@@ -17,6 +17,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(-
 /* a phone held upright has no room for the money in one row, so it drops to
    a second row over the back wall (at 375 px the sound button went off the edge) */
 @media (max-width:30rem){.bar{flex-wrap:wrap;row-gap:.35rem}.stats{order:9;flex-basis:100%;justify-content:flex-end;gap:.25rem}}
+.card h3{margin:.8rem 0 0;font-size:1rem}
 .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
 .stagebox{position:relative}
 canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;touch-action:none}

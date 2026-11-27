@@ -118,10 +118,42 @@ const PAGES = [
 
 // ---------- Saved on this device ----------
 // The notebook is kept apart from the farms, so a new farm keeps its pages.
+// Decided 26 Nov: three save files, like Bread (shared/files.js). A file is
+// the notebook, the kind last played and every kind's farm (`farms`, each the
+// farm's JSON as it used to sit under "ant-farm:farm:<kind>"), so Copy and
+// Erase take the farms with it. Sound and the help and guide already seen
+// are this computer's.
 const KEY = 'ant-farm';
-const S = Object.assign({ sound: true, helpSeen: false, pages: [], kind: 'harvester' }, (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } })());
-function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
-const farmKey = kind => `${KEY}:farm:${kind}`;
+const DEF = { pages: [], kind: 'harvester', farms: {} };
+const DEV = { sound: true, helpSeen: false, guideSeen: false };
+// Before files, each farm had a key of its own. The first time, they go into
+// File 1 beside the notebook that SaveFiles.list copies there; the old keys
+// are left in place.
+(() => {
+  try {
+    if (localStorage.getItem(KEY + ':files')) return;
+    SaveFiles.list(KEY);
+    const f = SaveFiles.load(KEY, 1);
+    if (!f) return;
+    f.farms = f.farms || {};
+    for (const k of Object.keys(KINDS)) { const g = localStorage.getItem(`${KEY}:farm:${k}`); if (g) f.farms[k] = g; }
+    SaveFiles.save(KEY, 1, f);
+  } catch (e) { }
+})();
+const store = SaveFiles.split(KEY, Object.keys(DEV));
+const S = Object.assign(structuredClone(DEF), DEV, store.settings());
+let me = null;   // the open file's number; nothing is saved to a file before one is picked
+function useFile(n, m) {
+  me = n;
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, structuredClone(DEF), DEV, store.load(n));
+  if (!S.farms || typeof S.farms !== 'object') S.farms = {};
+  // the pill shows only the buddy below 40rem, like the bar's other labels
+  // (the shared pill drops the name only below 30rem, too late for this bar)
+  SaveFiles.badge($('#whoBtn'), n, m);
+  $('#whoBtn').innerHTML = `<span aria-hidden="true">${SaveFiles.esc(m.buddy)}</span><span class="lbl" aria-hidden="true"> ${SaveFiles.esc(m.name)}</span>`;
+}
+function persist() { store.save(me, S); }
 
 // ---------- Sounds ----------
 const tone = RDG.sound({ on: () => S.sound });
@@ -877,11 +909,11 @@ function save() {
   const items = G.items.map(i => i.by != null ? { ...i, by: null, res: null } : { ...i, res: null });
   const strip = a => ({ ...a, carry: null, steps: [], path: null, dig: null, rec: null, queued: null });
   const g = { ...G, grid: Array.from(G.grid).join(''), items, ants: G.ants.map(strip), player: strip(P), queen: { ...G.queen, path: null } };
-  try { localStorage.setItem(farmKey(G.kind), JSON.stringify(g)); } catch (e) { }
+  S.farms[G.kind] = JSON.stringify(g); persist();
 }
 function load(k) {
   try {
-    const g = JSON.parse(localStorage.getItem(farmKey(k)));
+    const g = JSON.parse(S.farms[k] || 'null');
     if (!g) return null;
     g.grid = Uint8Array.from(g.grid, ch => +ch);
     g.queen.t = g.player.t = 1; g.queen.fx = g.queen.x; g.queen.fy = g.queen.y;
@@ -898,18 +930,38 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 let screen = 'title';
 function startPressed() {
   if (screen !== 'title' || !$('#cover').hidden) return;
-  sfx.start();
+  sfx.start(); showWho();
+}
+// Pick a file comes after PRESS START, as in Bread, and never opens the last
+// file by itself, so Menu (a reload) brings it back. The file pill goes back
+// to it from a farm: the farm is saved and play stops first.
+function showWho() {
+  if (screen === 'play') { save(); screen = 'title'; $('#help').hidden = true; $('#helpBtn').setAttribute('aria-expanded', 'false'); ['#hAnts', '#hFood', '#bookBtn', '#helpBtn', '#ctrl'].forEach(s => $(s).hidden = true); }
+  card('<h2>Pick a file</h2><div id="who"></div>');
+  SaveFiles.mount($('#who'), {
+    game: KEY,
+    summary: d => {
+      let ants = 0;
+      try { const g = JSON.parse((d.farms || {})[d.kind || 'harvester'] || 'null'); if (g) ants = g.ants.length + 1; } catch (e) { }
+      return `🐜 ${ants} · 📓 ${(d.pages || []).length}`;
+    },
+    onPick: (n, m) => { useFile(n, m); hud(); showKinds(); },
+  });
+}
+$('#whoBtn').onclick = showWho;
+function showKinds() {
   const kinds = Object.entries(KINDS).map(([k, K]) => {
-    const has = !!localStorage.getItem(farmKey(k));
+    const has = !!S.farms[k];
     return `<button class="btn" data-kind="${k}"><img class="pic" src="${dataURL('ant', { map: K.ant })}" alt=""><span>${K.name}<small>${K.blurb}${has ? ' Your farm is saved.' : ''}</small></span></button>`;
   }).join('');
   card(`<h2>Pick your ants</h2><p>Each kind lives in its own farm.</p><div class="picks">${kinds}</div>
-    <div class="row"><button class="btn" id="howBtn">How ants live</button></div>`);
+    <div class="row"><button class="btn" id="whoBack">Pick a file</button><button class="btn" id="howBtn">How ants live</button></div>`);
+  $('#whoBack').onclick = showWho;   // on a phone the card covers the file pill
   $('#card').querySelectorAll('[data-kind]').forEach(b => b.onclick = () => chooseKind(b.dataset.kind));
-  $('#howBtn').onclick = () => openGuide(0, () => { closeCard(); startPressed(); });
+  $('#howBtn').onclick = () => openGuide(0, showKinds);
 }
 function chooseKind(k) {
-  if (!localStorage.getItem(farmKey(k))) return play(k, null);
+  if (!S.farms[k]) return play(k, null);
   card(`<h2>${KINDS[k].name}</h2><p>Keep going with your farm, or start a new one? A new farm keeps your notebook.</p>
     <div class="row"><button class="btn" id="fresh">New farm</button><button class="btn go" id="keep">Keep going</button></div>`);
   $('#keep').onclick = () => play(k, load(k));

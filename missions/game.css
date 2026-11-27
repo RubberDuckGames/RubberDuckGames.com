@@ -8,6 +8,7 @@ canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-acti
 .bar .grow{flex:1}
 .pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.2rem .2rem 0 rgba(0,0,0,.35)}
 .dir{white-space:normal;text-align:center;max-width:22rem}
+.pill.who{cursor:pointer}
 .pill.retreat{background:#b3261e;border-color:#5c120e;color:#fff;cursor:pointer}
 .hud{position:fixed;z-index:7;right:max(.9rem,env(safe-area-inset-right));top:3.4rem;display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;pointer-events:none}
 .hud .pill{font-size:.65rem}

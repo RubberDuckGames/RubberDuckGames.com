@@ -24,8 +24,7 @@ const $ = s => document.querySelector(s);
 const STR = {
   title: 'The Flip Shop',
   intro: 'Buy old finds at yard sales, work out what they\'re really worth, and sell them in your own little shop. Make the rent.',
-  play: 'Play', startOver: 'Start over', cancel: 'Cancel', close: 'Close', done: 'Done', back: 'Back', keepPlaying: 'Keep playing',
-  startOverAsk: 'Start over? Your money, your finds and the day go back to the start.',
+  pickFile: 'Pick a file', fileSum: 'Day {day} · ${pocket}', cancel: 'Cancel', close: 'Close', done: 'Done', back: 'Back', keepPlaying: 'Keep playing',
   shop: 'The shop', stick: 'Walking stick', helpBtn: 'How to play', closeHelp: 'Close help', soundBtn: 'Sounds on or off',
   help: [
     '<b>Walk:</b> arrow keys, WASD, the stick, or tap where to go.',
@@ -378,16 +377,28 @@ const round5 = n => Math.max(5, Math.round(n / 5) * 5);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 // ---------- Save ----------
-// One shop per device, under `pawn-shop`. A find is { uid, kind, good, value,
-// cost, seen, tag, opened, inside }; `spots` says which find is on each table.
+// A find is { uid, kind, good, value, cost, seen, tag, opened, inside };
+// `spots` says which find is on each table.
+// Decided 26 Nov: three save files, like Bread (shared/files.js), so each kid
+// runs a shop of their own. The shop is the file's: money, the Rent Pool,
+// stock, the day (an open day still picks back up after a reload), the lease,
+// the field guide and the fleet. Sound and the help seen once are this
+// computer's. Start over went with it: Erase in Pick a file does that now.
 const KEY = 'pawn-shop';
-const fresh = () => ({ day: 1, phase: 'morning', clock: 0, pocket: TUNE.start, pool: 0, rent: TUNE.rent, rentDay: TUNE.rentEvery, rentN: 0, owed: 0, paidRents: 0, guide: false, fleet: [], won: false, yardDone: false, stock: [], spots: [null, null, null, null, null], uid: 1, sound: true, seenHelp: false, started: false });
-const S = Object.assign(fresh(), load());
-if (!S.today) S.today = pickToday();
+const fresh = () => ({ day: 1, phase: 'morning', clock: 0, pocket: TUNE.start, pool: 0, rent: TUNE.rent, rentDay: TUNE.rentEvery, rentN: 0, owed: 0, paidRents: 0, guide: false, fleet: [], won: false, yardDone: false, stock: [], spots: [null, null, null, null, null], uid: 1 });
+const store = SaveFiles.split(KEY, ['sound', 'seenHelp']);
+const S = Object.assign(fresh(), { sound: true, seenHelp: false }, store.settings());
+let me = null;   // the open file's number; nothing is saved to a file before one is picked
 // two of the yard sales each morning, never the same two in a row if it can help it
 function pickToday() { return shuffle(['garage', 'toys', 'cat']).slice(0, 2); }
-function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+function useFile(n, m) {
+  me = n;
+  for (const k in S) delete S[k];
+  Object.assign(S, fresh(), { sound: true, seenHelp: false }, store.load(n));
+  if (!S.today) S.today = pickToday();
+  SaveFiles.badge($('#whoBtn'), n, m);
+}
+function save() { store.save(me, S); }
 
 // ---------- Screen ----------
 // Bread's 8-bit way: 16 pixels to a tile on a small canvas scaled up with
@@ -956,10 +967,6 @@ $('#card').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   const a = b.dataset.act, f = cardFind;
   if (a === 'close') closeCard();
-  else if (a === 'play') startPlay();
-  else if (a === 'over') openCard(`${h2(t('startOver'))}<p>${t('startOverAsk')}</p><div class="row">${btn('title', t('cancel'))}${btn('reset', t('startOver'), true)}</div>`, null, 'title');
-  else if (a === 'title') titleCard();
-  else if (a === 'reset') { const snd = S.sound; for (const k in S) delete S[k]; Object.assign(S, fresh(), { sound: snd, seenHelp: true }); save(); enterShop(); startPlay(); }
   // the door
   else if (a === 'go') goBuying(b.dataset.sale);
   else if (a === 'openShop') openShop();
@@ -1006,10 +1013,18 @@ $('#card').addEventListener('input', e => {
 // a find out on a table always has a tag, or it would go for nothing
 function setTag(f, n) { f.tag = clamp(Math.round(n), spotOf(f) >= 0 ? 1 : 0, 99999); save(); }
 
+// The title card is Pick a file, and the file pill in the bar comes back to
+// it. Leaving a shop is a reload without the reload: customers holding a find
+// put it back, and the scene, mice and help are cleared for the next file.
 function titleCard() {
-  mode = 'title';
-  openCard(`${h2(t('title'))}<p>${t('intro')}</p><div class="row">${S.started ? btn('over', t('startOver')) : ''}${btn('play', t('play'), true)}</div>`, null, 'none');
+  if (mode === 'play') { for (const c of custs) putBack(c); save(); }
+  mode = 'title'; regCust = null; hg = null; mice = []; enterShop(); P.x = 10; P.y = 9.5;
+  toggleHelp(false); $('#ctrl').hidden = true; showBar();
+  openCard(`${h2(t('title'))}<p>${t('intro')}</p><h3>${t('pickFile')}</h3><div id="who"></div>`, null, 'none');
+  SaveFiles.mount($('#who'), { game: KEY, summary: d => t('fileSum', { day: d.day || 1, pocket: d.pocket ?? TUNE.start }), onPick: (n, m) => { useFile(n, m); startPlay(); } });
+  $('#who').querySelector('button').focus();
 }
+$('#whoBtn').addEventListener('click', titleCard);
 
 // ----- the door -----
 function doorCard() {
@@ -1900,7 +1915,7 @@ function draw(now) {
 
 // ---------- Start ----------
 function startPlay() {
-  closeCard(); mode = 'play'; S.started = true;
+  closeCard(); mode = 'play';
   // a reload in the middle of an open day picks the day back up
   if (S.phase === 'closed') S.phase = 'open';
   save();

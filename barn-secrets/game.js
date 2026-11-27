@@ -72,6 +72,7 @@ const STR = {
   held: 'Holding',
   startLine: 'Cottonwood Barn buys what ranches and farms clear out, and fifty years of it is still in the barn. So is Doc, the old red dentist’s machine, and he’s falling apart.',
   startHow: 'Tap anything to look closer. Find Doc’s missing pieces and give them back to him. Crank him if you’re stuck.',
+  pickFile: 'Pick a file', fileSum: '{n} of 5 pieces back', fileDuck: ' · 🦆',
   startNew: 'Open the barn', startGo: 'Keep looking', startOver: 'Start over',
   overTitle: 'Start over?', overLine: 'Everything in the barn goes back where it was, and Doc falls apart again. Rubber ducks you found stay found.',
   overGo: 'Start over', cancel: 'Cancel', close: 'Close',
@@ -309,6 +310,9 @@ const $ = q => document.querySelector(q);
 // ---------- Saving ----------
 // Version 1 saved under back-room. Nothing carries over: the barn is a
 // different puzzle, and its rubber duck hides somewhere new.
+// Decided 26 Nov: three save files, like Bread (shared/files.js). Sound is
+// the computer's; the barn, Doc's pieces and the duck are the file's. The
+// first time, the one save from before becomes File 1.
 const KEY = 'barn-secrets';
 function fresh(old = {}) {
   return {
@@ -326,10 +330,12 @@ function fresh(old = {}) {
     crate: { lock: [0, 0, 0], unlocked: false, lid: false, wheels: [0, 0, 0, 0], box: false },
   };
 }
-let S;
-try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { }
-if (!S || S.v !== 3) S = fresh();   // 3 since the stalls and the feed room (26 Nov)
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
+const store = SaveFiles.split(KEY, ['sound']);
+let me = null;   // the open file's number; until one is picked, save() keeps only the sound
+let S = fresh(store.settings());
+// a file from before v 3 starts over, as the one save did
+const loadFile = n => { const d = store.load(n); return d.v === 3 ? Object.assign(fresh(d), d) : fresh({ sound: d.sound }); };   // 3 since the stalls and the feed room (26 Nov)
+const save = () => store.save(me, S);
 
 const has = id => S.inv.includes(id);
 const got = id => S.got.includes(id);
@@ -1811,9 +1817,32 @@ const ACTS = {
   start: () => { S.started = true; save(); closeCard(); setMsg(STR.startHow); },
   over: () => card(`<h2 id="cardTitle">${esc(STR.overTitle)}</h2><p>${esc(STR.overLine)}</p><div class="row"><button class="btn" type="button" data-act="startCard">${esc(STR.cancel)}</button><button class="btn go" type="button" data-act="wipe">${esc(STR.overGo)}</button></div>`),
   showDoc: () => { closeCard(); giveDoc('ledger'); },
-  wipe: () => { S = fresh(S); S.started = true; save(); view = 'barn'; face.dresser = face.ship = face.barn = 0; AN.needles = [0, 0, 0]; AN.tilt = 0; closeCard(); setMsg(STR.startHow); },
+  wipe: () => { S = fresh(S); S.started = true; save(); resetView(); closeCard(); setMsg(STR.startHow); },
   startCard: () => startCard(),
 };
+// back to the barn floor with the needles and the scale where the save has them
+function resetView() {
+  view = 'barn'; tr = null; face.dresser = face.ship = face.barn = 0;
+  A.meters.forEach((m, i) => { AN.needles[i] = S.meters[i] ? m.reads : 0; });
+  AN.tilt = Math.max(-1, Math.min(1, A.sack - panWeight())) * 10;
+}
+// Pick a file comes first on every load (Menu reloads the page), before the
+// barn's own start card. With a file open, the file pill in the bar brings it
+// back. It can't be closed without picking one: Erase could have taken the
+// open file away underneath the barn.
+function showWho() {
+  if (me) save();
+  card(`<h2 id="cardTitle">${esc(STR.pickFile)}</h2><div id="who"></div>`, false);
+  SaveFiles.mount($('#who'), {
+    game: KEY,
+    summary: d => fmt(STR.fileSum, { n: d.v === 3 ? PARTS_OF_DOC.filter(p => d.parts && d.parts[p]).length : 0 }) + (d.v === 3 && d.duck ? STR.fileDuck : ''),
+    onPick: (n, m) => {
+      me = n; S = loadFile(n); resetView(); setMsg(''); refresh();
+      SaveFiles.badge($('#whoBtn'), n, m); fit(); startCard();
+    },
+  });
+  const f = $('#who .file'); if (f) f.focus();
+}
 function startCard() {
   const row = S.started
     ? `<button class="btn" type="button" data-act="over">${esc(STR.startOver)}</button><button class="btn go" type="button" data-act="start">${esc(STR.startGo)}</button>`
@@ -1959,9 +1988,9 @@ $('#turnL').addEventListener('click', () => turn(-1));
 $('#turnR').addEventListener('click', () => turn(1));
 $('#docBtn').addEventListener('click', () => S.held ? giveDoc(S.held) : crankDoc());
 $('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; save(); refresh(); });
+$('#whoBtn').addEventListener('click', showWho);
 addEventListener('resize', fit);
-A.meters.forEach((m, i) => { AN.needles[i] = S.meters[i] ? m.reads : 0; });
-AN.tilt = Math.max(-1, Math.min(1, A.sack - panWeight())) * 10;
+resetView();
 refresh(); fit();
 requestAnimationFrame(frame);
-startCard();
+showWho();

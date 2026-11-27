@@ -1,4 +1,7 @@
-// Save files for the console-style games (Bread, Math Force). Decided 29 Oct:
+// Save files for the games with progress. Decided 29 Oct, for Bread and Math
+// Force, and given to seven more on 26 Nov (Ant Farm, Barn Secrets, Conquest,
+// Mission Directive, The Mighty Pepper, The Flip Shop, Tugboat), which had
+// been built since with one save each. Decided 29 Oct:
 // like a Nintendo game, each game has three save files, and anyone can pick
 // any file. Copy and Erase work the way they do on a console. This replaced a
 // shared player list (28 Oct): on a phone, a save from before players existed
@@ -42,6 +45,41 @@ const SaveFiles = (() => {
   function copy(game, from, to) { setMeta(game, to, { ...meta(game, from) }); try { localStorage.setItem(`${game}:file${to}`, raw(`${game}:file${from}`) || '{}'); } catch (e) { } }
   function create(game, n, name, buddy) { setMeta(game, n, { name: name || `File ${n}`, buddy }); save(game, n, {}); }
 
+  // The games after Bread kept everything in one object, settings and
+  // progress together. split() parts it: the keys named in `device` belong to
+  // this computer, not a player (sound, help already seen), and stay one per
+  // game under "<game>-device", the way Bread keeps "bread-corgi-sound";
+  // everything else is the open file's. The first time, the settings are read
+  // from the old one-save key, so sound turned off before files existed stays
+  // off. A file copied from that old save still has those keys in it; the
+  // device's values win over them on load.
+  function split(game, device) {
+    const dk = game + '-device';
+    const settings = () => {
+      let d = read(dk);
+      if (!d || typeof d !== 'object') { const old = read(game) || {}; d = {}; device.forEach(k => { if (k in old) d[k] = old[k]; }); write(dk, d); }
+      return d;
+    };
+    return {
+      settings,
+      load: n => Object.assign(load(game, n) || {}, settings()),
+      save(n, all) {
+        const f = {}, d = {};
+        for (const k in all) (device.includes(k) ? d : f)[k] = all[k];
+        write(dk, d);
+        if (n) save(game, n, f);
+      },
+    };
+  }
+  // The file pill in a game's top bar: the open file's buddy and name, and a
+  // tap goes back to Pick a file. On a phone held upright only the buddy
+  // shows: with the name, Tugboat's bar ran 80 px past a 375 px screen.
+  function badge(btn, n, m) {
+    btn.hidden = false;
+    btn.innerHTML = `<span aria-hidden="true">${esc(m.buddy)}</span><span class="fpill" aria-hidden="true"> ${esc(m.name)}</span>`;
+    btn.setAttribute('aria-label', `File ${n}: ${m.name}. Change file`);
+  }
+
   const css = document.createElement('style');
   css.textContent = `.files{display:grid;gap:.6rem;margin:.75rem 0}
 .files .file{display:grid;grid-template-columns:auto 1fr;gap:.1rem .7rem;align-items:center;text-align:left;width:100%}
@@ -56,7 +94,8 @@ const SaveFiles = (() => {
 .who-add input{display:block;width:100%;margin-top:.3rem;font:inherit;font-size:1.1rem;padding:.5rem .7rem;border:3px solid currentColor;border-radius:.5rem}
 .who-buds{display:flex;flex-wrap:wrap;gap:.35rem}
 .who-buds button{font-size:1.5rem;line-height:1;padding:.35rem;border:3px solid transparent;border-radius:.5rem;background:none;cursor:pointer}
-.who-buds button[aria-pressed="true"]{border-color:currentColor}`;
+.who-buds button[aria-pressed="true"]{border-color:currentColor}
+@media (max-width:30rem){.fpill{display:none}}`;
   document.head.appendChild(css);
 
   // "Pick a file": three tiles with Copy and Erase under them. summary(save)
@@ -105,5 +144,5 @@ const SaveFiles = (() => {
     show();
   }
 
-  return { list, meta, load, save, mount, esc };
+  return { list, meta, load, save, mount, esc, split, badge };
 })();
