@@ -89,3 +89,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;tou
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:56rem){.bar{gap:.25rem;padding-left:.3rem;padding-right:.3rem}.bar .pill{padding:.3rem .35rem;font-size:.55rem;box-shadow:.15rem .15rem 0 var(--shadow)}.pill .long{display:none}.pill .short{display:inline}}
 @media (max-width:40rem){.cover{position:fixed;z-index:20;align-items:flex-start;overflow:auto}.card{max-height:none}}
+/* what came out of a mystery box, and the ship case */
+.loot{list-style:none;margin:.4rem 0;padding:0;display:grid;gap:.3rem}
+.loot li{display:flex;align-items:center;gap:.6rem}
+.loot img{width:3.6rem;height:2.6rem;object-fit:contain;image-rendering:pixelated;background:#f3e2bc;border:2px solid var(--line)}
