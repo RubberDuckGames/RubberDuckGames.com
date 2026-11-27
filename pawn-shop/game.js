@@ -154,6 +154,7 @@ const STR = {
     robot: 'tin toy robot', tincar: 'tin toy car', figure: '80s action figure', junk: 'bag of plastic toys', hairball: 'hairball sculpture',
     insulator: 'glass insulator', typewriter: 'old typewriter', iron: 'flat iron', duck: 'rubber duck',
     sharpener: 'crank pencil sharpener', train: 'toy train in its box', bottle: 'black glass train bottle', sub: 'tin submarine',
+    moviecam: '8mm movie camera', flashcam: 'folding camera with flash', shiplamp: 'copper ship lantern', radiometer: 'glass light mill',
     tlr: 'twin-lens camera', boxcam: '1920s box camera', folding: '1930s folding camera', enlarger: 'photo enlarger',
     truck: 'moving truck toy', plane: 'tin airliner', biplane: 'tin biplane', ship: 'model battleship',
     canteen: 'army surplus canteen', comics: 'comic book', book: 'old book', plush: 'stuffed bear', present: 'wrapped present',
@@ -186,14 +187,14 @@ const STR = {
     camera: ['A real vintage camera. See the tiny gold stamp on top?', 'A toy camera. No maker\'s stamp.'],
     grinder: ['Stamped No. 22 on the side. A real old one.', 'No stamp. A newer copy.'],
     scale: ['Solid brass pans. They shine.', 'Painted tin. The paint is chipping off.'],
-    lantern: ['The glass is whole. It still lights.', 'The glass is cracked, so it won\'t hold a flame.'],
+    lantern: ['Copper and amber glass in a wire cage. The glass is whole, so it still lights.', 'The glass is cracked, so it won\'t hold a flame.'],
     robot: ['A real 1950s tin wind-up robot. See the key on its side? It shines.', 'A plastic copy. No wind-up key, and no shine.'],
     tincar: ['A 1950s tin car with chrome bumpers. The chipped paint shows its age.', 'A plastic copy, painted all one colour. No chrome bumpers.'],
     figure: ['A real 80s figure, still sealed on its card.', 'A knockoff. The colours are all wrong.'],
     junk: ['Cheap plastic toys. Nobody collects these.', 'Cheap plastic toys. Nobody collects these.'],
     hairball: ['It\'s shaped exactly like a duck. Somebody out there wants this.', 'It\'s a hairball. It\'s just a hairball.'],
     insulator: ['An old glass insulator off a telegraph pole. See the tiny bubbles? Old glass has them.', 'A new glass copy. Clear and perfect, so it\'s no older than you.'],
-    typewriter: ['A 1940s typewriter: black steel, round glass keys, gold letters.', 'An 80s plastic typewriter. Square keys, beige, and heavy for nothing.'],
+    typewriter: ['A 1930s portable typewriter in its case: black steel, round keys, gold letters.', 'An 80s plastic typewriter. Square keys, beige, and heavy for nothing.'],
     iron: ['A real cast-iron flat iron. People heated these on the stove. See the rust?', 'A painted copy. Shiny black, no rust, never been near a stove.'],
     duck: ['A vintage squeaky duck. The paint has faded the way only old toys do.', 'A new rubber duck. Cute, but there are millions of them.'],
     sharpener: ['Cast iron with a brass band. Schools bolted these to the wall for years.', 'A plastic copy. Light as anything, and no brass band.'],
@@ -201,7 +202,11 @@ const STR = {
     bottle: ['Pressed black glass that shines in the light. It used to hold aftershave.', 'Painted plastic. No shine at all.'],
     sub: ['Tin, with its wind-up key on the side. It dives in the bathtub.', 'A plastic copy. No key, so it doesn\'t go.'],
     tlr: ['A twin-lens camera: you look down into the top lens and shoot through the bottom one.', 'The top lens is cracked, so you can\'t see what you\'re shooting.'],
-    boxcam: ['A 1920s box camera: card covered in black leather, a metal front. Point, click, hope.', 'A plastic toy made to look old. No metal front.'],
+    boxcam: ['A 1930s box camera with a silver art deco front. Point, click, hope.', 'A plastic toy made to look old. No metal front.'],
+    moviecam: ['A wind-up 8mm movie camera. Wind it fully after each shot, and it films about 30 seconds.', 'Somebody took the lens. It won\'t film a thing.'],
+    flashcam: ['A folding camera with its big shiny flash dish. One bulb, one flash, pop!', 'The flash dish is a dull plastic copy.'],
+    shiplamp: ['A copper ship\'s lantern with a rope handle. The spots are real age.', 'A new decoration, painted to look like brass. No wick inside.'],
+    radiometer: ['A glass light mill. In sunlight the little vanes spin all by themselves!', 'A glass ornament. The vanes are glued, so they never spin.'],
     folding: ['A 1930s folding camera. The red bellows still fold out without a leak.', 'The bellows are torn, so light leaks in. It won\'t take a picture.'],
     enlarger: ['A darkroom photo enlarger, lens and all. It shines a negative onto paper to make prints.', 'No lens. Without one it\'s just a lamp on a stick.'],
     truck: ['Pressed steel. The paint has chipped the way old toys do.', 'Shiny new plastic. Not a chip on it.'],
@@ -264,6 +269,12 @@ const KINDS = {
   // Randi's ask, 26 Nov: 1920s and 30s cameras and darkroom enlargers. All ours.
   boxcam: { ask: [3, 12], worth: 40, dud: 3, real: .55 },
   tlr: { ask: [15, 35], worth: 150, dud: 12, real: .5 },
+  // and from her photos, 26 Nov: a wind-up movie camera, a folding camera with
+  // its flash dish, a copper ship lantern, a glass light mill. Numbers ours.
+  moviecam: { ask: [10, 30], worth: 80, dud: 5, real: .5 },
+  flashcam: { ask: [10, 25], worth: 75, dud: 8, real: .5 },
+  shiplamp: { ask: [15, 35], worth: 110, dud: 12, real: .5 },
+  radiometer: { ask: [5, 15], worth: 45, dud: 6, real: .5 },
   folding: { ask: [10, 25], worth: 95, dud: 10, real: .5 },
   enlarger: { ask: [15, 35], worth: 120, dud: 8, real: .5 },
   plane: { ask: [45, 65], worth: 600, dud: 10, real: .4 },
@@ -378,7 +389,7 @@ const C = {
   g: '#4f8f46', G: '#7fbf68', Y: '#c8ff5a', b: '#1a1a1a', L: '#5a3a2a', S: '#c8ccd4', O: '#7a7e88', o: '#5aa6e4',
   i: '#5e626c', I: '#80848e', B: '#d8a832', Q: '#f6dc78', D: '#9a9070', d: '#7a7a7a', y: '#ffd040', h: '#d7f1ff',
   x: '#c99460', X: '#e0b880', T: '#e8dca0', u: '#9a8670', U: '#6e5c48', v: '#7a7e88', j: '#7ad4cc', J: '#3e8e88', f: '#ffd84a', F: '#e8d8a0',
-  K: '#6a4a2e', z: '#ffffff', V: '#d83a2a', H: '#4e5a3a', A: '#6a7a4a',
+  K: '#6a4a2e', z: '#ffffff', E: '#d89040', V: '#d83a2a', H: '#4e5a3a', A: '#6a7a4a',
 };
 const spr = (rows, colors = C, flip = false) => RDG.sprite(rows, colors, { line: LINE, flip });
 function put(img, x, y) { cx.drawImage(img, Math.round(x), Math.round(y)); }
@@ -413,7 +424,7 @@ const PIX = {
   camera: ['...bbbb.....', 'bbbbbbbbbbbb', 'bSSSbbbbbSSb', 'bLLLbOObLLLb', 'bLLbOooObLLb', 'bLLbOooObLLb', 'bLLLbOObLLLb', 'bbbbbbbbbbbb'],
   grinder: ['..iiii....', '.iIIIIi...', 'iIIIIIIi..', 'iIIIIIIiii', 'iIIIIIIiIi', '.iIIIIi.ii', '..iIIi....', '.iiiiii...', 'iIIIIIIi..', 'iiiiiiii..'],
   scale: ['......bb......', 'bbbbbbbbbbbbbb', '.b....bb....b.', 'BBBB..bb..BBBB', '.BB...bb...BB.', '......bb......', '.....bbbb.....', '....bbbbbb....'],
-  lantern: ['...bb...', '..b..b..', '.bbbbbb.', '.bhhhhb.', '.bhyhhb.', '.bhyhhb.', '.bhhhhb.', '.bbbbbb.', 'bBBBBBBb', 'bbbbbbbb'],
+  lantern: ['..BBBBBB..', '..B....B..', '.RRRRRRRR.', '..RmRmRm..', '..RRRRRR..', '.BEEEEEEB.', 'BEEEBEEEEB', 'BBBBBBBBBB', 'BEEEBEEEEB', '.BEEBEEEB.', '..RRRRRR..', '.RRRRRRRR.'],
   box: ['xxxxxxxxxxxx', 'xXXXXTTXXXXx', 'xXXXXTTXXXXx', 'TTTTTTTTTTTT', 'xXXXXTTXXXXx', 'xXXXXTTXXXXx', 'xxxxxxxxxxxx'],
   open: ['x..........x', 'xx........xx', 'xXXXXXXXXXXx', 'xXXXXXXXXXXx', 'xXXXXXXXXXXx', 'xxxxxxxxxxxx'],
   robot: ['....b.....', '..SSSSS...', '..SoSoS...', '..SSSSS...', '..SbbbS...', '.SSSSSSS..', 'SSSRRRSSS.', 'S.SRRRS.S.', '..SSSSS...', '..SS.SS...', '..SS.SS...', '.SSS.SSS..'],
@@ -421,7 +432,7 @@ const PIX = {
   figure: ['xxxxxxxxxx', 'xyyyyyyyyx', 'xXXXXXXXXx', 'xXhhsshhXx', 'xXhhsshhXx', 'xXhRRRRhXx', 'xXsRRRRsXx', 'xXhRRRRhXx', 'xXhphhphXx', 'xXhphhphXx', 'xXXXXXXXXx', 'xxxxxxxxxx'],
   junk: ['....hh....', '...hOOh...', '..hhhhhh..', '.hRPRGyPh.', 'hPyGRPRGyh', 'hGRyPGyRPh', 'hyPRGyPGRh', '.hhhhhhhh.'],
   insulator: ['...JJJJ...', '..JjjjjJ..', '..JjjjjJ..', '.JJjjjjJJ.', 'JjjjjjjjjJ', 'JJJJJJJJJJ', '.JjjjjjjJ.', '.JjjjjjjJ.', '..JJJJJJ..'],
-  typewriter: ['...hhhhhhhh...', '.bbbbbbbbbbbb.', 'bSbbbbbbbbbbSb', 'bbbbbbbbbbbbbb', 'bbnbnbnbnbnbbb', 'bbbnbnbnbnbnbb', 'bbnbnbnbnbnbbb', 'bbbbbnnnnbbbbb', '.bbbbbbbbbbbb.'],
+  typewriter: ['..bbbbbbbbbb..', '..bkkkkkkkkb..', '..bkkkkkkkkb..', '..bSSSSSSSSb..', '.bbbbbbbbbbbb.', '.bbbbyyyybbbb.', 'bSbSbSbSbSbSbb', 'bbSbSbSbSbSbbb', 'bSbSbSbSbSbSbb', 'bbbbSSSSSbbbbb', 'kkkkkkkkkkkkkk'],
   iron: ['....bbbb....', '...b....b...', '...b....b...', '..iiiiiiii..', '.iIIIIIIIIi.', 'iIIIIIIIIIIi', 'iiiiiiiiiiii'],
   duck: ['..fff...', '.fffbf..', '.ffffrr.', 'f.fff...', 'fffffff.', 'ffffffff', '.ffffff.'],
   // drawn 26 Nov from Randi's photos of the real toys (shapes and colours only)
@@ -430,10 +441,14 @@ const PIX = {
   trainLoose: ['................', '..PPPPPPPPPP....', '.PPPPPPPPPPPP...', '.BBBBBBBBBBBB...', '..bb.....b......'],
   bottle: ['.........bb...', '.bbbb.....b...', '.bhbb.bb.bbb..', '.bbbbbhbbbbbb.', 'bbhbbbbbbbbhbb', 'bbbbbbbbbbbbbb', '.bb..bbb..bb..', '.bb..bbb..bb..'],
   sub: ['.......JJ.......', '......JjjJ......', '..JJJJJJJJJJJJ..', '.JjjjjjjjjjjjjJV', 'JjjnjnjnjnjjjjJV', '.JjjjjjjjjjjjJ.V', '...VV.....VV....'],
-  tlr: ['.bbbbbbb.', 'bSSSSSSSb', 'bbbbbbbbb', 'bbbOOObbb', 'bbOoooObb', 'bbbOOObbb', 'bbbbbbbbb', 'bbbOOObbb', 'bbOoooObb', 'bbbOOObbb', 'bbbbbbbbb', 'bSSSSSSSb'],
-  boxcam: ['...bbbb...', 'bbbbbbbbbb', 'bSSSSSSSSb', 'bSobSSboSb', 'bSSSSSSSSb', 'bSSSbbSSSb', 'bSSbOObSSb', 'bSSbOObSSb', 'bSSSbbSSSb', 'bbbbbbbbbb'],
-  folding: ['bbbbb.......', 'bSSSb.......', 'bbbbbVVVSS..', 'bbbbbVVVSOO.', 'bbbbbVVVSooO', 'bbbbbVVVSOO.', 'bbbbbVVVSS..', 'bSSSb..S....', 'bbbbb.SS....'],
-  enlarger: ['.iiiiii...', 'iIIIIIIiS.', 'iIIIIIIiS.', '.iiiiii.S.', '..iOOi..S.', '..ioOi..S.', '........S.', '........S.', '........S.', 'wwwwwwwwww', 'wnnnnnnnSw', 'wwwwwwwwww'],
+  tlr: ['.bkbkbkbk.', 'bSSSSSSSSb', 'bSbbbbbbSb', 'bSbOOOObSb', 'bSbOooObSb', 'bSbOOOObSb', 'bSbbbbbbSb', 'bSbOOOObSb', 'bSbOooObSb', 'bSbOOOObSb', 'bSbbbbbbSb', 'bSSSSSSSSb', 'bbbbbbbbbb'],
+  boxcam: ['bbbbbbbbbbb', 'bSSSSSSSSSb', 'bShbbbbbhSb', 'bSbbbbbbbSb', 'bSbbSSSbbSb', 'bSbSbbbSbSb', 'bSbSbObSbSb', 'bSbSbbbSbSb', 'bSbbSSSbbSb', 'bSbbbbbbbSb', 'bSSSSSSSSSb', 'bbbbbbbbbbb'],
+  folding: ['bbb..........', 'bSb..........', 'bbbkbkbk.....', 'bbbbkbkbkSSS.', 'bbbkbkbkSnnnS', 'bbbbkbkbSnOnS', 'bbbkbkbkSnnnS', 'bbbbkbkbkSSS.', 'bbbkbkbk.SS..', 'bSb...SSSS...', 'bbbbbbbbbbbbb'],
+  enlarger: ['..bkbkb.....', '..kbkbk...S.', '.SSSSSSS..S.', 'SnSSSSSSS.S.', 'SnSSSSSSS.S.', '.SSSSSSS..S.', '..bkbkb...S.', '..kbkbkSSSS.', '...OOO....S.', '...ooo....S.', '..........S.', '..........S.', 'wwwwwwwwwwww', 'wnnnnnnnnnSw', 'wwwwwwwwwwww'],
+  moviecam: ['.mmmmmm....', 'mwwwwwwm...', 'mwxxwwwm...', 'mwxmxwwmm..', 'mwxxwwwmbbb', 'mwwwwwwmbOb', 'mwxxwwwmbbb', 'mwwwwwwmm..', 'mwwmmmwwm..', 'mwmxxxmwm..', 'mwmxbxmwm..', 'mwwmmmwwm..', '.mmmmmmm...', '...mmm.....'],
+  flashcam: ['...SSSSSS...', '..SnnnnnnS..', '.SnnnnnnnnS.', '.SnnnSnnnnS.', '.SnnnnSnnnS.', '..SnnnnnnS..', '...SSSSSS...', '.....bb.....', 'dddddddddddd', 'bSSSSSSSSSSb', 'bSbbbbbbbbSb', 'bSbVVbbbbbSb', 'bSbbbbbobbSb', 'bSSSSSSSSSSb', 'bbbbbbbbbbbb'],
+  shiplamp: ['...RRR...', '...RrR..n', '..RRRRR.n', '.RRRRRRRn', '.RhhRhhRn', '.RhyRhhR.', '.RhyRhhR.', '.RhhRhhR.', '.RhhRhhR.', '.RRRRRRR.', '.RKRRKRR.'],
+  radiometer: ['....j....', '...jhj...', '..jhhhj..', '.jhhzhhj.', 'jhnnzbbhj', 'jhnnzbbhj', 'jhhhzhhhj', '.jhhzhhj.', '..jhhhj..', '....j....', '....j....', '...jjj...', '..jjjjj..'],
   truck: ['......nnnnnnnnnnnn', '.SSS..nPPPPPPPPPPn', 'SShS..nnnnnnnnnnnn', 'SSSS..nVVVVVVVVVVn', 'SSSSnnnnnnnnnnnnnn', 'SSSSSSnnnnnnnnnnnn', '.bb..bb.......bbb.', '.bb..bb.......bbb.'],
   plane: ['..S...............', '.SSS..............', '.SSSSSSSSSSSSSSS..', 'SVVVVVVVVVVVVVVVSS', '.SSSSSSSSSSSSSSSS.', '.....SSSSn........', '......SSSSnn......'],
   biplane: ['VVVVVVVVVVVVV.', '.d.d.....d.d..', '..VVVVVVVVVVS.', 'VVVVVVVVVVVVSS', '.d.d.....d.dS.', 'VVVyVVVVVyVVV.', '....bb...bb...'],
@@ -449,6 +464,8 @@ const PIX = {
 };
 // the three battleships: one hull, each in its own paint
 const SHIP_C = { Missouri: { O: '#7a7e88' }, Bismarck: { O: '#a8acb4' }, Yamato: { O: '#5e626c' } };
+// the light mill's vanes, turning (a real one spins in daylight; the copy's are glued)
+const MILL = [PIX.radiometer, edit(PIX.radiometer, [[2, 4, 'h'], [2, 5, 'h'], [6, 4, 'h'], [6, 5, 'h']]), edit(PIX.radiometer, [[2, 4, 'b'], [3, 4, 'b'], [2, 5, 'b'], [3, 5, 'b'], [5, 4, 'n'], [6, 4, 'n'], [5, 5, 'n'], [6, 5, 'n']])];
 const MOUSE = ['...d.d.', '.ddddd.', 'dddddbd', '.dddddr', 'd......'];
 // the cat lady's sculptures: a few shapes of plain hairball, and the duck
 const ART = [
@@ -463,13 +480,13 @@ const LOOK = {
   camera: [edit(PIX.camera, [[2, 2, 'y']]), PIX.camera],
   grinder: [edit(PIX.grinder, [[3, 3, 'n'], [5, 3, 'n']]), PIX.grinder],
   scale: [edit(PIX.scale, [[1, 3, 'Q'], [11, 3, 'Q']]), edit(swap(PIX.scale, 'B', 'D'), [[2, 3, 'd'], [12, 4, 'd']])],
-  lantern: [PIX.lantern, edit(PIX.lantern, [[3, 3, 'b'], [4, 4, 'b'], [3, 5, 'b'], [4, 6, 'b']])],
+  lantern: [PIX.lantern, edit(PIX.lantern, [[3, 5, 'b'], [4, 6, 'b'], [3, 8, 'b'], [6, 9, 'b']])],
   robot: [edit(PIX.robot, [[8, 6, 'y'], [9, 5, 'y'], [9, 6, 'y'], [9, 7, 'y'], [3, 1, 'n']]), swap(swap(PIX.robot, 'S', 'v'), 'o', 'b')],
   tincar: [edit(PIX.tincar, [[5, 3, 'd'], [10, 2, 'd'], [3, 4, 'd']]), swap(PIX.tincar, 'S', 'R')],
   figure: [edit(PIX.figure, [[2, 1, 'R'], [3, 1, 'R']]), swap(swap(PIX.figure, 's', 'g'), 'y', 'Q')],
   junk: [PIX.junk, PIX.junk],
   insulator: [edit(PIX.insulator, [[4, 2, 'n'], [6, 6, 'n'], [3, 7, 'n']]), swap(swap(PIX.insulator, 'j', 'h'), 'J', 'O')],
-  typewriter: [edit(PIX.typewriter, [[6, 3, 'y'], [7, 3, 'y']]), swap(swap(PIX.typewriter, 'b', 'X'), 'n', 'T')],
+  typewriter: [PIX.typewriter, swap(swap(swap(PIX.typewriter, 'b', 'X'), 'S', 'T'), 'y', 'X')],
   iron: [edit(PIX.iron, [[3, 4, 'R'], [8, 5, 'R'], [5, 4, 'R']]), edit(swap(swap(PIX.iron, 'I', 'b'), 'i', 'k'), [[4, 4, 'n']])],
   duck: [swap(PIX.duck, 'f', 'F'), PIX.duck],
   sharpener: [PIX.sharpener, swap(swap(swap(PIX.sharpener, 'B', 'S'), 'I', 'S'), 'R', 'S')],
@@ -478,8 +495,12 @@ const LOOK = {
   sub: [edit(PIX.sub, [[3, 1, 'y'], [4, 1, 'y']]), swap(swap(PIX.sub, 'j', 'o'), 'J', 'P')],
   tlr: [PIX.tlr, edit(PIX.tlr, [[3, 4, 'n'], [4, 3, 'n'], [5, 4, 'n']])],
   boxcam: [PIX.boxcam, swap(swap(PIX.boxcam, 'b', 'P'), 'S', 'o')],
-  folding: [PIX.folding, edit(PIX.folding, [[6, 3, 'k'], [7, 4, 'k'], [5, 5, 'k'], [6, 6, '.']])],
-  enlarger: [PIX.enlarger, edit(PIX.enlarger, [[3, 4, '.'], [4, 4, '.'], [3, 5, '.'], [4, 5, '.']])],
+  folding: [PIX.folding, edit(PIX.folding, [[5, 4, '.'], [6, 6, '.'], [4, 3, '.']])],
+  enlarger: [PIX.enlarger, edit(PIX.enlarger, [[3, 8, '.'], [4, 8, '.'], [5, 8, '.'], [3, 9, '.'], [4, 9, '.'], [5, 9, '.']])],
+  moviecam: [PIX.moviecam, edit(PIX.moviecam, [[9, 5, 'b']])],
+  flashcam: [PIX.flashcam, swap(swap(PIX.flashcam, 'n', 'd'), 'S', 'd')],
+  shiplamp: [PIX.shiplamp, swap(swap(swap(PIX.shiplamp, 'R', 'B'), 'K', 'B'), 'y', 'h')],
+  radiometer: [PIX.radiometer, PIX.radiometer],
   truck: [edit(PIX.truck, [[9, 0, 'd'], [10, 0, 'd'], [14, 2, 'd'], [8, 4, 'd'], [16, 5, 'd'], [2, 4, 'd']]), swap(PIX.truck, 'S', 'o')],
   plane: [PIX.plane, swap(swap(PIX.plane, 'S', 'n'), 'V', 'P')],
   biplane: [PIX.biplane, swap(PIX.biplane, 'S', 'w')],
@@ -514,6 +535,7 @@ function rowsOf(it) {
     return openRows[it.inside] || (openRows[it.inside] = edit(PIX.open, [[3, 1, 'Z'], [4, 1, 'Z'], [5, 0, 'Z'], [6, 1, 'Z'], [7, 0, 'Z'], [8, 1, 'Z']]));
   }
   if (it.kind === 'hairball') return it.good ? DUCK_ART : ART[it.shape || 0];
+  if (it.kind === 'radiometer' && it.good) return MILL[Math.floor(performance.now() / 160) % MILL.length];
   return wear(LOOK[it.kind][it.good ? 0 : 1], it);
 }
 const colorsOf = {};
@@ -608,7 +630,7 @@ const SHOP_DOOR = { x: 10, y: 11.8 }, REG_FRONT = { x: 14.5, y: 9.6 };
 // each with its own mix, and the swap meet, walked stall to stall. `MK` is
 // the place you're at: its finds, slots, sellers, what's solid.
 const SALES = {
-  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr']).slice(0, 5), ...(Math.random() < .6 ? ['box'] : [])] },
+  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'shiplamp', 'radiometer']).slice(0, 5), ...(Math.random() < .6 ? ['box'] : [])] },
   toys: { house: '#d8e4f0', siding: '#b8c8d8', yes: .5, finds: () => ['junk', 'junk', 'junk', ...shuffle([...TOYS, 'train']).slice(0, 2), pick(['figure', 'duck', 'box', 'present', 'plush', 'comics'])] },
   cat: { house: '#f0d8e0', siding: '#d8b8c4', yes: .15, cats: true, finds: () => ['hairball', 'hairball', 'hairball', 'hairball', ...shuffle(['plate', 'lantern', 'scale', 'camera']).slice(0, 2)] },
   swap: { fee: 5 },
@@ -618,11 +640,11 @@ const STALLS = {
   trains: { sign: 'TRAINS', canopy: '#3b4a6a', finds: () => ['train', pick(['train', 'bottle'])] },
   surplus: { sign: 'SURPLUS', canopy: '#6a7a4a', finds: () => ['canteen', pick(['canteen', 'shovel', 'sharpener'])] },
   books: { sign: 'BOOKS', canopy: '#5e3a1c', finds: () => shuffle(['comics', 'book', 'comics', 'plush']).slice(0, 2) },
-  glass: { sign: 'GLASS', canopy: '#4a9a6a', finds: () => shuffle(['plate', pick(['plate', 'lantern', 'insulator']), 'insulator']).slice(0, 2) },
+  glass: { sign: 'GLASS', canopy: '#4a9a6a', finds: () => shuffle(['plate', pick(['plate', 'lantern', 'insulator', 'radiometer']), 'insulator', 'radiometer']).slice(0, 2) },
   tools: { sign: 'TOOLS', canopy: '#8a5a30', finds: () => ['shovel', pick(['grinder', 'iron'])] },
-  old: { sign: 'OLD STUFF', canopy: '#8a4ab0', finds: () => shuffle(['grinder', 'scale', 'lantern', 'typewriter', 'typewriter', 'iron', 'sharpener', 'bottle', 'boxcam']).slice(0, 2) },
+  old: { sign: 'OLD STUFF', canopy: '#8a4ab0', finds: () => shuffle(['grinder', 'scale', 'lantern', 'typewriter', 'typewriter', 'iron', 'sharpener', 'bottle', 'boxcam', 'shiplamp']).slice(0, 2) },
   ducks: { sign: 'DUCKS', canopy: '#ffd040', finds: () => ['duck', 'duck'] },
-  cameras: { sign: 'CAMERAS', canopy: '#3b6ea8', finds: () => shuffle(['camera', 'boxcam', 'folding', 'enlarger', 'tlr', 'junk']).slice(0, 2) },
+  cameras: { sign: 'CAMERAS', canopy: '#3b6ea8', finds: () => shuffle(['camera', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'junk']).slice(0, 2) },
   cat: { sign: 'CAT ART', canopy: '#e05a9a', yes: .15, finds: () => ['hairball', 'hairball'] },
   boxes: { sign: 'BOXES', canopy: '#e8a030', finds: () => ['box', 'box'] },
   junk: { sign: 'JUNK', canopy: '#7a7a7a', finds: () => ['junk', pick(['junk', 'figure', 'tincar'])] },
