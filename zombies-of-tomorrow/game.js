@@ -50,6 +50,9 @@ const SFX = {
   beacon: () => { for (let i = 0; i < 3; i++) setTimeout(() => beep(660, 0.3, "sine", 0.06), i * 600); },
   ok: () => { beep(523, 0.1); setTimeout(() => beep(784, 0.15), 110); },
   whirr: () => beep(120, 0.6, "sawtooth", 0.04, 300),
+  hum: () => beep(98, 1.8, "sine", 0.07, 6),                // the drifting people, all on one note
+  crash: () => { for (let i = 0; i < 7; i++) setTimeout(() => beep(300 + Math.random() * 2500, 0.08, "square", 0.05), i * 45); },
+  bark: () => { for (let i = 0; i < 2; i++) setTimeout(() => beep(720, 0.07, "square", 0.05, -260), i * 140); },
 };
 
 // ---------- state ----------
@@ -71,7 +74,12 @@ const WALLCHARS = {
   c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome", o: "silo", n: "silo7",
   e: "hedge", g: "gate", D: "egodoor", B: "basedoor", G: "glass", V: "portrait",
   q: "hull", Q: "hullplain", M: "board", N: "heronote", U: "ladderup", O: "board2",
-  F: "farm", C: "crops", L: "spoke", X: "farmwin",
+  F: "farm", C: "crops", L: "spoke", X: "farmwin", "%": "board3",
+  // Hometown (27 Nov)
+  a: "postoff", b: "barber", i: "dime", j: "bakery", r: "house", A: "tomorrow", E: "istoday", H: "hubladder",
+  Y: "roundwin", J: "schoolfront", z: "schoolsign", x: "lockers", I: "room3sign", 8: "booth", 0: "gymsign",
+  u: "blackboard", 1: "draw1", 2: "draw2", 3: "draw3", s: "gymwall", R: "rink", 4: "rink2", 7: "rinklaps",
+  6: "rinkplain", T: "tapes", W: "switches",
 };
 // A.R.P.F.'s clean path through the dust in Ego House: from the basement
 // door along the hall and into the greenhouse
@@ -168,6 +176,35 @@ const LEVELS = {
     ceil: () => "canopy", floor: () => "grate", light: 0.8,
     start: { x: 1.6, y: 3.5, a: 0 },
   },
+  // Added 27 Nov: Hometown (novel ch 23). Main Street along the top, from
+  // the hub ladder (west) to the big round window (east); the school below
+  // it at the east end: the hall, Room 3, the recording room and the gym,
+  // with the Roll-A-Rama behind the gym.
+  hometown: {
+    map: [
+      "raaabbbiiijjjrrrAErrrrrrr",
+      "H.......................Y",
+      "r.......................Y",
+      "r.......................Y",
+      "rrrrrrrrrrrrJJJJz.zJJJJJr",
+      "xxxxxxxxxxxxx...........x",
+      "xxxxxxxxxxxxx...........Y",
+      "xxxxxxxxxxxxxx.Ix.8x0.xxx",
+      "xxxxxxxxxxxxu...x..x....s",
+      "xxxxxxxxxxxxu...x..x....s",
+      "xxxxxxxxxxxxu...xWTx....s",
+      "xxxxxxxxxxxxx321xxxs....s",   // seen from inside Room 3, facing south, so the title runs 3-2-1 west to east
+      "xxxxxxxxxxxxxxxxxxRRR.RRR",
+      "xxxxxxxxxxxxxxxxx6......4",
+      "xxxxxxxxxxxxxxxxx6......6",
+      "xxxxxxxxxxxxxxxxx6......6",
+      "xxxxxxxxxxxxxxxxx66676666",
+    ],
+    ceil: (x, y) => (y <= 3 ? "townceil" : y >= 13 ? (x === 20 && y === 14 ? "mirrorball" : "rinkceil") : "schoolceil"),
+    floor: (x, y) => (y <= 3 ? "sidewalk" : y >= 13 ? "rinkflr" : y >= 8 && x >= 20 ? "gymflr" : y >= 8 && (x === 17 || x === 18) ? "carpet" : "schoolflr"),
+    light: 0.95,
+    start: { x: 1.6, y: 1.6, a: 0 },
+  },
   // Added 26 Nov: the silo under the estate, round as a grid allows, with
   // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
   // so the ship climbs up out of sight.
@@ -199,7 +236,7 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts, harvest: harvestEnts }[name]();
+  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts, harvest: harvestEnts, hometown: hometownEnts }[name]();
 }
 
 // ---------- the story: home ----------
@@ -561,8 +598,23 @@ function enterHangar(back) {
     set("board"); set("harvestdone"); map[0][5] = "O";
     say([["", "That night, in the hangar, the light beside HARVEST RING on the mission board turns from green to white. Done."],
          ["", "And beside HOMETOWN, a light you hadn't noticed blinks on. Green."],
-         ["A.R.P.F.", "Hometown next! The school, the pool, the roller rink. And the corgis. Hundreds of corgis. That part isn't built yet, though."]],
-        () => hint("Hometown is next. Not built yet!"));
+         ["A.R.P.F.", "Hometown next! The school, the pool, the roller rink. And the corgis. Hundreds of corgis."]],
+        () => hint("Capsule A goes to Hometown whenever you're ready"));
+    return;
+  }
+  if (back === "ready") {                                           // back from a flight toward Hometown
+    set("board"); set("harvestdone"); map[0][5] = "O";
+    say([["", "Capsule A clamps back into its place in the ring. The light beside HOMETOWN is still green."]], () => hint("Capsule A goes to Hometown whenever you're ready"));
+    return;
+  }
+  if (back === "hometown") {                                        // home from Hometown (added 27 Nov)
+    set("board"); set("harvestdone"); set("hometowndone"); map[0][5] = "%";
+    ents.push(ent({ id: "fluffy", spr: "fluffy", x: 6.4, y: 6.2, r: 0.3, solid: false, label: "The fluffy corgi", use: () => say([
+      ["", "The fluffy corgi has found the warmest spot in the hangar and is asleep on it, snoring. It came home with you. Nobody told it not to."]]) }));
+    say([["", "That night, the light beside HOMETOWN on the mission board turns white."],
+         ["", "And down in the blank rows, beside the penciled question mark, a light blinks on. Green. Steady."],
+         ["A.R.P.F.", "The question mark. Somebody knocked back, and Ivan's board knows where. That part isn't built yet. Ivan never finished anything on time either."]],
+        () => hint("The next place isn't built yet!"));
     return;
   }
   if (back) {                                                       // home from the flight
@@ -613,7 +665,13 @@ function useHangarRadio() {
 }
 
 function useCapsuleA() {
-  if (flag("harvestdone")) { say([["A.R.P.F.", "Hometown next! But that bit isn't built yet. Ivan never finished anything on time either."]]); return; }
+  if (flag("hometowndone")) { say([["A.R.P.F.", "The question mark is next. But that bit isn't built yet. Ivan never finished anything on time either."]]); return; }
+  if (flag("harvestdone")) {
+    say([["", "Capsule A. It knows the way now, and so do you."], ["A.R.P.F.", "Hometown! The rocks are thicker that way. I have been told I am an excellent ducker."]], () => {
+      card(`<p>The hangar door opens under you, and Capsule A drops out into space.</p>`, null, 1800, () => { location.href = "flight.html#hometown"; });
+    });
+    return;
+  }
   if (!flag("board")) { say([["", "Capsule A. A tag on its ladder: CAPSULE A. Fuel checked. Seals checked. Ready. H.M. Sixty-two lines of it."], ["", "But where to? Maybe the board on the wall knows."]], () => hint("Look at the mission board")); return; }
   say([["", "Capsule A is the size of a phone booth inside. One seat, a bubble window, a stick between your knees. A.R.P.F. doesn't fit. It comes anyway."],
        ["A.R.P.F.", "Harvest Ring! Mind the rocks. There are a great many rocks."]], () => {
@@ -748,6 +806,404 @@ function useSpoke() {
     card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { location.href = "index.html#hangar-harvest"; });
   });
 }
+
+// ---------- the story: Hometown (added 27 Nov, as in the novel's ch 23) ----------
+// Main Street runs east from the hub ladder to the big round window. The
+// school is on the south side: the hall, Room 3, the recording room and the
+// gym, with the Roll-A-Rama behind the gym. No ray gun here: nothing in
+// Hometown is for zapping.
+const DRIFTERS = [[3.8, 1.2, 2], [5.2, 1.2, 3], [9.0, 2.0, 1], [13.5, 1.3, 2], [15.2, 2.7, 1], [19.5, 1.4, 3], [21.8, 2.4, 1], [23.2, 1.6, 2]];
+const GYM_SPOTS = [[20.6, 8.6], [22.9, 9.1], [21.2, 10.9], [23.2, 10.5], [20.5, 9.9], [22.3, 11.3], [21.8, 8.4]];
+
+function hometownEnts() {
+  const people = DRIFTERS.map(([x, y, k], i) => ent({
+    id: "d" + i, spr: "drift" + k, kind: k, x, y, bx: x, by: y, ox: x, oy: y, r: 0.3, person: true, drifter: true, t: i * 0.7,
+    label: "Look at the person", use: () => useDrifter(k),
+  }));
+  return [
+    ...people,
+    ent({ id: "poster", spr: "poster", x: 5.9, y: 3.55, r: 0.2, label: "Read the poster", use: usePosterWhen }),
+    ent({ id: "square", spr: "square", x: 7.7, y: 3.5, r: 0.5, label: "The square", use: () => say([["", "A little square with a bench and a fountain. The fountain is dry. There's dust in the bottom of it, and one penny."]]) }),
+    ent({ id: "l1", spr: "lamp", x: 4.0, y: 3.85, r: 0.12 }), ent({ id: "l2", spr: "lamp", x: 11.0, y: 1.15, r: 0.12 }),
+    ent({ id: "l3", spr: "lamp", x: 20.5, y: 3.85, r: 0.12 }),
+    ent({ id: "helper", spr: "helper", x: 23.0, y: 2.5, r: 0.45, hidden: true }),
+    ent({ id: "arpf", spr: "arpfon", x: 2.4, y: 2.4, r: 0.4, solid: false, follow: true, label: "Talk to A.R.P.F.", use: useArpfTown }),
+    // the school
+    ent({ id: "fount", spr: "rocketfount", x: 13.35, y: 5.3, r: 0.2, label: "The water fountain", use: () => say([["", "A water fountain shaped like a rocket. You press the button. Nothing. Then, far down in the pipes, a gurgle, like the station clearing its throat."]]) }),
+    ent({ id: "desks", spr: "desks", x: 14.6, y: 9.0, r: 0.5, solid: false, label: "The little desks", use: () => say([["", "Little desks in rows, with little chairs. On one of them, a worksheet: THE MOONS OF JUPITER. Somebody has drawn a corgi on Ganymede."]]) }),
+    ent({ id: "tdesk", spr: "tdesk", x: 13.55, y: 8.35, r: 0.4, solid: false, label: "The teacher's desk", use: () => say([["", "The teacher's desk. A red apple on it, shiny and perfect. You pick it up. It's made of wax. Miss Lindqvist must have kept it there for fifty years."]]) }),
+    ent({ id: "fluffy", spr: "fluffybar", x: 14.4, y: 10.2, r: 0.3, solid: false, hidden: true, label: "The fluffy corgi", use: useFluffy }),
+    // the switch panel is on the wall right above this desk, so the desk is
+    // where you reach it from (27 Nov: standing in front of the desk, the
+    // desk was always the nearer thing to use)
+    ent({ id: "mic", spr: "micdesk", x: 17.75, y: 9.45, r: 0.4, solid: false, label: () => (flag("edge") ? "The microphone" : "The microphone and the switches"), use: useEdge }),
+    ent({ id: "fridge", spr: "fridge", x: 23.45, y: 8.35, r: 0.3, solid: false, label: "The refrigerator", use: () => say([["", "A refrigerator with its door hanging open, and a corgi inside it, eating. It looks at you. It keeps eating."]]) }),
+    ent({ id: "heap1", spr: "corgiheap", x: 22.6, y: 11.2, r: 0.5, solid: false }),
+    ent({ id: "heap2", spr: "corgiheap", x: 20.7, y: 10.9, r: 0.5, solid: false }),
+    ent({ id: "baller", spr: "corgi2", x: 21.6, y: 9.6, r: 0.3, solid: false, label: "Throw the ball", use: throwBall }),
+    ent({ id: "ball", spr: "ball", x: 21.6, y: 9.6, r: 0.1, solid: false, hidden: true }),
+    ent({ id: "oldcorgi", spr: "oldcorgi", x: 22.5, y: 9.8, r: 0.3, solid: false, hidden: true, label: "The old red corgi", use: useOldCorgi }),
+    // the Roll-A-Rama
+    ent({ id: "skater", spr: "skater", x: 20.5, y: 13.3, r: 0.3, solid: false, person: true, t: 0, label: "The skater", use: () => say([
+      ["", "A very old man in a cowboy shirt with pearl snaps and a big silver buckle, skating slowly round in one wide circle, arms out from his sides."],
+      ["", "His hair is white and wispy and floats up a little in the light gravity. His eyes are silver. He's smiling at nothing."],
+      ["", "Round and round. You don't stop him. You couldn't, and you don't think you'd want to."]]) }),
+    ent({ id: "rc1", spr: "corgi3", x: 23.4, y: 13.35, r: 0.3, solid: false }), ent({ id: "rc2", spr: "corgi", x: 23.4, y: 14.0, r: 0.3, solid: false }),
+  ];
+}
+
+function enterHometown() {
+  loadLevel("hometown");
+  try { S.name = sessionStorage.getItem("zot-name") || S.name; } catch (e) { /* fine without it */ }
+  S.items.gun = false; document.getElementById("zapBtn").hidden = true;
+  card(`<p>Hometown is the wheel with the windows. More than you could ever count, round and yellow and warm,
+        all the way around the rim. And in almost every lit one, a shape. Somebody standing at the glass, very still.</p>
+        <p>They're all looking the same way. Not at you. Past you, at the Sun.</p>`, "Dock at the hub", 0, () => {
+    card(`<p>The docking hatch opens into water.</p>
+          <p>Not a flood. The water just hangs there in the air, in great wobbling blobs as big as beach balls,
+          as big as cars, drifting round a blue-tiled room. HOMETOWN POOL. NO RUNNING. NO DIVING. ALWAYS SWIM UP!</p>
+          <p>At the hub nothing presses on anything, so the water doesn't fall. You poke a blob. It wraps round your fingertip like a jelly glove, and lets go with a tiny <i>plip</i>.</p>
+          <p>Behind you, A.R.P.F. floats straight into one the size of an armchair, and gurgles. You pull it out by the scoop arm.</p>`,
+      "Climb down", 0, () => {
+        say([["", "Climbing down into Hometown is easier than the Harvest Ring. It's a smaller wheel and it turns more gently. By the bottom you weigh about what you weigh at home."],
+             ["", "The hatch opens onto a street. Green tiles, lampposts, little shops with striped awnings, all curving up and away until they disappear into the ceiling."],
+             ["", "And all along the street, there are people. At the windows, on the sidewalk, all turned the same way, arms held out a little, swaying together like grass under water."],
+             ["", "Nobody turns around. From all of them together comes one soft low note, held on and on. The sound of a lot of people waiting for something, for a very long time."],
+             ["", "A.R.P.F. rolls up so close its tread bumps your sneaker. \"Yeah,\" you whisper. \"Me too.\""]],
+            () => hint("Walk down Main Street"), (i) => { if (i === 3) SFX.hum(); });
+      });
+  });
+}
+
+function useDrifter(k) {
+  const turned = flag("spilled");
+  const who = { 1: "A man in a sweater", 2: "A woman in a long skirt", 3: "A mailman with his bag still over his shoulder" }[k];
+  say([["", turned ? `${who}. Turned round now, toward the tea. Silver eyes, all the way through. Humming.` : `${who}, facing the round window at the end of the street. You say hello. They don't turn around.`]]);
+}
+
+function usePosterWhen() {
+  say([["", "A poster on a post in the square: THE SHIP IS COMING! A rocket, and a happy crowd.", "art/look-when.png"],
+       ["", "Somebody has scratched into the paint underneath it with something sharp. The letters are deep and angry: WHEN?", "art/look-when.png"]],
+      () => addPage("THE SHIP IS COMING!", "A poster in the square on Main Street. Underneath, scratched into the paint: WHEN?", "art/look-when.png"));
+}
+
+function teaTime() {
+  set("tea");
+  const h = ents.find((e) => e.id === "helper"); h.hidden = false; h.x = Math.min(23, P.x + 6); h.y = 2.5; h.rolling = true;
+  say([["", "Squee. Squee. Squee. A wheel squeaking, round and round, coming up the street toward you."]], () => hint("Something's coming"));
+}
+
+function helperArrives() {
+  const h = ents.find((e) => e.id === "helper"); h.rolling = false;
+  say([["", "A robot. Tall and smooth, like a big friendly bowling pin, in chipped teal and orange stripes, on one rubber wheel. It's pushing a tea cart."],
+       ["", "Teal and orange. The same paint as the scrap in your backpack, the one you scooped out of space."],
+       ["Helper", "TEA TIME! Have a cup! Have a cup! A happy Egonot is a helpful Egonot!"],
+       ["", "An arm unfolds and pours. Pale green tea, steaming. It smells sweet, like syrup on a stove. It smells exactly like the farm."]], teaChoice);
+}
+
+function teaChoice() {
+  panel(`<h2>Tea time</h2><p>The robot holds the cup out to you.</p>
+    <div class="row"><button id="tea-drink" class="alt">Drink the tea</button><button id="tea-no">No thank you</button></div>`);
+  document.getElementById("tea-drink").onclick = () => { closePanel(); say([["", "You lift the cup. A.R.P.F.'s scoop arm knocks it out of your hand."], ["A.R.P.F.", "Smell it! That's the farm. That's the flowers. Gerald had a gold star, and look at him."]], teaChoice); };
+  document.getElementById("tea-no").onclick = () => {
+    closePanel();
+    say([["You", "No thank you."], ["Helper", "Have a cup!"], ["You", "I said no thank you."],
+         ["Helper", "HAVE A CUP! HAVE A CUP! HAVE A..."]], () => { const a = ents.find((e) => e.id === "arpf"); a.ram = true; SFX.whirr(); });
+  };
+}
+
+function teaSpill() {
+  set("spilled"); SFX.crash();
+  const h = ents.find((e) => e.id === "helper"); h.spr = "helperdown"; h.solid = false; h.label = "The robot";
+  h.use = () => say([["", "The Helper lies on its back with its wheel spinning, its face flashing ERROR. \"Have... a... cuuuup...\""]]);
+  const a = ents.find((e) => e.id === "arpf"); a.ram = false;
+  say([["", "A.R.P.F. hits the cart at full speed. A crash like every dish in a kitchen falling at once."],
+       ["", "The urn goes over. A tidal wave of pale green tea across the tiles. The robot spins three times, flashing ERROR, ERROR, ERROR, and crashes onto its back."],
+       ["A.R.P.F.", "I'm afraid our guest doesn't care for tea."],
+       ["", "You laugh so hard you have to sit down on the curb. Then you look up."],
+       ["", "All along Main Street, the drifting people are turning around. Not to look at you. To look at the tea. And the soft low note has gone up, just a little, like a question."]],
+      corgisArrive, (i) => {
+        // they drift toward the puddle, but only a little way, and you can
+        // slip between them: nobody gets boxed in on Main Street
+        if (i === 4) { SFX.hum(); ents.filter((e) => e.drifter).forEach((e) => { e.spr = "drift" + e.kind + "f"; e.toTea = true; e.solid = false; }); }
+      });
+}
+
+function dog(id, spr, x, y) { return ent({ id, spr, base: spr, x, y, r: 0.3, solid: false, dog: true, path: [], t: Math.random() * 6 }); }
+
+function corgisArrive() {
+  const h = ents.find((e) => e.id === "helper");
+  const pack = ["corgi", "corgi2", "corgi3", "corgi", "corgi2", "corgi", "corgi3", "corgi2", "corgi"];
+  pack.forEach((s, i) => {
+    const c = dog("pk" + i, s, 7.6 + (i % 3) * 0.2, 1.2);
+    const a = (i / pack.length) * Math.PI * 2;
+    c.path = [[P.x + Math.cos(a) * 1.0, P.y + Math.sin(a) * 0.9]];
+    ents.push(c);
+  });
+  const old = dog("pkold", "oldcorgi", 7.4, 1.3); old.path = [[P.x - 0.7, P.y]]; ents.push(old);
+  const fl = dog("pkfluffy", "fluffy", 7.5, 1.4); fl.path = [[P.x + 0.6, P.y + 0.4]]; ents.push(fl);
+  ents.filter((e) => e.dog).forEach((e) => { e.speed = Math.hypot(e.path[0][0] - e.x, e.path[0][1] - e.y) / 1.5; });
+  // the words wait until they've got to you (the world stands still while
+  // anyone is talking), so they really do surround you in about four seconds
+  SFX.bark(); S.swarmT = 1.7;
+}
+
+function corgiScene() {
+  say([["", "Barking. A lot of barking, all at once. The high, bossy yaps of small dogs who believe themselves to be very large dogs."],
+       ["", "Out of the alley by the five-and-dime: a flood of short legs and big ears, orange and white and red and sable, twenty, thirty of them."],
+       ["", "They surround you in about four seconds. The biggest, an old red one with a gray muzzle and one floppy ear, steps forward."],
+       ["", "It sniffs your sneaker. Your knee. The goo stain from the farm, for a long time. Then your hand. You smell like turkey dinner and rocket fuel and a little bit like trash can."],
+       ["", "One short, sharp bark. Every corgi stops at once. And the tails start wagging."],
+       ["You", "Hi. Hi. I'm sorry. Hi."],
+       ["", "They swarm you. The other way, the happy way. Corgis in your lap, corgis on your shoulders, a puppy chewing your shoelace."],
+       ["", "Then a small, fat, extremely fluffy one sticks its nose in your jacket pocket, pulls out your Jackpot Bar, and runs."],
+       ["You", "Hey!"]],
+      () => {
+        SFX.bark();
+        const door = [[17.5, 3.3], [17.5, 5.5]];
+        ents.filter((e) => e.dog).forEach((e, i) => {
+          if (e.id === "pkfluffy") { e.spr = e.base = "fluffybar"; e.path = [...door, [21.0, 5.6], "gone"]; e.speed = 3.2; return; }
+          const spot = GYM_SPOTS[i % GYM_SPOTS.length];
+          e.path = [...door, [21.5, 6.3], [21.5, 7.6], spot]; e.speed = 2.6 + Math.random() * 0.4;
+          if (e.id === "pkold") e.path = [...door, [21.5, 6.3], [21.5, 7.6], [22.5, 9.8], "gone"];
+        });
+        hint("After that corgi!");
+      }, (i) => { if (i === 4) SFX.bark(); });
+}
+
+function enterSchool() {
+  set("school");
+  say([["", "Through the double doors: HOMETOWN SCHOOL. LEARNING IS FUN! The corgi with the candy bar is fast. You lose it in the hall."],
+       ["", "Lockers painted teal. A trophy case with a dusty cup for SCIENCE FAIR 1973. Paper planets on the bulletin boards, and a sign about Attitude Class."],
+       ["", "It's the strangest school you've ever been in, and the most ordinary. You can't make yourself leave it."]],
+      () => {
+        // the old corgi plants itself in the doorway behind you: it isn't
+        // letting you go until you've followed it
+        const old = ents.find((e) => e.id === "oldcorgi"); old.hidden = false; old.x = 17.5; old.y = 4.55; old.spr = "oldcorgi"; old.atDoor = true; old.solid = true;
+        hint("Look around the school");
+      });
+}
+
+function useDrawings() {
+  if (flag("drawings")) { say([["", flag("ada") ? "The wall of drawings, with one gap in the middle where Ada's was." : "WHAT I WILL DO WHEN THE SHIP COMES. Ada's drawing, the girl and the little boy in the blob of blue.", "art/look-ada.png"]]); return; }
+  set("drawings");
+  say([["", "The back wall of Room 3 is covered in children's drawings. A title over them, cut out of colored paper one letter at a time: WHAT I WILL DO WHEN THE SHIP COMES."],
+       ["", "I will show my grandpa my room. It has a window with Jupiter in it."],
+       ["", "I will give my Nana a hug and a kiss and another hug."],
+       ["", "My dog Biscuit is coming. Mom says he is too old. But he is coming. A brown dog in a fishbowl helmet, tongue out."],
+       ["", "I will show James the pool. I will show him how you can swim UP. He is 4 so I will hold his hand. Ada Okafor, age 8.", "art/look-ada.png"],
+       ["", "You know that name. Not Ada. James. OKAFOR, JAMES, AGE 4. A little brass plate on a seat on Ship Seven, with a folded blanket and a paper bag that says FOR THE TRIP.", "art/look-ada.png"],
+       ["", "The ship never came for him. Ada drew him floating in the pool, holding her hand, and pinned it up, and waited."],
+       ["", "Out of the window you can see a bit of Main Street, and the people at the windows, swaying. You don't know which one is Ada. You don't want to know."],
+       ["", "You sit down at one of the little desks, much too small for you, and put your head on your arms. A.R.P.F. waits in the doorway. It doesn't play anything at all."]],
+      () => {
+        const f = ents.find((e) => e.id === "fluffy"); f.hidden = false;
+        say([["", "After a while, something cold and wet pushes against your elbow. The small, fat, extremely fluffy corgi, sitting by your desk, with the Jackpot Bar in its mouth."]]);
+      });
+}
+
+function useFluffy() {
+  const f = ents.find((e) => e.id === "fluffy");
+  if (flag("ada")) { say([["", "The fluffy corgi is lying on your foot. Whenever you move, it gets up and comes too, like a dog that has decided to stay."]]); return; }
+  panel(`<h2>The fluffy corgi</h2><p>It drops the Jackpot Bar on your sneaker and looks up at you. It watches every move.</p>
+    <div class="row"><button id="give-bar" class="alt">Give it the Jackpot Bar</button><button id="give-cracker">Give it a cracker</button></div>`);
+  document.getElementById("give-bar").onclick = () => { closePanel(); say([["", "You start to unwrap it, and stop. Chocolate is bad for dogs. Even dogs in space."]]); };
+  document.getElementById("give-cracker").onclick = () => {
+    closePanel(); set("ada"); f.spr = "fluffy"; f.follow = true; f.solid = false;
+    say([["", "You dig a cracker out of the FOR THE TRIP bag. The corgi eats it in one gulp, then licks your fingers to make sure. You eat the Jackpot Bar yourself."],
+         ["", "It lies down on your foot with a big sigh, like a dog that has decided to stay."],
+         ["", "When you stand up, you take Ada's drawing down off the wall, very carefully, so the corners don't tear, and fold it into Hazel's notebook.", "art/look-ada.png"],
+         ["", "Somebody should know."]],
+        () => addPage("Ada's drawing", "From Room 3, Hometown School: I will show James the pool. I will show him how you can swim UP. He is 4 so I will hold his hand. Ada Okafor, age 8. James's seat on Ship Seven is still waiting.", "art/look-ada.png"));
+  };
+}
+
+function useOldCorgi() {
+  const old = ents.find((e) => e.id === "oldcorgi");
+  if (flag("edge")) { say([["", "The old red corgi thumps its tail on the floor, once. Thump. As if it's counting."]]); return; }
+  if (old.atDoor) {
+    old.atDoor = false; old.solid = false; old.speed = 1.6; old.path = [[17.5, 6.0], [17.5, 7.0]]; old.waitFor = true;
+    say([["", "The old red corgi with the floppy ear is standing in the doorway, barking at you. Not angry. Insistent. Not that way."],
+         ["", "It trots off down the hall with its tail high, looking back every few steps to make sure you're coming, the way dogs on TV lead people to a kid stuck down a well."]],
+        () => hint("Follow the old corgi"));
+    return;
+  }
+  say([["", "The old corgi looks at you with bright black eyes, and then at the wall above the desk."]]);
+}
+
+function useTapes() {
+  say([["", "Shelves all round the walls, full of tape reels in flat cardboard boxes. Hundreds. Every box has a typed label, and every label ends the same way.", "art/look-tapes.png"],
+       ["", "AKINS, SAMUEL. Birthday message to Grandfather. NOT SENT. BRANDT, DOLORES. Birthday message to Grandmother. NOT SENT.", "art/look-tapes.png"],
+       ["", "CHEN, LUCY. Christmas message to Aunt May. NOT SENT. OKAFOR, ADA. Message to James. NOT SENT.", "art/look-tapes.png"],
+       ["", "Every child in Hometown sat on that cushion and talked into the round part. None of it went home. Until a rock hit the colony, and the beacon grabbed them all, and sent them, fifty years late."],
+       ["", "One of them got heard. You heard it. At four in the morning, under the whooping of the beacon: Dolores."]],
+      () => addPage("The recording room", "Hundreds of messages from the children of Hometown, to grandparents and aunts and little brothers on Earth. Every label says NOT SENT.", "art/look-tapes.png"));
+}
+
+function useEdge() {
+  if (flag("edge")) { say([["", "The EDGE light is still on. Amber. Steady now. Somebody at the edge of the colony knows you're here.", "art/look-edge.png"]]); return; }
+  say([["", "An old round microphone on a stand, a big reel-to-reel, and a chair with a cushion on it, to make a short person tall enough to reach. A card on the desk: TALK INTO THE ROUND PART. LOUD AS YOU LIKE."],
+       ["", "On the wall above it, a panel of switches, each with a little light and a label. FOUNDER'S STATION. HARVEST RING. HOMETOWN OFFICE. HUB. The station's own telephones, wheel to wheel. All dark.", "art/look-edge.png"],
+       ["", "All except one. Its label has been scratched over, as if someone tried to take it off and couldn't quite. EDGE. Amber. Blinking.", "art/look-edge.png"]], () => {
+    panel(`<h2>EDGE</h2><p>The light blinks. The old corgi looks at you. You look at the old corgi.</p>
+      <div class="row"><button id="edge-leave" class="alt">Leave it</button><button id="edge-flip">Flip the switch</button></div>`);
+    document.getElementById("edge-leave").onclick = closePanel;
+    document.getElementById("edge-flip").onclick = () => {
+      closePanel(); SFX.static();
+      say([["", "A hiss of static from the little speaker over the desk. Long, and empty. You lean in close. You don't say anything. You just listen."],
+           ["", "And then, out of the static, faint and far and very, very clear: Tap. Tap. Tap."],
+           ["", "Three knocks. Like somebody on the other end of the line, rapping on a microphone with one knuckle."]], () => {
+        panel(`<h2>The round microphone</h2><p>You stop breathing.</p>
+          <div class="row"><button id="edge-knock">Knock on the microphone</button></div>`);
+        document.getElementById("edge-knock").onclick = () => {
+          closePanel(); SFX.knock();
+          say([["", "Tap. Tap. Tap. Your hand is shaking so badly you can barely do it. But you do it."],
+               ["", "Silence. The longest silence of your life."],
+               ["", "Then, from very far away: Tap. Tap. Tap."],
+               ["", "Somebody is out there. At the edge of the colony, where the bunker was, where the rock hit. Somebody heard you knock, and knocked back."]],
+              () => {
+                set("edge"); SFX.ok();
+                addPage("The EDGE line", "In the recording room: a switch labeled EDGE, scratched over, its light amber. You knocked three times. Somebody at the edge of the colony knocked back.", "art/look-edge.png");
+                const old = ents.find((e) => e.id === "oldcorgi"); old.waitFor = false; old.path = [[17.5, 7.0], [17.5, 6.0], [21.5, 6.3], [21.5, 7.6], [22.5, 9.8]]; old.speed = 1.6;
+                hint("Back up the ladder to the hub");
+              }, (i) => { if (i === 2) setTimeout(SFX.knock, 300); });
+        };
+      }, (i) => { if (i === 1) setTimeout(SFX.knock, 300); });
+    };
+  });
+}
+
+function throwBall() {
+  const b = ents.find((e) => e.id === "ball");
+  if (!b.hidden) return;
+  b.hidden = false; b.x = P.x + Math.cos(P.a) * 0.4; b.y = P.y + Math.sin(P.a) * 0.4;
+  b.vx = Math.cos(P.a) * 3.2; b.vy = Math.sin(P.a) * 3.2; b.life = 1.3;
+  // where it will land: the ball goes straight, the floor turns under it,
+  // so it seems to curve (Weird Kid Weekly, Issue 404). The corgis know.
+  let x = b.x, y = b.y, vx = b.vx, vy = b.vy;
+  for (let t = 0; t < b.life; t += 1 / 30) { [vx, vy] = curve(vx, vy, 1 / 30); const nx = x + vx / 30, ny = y + vy / 30; if (wallAt(nx, ny) !== ".") break; x = nx; y = ny; }
+  ents.filter((e) => e.dog || e.id === "baller").forEach((e) => { if (Math.hypot(e.x - 21.8, e.y - 9.8) < 2.6) { e.path = [[x + (Math.random() - 0.5) * 0.4, y + (Math.random() - 0.5) * 0.4]]; e.speed = 2.8; } });
+  if (!flag("ball")) {
+    set("ball");
+    say([["", "You throw it straight. It rolls away in a perfectly straight line... and then curves. Slowly, smoothly, to one side, as if an invisible hand were steering it."],
+         ["", "Weird Kid Weekly, Issue 404: Why Can't You Play Catch on a Space Station? You and the ball and the floor all go round together. Once the ball leaves, it goes straight, and the floor keeps turning under it."],
+         ["", "The corgis were born here. They aren't running to where the ball was going. They're running to where it's going to end up."],
+         ["A.R.P.F.", "Remarkable."]]);
+  } else hint("Wrong again. The corgis laugh at you, the way dogs laugh.");
+}
+function curve(vx, vy, dt) { const w = 1.4 * dt, c = Math.cos(w), s = Math.sin(w); return [vx * c - vy * s, vx * s + vy * c]; }
+
+function useArpfTown() {
+  if (!flag("tea")) say([["A.R.P.F.", "Stay in the middle of the street. Walk quietly. I am walking quietly. My treads are very quiet treads."]]);
+  else if (!flag("school")) say([["A.R.P.F.", "Your Jackpot Bar! That little thief went into the school!"]]);
+  else if (!flag("ada")) say([["A.R.P.F.", "Room 3 is just down the hall. I like schools. Schools are full of things worth keeping."]]);
+  else if (!flag("edge")) say([["A.R.P.F.", "That old corgi has been trying to tell you something ever since we came in. I know the look. It's my look."]]);
+  else say([["A.R.P.F.", "Somebody knocked back. Somebody is alive out there. Back up the ladder. Ivan's board will want to know."]]);
+}
+
+function useHubLadder() {
+  if (!flag("edge")) {
+    say([["A.R.P.F.", flag("school") ? "Not yet. The corgis want something. Did you see the old one, with the floppy ear?" : "Not yet! We've only just got here. Main Street first."]]);
+    return;
+  }
+  say([["", "Up the ladder, lighter with every rung, through the floating pool, back to Capsule A. The fluffy corgi comes too. Nobody tells it not to."]], () => {
+    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { location.href = "index.html#hangar-hometown"; });
+  });
+}
+
+function townWall(w) {
+  const shops = {
+    a: ["Look in the post office", "The post office. Behind the glass, the lost and found board, still pinned with cards. A mailbox nobody empties."],
+    b: ["Look in the barber shop", "A barber shop with a red-and-white pole, not turning. One chair, a towel folded on its arm, waiting for the next customer."],
+    i: ["Look in the five-and-dime", "A five-and-dime with a window full of dusty toys: wind-up rockets, a cowboy hat, a doll in a space helmet."],
+    j: ["Look in the bakery", "A bakery with nothing in the window but a sign: TRY OUR MOON-BLOOM MUFFINS! And a picture of a smiling muffin with a tiny flower on top. You don't feel hungry anymore."],
+    r: ["Look in the window", "A lit window, and somebody standing at the glass, very still. Their arms are held out a little. They don't see you."],
+    A: ["Read the sign", "Painted high on the houses, in letters taller than a person: TOMORROW IS TODAY!"],
+    E: ["Read the sign", "Painted high on the houses, in letters taller than a person: TOMORROW IS TODAY!"],
+    Y: ["Look out the round window", "The big round window at the end of the street. The stars sweep past as the wheel turns, and the Sun, bigger than you've ever seen it. Every person on Main Street is facing it."],
+    "7": ["Read the scoreboard", "A scoreboard with numbers that flip over. LAPS. Under it, a number with so many digits that some have stuck halfway. Two old corgis on the bench beside it thump their tails, once, every time he passes. Thump."],
+    "3": ["Look at the drawings", null], "1": ["Look at the drawings", null], "2": ["Look at the drawings", null],
+  };
+  if (w === "H") return { label: "Climb the ladder to the hub", use: useHubLadder };
+  if (w === "W") return { label: "The switches", use: useEdge };
+  if (w === "T") return { label: "The tapes", use: useTapes };
+  if (w === "1" || w === "2" || w === "3") return { label: "Look at the drawings", use: useDrawings };
+  const s = shops[w];
+  return s ? { label: s[0], use: () => say([["", s[1]]]) } : null;
+}
+
+function updateHometown(dt) {
+  const arpf = ents.find((e) => e.id === "arpf"), h = ents.find((e) => e.id === "helper");
+  if (!flag("tea") && P.x > 9.5) teaTime();
+  if (S.swarmT > 0) { S.swarmT -= dt; if (S.swarmT <= 0) corgiScene(); }
+  if (h.rolling) {                                        // the Helper, squeaking up the street
+    const dx = P.x - h.x, dy = P.y - h.y, d = Math.hypot(dx, dy);
+    if (d > 1.3) { h.x += dx / d * 1.4 * dt; h.y += dy / d * 1.4 * dt; h.sq = (h.sq || 0) - dt; if (h.sq <= 0) { h.sq = 0.35; beep(1900, 0.04, "square", 0.02); } }
+    else helperArrives();
+  }
+  if (arpf.ram) {                                         // A.R.P.F. at full speed
+    const dx = h.x - arpf.x, dy = h.y - arpf.y, d = Math.hypot(dx, dy);
+    if (d > 0.5) { arpf.x += dx / d * 5 * dt; arpf.y += dy / d * 5 * dt; } else teaSpill();
+  }
+  for (const e of ents) {
+    if (e.follow && !arpf.ram) follow(e, e.id === "arpf" ? 0.9 : 0.6, dt);
+    if (e.drifter) {                                      // swaying, all together
+      e.t += dt;
+      if (e.toTea) { const dx = h.x - e.bx, dy = h.y - e.by, d = Math.hypot(dx, dy); if (d > 1.2) { e.bx += dx / d * 0.12 * dt; e.by += dy / d * 0.12 * dt; } }
+      e.x = e.bx + Math.sin(e.t * 0.9) * 0.04; e.y = e.by;
+      if (e.toTea && Math.hypot(e.bx - e.ox, e.by - e.oy) > 1.5) e.toTea = false;      // a little way, no further
+    }
+    if (e.path && e.path.length) {                        // corgis on the move
+      const p = e.path[0];
+      if (p === "gone") { e.hidden = true; e.path = []; continue; }
+      if (e.waitFor && Math.hypot(P.x - e.x, P.y - e.y) > 2.2) continue;   // the old corgi waits for you
+      const dx = p[0] - e.x, dy = p[1] - e.y, d = Math.hypot(dx, dy), sp = (e.speed || 2.6) * dt;
+      if (d <= sp) { e.x = p[0]; e.y = p[1]; e.path.shift(); if (!e.path.length && e.waitFor && e.y < 7.5) e.path = [[17.6, 8.7]]; }
+      else { e.x += dx / d * sp; e.y += dy / d * sp; dogFace(e, dx); }
+    }
+  }
+  const b = ents.find((e) => e.id === "ball");
+  if (!b.hidden) {
+    [b.vx, b.vy] = curve(b.vx, b.vy, dt); b.life -= dt;
+    const nx = b.x + b.vx * dt, ny = b.y + b.vy * dt;
+    if (wallAt(nx, ny) === "." && b.life > 0) { b.x = nx; b.y = ny; }
+    else if (b.life > -0.8) b.life = Math.min(b.life, 0);
+    if (b.life < -0.8) {                                  // the young one brings it back to your feet
+      b.hidden = true; SFX.bark();
+      const y = ents.find((e) => e.id === "baller"); y.speed = 2.2; y.path = [[P.x + Math.cos(P.a) * 0.8, P.y + Math.sin(P.a) * 0.8]];
+    }
+  }
+  const sk = ents.find((e) => e.id === "skater");            // round and round
+  sk.t += dt * 0.35; sk.x = 20.5 + Math.cos(sk.t) * 1.9; sk.y = 14.0 + Math.sin(sk.t) * 0.75;
+  if (!flag("school") && P.y > 5.6 && P.y < 7) enterSchool();     // well into the hall, clear of the doorway
+  if (!flag("rink") && P.y > 12.6) {
+    set("rink");
+    say([["", "Colored light, and music. Real music, tinny and scratchy and far too cheerful, the kind your grandma calls disco, playing on a loop."],
+         ["", "The Hometown Roll-A-Rama. A mirror ball turns slowly overhead, scattering little squares of light like snow. Up near the middle of the wheel, your steps have a bounce in them."],
+         ["", "It's the saddest and the funniest thing you've ever seen. You don't know how it can be both. But it is."]]);
+  }
+}
+
+function follow(e, gap, dt) {
+  const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy);
+  if (d > 4) {                                            // lost round a corner: catch up
+    const bx = P.x - Math.cos(P.a) * gap, by = P.y - Math.sin(P.a) * gap;
+    if (wallAt(bx, by) === ".") { e.x = bx; e.y = by; }
+    return;
+  }
+  if (d > gap + 0.2) {
+    const s = 2.4 * dt, mx = e.x + dx / d * s, my = e.y + dy / d * s;
+    if (wallAt(mx, e.y) === ".") e.x = mx;
+    if (wallAt(e.x, my) === ".") e.y = my;
+    if (e.id === "fluffy") dogFace(e, dx);
+  }
+}
+function dogFace(e, dx) {
+  const base = e.base || (e.spr.replace(/L$/, ""));
+  if (!SPR[base + "L"]) return;
+  e.spr = dx < 0 ? base + "L" : base;
+}
+
 
 // ---------- the story: the silo (added 26 Nov, as in the novel's ch 19) ----------
 function siloEnts() {
@@ -923,21 +1379,27 @@ function target() {
   for (const e of ents) {
     if (!e.use || e.hidden || e.dead) continue;
     // reach is measured from the edge of big things (Ship Seven is 2.7 wide)
-    const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy) - Math.max(0, e.r - 0.3);
+    // (27 Nov) A.R.P.F. and the fluffy corgi follow at your heels in Hometown;
+    // they count as a little further off, or they'd always be the thing you use
+    const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy) - Math.max(0, e.r - 0.3) + (e.follow ? 0.7 : 0);
     let da = Math.atan2(dy, dx) - P.a;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
   }
-  if (!best && ["home", "mansion", "hangar", "harvest"].includes(L.name)) {
+  if (!best && ["home", "mansion", "hangar", "harvest", "hometown"].includes(L.name)) {
     for (let s = 0.2; s <= 1.8; s += 0.1) {
       const w = wallAt(P.x + Math.cos(P.a) * s, P.y + Math.sin(P.a) * s);
       if (L.name === "home" && w === "d") return { label: "Open the front door", use: useDoor };
+      if (L.name === "hometown") { const t = townWall(w); if (t) return t; }
       if (L.name === "harvest") {
         if (w === "C") return { label: "Read the crop reports", use: useCropWall };
         if (w === "L") return { label: "Climb the spoke ladder", use: useSpoke };
       }
       if (L.name === "hangar") {
         if (w === "M") return { label: "Look at the mission board", use: useBoard };
+        if (w === "O" || w === "%") return { label: "Look at the mission board", use: () => say([["", w === "%"
+          ? "MISSION BOARD. FOUNDER'S STATION, dark. HOMETOWN, white. HARVEST RING, white. And in the blank row, a penciled question mark, and a light beside it. Green."
+          : "MISSION BOARD. HARVEST RING, white: done. HOMETOWN, green: next.", "art/look-board.png"]]) };
         if (w === "N") return { label: "Read the note", use: useHeroNote };
         if (w === "U") return { label: "The ladder up", use: () => say([["", "The ladder goes up through the rings of seats to the cockpit. The ship knows the way. The hangar is where you're needed."]]) };
       }
@@ -1016,6 +1478,7 @@ function update(dt) {
     }
   }
   checkWin();
+  if (L.name === "hometown") updateHometown(dt);
   if (L.name === "harvest") {
     if (!flag("hsprouts") && P.x > 7.8) sproutsAttack();
     const g = ents.find((e) => e.id === "gerald");
@@ -1169,8 +1632,14 @@ function frame(t) {
 // else starts in bed. (Saves aren't built yet, so the guide book starts empty.)
 if (location.hash === "#harvest") {
   enterHarvest();
+} else if (location.hash === "#hometown") {
+  enterHometown();
 } else if (location.hash === "#hangar-harvest") {
   enterHangar("harvest");
+} else if (location.hash === "#hangar-ready") {
+  enterHangar("ready");
+} else if (location.hash === "#hangar-hometown") {
+  enterHangar("hometown");
 } else if (location.hash === "#hangar" || location.hash === "#hangar-back") {
   enterHangar(location.hash === "#hangar-back");
 } else {

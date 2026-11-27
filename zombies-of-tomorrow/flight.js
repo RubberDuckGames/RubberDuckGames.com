@@ -7,6 +7,11 @@ const F = 330;                              // pixels per world unit at distance
 const SZ = 2.2;                             // how far in front of you the ship flies
 const FAR = 40;
 const TRIP = 75;                            // seconds from the hangar to the Harvest Ring
+// Added 27 Nov: the same flight goes to Hometown as flight.html#hometown,
+// where the novel says the rocks are thicker (ch 23)
+const TOWN = location.hash === "#hometown";
+const THICK = TOWN ? 0.8 : 1;               // time between rock waves
+const BACK = TOWN ? "index.html#hangar-ready" : "index.html#hangar-back";
 
 const cv = document.getElementById("screen");
 const ctx = cv.getContext("2d");
@@ -121,7 +126,7 @@ function update(dt) {
   if (prog < 0.86) {
     G.spawn -= dt;
     if (G.spawn <= 0) {
-      G.spawn = 0.75 - prog * 0.45 + Math.random() * 0.25;
+      G.spawn = (0.75 - prog * 0.45 + Math.random() * 0.25) * THICK;
       const roll = Math.random();
       const size = roll < 0.3 + prog * 0.2 ? "big" : roll < 0.75 ? "mid" : "small";
       const aim = Math.random() < 0.45;                           // some come right at you
@@ -215,10 +220,10 @@ function render() {
     ctx.strokeStyle = b > 0.5 ? PAL.S : PAL.l; ctx.lineWidth = b > 0.6 ? 2 : 1;
     ctx.beginPath(); ctx.moveTo(Math.round(x0), Math.round(y0)); ctx.lineTo(Math.round(x1), Math.round(y1)); ctx.stroke();
   }
-  // the Harvest Ring, coming up out of the dark near the end
+  // the station, coming up out of the dark near the end
   if (prog > 0.8) {
     const z = 3 + (1 - (prog - 0.8) / 0.2) * 60;
-    drawAt(SPR.station, 0, -0.2, z, 1.8, 80);
+    drawAt(TOWN ? SPR.town : SPR.station, 0, -0.2, z, 1.8, 80);
   }
   // everything in the belt, far to near
   const things = [
@@ -285,18 +290,20 @@ function start() {
 function win() {
   G.done = true; G.on = false;
   const stars = G.hull >= 5 ? "Not a scratch!" : G.hull >= 3 ? "A few dents." : "That was close.";
-  card(`<h1>DOCKING AT THE HARVEST RING</h1>
+  card(`<h1>DOCKING AT ${TOWN ? "HOMETOWN" : "THE HARVEST RING"}</h1>
         <p>${stars} Hull ${G.hull} of 5.</p>
         <p>Scrap collected: ${G.scrap}. Supply crates: ${G.crates}. Corgis rescued: ${G.corgis}.</p>
-        <p class="small">Inside, the silver-blue towers have grown up through the ceiling grates. Something in there is watching the airlock.</p>`,
-    [["Go inside", () => { location.href = "index.html#harvest"; }], ["Back to the hangar", () => { location.href = "index.html#hangar-back"; }], ["Fly again", start]]);
+        <p class="small">${TOWN
+          ? "Capsule A clamps onto the hub. Through the hatch's little window, something blue is wobbling. Water, hanging in the air."
+          : "Inside, the silver-blue towers have grown up through the ceiling grates. Something in there is watching the airlock."}</p>`,
+    [["Go inside", () => { location.href = TOWN ? "index.html#hometown" : "index.html#harvest"; }], ["Back to the hangar", () => { location.href = BACK; }], ["Fly again", start]]);
 }
 function lose() {
   G.on = false;
   card(`<h1>HULL BREACHED</h1>
         <p>A.R.P.F. flies out in the spare capsule, hooks on a tow line, and hauls you back to the hangar.</p>
         <p class="small">"You did very well. For a person. Again?"</p>`,
-    [["Fly again", start], ["Back to the hangar", () => { location.href = "index.html#hangar-back"; }]]);
+    [["Fly again", start], ["Back to the hangar", () => { location.href = BACK; }]]);
 }
 
 let last = 0;
@@ -309,7 +316,10 @@ function frame(t) {
 }
 
 newGame();
-card(`<h1>THE FLIGHT</h1>
+card(TOWN ? `<h1>THE FLIGHT</h1>
+      <p class="small">From the hangar to Hometown.</p>
+      <p>Capsule A knows the way now, and so do you.<br>The rocks are thicker on the way to Hometown.</p>
+      <p>Weave around them. Shoot the ones you can't dodge.<br>Keep an eye out for lost corgis.</p>` : `<h1>THE FLIGHT</h1>
       <p class="small">A first test: from the hangar to the Harvest Ring.</p>
       <p>The colony is falling through the asteroid belt,<br>and the space between the stations is full of rocks.</p>
       <p>Weave around them. Shoot the ones you can't dodge.<br>Keep an eye out for lost corgis.</p>`,
