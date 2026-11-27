@@ -1,0 +1,51 @@
+/* Pinball. Starts from shared/base.css; this adds the cabinet's look: The
+   Mighty Pepper's colours, or Zombies of Tomorrow's while that table is up
+   (html[data-table], set by useTable). The table is a canvas, upright like a
+   real cabinet, with the backbox canvas on top of it (beside it on a wide
+   screen), as big as the screen allows; the bar floats over the empty sides
+   when the screen is wide. */
+:root{--ink:#2a1a10;--soft:#5e4632;--bg:#3a2616;--panel:#fff6e4;--line:#c98a4a;--accent:#b8362f;--gold:#f2c230;--shadow:#1e140a}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;overflow:hidden}
+html{touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;padding-top:max(.6rem,env(safe-area-inset-top));pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1;pointer-events:none}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .875rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow)}
+
+/* the whole screen is the flipper buttons while playing: left half, right half */
+.wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
+.wrap.wide{flex-direction:row;gap:2vw}
+canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+
+.cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(30,20,10,.6);z-index:7;padding:4.5rem 1rem 1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:32rem;width:100%;max-height:100%;overflow:auto;box-shadow:.4rem .4rem 0 rgba(0,0,0,.35)}
+.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.4rem 0}
+.card .soft{color:var(--soft)}
+.card .big{font-family:"Press Start 2P",monospace;font-size:1.3rem;line-height:1.6;margin:.6rem 0}
+.card .new{color:var(--accent);font-weight:800}
+.card ul{margin:.4rem 0;padding-left:1.2rem}
+.card li{margin:.15rem 0}
+.card .stats{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.3rem .8rem}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.9rem}
+.home{margin-top:.9rem;font-size:.95rem}
+.home a{color:inherit;font-weight:700}
+.btn{background:var(--panel);border:4px solid var(--line);padding:.7rem 1rem;font-family:"Press Start 2P",monospace;font-size:.75rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow)}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{color:var(--soft);border-style:dashed;cursor:default;box-shadow:none}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.btn:not(:disabled):active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--shadow)}
+html[data-table=zombies]{--ink:#1b1a2e;--soft:#4b5578;--bg:#141b38;--panel:#f6efdc;--line:#3f9c96;--accent:#c8423b;--gold:#e8b33c;--shadow:#0c1026}
+
+/* Pick a table: one big button a table, its name, a line about it, the best */
+.tables{display:grid;gap:.75rem;margin:.6rem 0}
+.btn.table{display:grid;gap:.35rem;text-align:left;width:100%;font-family:inherit;font-size:1rem;line-height:1.4}
+.btn.table .tname{font-family:"Press Start 2P",monospace;font-size:.8rem;line-height:1.6}
+.btn.table .tbest{font-weight:800}
+.btn.table[data-table=zombies]{background:#141b38;border-color:#3f9c96}
+details{margin:.6rem 0}
+summary{cursor:pointer;font-weight:700}

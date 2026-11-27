@@ -45,6 +45,8 @@ h1{font-size:2.6rem;margin:.5rem 0 0;line-height:1.2}
 .game.fart .info p{color:#f3e2cf}
 .game.flip{--lit:#5fc27a;--bezel:#2b1d14}
 .game.flip .info p{color:#f3e2cf}
+.game.pin{--lit:#f2c230;--bezel:#3a2616}
+.game.pin .info p{color:#fff6e4}
 .game.pepper{--lit:#e8823a;--bezel:#3a2414}
 .game.pepper .info p{color:#f3e2cf}
 .game.md{--lit:#e6c77a;--bezel:#26301c}
