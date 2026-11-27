@@ -70,7 +70,8 @@ const WALLCHARS = {
   "#": "paper", p: "poster", w: "window", m: "starmap", k: "tile", K: "kwindow", d: "door",
   c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome", o: "silo", n: "silo7",
   e: "hedge", g: "gate", D: "egodoor", B: "basedoor", G: "glass", V: "portrait",
-  q: "hull", Q: "hullplain", M: "board", N: "heronote", U: "ladderup",
+  q: "hull", Q: "hullplain", M: "board", N: "heronote", U: "ladderup", O: "board2",
+  F: "farm", C: "crops", L: "spoke", X: "farmwin",
 };
 // A.R.P.F.'s clean path through the dust in Ego House: from the basement
 // door along the hall and into the greenhouse
@@ -151,6 +152,22 @@ const LEVELS = {
     ceil: () => "hangarceil", floor: () => "hangarflr", light: 0.95,
     start: { x: 5.5, y: 8.6, a: -Math.PI / 2 },
   },
+  // Added 26 Nov: a stretch of the Harvest Ring (novel ch 22). The spoke
+  // ladder you came down is on the west wall, the crop reports on the north,
+  // the potting bench at the far east end.
+  harvest: {
+    map: [
+      "FFFFFFFFCCFFFFXFFFFFFF",
+      "F....................F",
+      "F....................F",
+      "L....................F",
+      "F....................F",
+      "F....................F",
+      "FFFFXFFFFFFFFFFFFFFFFF",
+    ],
+    ceil: () => "canopy", floor: () => "grate", light: 0.8,
+    start: { x: 1.6, y: 3.5, a: 0 },
+  },
   // Added 26 Nov: the silo under the estate, round as a grid allows, with
   // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
   // so the ship climbs up out of sight.
@@ -182,7 +199,7 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts }[name]();
+  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts, harvest: harvestEnts }[name]();
 }
 
 // ---------- the story: home ----------
@@ -431,7 +448,13 @@ function sprout(x, y) {
 }
 
 function checkWin() {
-  if (flag("won") || !flag("armed")) return;
+  if (L.name === "harvest") {
+    if (!flag("hsprouts") || flag("hcleared") || ents.some((e) => e.enemy && !e.dead)) return;
+    set("hcleared");
+    say([["A.R.P.F.", "Goo and stars! Five for five! *scoop* *scoop* I am also a mop now."]], () => hint("Read the crop reports on the wall"));
+    return;
+  }
+  if (L.name !== "basement" || flag("won") || !flag("armed")) return;
   if (ents.some((e) => e.enemy && !e.dead)) return;
   set("won");
   addPage("The sprouts", "Something that crawled out of Ego's greenhouse: a Moon-Bloom bud on root legs, with one flower that watches you. Two zaps and it pops into goo and stars.");
@@ -534,10 +557,18 @@ function hangarEnts() {
 function enterHangar(back) {
   loadLevel("hangar");
   try { S.name = sessionStorage.getItem("zot-name") || S.name; } catch (e) { /* fine without it */ }
+  if (back === "harvest") {                                         // home from the Harvest Ring
+    set("board"); set("harvestdone"); map[0][5] = "O";
+    say([["", "That night, in the hangar, the light beside HARVEST RING on the mission board turns from green to white. Done."],
+         ["", "And beside HOMETOWN, a light you hadn't noticed blinks on. Green."],
+         ["A.R.P.F.", "Hometown next! The school, the pool, the roller rink. And the corgis. Hundreds of corgis. That part isn't built yet, though."]],
+        () => hint("Hometown is next. Not built yet!"));
+    return;
+  }
   if (back) {                                                       // home from the flight
     set("board");
     say([["", "Capsule A clamps back into its place in the ring with a clunk you feel in your teeth. Home. Well. The ship."],
-         ["A.R.P.F.", "The Harvest Ring is next! Inside, it's... well. You'll see. The next part isn't built yet. Ivan never finished anything on time either."]],
+         ["A.R.P.F.", "The Harvest Ring is still waiting for us. Hazel's book is in there somewhere. Whenever you're ready."]],
         () => hint("Capsule A goes back out whenever you're ready"));
     return;
   }
@@ -582,10 +613,139 @@ function useHangarRadio() {
 }
 
 function useCapsuleA() {
+  if (flag("harvestdone")) { say([["A.R.P.F.", "Hometown next! But that bit isn't built yet. Ivan never finished anything on time either."]]); return; }
   if (!flag("board")) { say([["", "Capsule A. A tag on its ladder: CAPSULE A. Fuel checked. Seals checked. Ready. H.M. Sixty-two lines of it."], ["", "But where to? Maybe the board on the wall knows."]], () => hint("Look at the mission board")); return; }
   say([["", "Capsule A is the size of a phone booth inside. One seat, a bubble window, a stick between your knees. A.R.P.F. doesn't fit. It comes anyway."],
        ["A.R.P.F.", "Harvest Ring! Mind the rocks. There are a great many rocks."]], () => {
     card(`<p>The hangar door opens under you, and Capsule A drops out into space.</p>`, null, 1800, () => { location.href = "flight.html"; });
+  });
+}
+
+// ---------- the story: the Harvest Ring (added 26 Nov, as in the novel's ch 22) ----------
+function harvestEnts() {
+  return [
+    ent({ id: "t1", spr: "trays", x: 3.6, y: 1.5, r: 0.55 }), ent({ id: "t2", spr: "trays", x: 3.6, y: 5.5, r: 0.55 }),
+    ent({ id: "t3", spr: "trays", x: 10.6, y: 5.5, r: 0.55 }), ent({ id: "t4", spr: "trays", x: 16.4, y: 5.5, r: 0.55 }),
+    ent({ id: "b1", spr: "bloom0", x: 6.5, y: 2.9, r: 0.7 }), ent({ id: "b2", spr: "bloom0", x: 12.8, y: 4.3, r: 0.7 }),
+    ent({ id: "b3", spr: "bloom0", x: 17.6, y: 2.2, r: 0.7 }),
+    ent({ id: "tank", spr: "tank", x: 15.0, y: 1.55, r: 0.5, label: "The water tank", use: useTank }),
+    ent({ id: "bench", spr: "bench", x: 20.1, y: 3.5, r: 0.75, label: "The potting bench", use: usePottingBench }),
+    ent({ id: "gerald", spr: "gerald", x: 4.5, y: 3.5, r: 0.35, person: true, hidden: true, label: "Talk to the farmer", use: () => say([
+      ["", "A man in blue overalls, very pale, faintly green, like the inside of a cucumber. His eyes are silver all the way through. A gold star is pinned to his bib."],
+      ["", "He holds out his arms to you, slowly, and hums one low note. \"Gold star,\" he murmurs. \"Record year.\""],
+      ["", "His name is stitched on the bib: G. POMFREY. You can't zap a person. Maybe A.R.P.F. has an idea."]]) }),
+    ent({ id: "arpf", spr: "arpfon", x: 2.4, y: 2.2, r: 0.4, label: "Talk to A.R.P.F.", use: useArpfHarvest }),
+  ];
+}
+
+function enterHarvest() {
+  loadLevel("harvest");
+  try { S.name = sessionStorage.getItem("zot-name") || S.name; } catch (e) { /* fine without it */ }
+  S.items.gun = true; set("armed"); S.hearts = 3; document.getElementById("zapBtn").hidden = false;   // Ivan's ray gun came along
+  card(`<p>Capsule A clamps onto the hub, right in the middle of the wheel.</p>
+        <p>Here, at the center, you weigh almost nothing. Weird Kid Weekly, Issue 402:
+        a merry-go-round. Stand on the edge and it tries to fling you off. Sit in the middle and you just turn gently round.</p>
+        <p>You climb down the spoke toward the rim. A sign on the ladder: IT GETS HEAVY. It does.</p>`, "Climb down", 0, () => {
+    say([
+      ["", "Lamps, row after row, buzzing on as if they've been waiting for you. Fifty years of timers. On at morning, off at night, whether anybody comes or not."],
+      ["", "Empty planting trays, cracked and gray. Dead corn. A sprinkler hissing on its own, watering nothing."],
+      ["", "And the Moon-Bloom, everywhere. Up through the floor grates, up through the ceiling, its leaves leaning together overhead into a glowing roof."],
+      ["", "As you step off the ladder, the flowers turn toward you. Not all at once. In a wave, all the way down the ring."],
+      ["A.R.P.F.", "*crackle* I caught something on the old frequency, on the way in. A recording. Listen."],
+      ["A voice", "This is Hazel Brandt. I used to be head farmer of the Harvest Ring... The book's still where we put it... Start with the farms."],
+    ], () => hint("Look around the ring. Find what Hazel left."), (i) => { if (i === 3) { ents.filter((e) => e.spr === "bloom0").forEach((e) => { e.spr = "bloom1"; }); SFX.static(); } });
+  });
+}
+
+function sproutsAttack() {
+  set("hsprouts");
+  [[10.5, 3.0], [12.0, 1.6], [14.0, 3.4], [11.2, 4.4], [15.5, 4.0]].forEach(([x, y]) => ents.push(sprout(x, y)));
+  say([["", "Something drops off the leaves overhead and lands on the grate with a tik-tik-tik. Then another. Then three more."],
+       ["A.R.P.F.", "Sprouts! Five of them! Zap! I'll scoop! Teamwork!"]], () => hint("Zap them with F. Two zaps each."));
+}
+
+function useTank() {
+  if (flag("water")) { say([["A.R.P.F.", "My lid is full! Sloshing! Point me at something!"]]); return; }
+  if (!flag("bloomnear")) { say([["", "A great round water tank against the outer wall. H2O. The tap still works. The flowers nearby have all leaned away from it."]]); return; }
+  set("water"); SFX.whirr();
+  say([["", "You turn the tap. A.R.P.F. rolls under it and holds its lid open until it's sloshing over the sides."],
+       ["", "Weird Kid Weekly, Issue 395: water stops radiation. The farmers kept the beds behind the water tanks. And the flowers lean away from the tanks, every one."],
+       ["A.R.P.F.", "I am a bucket now. A very proud bucket."]], () => hint("Take the water to the potting bench"));
+}
+
+function usePottingBench() {
+  const b = ents.find((e) => e.id === "bench");
+  if (!flag("wet")) {
+    if (!flag("water")) {
+      set("bloomnear");
+      say([["", "A long wooden counter with a row of little drawers, each with a brass handle and a label: WHEAT. BARLEY. POTATO. BEAN. TOMATO. LETTUCE. CORN."],
+           ["", "The Moon-Bloom has grown right up through the middle of it. Its flowers hang down so low over the drawers you'd have to put your head among them to reach."],
+           ["", "They're all looking at you. You don't put your head among them."]], () => hint("The flowers lean away from the water tank..."));
+      return;
+    }
+    set("wet"); b.spr = "benchwet"; SFX.pop();
+    say([["", "A.R.P.F. tips its lid. SPLOOSH. Water everywhere."],
+         ["", "The flowers flinch. Every one. They shrink up and away, shut tight, and the drawers are clear."]], () => hint("Which drawer? Hazel's crop reports might help."));
+    return;
+  }
+  if (flag("notebook")) { say([["", "The CORN drawer is open, the seed piled on the floor. The false bottom leans against the bench."]]); return; }
+  const names = ["WHEAT", "BARLEY", "POTATO", "BEAN", "TOMATO", "LETTUCE", "CORN"];
+  panel(`<h2>The potting bench</h2><p>Seven drawers. Open one.</p>
+    <div class="wires">${names.map((n) => `<button data-d="${n}">${n}</button>`).join("")}</div>
+    <p id="drawer-msg">&nbsp;</p>
+    <div class="row"><button id="drawer-close" class="alt">Close</button></div>`);
+  const msg = document.getElementById("drawer-msg");
+  document.querySelectorAll("[data-d]").forEach((btn) => btn.onclick = () => {
+    if (btn.dataset.d !== "CORN") { msg.textContent = `${btn.dataset.d}: packed with seed. You dig to the bottom. Plain wood.`; beep(300, 0.05); return; }
+    closePanel(); findNotebook();
+  });
+  document.getElementById("drawer-close").onclick = closePanel;
+}
+
+function findNotebook() {
+  set("notebook"); SFX.ok();
+  say([["", "CORN. Hazel's reports said corn: none. But the drawer is full. Packed with seed, untouched for fifty years."],
+       ["", "You scoop it all out until the bottom shows. Plain wood. You feel along the edges until you find it: a little notch. A false bottom."],
+       ["", "Under it, a small green notebook, the kind the farmers kept seed counts in. Hazel's.", "art/look-notebook.png"],
+       ["", "Columns of numbers, week by week, the corn going pale, the beans curling. And on the last page, week 31, 1975:", "art/look-notebook.png"],
+       ["", "THE FLOWERS FOLLOW PEOPLE. D. SAW IT FIRST.", "art/look-notebook.png"]], () => {
+    addPage("Hazel's notebook", "Hidden under the false bottom of the CORN drawer. Hazel Brandt's counts, week by week, 1975. The last page: THE FLOWERS FOLLOW PEOPLE. D. SAW IT FIRST.", "art/look-notebook.png");
+    const g = ents.find((e) => e.id === "gerald"); g.hidden = false; g.x = 4.5; g.y = 3.5;
+    say([["", "Back down the ring, between you and the ladder, someone is standing in the aisle. Swaying. Arms out."],
+         ["A.R.P.F.", "Oh dear. Oh dear oh dear. That's a person. Was a person. Is a person. You can't zap a person."]], () => hint("Talk to A.R.P.F."));
+  });
+}
+
+function useArpfHarvest() {
+  const g = ents.find((e) => e.id === "gerald");
+  if (flag("notebook") && !g.hidden && !g.lured) {
+    g.lured = true; SFX.static();
+    say([["A.R.P.F.", "Leave this to me. I have every reel Mr. Ego ever recorded."],
+         ["A voice", "Gerald! Gerald Pomfrey! A gold star for you, my boy! Down in the potato beds! A record year!"],
+         ["", "It's Vladimir Ego's voice, warm and proud. The man in the overalls turns, slowly, toward the sound, and drifts away down the ring after it, humming."]],
+        () => hint("Back to the ladder, on the west wall"));
+    return;
+  }
+  if (!flag("hsprouts")) say([["A.R.P.F.", "Hazel said the book's still where we put it. Farmers put things in the farm. Start looking!"]]);
+  else if (!flag("crops")) say([["A.R.P.F.", "The wall! All those papers! Farmers write everything down."]]);
+  else if (!flag("notebook")) say([["A.R.P.F.", "Corn: none. But they kept a drawer for it. Why keep a drawer for nothing?"]]);
+  else say([["A.R.P.F.", "Back up the spoke! Mind your head, it gets light."]]);
+}
+
+function useCropWall() {
+  set("crops");
+  say([["", "Crop reports. Hundreds of them, one for every week, pinned up all the way along the wall. In square, careful handwriting: Hazel's.", "art/look-crops.png"],
+       ["", "Week 28: corn pale. Week 29: corn poor. Week 30: worse. Week 31: CORN: NONE. Each with a little red star.", "art/look-crops.png"],
+       ["", "After that, a different hand. G. POMFREY. RECORD! RECORD! And gold stars, all the way to the end of the wall.", "art/look-crops.png"]],
+      () => addPage("The crop reports", "Hazel Brandt's weekly reports, 1975: the corn failing, then CORN: NONE. Then G. Pomfrey took over, and every week after was a RECORD, with a gold star.", "art/look-crops.png"));
+}
+
+function useSpoke() {
+  const g = ents.find((e) => e.id === "gerald");
+  if (!flag("notebook")) { say([["A.R.P.F.", "Not yet! Hazel said the book's still where we put it. We came for the book."]]); return; }
+  if (!g.lured) { say([["", "The man in the overalls is drifting toward you, arms out, humming. You can't get past him to the ladder."]], () => hint("Talk to A.R.P.F.")); return; }
+  say([["", "Up the spoke, lighter with every rung, back to the hub and Capsule A. Behind you, very faintly, somebody is humming one note in the potato beds."]], () => {
+    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { location.href = "index.html#hangar-harvest"; });
   });
 }
 
@@ -768,10 +928,14 @@ function target() {
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
   }
-  if (!best && ["home", "mansion", "hangar"].includes(L.name)) {
+  if (!best && ["home", "mansion", "hangar", "harvest"].includes(L.name)) {
     for (let s = 0.2; s <= 1.8; s += 0.1) {
       const w = wallAt(P.x + Math.cos(P.a) * s, P.y + Math.sin(P.a) * s);
       if (L.name === "home" && w === "d") return { label: "Open the front door", use: useDoor };
+      if (L.name === "harvest") {
+        if (w === "C") return { label: "Read the crop reports", use: useCropWall };
+        if (w === "L") return { label: "Climb the spoke ladder", use: useSpoke };
+      }
       if (L.name === "hangar") {
         if (w === "M") return { label: "Look at the mission board", use: useBoard };
         if (w === "N") return { label: "Read the note", use: useHeroNote };
@@ -800,6 +964,12 @@ function zap() {
     let da = Math.atan2(dy, dx) - P.a;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (Math.abs(da) < Math.atan(0.3 / d) + 0.04 && d < bd && clearLine(e)) { best = e; bd = d; }
+  }
+  for (const e of ents) {                          // you can't zap a person
+    if (!e.person || e.hidden) continue;
+    const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy);
+    let da = Math.atan2(dy, dx) - P.a; da = Math.atan2(Math.sin(da), Math.cos(da));
+    if (Math.abs(da) < Math.atan(0.3 / d) + 0.04 && d < bd) { hint("You can't zap a person."); return; }
   }
   if (best) {
     best.hp--; best.hit = 0.15;
@@ -846,6 +1016,17 @@ function update(dt) {
     }
   }
   checkWin();
+  if (L.name === "harvest") {
+    if (!flag("hsprouts") && P.x > 7.8) sproutsAttack();
+    const g = ents.find((e) => e.id === "gerald");
+    if (g && !g.hidden) {
+      const tx = g.lured ? 20.5 : P.x, ty = g.lured ? 1.5 : P.y;
+      const dx = tx - g.x, dy = ty - g.y, d = Math.hypot(dx, dy);
+      const sp = g.lured ? 1.4 : 0.35;                  // drifting at you; hurrying after the Founder's voice
+      if (d > 0.9) { g.x += dx / d * sp * dt; g.y += dy / d * sp * dt; }
+      else if (g.lured) g.hidden = true;                // gone off down the ring
+    }
+  }
   if (L.name === "basement" && flag("won") && P.y > 6.3) enterSilo();
   if (L.name === "mansion" && !flag("hall") && P.y < 5.8) {
     set("hall");
@@ -857,9 +1038,16 @@ function update(dt) {
 
 function knockedOut() {
   say([["A.R.P.F.", "Got you! *whirr* I pulled you back. Let's try that again. Two zaps each!"]], () => {
-    S.hearts = 3; P.x = 2.5; P.y = 2.5; P.a = 0;
+    S.hearts = 3; P.a = 0;
+    const left = ents.filter((e) => e.enemy && !e.dead).length;
     ents = ents.filter((e) => !e.enemy);
-    ents.push(sprout(10.4, 3.5), sprout(10.5, 1.5), sprout(10.5, 4.5));
+    if (L.name === "harvest") {
+      P.x = 1.6; P.y = 3.5;
+      [[10.5, 3.0], [12.0, 1.6], [14.0, 3.4], [11.2, 4.4], [15.5, 4.0]].slice(0, left).forEach(([x, y]) => ents.push(sprout(x, y)));
+    } else {
+      P.x = 2.5; P.y = 2.5;
+      ents.push(sprout(10.4, 3.5), sprout(10.5, 1.5), sprout(10.5, 4.5));
+    }
   });
 }
 
@@ -937,7 +1125,7 @@ function render() {
     }
   }
   // the ray gun in your hand, drawn at native size
-  if (S.items.gun && L.name === "basement") {
+  if (S.items.gun && (L.name === "basement" || L.name === "harvest")) {
     const g = SPR.gunview, gs = 1, gx = Math.floor(W / 2 + 20), gy = VH - g.h * gs;
     for (let x = 0; x < g.w * gs; x++) for (let y = 0; y < g.h * gs; y++) {
       const c = g.px[Math.floor(x / gs) * g.h + Math.floor(y / gs)];
@@ -979,7 +1167,11 @@ function frame(t) {
 
 // The launch and the flight send you here as index.html#hangar; everyone
 // else starts in bed. (Saves aren't built yet, so the guide book starts empty.)
-if (location.hash === "#hangar" || location.hash === "#hangar-back") {
+if (location.hash === "#harvest") {
+  enterHarvest();
+} else if (location.hash === "#hangar-harvest") {
+  enterHangar("harvest");
+} else if (location.hash === "#hangar" || location.hash === "#hangar-back") {
   enterHangar(location.hash === "#hangar-back");
 } else {
   loadLevel("home");

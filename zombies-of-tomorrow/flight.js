@@ -289,7 +289,7 @@ function win() {
         <p>${stars} Hull ${G.hull} of 5.</p>
         <p>Scrap collected: ${G.scrap}. Supply crates: ${G.crates}. Corgis rescued: ${G.corgis}.</p>
         <p class="small">Inside, the silver-blue towers have grown up through the ceiling grates. Something in there is watching the airlock.</p>`,
-    [["Back to the hangar", () => { location.href = "index.html#hangar-back"; }], ["Fly again", start]]);
+    [["Go inside", () => { location.href = "index.html#harvest"; }], ["Back to the hangar", () => { location.href = "index.html#hangar-back"; }], ["Fly again", start]]);
 }
 function lose() {
   G.on = false;
