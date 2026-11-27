@@ -105,3 +105,8 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;tou
 .store{list-style:none;margin:.4rem 0;padding:0;display:grid;gap:.35rem}
 .store li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap}
 .store small{opacity:.75}
+/* pictures in a list row (bench, donation box, sets): small, beside the name */
+.store img{width:2.4rem;height:1.8rem;object-fit:contain;image-rendering:pixelated;vertical-align:middle}
+/* collector sets: a row of little pictures, dark until you have the piece */
+.setpics{display:flex;gap:.2rem;flex-wrap:wrap;margin-top:.2rem}
+.setpics img{width:2.4rem;height:1.8rem;object-fit:contain;image-rendering:pixelated;background:#f3e2bc;border:2px solid var(--line)}

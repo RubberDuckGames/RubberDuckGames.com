@@ -49,6 +49,8 @@ const STR = {
     '<b>Your rival:</b> he comes into your shop too, and snaps up anything you\'ve priced far too low.',
     '<b>Good deeds:</b> tell a seller their find is worth more, let a kid have a toy for what they have, mail a photo album home, help your rival, give things away at the box by the door. Sometimes kindness comes back to you. Sometimes it doesn\'t. Your good deeds are listed at the bottom of this help.',
     '<b>Bigger shops:</b> at the rent board, move to a bigger shop once you\'ve paid enough rents on time: more places to put things out, more customers, more rent. Pick a landlord when you move: cheap and strict, fair, or kind.',
+    '<b>The car lot:</b> old cars, 1930s to 1970s. Look for shiny chrome; rust means it won\'t run (the workbench can try). Cars park out front of your shop; tag one and car buyers come by. A running car can be your ride.',
+    '<b>Collector sets:</b> at the desk. Collect every real piece of a set and a collector pays half again what they\'re worth.',
     '<b>Be kind:</b> sometimes a seller is hunting for something another stall has. Buy it and bring it to them.',
     '<b>The online store:</b> at the desk. Everything costs too much and there\'s no haggling, but sometimes it\'s the only place to get what you need.',
     '<b>Quiet days:</b> some days are slow, and around lunch the street goes quiet. Not everyone who comes in buys.',
@@ -81,6 +83,7 @@ const STR = {
     cat: { name: 'Cat lady\'s yard sale on Elm Street', line: 'Hairball sculptures. She says they\'re art.' },
     swap: { name: 'Oakridge Swap Meet', line: 'Stall after stall of everything. Entry is ${fee}.' },
     sell: { name: 'Sell at the swap meet', line: 'Rent a table for ${fee} and bring up to 5 tagged finds. Selling takes the day, so the shop stays shut.' },
+    carlot: { name: 'Oakridge Used Cars', line: 'Old cars from the 1930s to the 1970s. Some run, some don\'t. Cars are towed to your shop.' },
     downtown: { name: 'Downtown', line: 'Main Street. Some houses have yard sales out, and your rival has a shop there.' },
     dump: { name: 'Oakridge Dump', line: 'Sweep through the junk piles for {time} seconds. Whatever you find is yours. Entry is ${fee}.' },
   },
@@ -89,6 +92,7 @@ const STR = {
     garage: ['Everything must go!', 'Cleaning out the garage.', 'Grandpa kept everything.', 'Ask if you want a deal.'],
     toys: ['My kids grew up. Everything goes!', 'Toys! Lots of toys!', 'Some of these are older than me.'],
     dump: ['Fifty bucks, sixty seconds. Go!', 'Mind the smashed tablets.', 'Whatever you dig up is yours.'],
+    carlot: ['Every one of these is a classic. Mostly.', 'She runs! Probably.', 'I\'ll throw in the fuzzy dice.', 'Kick the tires all you like.'],
     house: ['Just clearing out the attic.', 'My grandma kept everything!', 'Make me an offer.', 'Moving next week. It all goes!'],
     rivalshop: ['Top quality. Top prices.', 'No haggling. Well. A little.', 'You want it? Pay for it.', 'Heh. Look who it is.'],
     cat: ['Hairball sculptures! Every one is a work of art.', 'Mittens made that one all by herself.', 'Don\'t mind the cats. They\'re the artists.', 'Each sculpture took years. Of coughing.', 'Fluffy is in her blue period.'],
@@ -230,7 +234,7 @@ const STR = {
   copsOk: 'Okay',
   toss: 'Throw it out', tossed: 'Into the trash it goes.', tossNote: 'Nobody will buy this. Not even the dealer.',
   // buyers in the shop
-  buyers: { rivalc: 'Your rival', kidc: 'A kid', friend: 'A friendly face', hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
+  buyers: { carc: 'A car buyer', setc: 'A set collector', rivalc: 'Your rival', kidc: 'A kid', friend: 'A friendly face', hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
   hunterSays: ['I\'ll give you ${n}. Cash.', 'How about ${n}? It\'s a bit worn.'],
   collectorIn: ['Anything rare today?', 'I collect these!', 'Let\'s see what you\'ve got.', 'Is this the flip shop?'],
   ask: 'Asking', yourPocket: 'You have ${n}.', buy: 'Buy ${n}', leave: 'Leave it', askLess: 'Ask for less',
@@ -286,6 +290,17 @@ const STR = {
   },
   lordRent: 'Rent ${n} a week', lordPick: 'Move in (deposit ${n})', moved: 'Moved in! {shop}, with {who} as your landlord.',
   boardLord: 'Your landlord is {who}.', rentShortNoFee: 'You\'re ${n} short. It carries over to next time.', forgiven: 'Bea and Lou say: pay the rest when you can. No late fee this time.',
+  // the car lot (his idea)
+  carNote: 'Cars park out front of the shop. Give it a price tag, and now and then someone comes by to look at it.',
+  carLotFull: 'There\'s no room to park another car at your shop ({n} is the most).', carTowed: 'The {item} gets towed to your shop.',
+  carDrive: 'Drive it yourself', carDriven: 'The {item} is your ride now!', carBuyerIn: ['Is that car out front for sale?', 'I saw the car outside!'],
+  goalCarLot: 'Look over the old cars. Some run, some don\'t. Whatever you buy is towed to your shop.',
+  // collector sets (his idea)
+  setsBtn: 'Collector sets', setsTitle: 'Collector sets', setsText: 'Collectors pay more for a whole set. Real ones only, snapped at the desk. Get every piece, then call a collector.',
+  sets: { tin: 'Tin toys', cameras: 'Old cameras', carparts: 'Car parts', glass: 'Old glass', tools: 'Old tools' },
+  setHave: '{n} of {m}', setCall: 'Call a collector (${n})', setCalled: 'A collector is coming for your {set} set when the shop opens.', setCalledNow: 'A collector is on the way for your {set} set!',
+  setcIn: 'I hear you have a full set!', setcWants: 'A collector wants your whole {set} set: {list}. They offer ${n}, more than the pieces are worth one by one.',
+  setcSell: 'Sell the set ${n}', setcGone: 'Some of the set is gone. The collector leaves.', setSold: 'Sold the whole {set} set for ${n}.',
   boardTitle: 'Rent', boardText: 'Rent is ${rent}, due on day {day}. The Rent Pool has ${pool}.',
   boardOwed: 'Still owed from last time: ${n}.', boardSplit: 'Each sale puts what you paid for the find into the Rent Pool. Only the profit goes in your pocket.',
   // customers and the register
@@ -329,7 +344,7 @@ const STR = {
     computer: 'old computer', cart: 'gold game cartridge', spork: 'spork', card: 'old baseball card',
     drill: 'old electric drill', handdrill: 'hand crank drill', mangle: 'clothes mangle', wrench: 'set of wrenches', saw: 'hand saw', toolbox: 'metal toolbox', toolset: 'new tool set in its case',
     hotelbox: 'old hotel box', globe: '1920s snow globe',
-    musket: 'Revolutionary War musket', mirror: 'old mirror', album: 'old photo album', hubcap: 'chrome hubcap', tire: 'whitewall tire', hoodorn: 'hood ornament', headlamp: 'old car headlamp', license: 'old license plate',
+    musket: 'Revolutionary War musket', mirror: 'old mirror', coupe30: '1930s coupe', pickup50: '1950s pickup', wagon60: '1960s station wagon', muscle70: '1970s muscle car', album: 'old photo album', hubcap: 'chrome hubcap', tire: 'whitewall tire', hoodorn: 'hood ornament', headlamp: 'old car headlamp', license: 'old license plate',
   },
   pcName: '{d} home computer',
   shipName: 'model battleship {name}',
@@ -405,6 +420,10 @@ const STR = {
     toolbox: ['A solid steel toolbox. The latches still snap shut.', 'Dented and rusted through at the bottom.'],
     toolset: ['A real tool set, new in its case. Chrome, not paint.', 'A knockoff. The "chrome" is grey plastic, and it bends.'],
     album: ['An old family photo album. Someone\'s name and address are written inside the cover.', 'An old family photo album. Someone\'s name and address are written inside the cover.'],
+    coupe30: ['A 1930s coupe with round fenders. The engine turns over on the first try.', 'The engine has seized solid, and the bumpers are rusting through.'],
+    pickup50: ['A 1950s pickup truck. It starts, and the chrome still shines.', 'Rusted out and it won\'t start. One tire is flat.'],
+    wagon60: ['A 1960s station wagon with wood panels on the side. It runs!', 'It won\'t start, and there\'s rust everywhere the wood isn\'t.'],
+    muscle70: ['A 1970s muscle car with a racing stripe. Listen to that engine!', 'It looks fast, but it won\'t start. Rust under the stripe.'],
     mirror: ['A 1920s mirror in a carved gold frame. The glass has gone a little cloudy, the way old mirrors do.', 'A new mirror in a plastic frame painted gold.'],
     musket: ['A real Revolutionary War musket, from about 1776. Rusted solid, it hasn\'t fired in two hundred years and never will. A piece of history.', 'A decorator copy from the 1970s. The wood is shiny and new and the metal is one cast piece. It never fired at all.'],
     hubcap: ['A 1950s chrome hubcap. See how it shines?', 'A plastic copy, painted silver. No shine at all.'],
@@ -510,6 +529,12 @@ const KINDS = {
   // car parts from the 1930s to the 1970s (Randi, 27 Nov). Numbers ours.
   hubcap: { ask: [5, 15], worth: 60, dud: 3, real: .5 },
   mirror: { ask: [10, 30], worth: 140, dud: 8, real: .45 },
+  // old cars from the car lot (his idea). Running is the real one; a dud has
+  // a seized engine and is worth its scrap. All ours.
+  coupe30: { ask: [900, 1800], worth: 5000, dud: 300, real: .35, car: true },
+  pickup50: { ask: [700, 1400], worth: 3500, dud: 250, real: .4, car: true },
+  wagon60: { ask: [500, 1000], worth: 2200, dud: 200, real: .45, car: true },
+  muscle70: { ask: [900, 1700], worth: 4500, dud: 300, real: .35, car: true },
   album: { ask: [2, 6], worth: 5, dud: 5, real: 1 },
   // Revolutionary War muskets (Randi, 27 Nov: very rare and not working). A
   // relic: it never fires, and there's no ammo anywhere. Numbers ours.
@@ -533,6 +558,7 @@ const TOOLS = ['drill', 'handdrill', 'wrench', 'saw', 'toolbox'];
 // [hours of shop time, parts $, chance it fails]; the shop day is 8 hours.
 // Days at first; hours since 27 Nov, so a quick fix is done the same day. Ours.
 const FIX = {
+  coupe30: [24, 250, .3], pickup50: [24, 200, .3], wagon60: [16, 150, .3], muscle70: [24, 250, .35],
   drill: [4, 20, .2], handdrill: [2, 10, .15], lantern: [1, 12, .15], shiplamp: [3, 20, .2], folding: [10, 25, .25], enlarger: [6, 25, .2],
   moviecam: [12, 35, .35], tlr: [8, 30, .25], computer: [16, 40, .35], headlamp: [2, 15, .15], camera: [6, 25, .2], grinder: [2, 10, .15],
 };
@@ -545,6 +571,11 @@ const RIDES = {
   car: { carry: 8, big: true, trade: 200, rank: 2 }, truck: { carry: 12, big: true, trade: 300, rank: 3 }, tank: { carry: 12, big: true, trade: 0, rank: 4 },
 };
 const NEED = { swap: 1, downtown: 1, dump: 2, sell: 2 };
+const CARS = ['coupe30', 'pickup50', 'wagon60', 'muscle70'];
+const isCar = f => !!(f && KINDS[f.kind] && KINDS[f.kind].car);
+const carsHere = () => S.stock.filter(f => isCar(f) && !onBench(f));
+// collector sets (his idea): every piece real and snapped
+const SETS = { tin: ['robot', 'tincar', 'sub', 'plane', 'biplane'], cameras: ['boxcam', 'folding', 'tlr', 'moviecam', 'flashcam'], carparts: ['hubcap', 'hoodorn', 'headlamp', 'license'], glass: ['plate', 'insulator', 'bottle', 'radiometer'], tools: ['drill', 'handdrill', 'wrench', 'saw', 'toolbox'] };
 const ride = () => RIDES[S.ride] || RIDES.car;
 // landlords: rent times this, the late fee, the rise each new lease, and
 // whether a short week once a lease goes without a fee. Mrs. Kettle's numbers
@@ -605,6 +636,9 @@ const TUNE = {
   // the play corner: $15 a go is his; the rest ours
   play: 15, playTime: [8, 12], cornerCarts: 4, gamer: .3, gamerPerCart: .07,
   kidChance: .15,
+  // cars parked at your shop by size, a car buyer's odds, and what a whole
+  // set pays (ours)
+  lotRoom: [2, 3, 4], carBuyer: .25, setBonus: 1.5,
   // bigger shops (his tiers: a starter, a corner thrift, a Main Street store):
   // places to put things out, width, base rent, rents paid on time to get
   // there, and how much more often customers come. His: the tiers and 12, then
@@ -796,6 +830,10 @@ const PIX = {
   musket: ['iiiiiiiiiiKwww....', '.........iwwmwwwww', '...........bwmmmww', '.............mmmmw'],
   armor: ['.......HHHHH........', '......HAAAAAH.......', '.....HAAAAAAAHHHHHHH', '..HHHHHHHHHHHHH.....', '.HAAAAAAAAAAAAAH....', 'HAAAAAAAAAAAAAAAH...', 'HbbbbbbbbbbbbbbbH...', 'bbObObObObObObObbb..', '.bbbbbbbbbbbbbbbb...'],
   album: ['LLLLLLLLL', 'LmmmmmmmL', 'LmnnnnnmL', 'LmnoGonmL', 'LmnnnnnmL', 'LmmmmmmmL', 'LmBBBBBmL', 'LmmmmmmmL', 'LLLLLLLLL'],
+  coupe30: ['.......PPPPPP...........', '......PhhhhhhP..........', '.....PPPPPPPPPP.........', '..PPPPPPPPPPPPPPPPPP....', '.PPPPPPPPPPPPPPPPPPPPP..', 'SPPPPPPPPPPPPPPPPPPPPPS.', '..bbb...........bbb.....', '.bbSbb.........bbSbb....', '..bbb...........bbb.....'],
+  pickup50: ['..............RRRRR.....', '.............RhhhhR.....', '.............RhhhhRR....', 'RRRRRRRRRRRRRRRRRRRRRRR.', 'RRRRRRRRRRRRRRRRRRRRRRRS', 'SRRRRRRRRRRRRRRRRRRRRRRS', '..bbb...........bbb.....', '.bbSbb.........bbSbb....', '..bbb...........bbb.....'],
+  wagon60: ['....GGGGGGGGGGGGGG......', '...GhhhGhhhhGhhhhG......', '..GGGGGGGGGGGGGGGGGGGG..', '.GGGGGGGGGGGGGGGGGGGGGG.', 'SGGwwwwwwwwwwwwwwwwwGGGS', '.GGGGGGGGGGGGGGGGGGGGGG.', '..bbb.............bbb...', '.bbSbb...........bbSbb..', '..bbb.............bbb...'],
+  muscle70: ['..........VVVVVV........', '........VVhhhhhVV.......', '.VVVVVVVVVVVVVVVVVVVVVV.', 'SVVnnnnnnnnnnnnnnnnnnVVS', '.VVVVVVVVVVVVVVVVVVVVVV.', '..bbb.............bbb...', '.bbSbb...........bbSbb..', '..bbb.............bbb...'],
   mirror: ['.BBBBBB.', 'BhhhhhhB', 'BhzhhhhB', 'BhhzhhhB', 'BhhhhhhB', 'BhhhhhhB', 'BhhhhhhB', '.BBBBBB.'],
   bike: ['......bb....', '..bbbbbV....', '...VVVVVV...', '.bb.V..V.bb.', 'b..bV...b..b', 'b..b.....b.b', '.bb.......bb'],
   truck: ['.........RRRR...', '.........RhhR...', 'RRRRRRRRRRhhRR..', 'RKRRRRRKRRRRRRRy', 'RRRRKRRRRRRRRRRR', '.bb.......bb....', '.bb.......bb....'],
@@ -823,6 +861,13 @@ const ART = [
   ['...uu...', '..uUuu..', '...uu...', '..uuuu..', '.uUuuUu.', '..uuuu..', '.uuuuuu.', 'uuUuuUuu'],
 ];
 const DUCK_ART = ['..uu......', '.uUuy.....', '..uu......', '.uuuuuuu.u', 'uuUuuUuuuu', '.uuuuuuuu.', '..uuuuuu..'];
+const CARS_PIX = ['coupe30', 'pickup50', 'wagon60', 'muscle70'];
+function carDud(rows) {
+  const r = swap(rows, 'S', 'K').map(x => x.split(''));
+  [[5, 4], [11, 3], [16, 4], [8, 2]].forEach(([x, y]) => { if (r[y] && r[y][x] && r[y][x] !== '.') r[y][x] = 'K'; });
+  const last = r.length - 1; r[last] = r[last].map((ch, i) => i < 7 && ch === '.' && r[last][i + 1] === 'b' ? 'b' : ch);
+  return r.map(a => a.join(''));
+}
 const LOOK = {
   shovel: [edit(PIX.shovel, [[10, 2, 'n'], [10, 3, 'n']]), swap(PIX.shovel, 'w', 'P')],
   plate: [PIX.plate, PIX.plate],
@@ -871,6 +916,8 @@ const LOOK = {
   hotelbox: [PIX.hotelbox, PIX.hotelbox], globe: [PIX.globe, PIX.globe],
   musket: [PIX.musket, swap(swap(swap(PIX.musket, 'm', 'x'), 'w', 'X'), 'K', 'i')],
   album: [PIX.album, PIX.album],
+  // a car that won't run: rust spots, rusty bumpers, a flat tire
+  ...Object.fromEntries(CARS_PIX.map(k => [k, [PIX[k], carDud(PIX[k])]])),
   mirror: [PIX.mirror, swap(PIX.mirror, 'B', 'Q')],
   hubcap: [PIX.hubcap, swap(swap(swap(PIX.hubcap, 'S', 'd'), 'h', 'd'), 'O', 'i')],
   tire: [PIX.tire, edit(PIX.tire, [[3, 2, 'K'], [4, 2, 'b'], [2, 5, 'K'], [9, 6, 'b'], [10, 4, 'K'], [6, 9, 'b'], [7, 9, 'K']])],
@@ -1370,6 +1417,10 @@ $('#card').addEventListener('click', e => {
   else if (a === 'love') { closeCard(); showBar(); }
   else if (a === 'kidBuy') kidBuy();
   else if (a === 'buyRide') buyRide();
+  else if (a === 'driveCar') driveCar(f);
+  else if (a === 'sets') setsCard();
+  else if (a === 'callSet') callSet(b.dataset.set);
+  else if (a === 'setSell') sellSet(regCust);
   else if (a === 'moveList') moveCard();
   else if (a === 'lordList') lordCard(+b.dataset.tier);
   else if (a === 'moveIn') moveIn(+b.dataset.tier, b.dataset.lord);
@@ -1446,11 +1497,11 @@ function doorCard() {
     return;
   }
   const any = S.spots.some(u => u != null);
-  const icon = { garage: LOOK.shovel[0], toys: LOOK.robot[0], cat: ART[1], swap: PIX.box, sell: PIX.present, dump: PIX.tablet, downtown: PIX.mirror };
+  const icon = { garage: LOOK.shovel[0], toys: LOOK.robot[0], cat: ART[1], swap: PIX.box, sell: PIX.present, dump: PIX.tablet, downtown: PIX.mirror, carlot: PIX.pickup50 };
   const fees = { swap: SALES.swap.fee, sell: TUNE.tableFee, dump: TUNE.dumpFee };
   // what your ride reaches: on foot, only the first yard sale
   const why = (id, i) => ride().rank < (NEED[id] || 0) ? t(NEED[id] === 1 ? 'needBike' : 'needCar') : !ride().rank && i === 1 ? t('tooFar') : '';
-  const places = S.yardDone ? `<p class="soft">${t('beenYard')}</p>` : `<div class="list">${[...S.today, 'downtown', 'swap', 'dump', 'sell'].map((id, i) =>
+  const places = S.yardDone ? `<p class="soft">${t('beenYard')}</p>` : `<div class="list">${[...S.today, 'downtown', 'carlot', 'swap', 'dump', 'sell'].map((id, i) =>
     `<button class="it" type="button" data-act="${id === 'sell' ? 'pickSell' : 'go'}" data-sale="${id}" ${why(id, i) ? 'disabled' : ''}><img src="${picSrc(icon[id])}" alt=""><span>${t(`sales.${id}.name`)}<small>${why(id, i) || t(`sales.${id}.line`, { fee: fees[id], time: TUNE.dumpTime })}</small></span></button>`).join('')}</div>`;
   openCard(`${h2(t('doorTitle'))}<p>${t('doorText', { n: S.day })}</p><p class="soft">${t(`rideNow.${S.ride}`, { n: ride().carry })}</p>${places}${any ? '' : `<p class="soft">${t('nothingOut')}</p>`}
     <div class="row">${btn('close', t('cancel'))}${btn('openShop', t('openShop'), S.yardDone && any)}</div>`, S.yardDone ? null : '.it');
@@ -1463,8 +1514,8 @@ function goBuying(id, mine = null) {
   closeCard(); SFX.car();
   S.pocket -= fee; S.yardDone = true; save();
   queue.length = 0;
-  MK = id === 'swap' ? buildSwap(mine) : id === 'dump' ? buildDump() : id === 'downtown' ? buildDowntown() : buildYard(id);
-  if (!mine && (id === 'swap' || (id !== 'dump' && id !== 'downtown' && Math.random() < TUNE.rivalYard)))
+  MK = id === 'swap' ? buildSwap(mine) : id === 'dump' ? buildDump() : id === 'downtown' ? buildDowntown() : id === 'carlot' ? buildCarLot() : buildYard(id);
+  if (!mine && (id === 'swap' || (!['dump', 'downtown', 'carlot'].includes(id) && Math.random() < TUNE.rivalYard)))
     MK.rival = { x: MK.start.x + 1.5, y: MK.start.y, look: RIVAL_LOOK, rows: CUST, mode: 'rest', t: randIn(TUNE.rivalStart), took: 0, max: TUNE.rivalMax[MK.kind], face: 1, walkT: 0, route: null, speed: TUNE.rivalWalk };
   scene = 'yard'; P.x = MK.start.x; P.y = MK.start.y; P.route = null; custs = []; floats = [];
   setWidth(MK.w);
@@ -1478,6 +1529,7 @@ function goBuying(id, mine = null) {
     const rv = MK.vendors.find(v => v.rival); if (rv) { rv.say = { text: t('tankGasp'), t: 3 }; rv.yes = .6; }
   }
   if (id === 'downtown') say(t('goalDowntown'));
+  if (id === 'carlot') say(t('goalCarLot'));
   if (S.tip && (MK.kind === 'yard' || MK.kind === 'downtown')) {
     const i = MK.items.findIndex((f, i) => f && !f.good && KINDS[f.kind].real > 0 && f.kind !== 'box' && !MK.vendors[MK.slots[i].vendor].rival && !f.free);
     if (i >= 0) { let g = makeFind(MK.items[i].kind); for (let n = 0; n < 20 && !g.good; n++) g = makeFind(MK.items[i].kind); if (g.good) { MK.items[i] = g; S.tip = false; save(); say(t('tipHere')); } }
@@ -1866,6 +1918,75 @@ function mailMorning() {
   else if (r < o.gift + o.letter) say(t('mailLetter'));
   save();
 }
+// ----- the car lot (his idea, 27 Nov) -----
+// Four old cars in a row, 1930s to 1970s. Chrome means it runs; rust and a
+// flat tire mean a seized engine, worth its scrap (the bench can try, for a
+// lot of parts and three shop days). Bought cars are towed to the shop and
+// park out front, as many as the shop has room for. Tagged, they bring car
+// buyers now and then. A running one can be your ride instead.
+function buildCarLot() {
+  const M = { id: 'carlot', kind: 'carlot', w: 20, top: 2.4, bottom: 11.2, items: [], slots: [], vendors: [], solid: [], objs: [], cats: [], bought: 0, start: { x: 3.5, y: 8.6 } };
+  M.vendors.push({ x: 17.5, y: 9.4, look: { ...C, h: '#1a1a1a', t: '#e8e0d0', s: '#e8b890', p: '#3b4a6a' }, rows: CUST, lines: 'sellers.carlot', yes: .4, no: 'sellerNo', face: -1, walkT: 0 });
+  shuffle(CARS).forEach((k, i) => {
+    const x = 2.2 + i * 4.4, si = M.slots.length;
+    M.items.push(makeFind(k)); M.slots.push({ x: x + 1.6, y: 4.6, tagY: 5.4, vendor: 0 });
+    M.objs.push({ id: 'slot' + si, x, y: 3.4, w: 3.2, h: 1.8, stand: { x: x + 1.6, y: 5.9 }, slot: si, act: 'actLook' });
+    M.solid.push({ x: x + .1, y: 3.6, w: 3, h: 1.4 });
+  });
+  M.objs.push({ id: 'seller', x: 16.9, y: 8.2, w: 1.2, h: 1.2, stand: { x: 15.8, y: 9.4 }, vendor: 0, act: 'actSeller' });
+  M.objs.push({ id: 'car', x: 2, y: 9, w: 3, h: 2, stand: { x: 3.5, y: 8.6 }, act: 'actCar' });
+  M.solid.push({ x: 2, y: 9, w: 3, h: 2.2 });
+  return M;
+}
+function drawCarLot(now) {
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) put(asphaltTile((i * 7 + j * 5) % 4), i * T, j * T);
+  px(0, 0, W * T, 2.2 * T, '#e8e0d0'); px(0, 2.2 * T, W * T, 3, '#c84a3a');
+  for (let i = 0; i < W * T; i += 10) px(i, 6, 6, 4, ['#c84a3a', '#ffd040', '#3b6ea8'][(i / 10) % 3]);
+  textC('OAKRIDGE USED CARS', W / 2 * T, 18, '#c84a3a');
+  for (let i = 0; i < 5; i++) px((2 + i * 4.4) * T - 4, 3.6 * T, 2, 2.4 * T, '#e8e4da');
+  // the cars, drawn twice as big as a find on a table
+  MK.items.forEach((f, i) => { if (!f) return; const s = MK.slots[i], img = itemImg(f); cx.drawImage(img, Math.round(s.x * T - img.width), Math.round(s.y * T - img.height * 2 + 6), img.width * 2, img.height * 2); tagAt(f.ask, s.x * T, s.tagY * T + 2); });
+  // the salesman's little booth
+  px(16.2 * T, 7.2 * T, 2.6 * T, 1.4 * T, '#e8e0d0'); px(16.2 * T, 7.2 * T, 2.6 * T, 3, '#c84a3a'); text('SALES', 16.5 * T, 7.6 * T, '#c84a3a');
+  drawRide(2 * T, 9 * T + 2);
+}
+// at the desk: making a running car your ride (foot or bike only)
+function driveCar(f) {
+  S.stock = S.stock.filter(x => x !== f); S.ride = 'car'; save(); SFX.car(); say(t('carDriven', { item: nameOf(f) })); deskCard();
+}
+// ----- collector sets (his idea, 27 Nov) -----
+const setPieces = id => SETS[id].map(k => S.stock.find(f => f.kind === k && f.good && f.seen && !onBench(f) && !inCorner(f)) || null);
+const setPrice = id => round5(setPieces(id).reduce((a, f) => a + (f ? f.value : 0), 0) * TUNE.setBonus);
+function setsCard() {
+  const rows = Object.keys(SETS).map(id => {
+    const got = setPieces(id), n = got.filter(Boolean).length, full = n === got.length;
+    const pics = SETS[id].map((k, i) => `<img src="${picSrc(got[i] ? rowsOf(got[i]) : LOOK[k][0].map(r => r.replace(/[^.]/g, 'd')))}" alt="" title="${t(`kinds.${k}`)}">`).join('');
+    return `<li><span><b>${t(`sets.${id}`)}</b> · ${t('setHave', { n, m: got.length })}<br><span class="setpics">${pics}</span></span>${full ? btn('callSet', t('setCall', { n: setPrice(id) }), true, `data-set="${id}" ${S.setCall ? 'disabled' : ''}`) : ''}</li>`;
+  }).join('');
+  openCard(`${h2(t('setsTitle'))}<p>${t('setsText')}</p><ul class="store sets">${rows}</ul><div class="row">${btn('desk', t('back'), true)}</div>`, null, 'desk');
+}
+function callSet(id) {
+  S.setCall = id; save(); SFX.bell();
+  if (S.phase === 'open') { spawnSetCollector(); say(t('setCalledNow', { set: t(`sets.${id}`) })); } else say(t('setCalled', { set: t(`sets.${id}`) }));
+  setsCard();
+}
+function spawnSetCollector() {
+  if (!S.setCall || custs.some(c => c.kind === 'setc')) return;
+  const c = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look: { ...pick(LOOKS), h: '#2a2a30' }, kind: 'setc', rows: COLLECTOR, mode: 'toReg', t: 0, walkT: 0, face: 1, find: null, set: S.setCall, say: { text: t('setcIn'), t: 2.4 } };
+  c.joined = ++lineNo; c.route = path(c, linePlace(inLine().length), true);
+  S.setCall = null; save();
+  if (c.route) { custs.push(c); SFX.door(); }
+}
+function sellSet(c) {
+  const pieces = setPieces(c.set);
+  if (pieces.some(f => !f)) { closeCard(); bubble(c, t('setcGone')); leaveShop(c); return; }
+  const n = setPrice(c.set), cost = pieces.reduce((a, f) => a + f.cost, 0);
+  for (const f of pieces) { const i = spotOf(f); if (i >= 0) S.spots[i] = null; }
+  S.stock = S.stock.filter(f => !pieces.includes(f));
+  const toPool = Math.min(cost, n); S.pool += toPool; S.pocket += n - toPool; save(); SFX.wow(); showBar();
+  bubble(c, t('thanks')); leaveShop(c);
+  openCard(`${h2(t('soldTitle'))}<p>${t('setSold', { set: t(`sets.${c.set}`), n })}</p><p>${t('splitText', { cost: toPool, profit: n - toPool })}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+}
 // ----- the kid selling sporks (his idea, 27 Nov) -----
 // Now and then a kid has a little table at a yard sale, selling sporks for a
 // dollar. Ask him about them and he gives you his dad's old baseball card,
@@ -2026,10 +2147,15 @@ function hgStop() {
 }
 // telling is for ordinary sellers, once a trip, about ordinary finds
 const canTell = (f, sl) => !MK.told && (MK.kind === 'yard' || MK.kind === 'downtown') && !f.free && !f.reply && !MK.vendors[sl.vendor].rival && !['box', 'junk', 'hairball', 'spork', 'album'].includes(f.kind);
-const cantCarry = f => isBig(f) && !ride().big ? t('tooBig', { ride: t(`rides.${S.ride}`) }) : MK.bought >= ride().carry ? t('carryFull', { ride: t(`rides.${S.ride}`), n: ride().carry }) : '';
+const cantCarry = f => isCar(f) ? (carsHere().length >= TUNE.lotRoom[(S.tier || 1) - 1] ? t('carLotFull', { n: TUNE.lotRoom[(S.tier || 1) - 1] }) : '') : isBig(f) && !ride().big ? t('tooBig', { ride: t(`rides.${S.ride}`) }) : MK.bought >= ride().carry ? t('carryFull', { ride: t(`rides.${S.ride}`), n: ride().carry }) : '';
 function buy(slot) {
   const f = MK.items[slot];
   if (cantCarry(f)) { say(cantCarry(f)); return; }
+  if (isCar(f)) {
+    // towed home, not carried: it needs a parking space at the shop
+    S.pocket -= f.ask; f.cost = f.ask; delete f.ask; delete f.asked; delete f.reply;
+    S.stock.push(f); MK.items[slot] = null; save(); closeCard(); SFX.car(); say(t('carTowed', { item: nameOf(f) })); showBar(); return;
+  }
   if (S.pocket < f.ask) { say(t('tooPoor')); return; }
   S.pocket -= f.ask; f.cost = f.ask; delete f.ask; delete f.asked; delete f.reply;
   S.stock.push(f); MK.items[slot] = null; MK.bought++; save();
@@ -2118,7 +2244,7 @@ function deskCard() {
   const guide = S.guide ? `<p class="soft">${t('guideHave')}</p>` : `<p class="soft">${t('guideNote')}</p>`;
   openCard(`${h2(t('deskTitle'))}<p>${list.length ? t('deskText') : t('deskEmpty')}</p><div class="list">${list.map(rowHtml).join('')}</div>${guide}
     ${S.frogs && !S.tank ? `<p class="note">${t('frogsWait')}</p>` : ''}
-    <div class="row">${S.guide ? '' : btn('guide', t('guideBuy', { n: TUNE.guide }), false, S.pocket < TUNE.guide ? 'disabled' : '')}${btn('store', t('storeBtn'))}${btn('close', t('done'), true)}</div>`, '.it');
+    <div class="row">${S.guide ? '' : btn('guide', t('guideBuy', { n: TUNE.guide }), false, S.pocket < TUNE.guide ? 'disabled' : '')}${btn('sets', t('setsBtn'))}${btn('store', t('storeBtn'))}${btn('close', t('done'), true)}</div>`, '.it');
 }
 function spotCard(i) {
   const o = SHOP.find(o => o.spot === i), f = byUid(S.spots[i]);
@@ -2145,6 +2271,7 @@ function findCard(f, from, spot = null) {
   if (isBig(f)) note += ' ' + t('bigNote');
   if (atDesk && known(f) && !dealerPays(f) && f.kind !== 'pills') note += ' ' + t('tossNote');
   const acts = [];
+  if (atDesk && isCar(f) && f.good && known(f) && ride().rank < RIDES.car.rank) acts.push(btn('driveCar', t('carDrive')));
   if (atDesk && f.kind === 'album') { note = STR.notes.album[0]; acts.push(btn('mailBack', t('mailBack', { n: TUNE.stamps }), true, S.pocket < TUNE.stamps ? 'disabled' : '')); }
   else if (atDesk && f.kind === 'present') acts.push(btn('unwrap', t('unwrap'), true));
   else if (atDesk && f.kind === 'pills') acts.push(btn('turnIn', t('turnIn'), true));
@@ -2166,6 +2293,7 @@ function findCard(f, from, spot = null) {
 // battleship only fits in the glass case
 const CASE = 3, isBig = f => !!(KINDS[f.kind] && KINDS[f.kind].big);
 function targetSpot(f) {
+  if (isCar(f)) return -1;   // cars park out front, not on a table
   if (cardSpot != null) return isBig(f) && cardSpot !== CASE ? -1 : cardSpot;
   if (isBig(f)) return S.spots[CASE] == null ? CASE : -1;
   return S.spots.indexOf(null);
@@ -2174,7 +2302,7 @@ function refreshFindBtns(f) {
   const b = $('#putBtn'), why = $('#putWhy'); if (!b) return;
   const full = targetSpot(f) < 0;
   b.disabled = !f.tag || full;
-  why.textContent = !f.tag ? t('needTag') : full ? t(isBig(f) ? (cardSpot != null ? 'bigNote' : 'bigNoRoom') : 'noRoom') : '';
+  why.textContent = isCar(f) ? t('carNote') : !f.tag ? t('needTag') : full ? t(isBig(f) ? (cardSpot != null ? 'bigNote' : 'bigNoRoom') : 'noRoom') : '';
 }
 // worth nothing (a plain hairball), the dealer won't take it at all
 const dealerPays = f => worthTo(f) > 0 ? Math.max(1, Math.round(worthTo(f) * TUNE.dealer)) : 0;
@@ -2280,6 +2408,7 @@ function openShop() {
   r = Math.random(); const nColl = (TUNE.collDays.find(([, p]) => (r -= p) < 0) || [0])[0];
   S.coll = Array.from({ length: nColl }, () => randIn(TUNE.collAt) * TUNE.dayLen).sort((a, b) => a - b); save();
   SFX.door(); say(t('openMsg')); if (t(`mood.${S.mood}`)) say(t(`mood.${S.mood}`)); showBar();
+  spawnSetCollector();
 }
 const moodGap = () => (TUNE.moods.find(m => m[0] === S.mood) || TUNE.moods[1])[2];
 const inLull = () => S.lull && S.clock >= S.lull.at && S.clock < S.lull.at + S.lull.len;
@@ -2378,6 +2507,15 @@ function spawnCust() {
       if (fr.route) { custs.push(fr); SFX.door(); return; }
     }
   }
+  // someone after a car parked out front with a tag on it
+  const car = carsHere().find(f => f.tag > 0);
+  if (!fan && car && Math.random() < TUNE.carBuyer && !custs.some(o => o.kind === 'carc')) {
+    const kind2 = Math.random() < .4 ? 'collector' : 'regular';
+    const cb = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look: kind2 === 'collector' ? { ...pick(LOOKS), h: '#2a2a30' } : pick(LOOKS), kind: 'carc', buys: kind2, rows: kind2 === 'collector' ? COLLECTOR : CUST, mode: 'in', t: 0, walkT: 0, face: 1, find: null, car: car.uid, say: { text: t('carBuyerIn'), t: 2.4 } };
+    cb.route = path(cb, { x: 12, y: 10.2 }, true);
+    if (cb.route) { custs.push(cb); SFX.door(); }
+    return;
+  }
   // the rival, now and then, after anything you've priced far too low
   const cheap = S.spots.findIndex(u => { const f = byUid(u); return f && worthTo(f) >= 20 && f.tag < worthTo(f) * TUNE.rivalCheap; });
   if (!fan && cheap >= 0 && Math.random() < TUNE.rivalVisit && !custs.some(o => o.kind === 'rivalc')) {
@@ -2449,10 +2587,21 @@ function leaveShop(c) {
 function putBack(c) {
   // the find goes back where it was, if that spot's still free
   if (!c.find) return;
+  if (isCar(c.find)) { c.find = null; return; }   // a car never left its parking space
   if (scene !== 'shop') { MK.items[c.slot] = c.find; c.find = null; return; }
   if (S.spots[c.spot] == null) S.spots[c.spot] = c.find.uid;
   else { const i = S.spots.indexOf(null); if (i >= 0) S.spots[i] = c.find.uid; }
   c.find = null; save();
+}
+// a car buyer looks out the window at the car, then decides like any buyer
+function stepCarBuyer(c, dt) {
+  if (c.mode === 'in') { if (walk(c, dt)) { c.mode = 'browse'; c.t = randIn(TUNE.browse) + 1; c.face = 1; bubble(c, t('browse'), 1.2); } return; }
+  c.t -= dt; if (c.t > 0) return;
+  const f = byUid(c.car);
+  const as = { ...c, kind: c.buys };
+  if (!f || !isCar(f) || onBench(f) || !decide(as, f)) { bubble(c, t(f ? 'tooPricey' : 'nothingHere')); leaveShop(c); return; }
+  Object.assign(c, { price: as.price, offer: as.offer, max: as.max });
+  c.find = f; c.mode = 'toReg'; c.joined = ++lineNo; c.route = path(c, linePlace(inLine().indexOf(c)), true);
 }
 function stepCusts(dt) {
   for (const c of custs) {
@@ -2460,6 +2609,7 @@ function stepCusts(dt) {
     if ((c.mode === 'in' || c.mode === 'browse') && mice.some(m => dist(m, c) < 1.6)) { bubble(c, t('mouseScare')); leaveShop(c); continue; }
     if (c.kind === 'gamer') { stepGamer(c, dt); continue; }
     if (c.kind === 'bidder') { stepBidder(c, dt); continue; }
+    if (c.kind === 'carc' && (c.mode === 'in' || c.mode === 'browse')) { stepCarBuyer(c, dt); continue; }
     if (c.mode === 'in') {
       if (walk(c, dt)) {
         if (c.spot == null || S.spots[c.spot] == null) { bubble(c, t('nothingHere')); leaveShop(c); continue; }
@@ -2479,7 +2629,7 @@ function stepCusts(dt) {
     } else if (c.mode === 'toReg') {
       if (walk(c, dt)) {
         c.mode = 'wait'; c.t = TUNE.wait; bubble(c, t('wait')); SFX.bell();
-        if (c.find.value > 0 && Math.random() < TUNE.bidChance && !custs.some(o => o.kind === 'bidder')) spawnBidder(c);
+        if (c.find && c.find.value > 0 && Math.random() < TUNE.bidChance && !custs.some(o => o.kind === 'bidder')) spawnBidder(c);
       }
     } else if (c.mode === 'wait') {
       // the line moves up when the one in front is done
@@ -2546,7 +2696,12 @@ function regCard() {
   regCust = firstWaiting();
   const c = regCust;
   if (!c) { openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<p>${t('regEmpty')}</p><div class="row">${btn('close', t('done'), true)}</div>`); return; }
-  const f = c.find, item = nameOf(f), who = `<p><b>${t(`buyers.${c.kind}`)}</b></p>`;
+  const f = c.find, item = f ? nameOf(f) : "", who = `<p><b>${t(`buyers.${c.kind}`)}</b></p>`;
+  if (c.kind === 'setc') {
+    const pieces = setPieces(c.set), n = setPrice(c.set);
+    if (pieces.some(f => !f)) { openCard(`${h2(t('regTitle'))}<p>${t('setcGone')}</p><div class="row">${btn('noSale', t('done'), true)}</div>`, null, 'noSale'); return; }
+    return openCard(`${h2(t('regTitle'))}${who}<ul class="loot">${pieces.map(f => `<li><img src="${picSrc(rowsOf(f), colOf(f))}" alt="">${Name(f)}</li>`).join('')}</ul><p>${t('setcWants', { set: t(`sets.${c.set}`), list: pieces.map(nameOf).join(', '), n })}</p><div class="row">${btn('noSale', t('noSale'))}${btn('setSell', t('setcSell', { n }), true)}</div>`, null, 'noSale');
+  }
   if (c.kind === 'kidc') return openCard(`${h2(t('regTitle'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('kidcWants', { item, tag: f.tag, n: TUNE.kidHas })}</p></div></div><div class="row">${btn('noSale', t('kidcNo'))}${btn('kidSell', t('kidcSell', { n: TUNE.kidHas }), true)}</div>`, null, 'noSale');
   if (c.offer == null) {
     openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div>${bidRow(c)}<div class="row">${btn('noSale', t('noSale'))}${c.bid ? btn('bidSell', t('bidSell', { n: c.bid })) : ''}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
@@ -2613,7 +2768,7 @@ function nextThing() {
   return SHOP.find(o => o.id === 'door');
 }
 function goalText() {
-  if (scene === 'yard') return t(MK.selling ? 'goalMeet' : MK.kind === 'dump' ? 'goalDump' : MK.kind === 'downtown' ? 'goalDowntown' : 'goalYard');
+  if (scene === 'yard') return t(MK.selling ? 'goalMeet' : MK.kind === 'dump' ? 'goalDump' : MK.kind === 'downtown' ? 'goalDowntown' : MK.kind === 'carlot' ? 'goalCarLot' : 'goalYard');
   if (firstWaiting()) return t('goalRegister');
   if (S.phase === 'open') return t('goalOpen');
   const back = inBack();
@@ -2698,6 +2853,7 @@ function drawShop(now) {
     if (rain) for (let k = 0; k < 6; k++) px(wx * T + 4 + k * 10, 11 * T + 4 + ((now / 40 + k * 5) % 8), 1, 2, '#d8e4ec'); px(wx * T + 6, 11 * T + 4, 10, 2, '#e8f8ff');
     px(wx * T, 11 * T + 3, 4 * T, 1, '#2a1a10');
   }
+  carsHere().forEach((f, i) => { const img = itemImg(f); put(img, 3 * T + 2 + i * 14, 11 * T + 13 - img.height); });
   if (S.armor === 'kept') { px(13 * T + 10, 11 * T + 6, 30, 6, '#4e5a3a'); px(13 * T + 18, 11 * T + 3, 12, 4, '#6a7a4a'); px(13 * T + 30, 11 * T + 4, 14, 2, '#4e5a3a'); px(13 * T + 10, 11 * T + 11, 30, 2, '#1a1a1a'); }
   const open = S.phase === 'open';
   px(4 * T + 6, 11 * T + 4, 32, 8, open ? '#2f7a4a' : '#7a2a22');
@@ -2930,7 +3086,7 @@ function bubbleAt(s, x, y) {
 function draw(now) {
   cx.clearRect(0, 0, lo.width, lo.height);
   tags = [];
-  if (scene === 'shop') drawShop(now); else if (MK.kind === 'swap') drawSwap(now); else if (MK.kind === 'dump') drawDump(now); else if (MK.kind === 'downtown') drawDowntown(now); else drawYard(now);
+  if (scene === 'shop') drawShop(now); else if (MK.kind === 'swap') drawSwap(now); else if (MK.kind === 'dump') drawDump(now); else if (MK.kind === 'downtown') drawDowntown(now); else if (MK.kind === 'carlot') drawCarLot(now); else drawYard(now);
   // people, drawn top to bottom so nearer ones stand in front
   const people = [{ o: P, rows: KEEPER, col: C }, ...custs.map(c => ({ o: c, rows: c.rows || CUST, col: c.look }))];
   if (scene === 'yard') {
