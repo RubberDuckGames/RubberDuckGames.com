@@ -1,0 +1,91 @@
+/* The Flip Shop. Starts from shared/base.css; this adds the shop look: warm
+   wood, price-tag paper, a green apron. Laid out like The Mighty Pepper: the
+   room fills the screen, the bar floats on top, and on touch screens the
+   round stick and the Use button sit at the bottom. */
+:root{--ink:#2a1a10;--soft:#5e4632;--bg:#2b1d14;--panel:#fff6e4;--line:#c98a4a;--accent:#2f7a4a;--gold:#f2c230;--shadow:#140c06;--pool:#3b6ea8}
+html,body{margin:0;background:var(--bg);color:var(--ink);min-height:100%}
+body{font-size:1.125rem;line-height:1.45;overflow:hidden}
+html{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.bar{position:fixed;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;pointer-events:none}
+.bar>*{pointer-events:auto}
+.bar .grow{flex:1}
+.pill{background:var(--panel);border:2px solid var(--line);padding:.375rem .75rem;font-weight:700;white-space:nowrap;text-decoration:none;color:inherit;font-family:"Press Start 2P",monospace;font-size:.65rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow)}
+#poolPill{border-color:var(--pool)}
+.pill .short{display:none}
+.stats{display:flex;gap:inherit}
+/* a phone held upright has no room for the money in one row, so it drops to
+   a second row over the back wall (at 375 px the sound button went off the edge) */
+@media (max-width:30rem){.bar{flex-wrap:wrap;row-gap:.35rem}.stats{order:9;flex-basis:100%;justify-content:flex-end;gap:.25rem}}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.stagebox{position:relative}
+canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;touch-action:none}
+
+.help{position:absolute;left:.5rem;right:.5rem;top:.5rem;z-index:6;background:var(--panel);border:3px solid var(--ink);padding:.6rem .9rem;box-shadow:.3rem .3rem 0 rgba(0,0,0,.3);max-height:calc(100% - 1rem);overflow:auto}
+.helpTop{display:flex;gap:.75rem;align-items:flex-start}
+.help .goal{margin:0 0 .4rem;font-weight:800;flex:1}
+.help ul{margin:.2rem 0;padding-left:1.1rem}
+.help li{margin:.15rem 0}
+
+/* one short line at a time, inside the room's bottom edge */
+.msg{position:absolute;left:50%;bottom:.6rem;transform:translateX(-50%);z-index:5;margin:0;max-width:calc(100% - 1rem);width:max-content;background:var(--panel);border:3px solid var(--ink);padding:.35rem .8rem;font-weight:700;box-shadow:.25rem .25rem 0 rgba(0,0,0,.3)}
+
+.cover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(30,18,8,.55);z-index:9;padding:1rem}
+.card{background:var(--panel);border:4px solid var(--ink);padding:1.1rem 1.25rem;max-width:36rem;width:100%;max-height:100%;overflow:auto;box-shadow:.4rem .4rem 0 rgba(0,0,0,.3)}
+.card h2{margin:0 0 .6rem;font-family:"Press Start 2P",monospace;font-size:1rem;line-height:1.6}
+.card p{margin:.4rem 0}
+.card .soft{color:var(--soft)}
+.card .note{background:#f3e2bc;border-left:4px solid var(--line);padding:.4rem .7rem}
+.row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:.9rem}
+.btn{background:var(--panel);border:4px solid var(--line);padding:.65rem .9rem;font-family:"Press Start 2P",monospace;font-size:.7rem;line-height:1.6;box-shadow:.25rem .25rem 0 var(--shadow);min-height:2.75rem}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled,.btn.go:disabled{background:var(--panel);color:var(--soft);border-color:var(--line);border-style:dashed;cursor:default;box-shadow:none}
+.btn:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+.btn:not(:disabled):active{transform:translate(.15rem,.15rem);box-shadow:.1rem .1rem 0 var(--shadow)}
+
+/* a find, close up: the tells are in the pixels, so it's big */
+.look{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.pic{position:relative;flex:none;width:9rem;height:7rem;background:#f3e2bc;border:3px solid var(--line);display:flex;align-items:center;justify-content:center}
+.pic img{width:8rem;height:6rem;object-fit:contain;image-rendering:pixelated}
+.pic img.glow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);animation:glow 2.4s ease-in-out infinite;pointer-events:none}
+@keyframes glow{0%,100%{opacity:.3}50%{opacity:.9}}
+@media (prefers-reduced-motion:reduce){.pic img.glow{animation:none;opacity:.5}}
+.facts{flex:1;min-width:12rem}
+.facts dl{display:grid;grid-template-columns:auto 1fr;gap:.15rem .8rem;margin:.3rem 0}
+.facts dt{color:var(--soft)}
+.facts dd{margin:0;font-weight:800}
+
+/* the price tag: a typed number with a step either side */
+.tag{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin:.6rem 0 0}
+.tag label{font-weight:800;margin-right:.2rem}
+.tag input{width:6.5rem;font:inherit;font-weight:800;padding:.45rem .5rem;border:3px solid var(--ink);background:#fff;min-height:2.75rem}
+.tag .btn{padding:.5rem .6rem}
+
+/* the desk's list of what's in the back */
+.list{display:flex;flex-direction:column;gap:.5rem;margin:.4rem 0}
+.it{display:flex;align-items:center;gap:.7rem;text-align:left;background:#f3e2bc;border:3px solid var(--line);padding:.35rem .6rem;min-height:3.4rem;width:100%}
+.it img{width:3rem;height:2.4rem;object-fit:contain;image-rendering:pixelated;flex:none}
+.it span{flex:1}
+.it small{display:block;color:var(--soft);font-size:.85rem}
+
+/* the sale, split: the paid part to the Rent Pool, the rest to the pocket.
+   Each part is a word and a number as well as a colour. */
+.split{display:flex;height:2rem;border:3px solid var(--ink);margin:.6rem 0 .3rem;font-family:"Press Start 2P",monospace;font-size:.55rem;color:#fff}
+.split b{display:flex;align-items:center;justify-content:center;min-width:2.5rem;overflow:hidden}
+.split .p{background:var(--pool)}
+.split .k{background:var(--accent)}
+
+/* touch controls: the round stick on the left, the round Use button on the
+   right (decided 15 Nov for every game you steer) */
+.ctrl{display:none}
+@media (pointer:coarse){.ctrl{display:flex}.ctrl[hidden]{display:none}}
+.ctrl{position:fixed;left:0;right:0;bottom:0;z-index:7;justify-content:space-between;align-items:flex-end;padding:1rem;padding-bottom:max(1rem,env(safe-area-inset-bottom));pointer-events:none}
+.ctrl>*{pointer-events:auto}
+.stick{position:relative;width:8.5rem;height:8.5rem;border-radius:50%;background:#2a1a10;border:3px solid #120a05;touch-action:none}
+.stick i{position:absolute;left:50%;top:50%;width:3.6rem;height:3.6rem;margin:-1.8rem;border-radius:50%;background:#f3e2bc;box-shadow:0 .25rem 0 #a8743c;pointer-events:none}
+.rnd{border-radius:50%;color:#fff;font-family:"Press Start 2P",monospace;font-size:.55rem;line-height:1.4;padding:.3rem;touch-action:none;width:6rem;height:6rem;background:var(--accent);box-shadow:0 .35rem 0 #1b4a2c;margin-bottom:1rem}
+.rnd:active{transform:translateY(.25rem);box-shadow:none}
+@media (pointer:coarse) and (orientation:portrait){.wrap{align-items:flex-start;padding-top:5.2rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:56rem){.bar{gap:.25rem;padding-left:.3rem;padding-right:.3rem}.bar .pill{padding:.3rem .35rem;font-size:.55rem;box-shadow:.15rem .15rem 0 var(--shadow)}.pill .long{display:none}.pill .short{display:inline}}
+@media (max-width:40rem){.cover{position:fixed;z-index:20;align-items:flex-start;overflow:auto}.card{max-height:none}}

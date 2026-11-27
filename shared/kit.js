@@ -7,6 +7,7 @@
 //   const stick = RDG.stick('#pad', '#knob');          // stick.x, stick.y, stick.on
 //   RDG.noZoom(() => playing, ['#pad', '#goBtn']);
 //   const img = RDG.sprite(ROWS, COLORS, { flip: true }); // pixel art from rows of letters
+//   RDG.text(ctx, '$250', x, y, '#fff');                // the 3 x 5 pixel font
 const RDG = (() => {
   const el = q => typeof q === 'string' ? document.querySelector(q) : q;
 
@@ -231,6 +232,30 @@ const RDG = (() => {
     return c;
   }
 
+  // ---------- Pixel font ----------
+  // A 3 x 5 pixel font for anything stamped, printed or painted in a scene.
+  // Moved here 26 Nov from Barn Secrets, when The Flip Shop was the second game
+  // to need it (its price tags and signs). text(g, s, x, y, colour, k) draws s
+  // on the 2d context g, k pixels to a font pixel; textWidth(s, k) is how wide.
+  const FONT = {};
+  ('0:111101101101111 1:010110010010111 2:111001111100111 3:111001011001111 4:101101111001001 5:111100111001111 6:111100111101111 7:111001010010010 8:111101111101111 9:111101111001111 ' +
+    'A:010101111101101 B:110101110101110 C:011100100100011 D:110101101101110 E:111100110100111 F:111100110100100 G:011100101101011 H:101101111101101 I:111010010010111 J:001001001101010 ' +
+    'K:101101110101101 L:100100100100111 M:101111111101101 N:110101101101101 O:010101101101010 P:110101110100100 Q:010101101110011 R:110101110101101 S:011100010001110 T:111010010010010 ' +
+    'U:101101101101111 V:101101101101010 W:101101111111101 X:101101010101101 Y:101101010010010 Z:111001010100111 $:011100010001110 .:000000000000010 ¢:010111100111010 -:000000111000000 ' +
+    '+:000010111010000 =:000111000111000 *:000101010101000 !:010010010000010 ?:110001010000010 /:001001010100100 ,:000000000010100 \':010010000000000 ::000010000010000')
+    .split(' ').forEach(p => { FONT[p[0]] = p.slice(2); });
+  function text(g, s, x, y, c, k = 1) {
+    let cx = Math.round(x); y = Math.round(y);
+    g.fillStyle = c;
+    for (const ch of String(s).toUpperCase()) {
+      const gl = FONT[ch];
+      if (gl) for (let i = 0; i < 15; i++) if (gl[i] === '1') g.fillRect(cx + (i % 3) * k, y + ((i / 3) | 0) * k, k, k);
+      if (ch === '$') { g.fillRect(cx + k, y - k, k, k); g.fillRect(cx + k, y + 5 * k, k, k); }   // the stem, so it isn't an S
+      cx += 4 * k;
+    }
+  }
+  const textWidth = (s, k = 1) => String(s).length * 4 * k - k;
+
   // ---------- The studio database ----------
   // Decided 22 Nov: every game uses the one shared Supabase project
   // (RubberDuckGames; tables in db/). The publishable key is public by
@@ -259,5 +284,5 @@ const RDG = (() => {
   }
   played();
 
-  return { sound, stick, noZoom, pad, sprite, tile, rpc, played };
+  return { sound, stick, noZoom, pad, sprite, tile, text, textWidth, rpc, played };
 })();

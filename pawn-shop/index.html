@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Flip Shop · Rubber Duck Games</title>
+<meta name="description" content="Buy finds at yard sales, work out what they're really worth, and sell them in your own little shop. Haggle with customers and make the rent.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/base.css">
+<link rel="stylesheet" href="game.css">
+<script src="../shared/no-menu.js"></script>
+<script src="../shared/menu.js"></script>
+<script src="../shared/kit.js"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="pill" href="../">← All games</a>
+  <span class="grow"></span>
+  <span class="stats"><span class="pill" id="dayPill" hidden></span><span class="pill" id="cashPill" hidden></span><span class="pill" id="poolPill" hidden></span></span>
+  <button class="pill" id="helpBtn" type="button" hidden aria-expanded="false" aria-controls="help" data-s-label="helpBtn">?</button>
+  <button class="pill" id="soundBtn" type="button" data-s-label="soundBtn">🔔</button>
+</div>
+<div class="wrap">
+  <div class="stagebox" id="box">
+    <canvas id="cv" data-hold data-s-label="shop"></canvas>
+    <aside class="help" id="help" hidden>
+      <div class="helpTop"><p class="goal" id="goalNow"></p><button class="pill" id="helpClose" type="button" data-s-label="closeHelp">✕</button></div>
+      <ul id="helpList"></ul>
+    </aside>
+    <p class="msg" id="msg" role="status" hidden></p>
+    <div class="cover" id="cover" hidden><div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle"></div></div>
+  </div>
+</div>
+<div class="ctrl" id="ctrl" hidden>
+  <div class="stick" id="pad" data-s-label="stick"><i id="knob"></i></div>
+  <button class="rnd act" id="actBtn" type="button"></button>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
