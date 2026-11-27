@@ -1,5 +1,5 @@
-/* Barn Secrets. Starts from shared/base.css; this adds the back room look:
-   a dim shop at night, warm paper panels, brass. The scene is pixel art on a
+/* Barn Secrets. Starts from shared/base.css; this adds the barn's look:
+   a dim barn, warm paper panels, brass. The scene is pixel art on a
    canvas; every thing you can touch is a real <button> laid over it (game.js
    says why), so these styles are mostly for those, the panel and the cards. */
 :root{--ink:#2a1a10;--soft:#6b5640;--bg:#140d08;--panel:#f3e7cc;--line:#a87a48;--accent:#a8322a;--gold:#e8c45a;--shadow:#000}
@@ -28,7 +28,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offse
    page wider than the screen, and the page was then laid out that wide */
 .panel{max-width:calc(100vw - 1.2rem);display:flex;flex-direction:column;gap:.6rem;background:var(--panel);border:3px solid var(--line);padding:.6rem;box-shadow:.25rem .25rem 0 var(--shadow);flex:none}
 .msg{margin:0;min-height:3.2rem;display:flex;align-items:center;gap:.6rem;font-weight:600}
-.msg canvas{width:2.8rem;height:2.5rem;image-rendering:pixelated;flex:none;background:#3a2616;border:2px solid var(--line)}
+.msg canvas{width:2.8rem;height:3.1rem;image-rendering:pixelated;flex:none;background:#3a2616;border:2px solid var(--line)}
 .inv{display:flex;flex-wrap:wrap;gap:.4rem;min-height:3.6rem}
 .inv:empty::before{content:attr(data-empty);color:var(--soft);font-size:.9rem;align-self:center}
 .item{display:flex;flex-direction:column;align-items:center;gap:.1rem;width:4.2rem;padding:.25rem .1rem;background:#e9d9b4;border:3px solid var(--line);font-size:.7rem;line-height:1.2;text-align:center}
@@ -43,7 +43,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offse
 .btn:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .btn:active{transform:translate(.15rem,.15rem);box-shadow:.05rem .05rem 0 var(--shadow)}
 .btn.doc{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem .3rem .3rem;background:#e9c9b4;border-color:var(--accent)}
-.btn.doc canvas{width:2.8rem;height:2.5rem;image-rendering:pixelated;background:#3a2616}
+.btn.doc canvas{width:2.8rem;height:3.1rem;image-rendering:pixelated;background:#3a2616}
 
 .cover{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,6,3,.72);z-index:20;padding:1rem}
 .card{background:var(--panel);border:4px solid var(--ink);padding:1.25rem;max-width:34rem;width:100%;max-height:100%;overflow:auto;box-shadow:.4rem .4rem 0 #000}
@@ -55,5 +55,12 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offse
 .card .sign{text-align:right;font-style:italic}
 /* height:auto: the height attribute alone held it at 52 px while the width
    grew, and the flags came out squashed flat */
+.card .receipt table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.card .receipt td{padding:.15rem 0;border-bottom:1px dashed #d8c9a0}
+.card .receipt td:last-child{text-align:right}
+.card .receipt .total td{font-weight:800;border-bottom:none}
+.card .ledger{margin:0;padding-left:1.1rem}
+/* scratched out: a line through it and the words in grey, not colour alone */
+.card .ledger .scratched{text-decoration:line-through;color:var(--soft)}
 .card img.chart{display:block;width:100%;height:auto;max-width:26rem;margin:.4rem auto;image-rendering:pixelated;border:2px solid #d8c9a0}
 .row{display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;margin-top:1rem}

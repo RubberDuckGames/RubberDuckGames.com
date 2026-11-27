@@ -1,19 +1,27 @@
-// Barn Secrets (named 26 Nov; it was The Back Room, too close to The Room
-// games, then Cottonwood Barn for an hour), Trello #57. A puzzle box of a room for older
-// kids and grown-ups, designed by Randi: the back room of Cottonwood Barn,
-// a shop that buys what ranches and farms clear out. A crate has turned up
-// with a note, "For whoever finally sorts the back room." You look closer at
-// the odd old things in the room, find their drawers, dials and latches, and
-// each answer opens the next. No timer, no way to fail.
+// Barn Secrets, Trello #57. A puzzle box of a barn for older kids and
+// grown-ups, designed by Randi: Cottonwood Barn, a shop that buys what
+// ranches and farms clear out. Doc, the old dentist's machine on the barn
+// floor, is falling apart, and his pieces are somewhere in the barn. You
+// look closer at the odd old things, find their drawers, dials and latches,
+// and each answer opens the next. No timer, no way to fail.
+//
+// Version 1 (26 Nov) was one back room, a crate and a note, named The Back
+// Room; with its note and locked door it was too close to The Room games.
+// The rebuild the same day, from Randi's play-test: the barn in parts (the
+// barn floor, the workbench, the tack room, the hayloft); papers you use
+// instead of letters you read (version 1's notes were only narration); and
+// Doc in the main part. Each piece of him you find and hand back lets him do
+// something (his lamp lights the hayloft and shows what's scratched out, his
+// arm reaches the high shelf) and brings back a memory, so the story comes
+// from him.
 //
 // How it's drawn (decided 26 Nov; the card suggested three.js): a flat 320 x
-// 200 pixel scene for the room and one for each close-up, drawn in code, with
-// a few "faces" for things you turn round (the dresser, the ship, the crate).
-// Real 3D was tried on paper and dropped: the clues are small numbers and
-// letters stamped on tags, dials and plates, and a pixel close-up keeps every
-// one of them sharp and the same size on every phone, where a turning 3D
-// model shows them at an angle, blurred, and needs a camera you fight with
-// on a touch screen. It also needs no library and runs on an old phone.
+// 200 pixel scene for each place and each close-up, drawn in code, with a few
+// "faces" for things you turn round (the dresser, the ship). Real 3D was
+// dropped: the clues are small numbers and letters stamped on dials and
+// plates, and a pixel close-up keeps every one sharp and the same size on
+// every phone, where a turning 3D model shows them at an angle, blurred,
+// behind a camera you fight on a touch screen. It needs no library either.
 //
 // Everything you can touch is a real <button> laid over the canvas (`spots`),
 // not a hit test on the canvas: the keyboard, a controller and a screen
@@ -21,29 +29,32 @@
 // browser's own. They show nothing until picked with a key or a controller,
 // because a puzzle box doesn't light up its secrets.
 //
-// Every answer is in ROOMS, so later rooms add an entry instead of editing
-// the code that checks them. Every visible string is in STR by key.
+// Every answer is in ROOMS, so later parts of the barn add to it instead of
+// editing the code that checks them. Every visible string is in STR by key.
 
 // ---------- The answers ----------
 const ROOMS = {
-  back: {
-    tags: { washer: 125, dresser: 105, scale: 240, ship: 315 },   // cents, one tag on each
-    total: 785,                                                    // the four tags added up: rings the register
+  barn: {
+    // the soggy receipt from the washer: what was sold and for how much, in cents
+    receipt: [['washer', 125], ['dresser', 105], ['scale', 240], ['ship', 315]],
+    total: 785,                                                    // the receipt added up: rings the register
     // the meters left to right (silver, green, red): the coin each takes and where its needle stops
     meters: [{ coin: 'penny', reads: 3 }, { coin: 'nickel', reads: 7 }, { coin: 'dime', reads: 1 }],
-    lock: [3, 7, 1],                                               // the padlock's dials, in the same order
+    lock: [3, 7, 1],                                               // the crate's padlock, dials in the same order
     sack: 9,                                                       // the left pan
     weights: { flatiron: 3, horseshoe: 2, insulator: 1, sash: 4 }, // only 4 + 3 + 2 makes 9
-    grinderNo: 22,
+    grinderNo: 22,                                                 // rusted off the grinder; only the ledger says it
     build: ['screw', 'blade', 'plate', 'ring'],                    // the grinder goes together in this order
     grinderTurns: 4,
-    flags: 'SORT',                                                 // the ship's hoist, top to bottom
-    wringTaps: 6,                                                  // crank taps to feed the note through
+    flags: 'HERD',                                                 // the ship's hoist, top to bottom
+    wringTaps: 6,                                                  // crank taps to feed the receipt through
     wringGap: 260,                                                 // ms; quicker than this and it bunches
   },
 };
-const A = ROOMS.back;
-const PUZZLES = ['washer', 'adder', 'register', 'drawer', 'grinder', 'secret', 'scale', 'meters', 'lock', 'box'];
+const A = ROOMS.barn;
+// what fills Doc's gauges, in the order the barn usually gives them up
+const PUZZLES = ['washer', 'adder', 'register', 'lamp', 'ledger', 'secret', 'scale', 'meters', 'lock', 'arm', 'shelf', 'grinder', 'box', 'gauge'];
+const PARTS_OF_DOC = ['lamp', 'arm', 'gauge'];
 
 // ---------- Strings ----------
 const STR = {
@@ -52,30 +63,50 @@ const STR = {
   soundBtn: 'Sound on', soundOff: 'Sound off',
   inv: "Things you're carrying", invEmpty: 'Nothing in your pockets yet.',
   turnL: 'Turn it left', turnR: 'Turn it right', turn: 'Turn',
-  back: 'Back', crankDoc: 'Crank Doc',
+  back: 'Back', crankDoc: 'Crank Doc', giveDoc: 'Give to Doc',
   held: 'Holding',
-  startLine: 'Cottonwood Barn buys what ranches and farms clear out. In the back room, behind fifty years of it, a crate has turned up with a note on top.',
-  startHow: 'Tap anything to look closer. Doc, the old red dentist’s machine in the corner, gives hints when you crank him.',
-  startNew: 'Open the back room', startGo: 'Keep sorting', startOver: 'Start over',
-  overTitle: 'Start over?', overLine: 'Everything in the back room goes back where it was, and the crate shuts again. Rubber ducks you found stay found.',
+  startLine: 'Cottonwood Barn buys what ranches and farms clear out, and fifty years of it is still in the barn. So is Doc, the old red dentist’s machine, and he’s falling apart.',
+  startHow: 'Tap anything to look closer. Find Doc’s missing pieces and give them back to him. Crank him if you’re stuck.',
+  startNew: 'Open the barn', startGo: 'Keep looking', startOver: 'Start over',
+  overTitle: 'Start over?', overLine: 'Everything in the barn goes back where it was, and Doc falls apart again. Rubber ducks you found stay found.',
   overGo: 'Start over', cancel: 'Cancel', close: 'Close',
-  // views
-  vRoom: 'The back room', vWasher: 'The wringer washer', vAdder: 'The adding machine', vRegister: 'The cash register',
-  vDresser: 'The dresser', vScale: 'The balance scale', vGrinder: 'The meat grinder', vShip: 'The ship model',
+  // places and close-ups
+  vBarn: 'The barn floor', vBench: 'The workbench', vTack: 'The tack room', vLoft: 'The hayloft',
+  vWasher: 'The wringer washer', vAdder: 'The adding machine', vRegister: 'The cash register',
+  vDresser: 'The tack chest', vScale: 'The balance scale', vGrinder: 'The meat grinder', vShip: 'The ship model',
   vCrate: 'The crate', vMeters: 'The parking meters',
-  faceFront: 'from the front', faceSide: 'from the side', faceBack: 'from the back', faceTop: 'from the top', facePort: 'one side', faceStar: 'the other side',
-  // things in the room
-  sDoc: 'Doc, the dentist’s machine', sDuck: 'Something small and yellow',
+  faceFront: 'from the front', faceSide: 'from the side', faceBack: 'from the back', facePort: 'one side', faceStar: 'the other side',
+  // spots in the places
+  sDoc: 'Doc, the dentist’s machine', sDuck: 'Something small and yellow', sLadder: 'The ladder up to the hayloft',
+  sSaddle: 'A saddle on its rack', sBridles: 'Bridles on their pegs', sShelf: 'A high shelf near the ceiling', sHay: 'Hay bales', sLedger: 'A page stuck in the hay',
   // items
-  i_soggy: 'Soggy note', i_note: 'Wren’s note', i_penny: 'Penny', i_nickel: 'Nickel', i_dime: 'Dime', i_key: 'Brass key',
-  i_crank: 'Crank handle', i_sash: 'Iron weight', i_chart: 'Flag chart', i_letter: 'Wren’s letter',
+  i_soggy: 'Soggy paper', i_receipt: 'Receipt', i_penny: 'Penny', i_nickel: 'Nickel', i_dime: 'Dime',
+  i_crank: 'Crank handle', i_sash: 'Iron weight', i_chart: 'Flag chart', i_ledger: 'Ledger page',
+  i_lamp: 'Doc’s lamp', i_arm: 'Doc’s arm', i_gauge: 'Doc’s gauge',
   holding: 'You’re holding the {item}. Tap where it goes.',
   letGo: 'You put the {item} back in your pocket.',
   noGo: 'The {item} doesn’t do anything there.',
   got: 'You take the {item}.',
+  // the barn floor
+  loftDark: 'You climb up a few rungs. It’s pitch dark up there. You can’t see a thing.',
+  loftLit: 'Doc rolls under the hatch and shines his lamp up into the hayloft.',
+  // the tack room
+  saddle: 'An old saddle, worn smooth where somebody sat for years.',
+  bridles: 'Bridles and halters on wooden pegs. One still smells of saddle soap.',
+  shelfHigh: 'A shelf way up by the ceiling. Something with a handle is up there, out of reach.',
+  shelfArm: 'Doc swings his arm up to the shelf and lifts something down: a crank handle!',
+  shelfEmpty: 'Just dust up there now.',
+  // the hayloft
+  hay: 'Bales and bales of old hay. It tickles your nose.',
+  // Doc
+  docNoUse: 'Doc looks at the {item} politely. "Not one of mine, I’m afraid."',
+  docLamp: 'Ahh, light! I remember now... a little office over the feed store in town. Ranch kids in my chair, scared stiff, and I’d shine this lamp on the ceiling so they had something to look at.',
+  docArm: 'My arm! Oh, that’s better. I remember the office closing, the year the new clinic opened. Everything went to auction, and a rancher bought me for two dollars, to drill holes in tractor parts.',
+  docGauge: 'Both eyes! It’s all coming back. That rancher was Wren’s father. He brought me out to this barn and forgot about me. Wren never did. Every Sunday Wren cranked me up, and I kept every secret this barn has.',
+  ledgerDim: 'Doc squints. "One line’s scratched out. My eyes aren’t what they were, and it’s too dark to read without my lamp."',
+  ledgerLit: 'Doc holds the page under his lamp, and the scratches show through: "Grinder parts, No. 22, 50¢."',
   // washer
   sLidKnob: 'The lid knob', sTub: 'Inside the tub', sDrain: 'The drain lever', sRollers: 'The wringer rollers', sWCrank: 'The wringer crank',
-  sTag: 'A price tag', tagSays: 'The tag says {price}.',
   wLid: 'The knob turns, and the lid lifts off.',
   wWater: 'Cloudy grey water. You can’t see the bottom.',
   wDrain: 'Glug, glug. The water runs out across the floor.',
@@ -83,12 +114,12 @@ const STR = {
   wEmpty: 'An empty enamel tub.',
   wRollers: 'Two rubber rollers, to squeeze the water out of the wash.',
   wRollNo: 'The rollers squeeze it, but it comes out the same.',
-  wRollIn: 'You tuck the soggy note between the rollers.',
-  wRollWait: 'The note is in the rollers. Turn the crank.',
+  wRollIn: 'You tuck the soggy paper between the rollers.',
+  wRollWait: 'The paper is in the rollers. Turn the crank.',
   wCrankEmpty: 'The crank turns, and the empty rollers squeak round.',
-  wFeed: 'Creak. The note inches through the rollers.',
-  wBunch: 'Too fast! The note bunches up and backs out a little.',
-  wOut: 'The note comes out the other side, flat and dry enough to read.',
+  wFeed: 'Creak. The paper inches through the rollers.',
+  wBunch: 'Too fast! The paper bunches up and backs out a little.',
+  wOut: 'The paper comes out the other side, flat enough to read: a receipt.',
   // adding machine
   sAKey: '{n} in the {col} column', colD: 'dollars', colT: 'dimes', colC: 'cents',
   sAClear: 'The clear key', sACrank: 'The crank', sATape: 'The paper tape', sAWindow: 'The total window',
@@ -106,15 +137,13 @@ const STR = {
   rFlags: 'The flags show {v}.', rFlagsNone: 'An empty glass window. The flags show when something rings up.',
   rShut: 'The drawer is shut tight. It opens when a sale rings up.',
   rEmpty: 'An empty cash drawer.',
-  // dresser
+  // dresser (the tack chest)
   sDTop: 'The top drawer', sDMid: 'The middle drawer', sDBot: 'The bottom drawer', sDIn: 'Inside the drawer',
-  sDSide: 'The side of the dresser', sDLatch: 'A little wooden latch', sDPanel: 'A small panel in the back',
+  sDSide: 'The side of the chest', sDLatch: 'A little wooden latch', sDPanel: 'A small panel in the back',
   dTopIn: 'Old receipts. "Buggy wheel, $2." "Twelve glass insulators, $1.80." "Cream separator, traded for a goat."',
-  dLocked: 'Locked. There’s a little brass keyhole.',
-  dUnlock: 'The key turns with a click, and the drawer slides open.',
-  dEmpty: 'Nothing else in here.',
+  dMidIn: 'Harness buckles and a tin of saddle soap.',
   dShallow: 'An empty drawer. It only goes in about half as far as the others.',
-  dSide: 'From the side, the dresser is deep.',
+  dSide: 'From the side, the chest is deep.',
   dLatch: 'The wooden latch turns sideways.', dLatchBack: 'The latch turns back.',
   dStuck: 'The panel won’t slide. The little latch is holding it.',
   dPanel: 'The panel slides away. There’s a hiding spot behind the bottom drawer!',
@@ -123,38 +152,38 @@ const STR = {
   sSPan: 'The right pan, holding {w} pounds', sSSack: 'The sack on the left pan', sSTray: '{item} on the tray, stamped {w}', sSOn: '{item} on the right pan, stamped {w}', sSDrawer: 'A drawer in the base', sSTrayAll: 'The tray',
   i_flatiron: 'Flatiron', i_horseshoe: 'Horseshoe', i_insulator: 'Glass insulator',
   sSack: 'A sack stamped 9 LB.',
-  sPut: 'The {item} goes on the right pan. It\u2019s stamped {w}.', sOff: 'The {item} goes back on the tray.',
+  sPut: 'The {item} goes on the right pan. It’s stamped {w}.', sOff: 'The {item} goes back on the tray.',
   sFull: 'The right pan is full.',
   sOpen: 'The beam levels out. Click! A drawer in the base slides open.',
-  sDrawerShut: 'A little drawer in the base. It won’t pull open.',
+  sDrawerShut: 'A little drawer in the base. It won’t pull open.', sDrawerEmpty: 'An empty little drawer.',
   // grinder
-  sGPart: '{part}, stamped No. {no}', sGBlade: 'A grinder blade', sGBody: 'The grinder, stamped No. 22', sGCrank: 'Where the crank goes', sGNote: 'Something poking out the front',
+  sGPart: '{part}, stamped No. {no}', sGBlade: 'A grinder blade', sGBody: 'The grinder', sGCrank: 'Where the crank goes', sGNote: 'Something poking out the front', sGEnd: 'The parts on the end of the grinder',
   p_screw: 'A grinder screw', p_plate: 'A grinder plate', p_ring: 'A grinder ring',
-  gBody: 'A meat grinder clamped to the counter. It’s stamped No. 22.',
-  gWrong: 'Stamped No. {no}. It’s too big for this grinder.',
-  gOn: 'It fits.',
+  gBody: 'A meat grinder clamped to the bench. The number stamped on it has rusted off.',
+  gOn: 'It goes on.',
+  gOff: 'You take the parts back off the grinder.',
   gNeedScrew: 'That goes on the end of the screw. The screw goes in first.',
   gNeedBlade: 'The blade goes on before that.',
   gNeedPlate: 'The plate goes on before the ring.',
   gNoCrank: 'There’s no crank. The handle is missing.',
   gAttach: 'The crank handle slides on.',
   gSpin: 'The crank spins, but the grinder isn’t put together.',
+  gJam: 'Clunk. It jams! Something in there is the wrong size for this grinder.',
   gTurn: 'Grind, grind. Something moves inside the barrel.',
-  gOut: 'A rolled-up note squeezes out the front of the grinder!',
+  gOut: 'A rolled-up paper squeezes out the front of the grinder!',
   // ship
   sSail: 'The ship', sPlaque: 'The brass plaque', sFlag: 'A flag, {n} from the top: {desc}',
-  shipSays: 'A three-masted ship, rigged with cotton thread.',
+  shipSays: 'A three-masted ship, rigged with cotton thread, stored up here in the hay.',
   plaque: 'The plaque says: SHE SPEAKS IN FLAGS.',
   fS: 'white with a blue square in the middle', fO: 'cut corner to corner, yellow and red', fR: 'red with a yellow cross', fT: 'red, white and blue stripes up and down',
   fA: 'white and blue, with a notch cut in the end', fD: 'yellow, blue and yellow stripes across', fE: 'blue over red', fH: 'white and red, side by side', fK: 'yellow and blue, side by side', fW: 'a blue border, then white, with a red square in the middle',
   // crate
   sCUp: 'Turn the {col} dial up, now {d}', sCDown: 'Turn the {col} dial down, now {d}', colSilver: 'silver', colGreen: 'green', colRed: 'red',
-  sCLid: 'The crate lid', sCNote: 'The note on the crate', sCWUp: 'Turn letter wheel {n} up, now {l}', sCWDown: 'Turn letter wheel {n} down, now {l}',
-  sCLetter: 'A letter and a big iron key', sCLock: 'The padlock',
+  sCLid: 'The crate lid', sCWUp: 'Turn letter wheel {n} up, now {l}', sCWDown: 'Turn letter wheel {n} down, now {l}', sCLock: 'The padlock', sCArm: 'Something rusty in the straw', sCGauge: 'Something wrapped in a rag',
   cLocked: 'The padlock holds the lid shut.',
   cUnlocked: 'Clunk. The padlock springs open.',
-  cLid: 'The lid creaks up. Inside, in the straw, is a little wooden box with four letter wheels.',
-  cBox: 'Click. The little box opens. There’s a letter inside, and a big iron key.',
+  cLid: 'The lid creaks up. In the straw: a rusty jointed arm, and a little box with four letter wheels.',
+  cBox: 'Click. The little box opens. Something round is inside, wrapped in a rag.',
   // meters
   sMeter: 'The {col} meter. {reads}', mExpired: 'It reads EXPIRED.', mReads: 'Its needle points to {n}.',
   mSlot: 'It reads EXPIRED. The coin slot is stamped {coin}.',
@@ -162,85 +191,94 @@ const STR = {
   mIn: 'Clink. The EXPIRED flag drops and the needle swings to {n}.',
   coin_penny: '1¢', coin_nickel: '5¢', coin_dime: '10¢',
   // the duck
-  duck: 'A rubber duck, hiding behind the cans! It squeaks hello.',
-  duckHi: 'The rubber duck sits on Doc’s head now. He doesn’t seem to mind.',
-  // the notes
-  noteTitle: 'A note from the washer',
-  noteText: 'For whoever finally sorts the back room:\n\nEvery price I ever set is on a tag. Four tags still hang in here. Add them up and ring the total on the big register.\n\nThe rest you’ll find the way I did, by looking twice.',
-  sign: '— Wren',
-  crateTitle: 'The note on the crate',
-  crateText: 'For whoever finally sorts the back room.\n\nStart with the wash.',
-  crateSign: '— W.',
+  duck: 'A rubber duck, hiding in the hay! It squeaks hello.',
+  // the papers
+  receiptTitle: 'A receipt from the washer', receiptHead: 'COTTONWOOD BARN. Sold to one buyer:', receiptTotal: 'TOTAL', receiptFoot: 'Paid in full. Ring it up!',
+  r_washer: 'Wringer washer', r_dresser: 'Oak tack chest', r_scale: 'Balance scale', r_ship: 'Ship model',
+  ledgerTitle: 'A page from the ledger', ledgerLines: ['Hay, 40 bales: $12.00', 'Horseshoes, a box: 60¢', 'Grinder parts, No. {no}: 50¢', 'Saddle soap: 15¢'], ledgerScratched: '(scratched out)', ledgerHint: 'One line is scratched out too hard to read in this light.',
   chartTitle: 'A rolled-up flag chart',
   chartLine: 'Ship’s flags, each with the letter it stands for.',
   chartAlt: 'Ten flags and their letters. A: white and blue, with a notch cut in the end. D: yellow, blue and yellow stripes across. E: blue over red. H: white and red, side by side. K: yellow and blue, side by side. O: cut corner to corner, yellow and red. R: red with a yellow cross. S: white with a blue square in the middle. T: red, white and blue stripes up and down. W: a blue border, then white, with a red square in the middle.',
-  letterTitle: 'Wren’s letter',
-  letterText: 'You sorted it.\n\nI meant to for fifty-one years. Every week something new came in off a ranch, and the back room got deeper. If you’re reading this, you looked twice at everything, which is all this shop ever asked of anybody.\n\nThe key opens the door at the very back, the one that says ENTER AT YOUR OWN RISK. I never went through. My father did.\n\nBe kind to Doc. He was my father’s, and he means well.',
-  endNext: 'The room behind that door is still being built.',
+  endTitle: 'Doc is back together',
+  endMore: 'You’ve found them all now, I think. Well... nearly all. There’s still the stalls, and the feed room.',
+  endNext: 'The stalls and the feed room are still being built.',
   ducks: 'Rubber ducks found: {n} of {m}.',
   keepLooking: 'Keep looking around',
-  // Doc
-  docHello: '*creak* ...Oh! A patient. ',
+  // Doc's voice
+  docHello: '*creak* ...Oh! A visitor. Forgive me, I’m in pieces: my lamp, my arm, one of my eyes, all lost somewhere in this barn. ',
   docOpen: ['Open wide... ', 'Just a little pressure... ', 'Rinse, please... ', 'Mm-hmm, mm-hmm... ', 'Bite down gently... ', 'Comfortable? Good... '],
-  docDone: 'Lovely. Not a single cavity in the whole back room.',
+  docDone: 'Lovely. Not a single cavity in the whole barn.',
   // canvas words
-  art_expired: 'EXPIRED', art_limit: 'LIMIT 60 MIN', art_plaque: 'SHE SPEAKS IN FLAGS', art_sack: '9 LB', art_noSale: 'NO SALE', art_up: 'THIS SIDE UP', art_no22: 'NO. 22',
+  art_expired: 'EXPIRED', art_limit: 'LIMIT 60 MIN', art_plaque: 'SHE SPEAKS IN FLAGS', art_sack: '9 LB', art_noSale: 'NO SALE', art_up: 'THIS SIDE UP', art_tack: 'TACK',
 };
 
 // Doc's hints, three to a step: a nudge, a clearer nudge, then nearly the
 // answer, never the answer straight away. Picked by `hintNow`.
 const HINTS = {
   'washer.start': ['That washer is awfully full for something nobody’s used in years.', 'Lids come off. And water drains, if you find the lever.', 'Turn the knob on the lid, and flip the drain lever at the bottom of the tub.'],
-  'washer.take': ['Something’s at the bottom of that tub. Two somethings.', 'Pick them up. Gently, they’ve been soaking.', 'Tap the soggy note and the coin in the empty tub.'],
-  'washer.wring': ['A soggy note won’t read itself, I’m afraid.', 'What on a washer squeezes things flat?', 'Pick the soggy note, then tap the wringer’s rollers on top.'],
-  'washer.crank': ['Gently now. Slow and steady, like a good rinse.', 'If it bunches up, you’re cranking too fast.', 'Tap the crank about once a second until the note comes out.'],
-  'adder': ['Prices, prices. Every price in here is on a tag.', 'Four tags: on the washer, the dresser, the scale and the ship. The adding machine is happy to help.', 'Press one key in each column for a price, pull the crank, and do that for every tag. Watch the total.'],
-  'register': ['That fancy register would love to ring up a sale.', 'One key in each row: dollars, dimes, then cents. Then the crank on the side.', 'Ring up the four tags’ total, the same total the adding machine printed.'],
-  'drawer': ['A little brass key. Now, what has a little keyhole?', 'Have a look at the dresser’s drawers.', 'Pick the key, then tap the dresser’s middle drawer.'],
-  'grinder.parts': ['Two grinders got their parts mixed up. Happens to the best of us.', 'Every part is stamped with a number. The grinder says No. 22.', 'No. 22 parts go on in order: the screw, the blade, the plate, then the ring.'],
-  'grinder.crank': ['All put together, and no way to turn it. Tsk.', 'It needs a crank handle. A locked drawer might have one.', 'The crank is in the dresser’s middle drawer. Pick it, then tap the side of the grinder.'],
-  'grinder.turn': ['Turn it, turn it. Something’s in the barrel.', 'Keep cranking, nice and easy.', 'Tap the crank until something comes out the front.'],
-  'grinder.take': ['Something’s poking out the front of that grinder.', 'Go on, pull it out.', 'Tap the rolled-up paper at the front of the grinder.'],
-  'secret': ['One of those dresser drawers is telling a little fib.', 'The bottom drawer is shallow, but the dresser is deep. Turn it around.', 'At the back of the dresser, turn the little wooden latch, then slide the panel.'],
+  'washer.take': ['Something’s at the bottom of that tub. Two somethings.', 'Pick them up. Gently, they’ve been soaking.', 'Tap the soggy paper and the coin in the empty tub.'],
+  'washer.wring': ['Soggy paper won’t read itself, I’m afraid.', 'What on a washer squeezes things flat?', 'Pick the soggy paper, then tap the wringer’s rollers on top.'],
+  'washer.crank': ['Gently now. Slow and steady, like a good rinse.', 'If it bunches up, you’re cranking too fast.', 'Tap the crank about once a second until the paper comes out.'],
+  'receipt': ['That receipt adds up to something.', 'The adding machine on the workbench will total it for you.', 'One key in each column for a price, then pull the crank. Do that for every line on the receipt.'],
+  'register': ['That fancy register would love to ring up a sale.', 'One key in each row: dollars, dimes, then cents. Then the crank on the side.', 'Ring up the receipt’s total, the one the adding machine printed.'],
+  'register.take': ['Something in that drawer looks awfully familiar.', 'Is that... my lamp?', 'Take what’s in the register’s drawer.'],
+  'lamp': ['That’s my lamp! Would you mind terribly?', 'Hand it to me, would you?', 'Pick my lamp, then tap me, or the Give to Doc button.'],
+  'loft': ['With my lamp on, I could light that hayloft for you.', 'Up the ladder at the back of the barn.', 'Tap the ladder on the barn floor.'],
+  'ledger.find': ['Somebody stuffed a page into the hay up there.', 'Look among the bales in the hayloft.', 'Tap the paper sticking out of the hay.'],
+  'ledger': ['Scratched out, is it? A little more light would help.', 'My lamp is good for more than ceilings.', 'Pick the ledger page, then tap me.'],
+  'secret': ['One of those tack chest drawers is telling a little fib.', 'The bottom drawer is shallow, but the chest is deep. Turn it around.', 'At the back of the chest, turn the little wooden latch, then slide the panel.'],
   'secret.take': ['There’s something heavy in that hiding spot.', 'Take it. It’s exactly the weight you need.', 'Tap the iron weight behind the bottom drawer.'],
   'scale': ['That scale wants both pans to weigh the same.', 'The sack says 9 pounds. Everything on the tray has its weight stamped on it.', 'Put things on the right pan until their numbers make 9.'],
-  'scale.short': ['That scale wants both pans to weigh the same.', 'The sack says 9 pounds. Everything on the tray has its weight stamped on it.', 'The tray only adds up to 6. You need 4 pounds more, hidden somewhere in the dresser.'],
+  'scale.short': ['That scale wants both pans to weigh the same.', 'The sack says 9 pounds. Everything on the tray has its weight stamped on it.', 'The tray only adds up to 6. You need 4 pounds more, hidden in the tack chest.'],
   'scale.take': ['The scale’s drawer is open. Something shiny.', 'Go on, take it.', 'Tap the coin in the drawer at the bottom of the scale.'],
   'meters': ['Those meters have been expired for years. Poor things.', 'Each slot takes one kind of coin. Read the slots.', 'A penny, a nickel and a dime, one in each meter. Then read the needles left to right.'],
   'meters.short': ['Those meters have been expired for years. Poor things.', 'Each slot takes one kind of coin. Read the slots.', 'There are three coins to find: one in the washer, one in the register, one in the scale.'],
-  'lock': ['That padlock has three dials: silver, green and red.', 'The parking meters are silver, green and red too, left to right.', 'Set each dial to the number its meter’s needle points at.'],
+  'lock': ['That crate in the hayloft has a padlock: silver, green and red dials.', 'The parking meters are silver, green and red too, left to right.', 'Set each dial to the number its meter’s needle points at.'],
   'box.lid': ['The padlock’s off. What are you waiting for?', 'Lift the lid.', 'Tap the top of the crate to open it.'],
-  'box.nochart': ['Four letter wheels. A four-letter word, somewhere in this room.', 'Ships talk without saying a word.', 'You’ll need the flag chart. The meat grinder has it, once it’s built.'],
+  'arm.take': ['Is that... my arm, in the straw?', 'Take it, please, before the mice do.', 'Tap the rusty arm in the crate.'],
+  'arm': ['My arm! If you’d be so kind.', 'Hand it to me, would you?', 'Pick my arm, then tap me, or the Give to Doc button.'],
+  'shelf': ['With my arm back, I can reach high places.', 'There’s a high shelf in the tack room.', 'Tap the high shelf in the tack room.'],
+  'grinder.which': ['Two grinders’ parts, all mixed up. Tsk.', 'The grinder’s number rusted off. Somebody must have written it down.', 'The ledger page from the hayloft has the number. Read it under my lamp.'],
+  'grinder.parts': ['Now you know the grinder’s number.', 'Every part is stamped. Use the ones that match the ledger.', 'The ledger’s number: the screw, the blade, the plate, then the ring.'],
+  'grinder.jam': ['Jammed, is it? Something in there is the wrong size.', 'Take the parts off and check their numbers.', 'Tap the end of the grinder to take the parts off. The ledger says which number fits.'],
+  'grinder.crank': ['All put together, and no way to turn it.', 'It needs a crank handle. A high shelf might have one.', 'Pick the crank, then tap the side of the grinder.'],
+  'grinder.turn': ['Turn it, turn it. Something’s in the barrel.', 'Keep cranking, nice and easy.', 'Tap the crank until something comes out the front.'],
+  'grinder.take': ['Something’s poking out the front of that grinder.', 'Go on, pull it out.', 'Tap the rolled-up paper at the front of the grinder.'],
+  'box.nochart': ['Four letter wheels. A four-letter word, somewhere in this barn.', 'Ships talk without saying a word.', 'You’ll need a flag chart. The meat grinder has one, once it works.'],
   'box': ['Four letter wheels. Ships talk without saying a word.', 'Turn the ship around and look at its flags.', 'Match each flag, top to bottom, to the chart from the grinder.'],
-  'letter': ['Go on, it’s addressed to you.', 'The letter in the little box.', 'Tap the letter in the little box to read it.'],
+  'gauge.take': ['Something round, in a rag. Could it be...?', 'Go on, unwrap it.', 'Tap the thing in the little box.'],
+  'gauge': ['Is that... my other eye?', 'Hand it to me, would you? Gently.', 'Pick my gauge, then tap me, or the Give to Doc button.'],
 };
 
-// an item's name inside a sentence: "the penny", but "Wren’s note" keeps its capital
-const inm = id => { const n = STR['i_' + id]; return n.startsWith('Wren') ? n : n[0].toLowerCase() + n.slice(1); };
+// an item's name inside a sentence: "the penny", but "Doc’s lamp" keeps its capital
+const inm = id => { const n = STR['i_' + id]; return n.startsWith('Doc') ? n : n[0].toLowerCase() + n.slice(1); };
 const fmt = (s, v = {}) => s.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m);
 const money = c => '$' + (c / 100).toFixed(2);
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 const $ = q => document.querySelector(q);
 
 // ---------- Saving ----------
-const KEY = 'back-room';
+// Version 1 saved under back-room. Nothing carries over: the barn is a
+// different puzzle, and its rubber duck hides somewhere new.
+const KEY = 'barn-secrets';
 function fresh(old = {}) {
   return {
-    v: 1, started: false, done: false, inv: [], got: [], held: null, solved: {}, hints: {},
+    v: 2, started: false, done: false, inv: [], got: [], held: null, solved: {}, hints: {},
     duck: !!old.duck, docOn: false, sound: old.sound ?? true,
+    parts: { lamp: false, arm: false, gauge: false }, loftSeen: false, ledgerLit: false,
     washer: { lid: false, drained: false, noteIn: false, feed: 0 },
     adder: { cols: [0, 0, 0], tape: [], total: 0 },
     reg: { keys: [0, 0, 0], flags: null, open: false },
-    dresser: { open: null, unlocked: false, latch: false, panel: false },
+    dresser: { open: null, latch: false, panel: false },
     scale: { tray: ['flatiron', 'horseshoe', 'insulator'], pan: [], open: false },
-    grinder: { built: [], crank: false, turns: 0, out: false },
+    grinder: { built: [], crank: false, turns: 0, out: false, jam: false },
     meters: [false, false, false],
     crate: { lock: [0, 0, 0], unlocked: false, lid: false, wheels: [0, 0, 0, 0], box: false },
   };
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { }
-if (!S || S.v !== 1) S = fresh();
+if (!S || S.v !== 2) S = fresh();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
 
 const has = id => S.inv.includes(id);
@@ -405,6 +443,9 @@ function coin(cx, cy, kind) {
   const [b, l, d] = kind === 'penny' ? [C.copper, C.copperL, C.copperD] : [C.steel, C.steelL, C.steelD];
   oval(cx, cy + 1, r, r - 1, d); oval(cx, cy, r, r - 1, b); px(cx - 2, cy - 1, l); px(cx - 1, cy - 2, l);
 }
+function lampItem(x, y) {   // Doc's lamp off its stalk: a round reflector
+  disc(x, y, 7, C.steelD); disc(x, y, 6, C.steel); disc(x, y, 3, C.enamelL); px(x - 2, y - 2, C.white); R(x + 6, y - 1, 6, 3, C.steelD);
+}
 function brassKey(x, y) { disc(x, y, 4, C.brassD); disc(x, y, 3, C.brass); disc(x, y, 1, C.ink); R(x + 4, y - 1, 14, 3, C.brass); R(x + 14, y + 2, 2, 3, C.brass); R(x + 10, y + 2, 2, 2, C.brass); R(x + 4, y - 1, 14, 1, C.brassL); }
 function soggy(x, y) { oval(x, y, 9, 4, C.paperD); dith(x - 7, y - 3, 14, 6, '#9c9070', 2); px(x - 3, y - 1, C.ink); px(x + 2, y, C.ink); }
 
@@ -432,11 +473,13 @@ function flag(L, x, y, w = 18, h = 12) {
 }
 
 // ---------- Doc ----------
-// The old red dentist's unit (Randi, 26 Nov): two gauge eyes, a round mouth
-// up top, knobs down the front like vest buttons, a rusty arm and a spit
-// bowl. He's the hint button. Until he's cranked his gauges are dark; his
-// needles sit higher the more of the room is sorted, and swing up when
-// something is solved.
+// The old red dentist's unit (Randi, 26 Nov): two gauge eyes, a round lamp
+// up top, knobs down the front like vest buttons, a swing arm and a spit
+// bowl. In the barn he's falling apart: his lamp, his arm and his left gauge
+// are lost somewhere, and each one handed back is drawn on him again. He's
+// the hint button too. Until he's cranked his gauges are dark; his needles
+// sit higher the more of the barn is sorted, and swing up when something is
+// solved.
 const AN = { wAng: 0, wAngT: 0, aPull: 0, rPull: 0, gAng: Math.PI, gAngT: Math.PI, tilt: 0, needles: [0, 0, 0], dCrank: 0, cheer: -1e9, flick: -1e9 };
 const progress = () => PUZZLES.filter(p => S.solved[p]).length / PUZZLES.length;
 function docNeedles(now) {
@@ -455,13 +498,29 @@ function gauge(cx, cy, r, v, on) {
   line(cx, cy, cx + Math.cos(a) * (r - 1.5), cy - Math.sin(a) * (r - 1.5), on ? C.red : C.ironD);
   px(cx, cy, C.ink);
 }
-function docHead(x, y, now) {   // 30 wide, 26 tall, top left at x, y
+// lampTop: the lamp's height above the head, so the face icon can fit it
+function docHead(x, y, now) {   // 30 wide; the head is y + 6 to y + 28, the lamp above it
   const [l, r] = docNeedles(now);
-  oval(x + 15, y + 4, 7, 3, C.enamelDD); oval(x + 15, y + 3, 6, 2, C.enamel); oval(x + 15, y + 4, 3, 1, C.ink);   // the mouth up top
+  if (S.parts.lamp) {
+    R(x + 14, y - 2, 2, 8, C.steelD);
+    disc(x + 15, y - 5, 5, C.steelD); disc(x + 15, y - 5, 4, S.docOn ? '#fff2c0' : C.enamelD); px(x + 13, y - 7, C.white);
+  } else { oval(x + 15, y + 5, 5, 2, C.ironD); oval(x + 15, y + 5, 3, 1, '#120a05'); }   // the empty lamp socket
   bev(x, y + 6, 30, 22, C.red, C.redL, C.redD);
   dith(x + 2, y + 22, 26, 5, C.rustD, 3);
-  gauge(x + 8, y + 15, 5, l, S.docOn); gauge(x + 22, y + 15, 5, r, S.docOn);
-  if (S.duck) duckSprite(x + 10, y - 7);
+  if (S.parts.gauge) gauge(x + 8, y + 15, 5, l, S.docOn);
+  else { disc(x + 8, y + 15, 6, C.ironD); disc(x + 8, y + 15, 5, '#120a05'); line(x + 5, y + 12, x + 10, y + 18, C.rustD); }
+  gauge(x + 22, y + 15, 5, r, S.docOn);
+  if (S.duck) duckSprite(x - 2, y - 2);
+}
+function drawDoc(x, now) {   // the whole of him standing on the barn floor, x is his left edge
+  R(x, 152, 44, 10, C.ironD); R(x + 2, 150, 40, 3, C.iron);
+  bev(x + 12, 58, 20, 94, C.red, C.redL, C.redD); dith(x + 13, 120, 18, 30, C.rust, 3); dith(x + 14, 62, 5, 24, C.rustD, 4);
+  for (const k of [70, 82, 94, 106]) { disc(x + 22, k, 2, C.ironD); px(x + 21, k - 1, C.ironL); }
+  if (S.parts.arm) { line(x + 30, 64, x + 48, 56, C.rustL, 2); disc(x + 49, 56, 2, C.rust); line(x + 49, 57, x + 54, 72, C.rustL, 2); R(x + 53, 72, 3, 5, C.steelD); }
+  else { R(x + 31, 63, 4, 4, C.rustD); line(x + 34, 66, x + 37, 80, C.ink); }   // a stub and a loose wire
+  line(x + 31, 98, x + 42, 98, C.ironD, 2); oval(x + 46, 96, 7, 3, C.enamelDD); oval(x + 46, 95, 6, 2, C.enamel); oval(x + 46, 96, 3, 1, C.enamelD);
+  const ca = AN.dCrank; disc(x + 5, 114, 4, C.ironD); line(x + 5, 114, x + 5 + Math.cos(ca) * 7, 114 + Math.sin(ca) * 7, C.iron, 2);
+  docHead(x + 7, 32, now);
 }
 function duckSprite(x, y) {
   R(x + 2, y + 3, 8, 4, C.yellow); R(x + 1, y + 4, 10, 3, C.yellow); R(x + 6, y, 4, 4, C.yellow);
@@ -472,120 +531,204 @@ function duckSprite(x, y) {
 // Each view is a scene: draw() paints it, spots() lists what can be touched.
 // A spot is { id, x, y, w, h, label, act, use }: act() runs on a tap, and
 // use(item) runs instead when an item is held (it returns false if the item
-// does nothing there).
+// does nothing there). Each view but the barn floor has a parent, the place
+// you go Back to, and `at`, where it sits in that parent's picture (the zoom
+// goes in and out of that rectangle).
 const say = (k, v, who) => setMsg(fmt(STR[k] ?? k, v), who);
-const face = { dresser: 0, ship: 0, crate: 0 };
-let view = 'room';
+const face = { dresser: 0, ship: 0 };
+let view = 'barn';
+const onDoc = id => giveDoc(id);
 
-const ROOM_AT = {   // where each close-up sits in the room, for the zoom
-  washer: [44, 84, 46, 84], dresser: [86, 88, 42, 74], adder: [128, 78, 36, 24], grinder: [162, 76, 26, 26], register: [186, 50, 50, 52],
-  ship: [242, 4, 76, 50], meters: [262, 66, 58, 96], scale: [232, 102, 34, 60], crate: [126, 144, 76, 54],
-};
-
-function drawRoom(now) {
-  cached('room', r => {
-    planks(0, 0, W, 140, 14, r); floor(144, r);
-    // the high dusty window, the only daylight back here
-    bev(52, 10, 34, 22, C.woodD, C.wood, C.woodDD); R(55, 13, 28, 16, '#8aa0a0'); dith(55, 13, 28, 16, '#b8c8c0', 3); R(68, 13, 2, 16, C.woodD); R(55, 20, 28, 2, C.woodD);
-    // shelves over the counter
-    for (const y of [34, 64]) { bev(124, y, 116, 3, C.woodL, '#d09a5a', C.woodD); R(126, y + 3, 112, 1, 'rgba(0,0,0,.4)'); }
-    R(124, 20, 3, 80, C.woodD); R(237, 20, 3, 80, C.woodD);
-    // cans on the top shelf (the duck hides behind the last one)
-    const cans = [[130, C.red], [140, '#c96a2a'], [150, C.green], [162, C.red], [172, C.brass], [196, C.blue], [206, C.red], [222, '#7a5a30']];
-    cans.forEach(([x, c]) => { R(x, 22, 9, 12, c); R(x, 22, 9, 1, C.steelL); R(x, 26, 9, 3, C.paper); R(x + 7, 22, 2, 12, 'rgba(0,0,0,.3)'); });
-    // bottles
-    for (const [x, c] of [[184, C.glassD], [189, '#7a4a14'], [230, C.glass]]) { R(x, 25, 4, 9, c); R(x + 1, 21, 2, 4, c); px(x + 1, 26, C.glassL); }
-    // glass insulators on the lower shelf
-    for (let i = 0; i < 9; i++) {
-      const x = 128 + i * 12, c = i % 3 ? C.glass : C.glassD;
-      oval(x + 4, 55, 4, 3, c); R(x, 55, 9, 8, c); R(x - 1, 61, 11, 3, c); px(x + 2, 56, C.glassL); px(x + 2, 57, C.glassL);
-    }
-    // the counter
-    R(124, 102, 116, 40, C.woodD); bev(122, 98, 120, 5, C.woodL, '#d09a5a', C.wood);
-    for (const x of [128, 166, 204]) bev(x, 108, 32, 28, C.woodD, C.wood, C.woodDD);
-    // the ship's high shelf and the bulb
-    bev(240, 52, 80, 3, C.woodL, '#d09a5a', C.woodD);
-    R(170, 0, 1, 10, C.ink); R(167, 10, 7, 3, C.ironD); disc(170, 15, 3, '#fff2c0');
+// ----- the barn floor -----
+function drawBarn(now) {
+  cached('barn', r => {
+    planks(0, 0, W, 150, 14, r); floor(152, r);
+    for (let i = 0; i < 260; i++) px((r() * W) | 0, 152 + ((r() * 48) | 0), r() < .5 ? '#c9a84a' : '#a8883a');
+    // the open barn doors at the back, daylight and a field
+    R(124, 38, 76, 108, C.woodDD);
+    R(128, 42, 68, 50, '#9cc4d8'); R(128, 74, 68, 18, '#b8d4e0'); R(128, 92, 68, 52, '#7f9e58'); dith(128, 92, 68, 52, '#6a8a48', 3);
+    R(128, 104, 68, 2, C.woodD); for (let x = 132; x < 196; x += 12) R(x, 98, 2, 12, C.woodD);
+    planks(110, 40, 16, 106, 8, r, [C.wood, C.woodD]); planks(198, 40, 16, 106, 8, r, [C.wood, C.woodD]);
+    // the hayloft floor overhead, hay poking over the edge, the hatch
+    R(0, 0, W, 28, C.woodDD); for (let x = 0; x < W; x += 40) R(x, 0, 6, 28, '#2a170a');
+    bev(0, 28, W, 6, C.wood, C.woodL, C.woodD);
+    for (let x = 0; x < W; x += 3) if (r() < .7) R(x, 34, 1, 1 + ((r() * 4) | 0), r() < .5 ? '#c9a84a' : '#e0c060');
+    R(236, 22, 32, 12, '#0e0905');
+    // the workbench corner on the left
+    bev(0, 58, 56, 3, C.woodL, '#d09a5a', C.woodD);
+    for (const [x, c] of [[4, C.red], [13, C.green], [22, C.brass], [31, C.blue], [40, C.red]]) { R(x, 48, 7, 10, c); R(x, 51, 7, 2, C.paper); }
+    R(0, 101, 54, 46, C.woodD); bev(0, 96, 58, 5, C.woodL, '#d09a5a', C.wood);
+    bev(4, 84, 20, 12, C.green, C.greenL, C.greenD); bev(30, 70, 22, 26, C.brass, C.brassL, C.brassD); R(34, 73, 14, 5, '#20160c');
+    R(4, 66, 10, 6, C.iron); R(13, 68, 8, 4, C.iron);
+    // the tack room door on the right
+    R(274, 58, 46, 90, C.woodDD); planks(278, 62, 42, 86, 7, r, [C.wood, C.woodD, '#7a4e28']);
+    bev(286, 72, 26, 11, C.paper, C.white, C.paperD); textC(STR.art_tack, 299, 75, C.ink);
+    disc(282, 108, 2, C.brass);
+    // the ladder up to the hatch
+    R(242, 30, 3, 120, C.woodL); R(259, 30, 3, 120, C.woodL);
+    for (let y = 38; y < 148; y += 11) R(245, y, 14, 2, C.wood);
   });
-  const w = S.washer;
-  // Doc
-  const x = 6;
-  R(x, 150, 40, 10, C.ironD); R(x + 2, 148, 36, 3, C.iron);
-  bev(x + 10, 56, 20, 94, C.red, C.redL, C.redD); dith(x + 11, 118, 18, 30, C.rust, 3); dith(x + 12, 60, 5, 24, C.rustD, 4);
-  for (const k of [68, 80, 92, 104]) { disc(x + 20, k, 2, C.ironD); px(x + 19, k - 1, C.ironL); }
-  line(x + 28, 62, x + 46, 54, C.rustL, 2); disc(x + 47, 54, 2, C.rust); line(x + 47, 55, x + 52, 70, C.rustL, 2); R(x + 51, 70, 3, 5, C.steelD);
-  line(x + 29, 96, x + 40, 96, C.ironD, 2); oval(x + 44, 94, 7, 3, C.enamelDD); oval(x + 44, 93, 6, 2, C.enamel); oval(x + 44, 94, 3, 1, C.enamelD);
-  const ca = AN.dCrank; disc(x + 3, 112, 4, C.ironD); line(x + 3, 112, x + 3 + Math.cos(ca) * 7, 112 + Math.sin(ca) * 7, C.iron, 2);
-  docHead(x + 5, 30, now);
-  // the washer
-  if (w.drained) { oval(70, 176, 26, 4, '#2c3438'); oval(70, 175, 20, 2, '#3c484e'); }
-  R(54, 150, 3, 16, C.enamelD); R(80, 150, 3, 16, C.enamelD);
-  R(50, 106, 36, 46, C.enamel); R(50, 106, 3, 46, C.enamelD); R(54, 106, 4, 46, C.enamelL); R(78, 106, 8, 46, C.enamelD);
-  R(50, 128, 36, 2, C.black); oval(68, 106, 19, 4, C.enamelDD); oval(68, 105, 18, 3, w.lid ? (w.drained ? C.enamelD : C.water) : C.enamelL);
-  R(56, 86, 2, 18, C.iron); R(78, 86, 2, 18, C.iron); bev(53, 84, 30, 4, C.iron, C.ironL, C.ironD); R(57, 89, 22, 3, C.cream); R(57, 92, 22, 3, C.creamD);
-  line(82, 86, 86, 94, C.paperD); R(84, 94, 5, 4, C.paper);
-  // the dresser
-  bev(88, 92, 38, 3, C.woodL, '#d09a5a', C.woodD); R(90, 95, 34, 60, C.wood); R(90, 155, 34, 4, C.woodD);
-  for (let i = 0; i < 3; i++) { const y = 98 + i * 19, out = S.dresser.open === i ? 3 : 0; bev(92 - out / 2, y + out, 30 + out, 16, C.wood, C.woodL, C.woodDD); px(100, y + 8 + out, C.brass); px(114, y + 8 + out, C.brass); }
-  line(100, 106, 96, 112, C.paperD); R(93, 112, 5, 4, C.paper);
-  // on the counter: the adding machine, the grinder, the register
-  bev(130, 84, 30, 15, C.green, C.greenL, C.greenD); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) px(134 + i * 4, 87 + j * 3, C.cream); R(152, 78, 6, 8, C.paper); line(160, 90, 163, 84, C.ironD);
-  R(166, 86, 14, 6, C.iron); R(166, 80, 6, 6, C.iron); R(170, 92, 4, 6, C.ironD); if (S.grinder.crank) line(166, 89, 162, 82, C.ironD);
-  bev(190, 64, 44, 34, C.brass, C.brassL, C.brassD); R(200, 54, 24, 11, C.brass); R(203, 56, 18, 7, '#20160c');
-  if (S.reg.flags) R(206, 57, 12, 4, C.white);
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) px(195 + i * 6, 72 + j * 6, C.cream);
-  if (S.reg.open) bev(192, 96, 40, 5, C.wood, C.woodL, C.woodDD);
-  // the ship on its shelf
-  R(262, 48, 3, 4, C.brass); R(296, 48, 3, 4, C.brass);
-  line(304, 40, 318, 32, C.woodD);
-  for (const [mx, top] of [[268, 14], [283, 8], [297, 16]]) {
-    R(mx, top, 1, 30, C.woodD);
-    let y = 39; for (let k = 0; k < 3; k++) { const h = [8, 7, 5][k], w = [12, 10, 7][k]; y -= h; R(mx - (w >> 1), y, w, h - 1, C.cream); R(mx + (w >> 1) - 2, y, 2, h - 1, C.creamD); R(mx - (w >> 1) - 1, y - 1, w + 2, 1, C.woodD); }
-    line(mx, top, 258, 39, '#2a1a10');
-  }
-  for (let y = 39; y < 48; y++) { const t = (y - 39) / 9, l = 256 + Math.round(t * t * 12), r = 310 - Math.round(t * 16); R(l, y, r - l, 1, y < 41 ? C.woodL : y === 42 ? C.brassL : y < 45 ? C.woodDD : C.ink); }
-  line(318, 32, 316, 38, C.paperD); R(313, 38, 5, 3, C.paper);
-  // the parking meters
+  // the parking meters, lined up by the doors
   const mc = [[C.steel, C.steelL], [C.green, C.greenL], [C.red, C.redL]];
   for (let i = 0; i < 3; i++) {
-    const mx = 274 + i * 18;
-    R(mx - 1, 92, 3, 68, C.ironD); R(mx - 4, 158, 9, 3, C.ironD);
-    oval(mx, 76, 7, 6, mc[i][0]); R(mx - 7, 76, 15, 16, mc[i][0]); R(mx - 6, 77, 2, 14, mc[i][1]);
-    R(mx - 4, 74, 9, 7, '#d8e0d8'); if (!S.meters[i]) R(mx - 4, 78, 9, 3, C.red); R(mx - 1, 84, 3, 1, C.ink);
+    const mx = 108 + i * 9;
+    R(mx - 1, 92, 3, 60, C.ironD); R(mx - 3, 150, 7, 3, C.ironD);
+    oval(mx, 76, 4, 4, mc[i][0]); R(mx - 4, 76, 9, 16, mc[i][0]); R(mx - 3, 77, 1, 14, mc[i][1]);
+    R(mx - 2, 75, 5, 6, '#d8e0d8'); if (!S.meters[i]) R(mx - 2, 79, 5, 2, C.red);
   }
-  // the balance scale on a stool
-  R(238, 136, 26, 3, C.woodL); R(240, 139, 2, 22, C.woodD); R(260, 139, 2, 22, C.woodD);
-  R(246, 130, 10, 6, C.ironD); R(250, 108, 2, 22, C.brass);
-  const k = Math.round(AN.tilt / 4); line(238, 108 + k, 264, 108 - k, C.brass);
-  oval(240, 120 + k, 5, 1, C.brassD); oval(262, 120 - k, 5, 1, C.brassD); R(237, 115 + k, 6, 5, C.sack);
-  R(252, 114, 5, 4, C.paper);
-  // the crate
-  R(130, 150, 70, 44, C.wood);
-  for (let y = 150; y < 194; y += 9) { R(130, y, 70, 1, C.woodDD); R(130, y + 1, 70, 1, C.woodL); }
-  R(130, 150, 6, 44, C.woodD); R(194, 150, 6, 44, C.woodD);
-  if (S.crate.lid) { R(128, 140, 74, 10, C.woodD); R(136, 152, 58, 6, '#c9a84a'); }
-  else { R(150, 146, 18, 6, C.paper); R(153, 148, 10, 1, C.ink); }
-  if (!S.crate.unlocked) { R(162, 160, 8, 8, C.brass); ringO(166, 159, 3, 3, C.ironL, Math.PI, Math.PI * 2); }
-  // the duck, until it's found (then it rides on Doc's head)
-  if (!S.duck) duckSprite(229, 24 + Math.round(Math.sin(now / 600)));
-  R(222, 22, 9, 12, '#7a5a30'); R(222, 26, 9, 3, C.paper); R(222, 22, 9, 1, C.steelL);
-  shade(168, 24, 190, .9);
-  // the bulb glows over the shade
-  disc(170, 15, 2, '#fffbe8');
+  // the washer
+  const w = S.washer, dx = 154;
+  if (w.drained) { oval(70 + dx, 172, 26, 4, '#2c3438'); oval(70 + dx, 171, 20, 2, '#3c484e'); }
+  R(54 + dx, 150, 3, 16, C.enamelD); R(80 + dx, 150, 3, 16, C.enamelD);
+  R(50 + dx, 106, 36, 46, C.enamel); R(50 + dx, 106, 3, 46, C.enamelD); R(54 + dx, 106, 4, 46, C.enamelL); R(78 + dx, 106, 8, 46, C.enamelD);
+  R(50 + dx, 128, 36, 2, C.black); oval(68 + dx, 106, 19, 4, C.enamelDD); oval(68 + dx, 105, 18, 3, w.lid ? (w.drained ? C.enamelD : C.water) : C.enamelL);
+  R(56 + dx, 86, 2, 18, C.iron); R(78 + dx, 86, 2, 18, C.iron); bev(53 + dx, 84, 30, 4, C.iron, C.ironL, C.ironD); R(57 + dx, 89, 22, 3, C.cream); R(57 + dx, 92, 22, 3, C.creamD);
+  drawDoc(60, now);
+  shade(160, 70, 220, .8);
+  if (S.parts.lamp && S.docOn) { disc(82, 27, 2, '#fffbe8'); }
 }
+function ladder() {
+  if (!S.parts.lamp) { sfx.no(); return say('loftDark'); }
+  const first = !S.loftSeen;
+  S.loftSeen = true; go('loft');
+  if (first) { say('loftLit', null, 'doc'); save(); }
+}
+const barnSpots = () => [
+  { id: 'bench', x: 0, y: 44, w: 58, h: 104, label: STR.vBench, act: () => go('bench') },
+  { id: 'doc', x: 60, y: 24, w: 46, h: 138, label: STR.sDoc, act: crankDoc, use: onDoc },
+  { id: 'meters', x: 102, y: 66, w: 28, h: 88, label: STR.vMeters, act: () => go('meters') },
+  { id: 'washer', x: 200, y: 82, w: 42, h: 86, label: STR.vWasher, act: () => go('washer') },
+  { id: 'ladder', x: 238, y: 20, w: 30, h: 130, label: STR.sLadder, act: ladder },
+  { id: 'tack', x: 272, y: 56, w: 48, h: 94, label: STR.vTack, act: () => go('tack') },
+];
 
-const roomSpots = () => [
-  { id: 'doc', x: 4, y: 22, w: 50, h: 140, label: STR.sDoc, act: crankDoc },
-  { id: 'washer', x: 46, y: 82, w: 42, h: 86, label: STR.vWasher, act: () => go('washer') },
-  { id: 'dresser', x: 88, y: 90, w: 38, h: 70, label: STR.vDresser, act: () => go('dresser') },
-  { id: 'adder', x: 128, y: 76, w: 34, h: 24, label: STR.vAdder, act: () => go('adder') },
-  { id: 'grinder', x: 162, y: 76, w: 24, h: 24, label: STR.vGrinder, act: () => go('grinder') },
-  { id: 'register', x: 188, y: 50, w: 48, h: 50, label: STR.vRegister, act: () => go('register') },
-  !S.duck && { id: 'duck', x: 226, y: 18, w: 16, h: 16, label: STR.sDuck, act: () => { S.duck = true; sfx.squeak(); say('duck'); save(); refresh(); } },
-  { id: 'ship', x: 244, y: 4, w: 76, h: 46, label: STR.vShip, act: () => go('ship') },
-  { id: 'meters', x: 264, y: 66, w: 56, h: 96, label: STR.vMeters, act: () => go('meters') },
-  { id: 'scale', x: 234, y: 102, w: 30, h: 60, label: STR.vScale, act: () => go('scale') },
-  { id: 'crate', x: 128, y: 142, w: 74, h: 54, label: STR.vCrate, act: () => go('crate') },
+// ----- the workbench -----
+function drawBench(now) {
+  cached('bench', r => {
+    planks(0, 0, W, 124, 16, r);
+    for (const y of [30, 66]) { bev(6, y, 308, 4, C.woodL, '#d09a5a', C.woodD); R(8, y + 4, 304, 1, 'rgba(0,0,0,.4)'); }
+    const cans = [C.red, '#c96a2a', C.green, C.red, C.brass, C.blue, C.red, '#7a5a30', C.green, C.blue, C.red, C.brass];
+    cans.forEach((c, i) => { const x = 14 + i * 25; R(x, 12, 15, 18, c); R(x, 12, 15, 1, C.steelL); R(x, 18, 15, 5, C.paper); R(x + 12, 12, 3, 18, 'rgba(0,0,0,.3)'); });
+    for (let i = 0; i < 16; i++) {
+      const x = 14 + i * 19, c = i % 3 ? C.glass : C.glassD;
+      oval(x + 6, 51, 6, 4, c); R(x, 51, 13, 12, c); R(x - 2, 60, 17, 6, c); px(x + 3, 53, C.glassL); px(x + 3, 54, C.glassL); px(x + 3, 55, C.glassL);
+    }
+    R(0, 128, W, 72, C.woodD); bev(0, 122, W, 7, C.woodL, '#d09a5a', C.wood);
+    for (const x of [10, 116, 222]) bev(x, 138, 90, 52, C.woodD, C.wood, C.woodDD);
+  });
+  // the adding machine
+  bev(30, 84, 72, 38, C.green, C.greenL, C.greenD); R(36, 88, 46, 30, C.greenD);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 5; j++) disc(44 + i * 14, 91 + j * 6, 2, C.cream);
+  R(86, 70, 12, 18, C.paper); for (let k = 0; k < 4; k++) R(88, 73 + k * 4, 8, 1, '#6a5a40');
+  line(102, 104, 110, 90, C.iron, 2); disc(110, 89, 2, C.woodL);
+  // the meat grinder
+  const gr = S.grinder;
+  for (let y = 80; y < 92; y++) { const hw = Math.round(12 - (y - 80) * .4); R(146 - hw, y, 2 * hw, 1, C.iron); }
+  R(134, 92, 44, 14, C.iron); R(134, 93, 44, 2, C.ironL); R(140, 106, 8, 22, C.iron); oval(178, 99, 2, 7, C.ironD);
+  if (gr.crank) { line(132, 99, 124, 88, C.iron, 2); R(121, 84, 4, 5, C.woodL); }
+  if (gr.out && !got('chart')) R(180, 97, 8, 4, C.paper);
+  // the register
+  const rg = S.reg;
+  R(222, 46, 64, 16, C.brass); oval(254, 47, 32, 4, C.brass); R(228, 50, 52, 10, '#20160c');
+  if (rg.flags) R(242, 52, 22, 6, C.white);
+  bev(200, 60, 108, 62, C.brass, C.brassL, C.brassD); dith(202, 108, 104, 12, C.brassD, 4);
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 9; i++) disc(210 + i * 11, 70 + j * 12, 3, C.cream);
+  if (rg.open) bev(204, 118, 100, 8, C.wood, C.woodL, C.woodDD);
+  shade(160, 30, 240, .7);
+}
+const benchSpots = () => [
+  { id: 'adder', x: 26, y: 66, w: 88, h: 58, label: STR.vAdder, act: () => go('adder') },
+  { id: 'grinder', x: 118, y: 74, w: 72, h: 56, label: STR.vGrinder, act: () => go('grinder') },
+  { id: 'register', x: 196, y: 40, w: 116, h: 88, label: STR.vRegister, act: () => go('register') },
+];
+
+// ----- the tack room -----
+function drawTack(now) {
+  cached('tack', r => {
+    planks(0, 0, W, 178, 16, r, ['#55361f', '#4b2f1a', '#5c3c24']); floor(180, r);
+    // the high shelf by the ceiling
+    bev(206, 20, 110, 4, C.woodL, '#d09a5a', C.woodD); line(212, 24, 220, 34, C.woodD, 2); line(310, 24, 302, 34, C.woodD, 2);
+    // the saddle on its rack
+    R(26, 132, 4, 46, C.woodD); R(86, 132, 4, 46, C.woodD); bev(20, 126, 76, 7, C.wood, C.woodL, C.woodD);
+    oval(58, 116, 30, 12, '#6a3a1c'); oval(58, 113, 28, 10, '#8a4e26'); R(34, 116, 48, 22, '#7a4420');
+    R(36, 136, 8, 26, '#6a3a1c'); R(72, 136, 8, 26, '#6a3a1c'); disc(80, 104, 4, '#6a3a1c'); R(44, 109, 26, 2, '#a86a3a');
+    // bridles on their pegs
+    for (const x of [112, 134, 156]) {
+      R(x - 1, 38, 4, 4, C.woodL);
+      ringO(x + 1, 66, 8, 24, '#6a3a1c', -Math.PI / 2, Math.PI * 1.5); ringO(x + 1, 66, 7, 23, '#8a4e26', -Math.PI / 2, Math.PI * 1.5);
+      R(x - 2, 82, 6, 2, C.steel);
+    }
+  });
+  // the tack chest
+  const d = S.dresser;
+  bev(156, 98, 50, 3, C.woodL, '#d09a5a', C.woodD); R(158, 101, 46, 60, C.wood); R(158, 161, 46, 4, C.woodD);
+  for (let i = 0; i < 3; i++) { const y = 104 + i * 19, out = d.open === i ? 3 : 0; bev(160 - out / 2, y + out, 42 + out, 16, C.wood, C.woodL, C.woodDD); px(172, y + 8 + out, C.brass); px(190, y + 8 + out, C.brass); }
+  // the scale on a stool
+  R(226, 140, 52, 4, C.woodL); R(230, 144, 3, 30, C.woodD); R(271, 144, 3, 30, C.woodD);
+  R(242, 132, 20, 8, C.ironD); R(250, 98, 4, 34, C.brass);
+  const k = Math.round(AN.tilt / 2); line(228, 98 + k, 276, 98 - k, C.brass, 2);
+  oval(230, 118 + k, 9, 2, C.brassD); oval(274, 118 - k, 9, 2, C.brassD); R(224, 108 + k, 12, 9, C.sack);
+  // the crank up on the shelf, until Doc lifts it down
+  if (!got('crank')) { R(250, 15, 20, 4, C.iron); R(268, 9, 3, 9, C.iron); R(266, 6, 7, 4, C.woodL); }
+  shade(160, 60, 220, .8);
+}
+function shelf() {
+  if (got('crank')) return say('shelfEmpty');
+  if (!S.parts.arm) { sfx.no(); return say('shelfHigh'); }
+  give('crank'); AN.dCrank += Math.PI; solve('shelf'); say('shelfArm', null, 'doc'); done();
+}
+const tackSpots = () => [
+  { id: 'saddle', x: 16, y: 96, w: 84, h: 82, label: STR.sSaddle, act: () => say('saddle') },
+  { id: 'bridles', x: 100, y: 34, w: 72, h: 60, label: STR.sBridles, act: () => say('bridles') },
+  { id: 'dresser', x: 152, y: 94, w: 58, h: 74, label: STR.vDresser, act: () => go('dresser') },
+  { id: 'scale', x: 220, y: 94, w: 64, h: 82, label: STR.vScale, act: () => go('scale') },
+  { id: 'shelf', x: 204, y: 2, w: 114, h: 26, label: STR.sShelf, act: shelf },
+];
+
+// ----- the hayloft -----
+function bale(x, y, w, h) {
+  R(x, y, w, h, '#c9a84a'); dith(x, y, w, h, '#b8923a', 3); R(x, y, w, 2, '#e0c060'); R(x, y + h - 2, w, 2, '#8a6a24');
+  R(x + (w >> 2), y, 2, h, '#7a5a20'); R(x + w - (w >> 2), y, 2, h, '#7a5a20');
+}
+function drawLoft(now) {
+  cached('loft', r => {
+    R(0, 0, W, H, '#2a1a0e');
+    for (let x = -200; x < W; x += 34) line(x, 0, x + 200, 160, '#3a2414', 3);   // the rafters
+    R(0, 0, W, 6, '#1a0f07');
+    disc(160, 30, 15, C.woodD); disc(160, 30, 12, '#b8d0d8'); R(159, 18, 2, 24, C.woodD); R(148, 29, 24, 2, C.woodD);   // the round window
+    R(0, 160, W, 40, C.woodD); for (let y = 164; y < H; y += 6) R(0, y, W, 1, C.woodDD);
+    for (let i = 0; i < 300; i++) px((r() * W) | 0, 160 + ((r() * 40) | 0), r() < .5 ? '#c9a84a' : '#a8883a');
+    bale(0, 98, 56, 30); bale(0, 128, 60, 32); bale(56, 128, 60, 32); bale(116, 108, 70, 30); bale(186, 92, 64, 34); bale(186, 126, 66, 34); bale(252, 110, 68, 50);
+    // the hatch, with the top of the ladder and Doc's light coming up
+    R(276, 184, 44, 16, '#0e0905'); R(282, 184, 3, 16, C.woodL); R(306, 184, 3, 16, C.woodL);
+  });
+  // the ship on a bale (the same model as its close-up, small)
+  const sx = 22, sy = 96;
+  for (const [mx, top] of [[sx + 20, sy - 44], [sx + 40, sy - 52], [sx + 60, sy - 42]]) {
+    R(mx, top, 1, 40, C.woodD);
+    let y = sy - 8; for (let k = 0; k < 3; k++) { const h = [10, 9, 7][k], w = [16, 13, 9][k]; y -= h; R(mx - (w >> 1), y, w, h - 1, C.cream); R(mx + (w >> 1) - 2, y, 2, h - 1, C.creamD); R(mx - (w >> 1) - 1, y - 1, w + 2, 1, C.woodD); }
+  }
+  for (let y = sy - 8; y < sy + 2; y++) { const t = (y - sy + 8) / 10, l = sx + 4 + Math.round(t * t * 14), rr = sx + 80 - Math.round(t * 18); R(l, y, rr - l, 1, y < sy - 6 ? C.woodL : y === sy - 4 ? C.brassL : y < sy - 1 ? C.woodDD : C.ink); }
+  line(sx + 78, sy - 8, sx + 94, sy - 16, C.woodD);
+  // the crate
+  const c = S.crate;
+  R(132, 140, 80, 50, C.wood);
+  for (let y = 140; y < 190; y += 10) { R(132, y, 80, 1, C.woodDD); R(132, y + 1, 80, 1, C.woodL); }
+  R(132, 140, 7, 50, C.woodD); R(205, 140, 7, 50, C.woodD);
+  if (c.lid) { R(130, 128, 84, 12, C.woodD); R(140, 142, 64, 6, '#c9a84a'); }
+  if (!c.unlocked) { R(168, 152, 9, 9, C.brass); ringO(172, 151, 4, 4, C.ironL, Math.PI, Math.PI * 2); }
+  // the ledger page, tucked into a bale
+  if (!got('ledger')) { R(258, 116, 16, 12, C.paper); R(258, 116, 16, 2, '#4a6a3a'); for (let k = 0; k < 3; k++) R(260, 120 + k * 3, 11, 1, '#6a5a40'); }
+  // the duck, half in the hay
+  if (!S.duck) { duckSprite(290, 148 + Math.round(Math.sin(now / 700))); dith(286, 155, 18, 5, '#c9a84a', 2); }
+  shade(300, 196, 260, .7);
+}
+const loftSpots = () => [
+  { id: 'hay', x: 0, y: 92, w: 320, h: 70, label: STR.sHay, act: () => say('hay') },
+  { id: 'ship', x: 18, y: 40, w: 100, h: 62, label: STR.vShip, act: () => go('ship') },
+  { id: 'crate', x: 128, y: 124, w: 88, h: 70, label: STR.vCrate, act: () => go('crate') },
+  !got('ledger') && { id: 'ledger', x: 252, y: 110, w: 28, h: 24, label: STR.sLedger, act: () => { give('ledger'); say('got', { item: inm('ledger') }); done(); } },
+  !S.duck && { id: 'duck', x: 284, y: 140, w: 20, h: 20, label: STR.sDuck, act: () => { S.duck = true; sfx.squeak(); say('duck'); save(); refresh(); } },
 ].filter(Boolean);
 
 // ----- the wringer washer -----
@@ -625,7 +768,6 @@ function drawWasher() {
     else { if (!got('soggy')) soggy(142, 78); if (!got('penny')) coin(178, 78, 'penny'); }
     oval(268, 162, 12, 26, C.enamelDD); oval(267, 161, 10, 24, C.enamelL); disc(267, 161, 3, C.ink);
   }
-  line(112, 26, 104, 36, C.paperD); tag(94, 36, money(A.tags.washer));
   shade(160, 80, 190, .8);
 }
 function washerSpots() {
@@ -643,7 +785,6 @@ function washerSpots() {
     use: id => { if (id !== 'soggy') { sfx.no(); return say('wRollNo'); } useUp('soggy'); w.noteIn = true; w.feed = 0; sfx.click(); say('wRollIn'); done(); },
   });
   out.push({ id: 'wcrank', x: 200, y: 22, w: 30, h: 32, label: STR.sWCrank, act: wring });
-  out.push({ id: 'tag', x: 90, y: 32, w: 30, h: 16, label: STR.sTag, act: () => say('tagSays', { price: money(A.tags.washer) }) });
   return out;
 }
 let lastWring = 0;
@@ -654,7 +795,7 @@ function wring() {
   if (now - lastWring < A.wringGap && w.feed > 0) { w.feed--; sfx.bunch(); say('wBunch'); }
   else {
     w.feed++; sfx.creak();
-    if (w.feed >= A.wringTaps) { w.noteIn = false; give('note'); solve('washer'); say('wOut'); }
+    if (w.feed >= A.wringTaps) { w.noteIn = false; give('receipt'); solve('washer'); say('wOut'); }
     else say('wFeed');
   }
   lastWring = now; done();
@@ -741,7 +882,7 @@ function drawRegister() {
   if (r.open) {
     R(26, 166, 268, 24, C.woodDD); for (let i = 1; i < 5; i++) R(26 + i * 54, 166, 2, 24, C.woodD);
     if (!got('nickel')) coin(70, 178, 'nickel');
-    if (!got('key')) brassKey(184, 178);
+    if (!got('lamp')) lampItem(186, 178);
     bev(20, 186, 280, 14, C.wood, C.woodL, C.woodDD); disc(160, 192, 3, C.brassD);
   } else { bev(20, 160, 280, 20, C.wood, C.woodL, C.woodDD); disc(160, 170, 3, C.brassD); }
   shade(160, 90, 210, .6);
@@ -756,7 +897,7 @@ function registerSpots() {
   out.push({ id: 'flags', x: 100, y: 10, w: 120, h: 36, label: STR.sRFlags, act: () => r.flags ? say('rFlags', { v: flagWords() }) : say('rFlagsNone') });
   if (r.open) {
     if (!got('nickel')) out.push({ id: 'nickel', x: 60, y: 168, w: 22, h: 18, label: STR.i_nickel, act: () => { give('nickel'); say('got', { item: inm('nickel') }); done(); } });
-    if (!got('key')) out.push({ id: 'key', x: 176, y: 168, w: 26, h: 18, label: STR.i_key, act: () => { give('key'); say('got', { item: inm('key') }); done(); } });
+    if (!got('lamp')) out.push({ id: 'lamp', x: 172, y: 166, w: 28, h: 22, label: STR.i_lamp, act: () => { give('lamp'); say('got', { item: inm('lamp') }); done(); } });
     out.push({ id: 'drawer', x: 20, y: 186, w: 280, h: 14, label: STR.sRDrawer, act: () => say('rEmpty') });
   } else out.push({ id: 'drawer', x: 20, y: 160, w: 260, h: 20, label: STR.sRDrawer, act: () => say('rShut') });
   return out;
@@ -790,7 +931,7 @@ function drawDresser() {
       R(108, y + 16 - deep, 104, deep, C.woodD); R(108, y + 16 - deep, 104, 1, C.woodDD);
       if (i === 2) R(108, y - 2, 104, 18 - deep, C.wood);   // the back board, close: shallow
       if (i === 0) { R(116, y + 6, 22, 8, C.paper); R(140, y + 4, 18, 9, C.paperD); R(162, y + 7, 24, 7, C.paper); for (let k = 0; k < 3; k++) R(119, y + 8 + k * 2, 14, 1, '#8a7a5a'); }
-      if (i === 1 && !got('crank')) { R(130, y + 8, 40, 3, C.iron); R(168, y + 2, 3, 9, C.iron); R(166, y, 7, 4, C.woodL); }
+      if (i === 1) { for (const bx of [124, 150, 176]) { ringO(bx, y + 8, 5, 3, C.steel); R(bx - 1, y + 6, 2, 4, C.steelD); } R(196, y + 4, 10, 8, C.red); }
       drawerFront(i, 14);
     }
   } else if (f === 1) {
@@ -818,8 +959,6 @@ function drawerFront(i, out) {
   bev(112 - gx, y + 4, 96 + 2 * gx, 26, C.wood, C.woodD, C.woodL);
   disc(134 - gx, y + 17, 3, C.brassD); disc(134 - gx, y + 16, 2, C.brass);
   disc(186 + gx, y + 17, 3, C.brassD); disc(186 + gx, y + 16, 2, C.brass);
-  if (i === 1 && !S.dresser.unlocked) { R(157, y + 12, 7, 10, C.brass); R(159, y + 14, 3, 3, C.ink); R(160, y + 17, 1, 3, C.ink); }
-  if (i === 0) { line(132 - gx, y + 18, 124 - gx, y + 26, C.paperD); tag(110 - gx, y + 26, money(A.tags.dresser)); }
 }
 function dresserSpots() {
   const d = S.dresser, f = face.dresser, out = [];
@@ -827,23 +966,19 @@ function dresserSpots() {
     const names = [STR.sDTop, STR.sDMid, STR.sDBot];
     if (d.open !== null) {
       const i = d.open, y = DRAWER_Y[i];
-      if (i === 1 && !got('crank')) out.push({ id: 'crank', x: 126, y: y - 2, w: 52, h: 16, label: STR.i_crank, act: () => { give('crank'); say('got', { item: inm('crank') }); done(); } });
-      else out.push({ id: 'in', x: 108, y: y - 2, w: 104, h: 16, label: STR.sDIn, act: () => say(i === 0 ? 'dTopIn' : i === 2 ? 'dShallow' : 'dEmpty') });
+      out.push({ id: 'in', x: 108, y: y - 2, w: 104, h: 16, label: STR.sDIn, act: () => say(i === 0 ? 'dTopIn' : i === 2 ? 'dShallow' : 'dMidIn') });
     }
     for (let i = 0; i < 3; i++) {
       const y = DRAWER_Y[i] + (d.open === i ? 14 : 0);
       out.push({
         id: 'd' + i, x: 106, y, w: 108, h: 34, label: names[i],
         act: () => {
-          if (i === 1 && !d.unlocked) { sfx.no(); return say('dLocked'); }
           d.open = d.open === i ? null : i; sfx.creak();
-          if (d.open === 2) say('dShallow'); else if (d.open === 0) say('dTopIn'); else setMsg('');
+          if (d.open === 2) say('dShallow'); else if (d.open === 0) say('dTopIn'); else if (d.open === 1) say('dMidIn'); else setMsg('');
           done();
         },
-        use: i === 1 && !d.unlocked ? id => { if (id !== 'key') { sfx.no(); return say('dLocked'); } useUp('key'); d.unlocked = true; d.open = 1; sfx.clunk(); solve('drawer'); say('dUnlock'); done(); } : null,
       });
     }
-    out.push({ id: 'tag', x: 104, y: DRAWER_Y[0] + 24 + (d.open === 0 ? 14 : 0), w: 30, h: 14, label: STR.sTag, act: () => say('tagSays', { price: money(A.tags.dresser) }) });
   } else if (f === 1) {
     out.push({ id: 'side', x: 74, y: 30, w: 172, h: 140, label: STR.sDSide, act: () => say('dSide') });
   } else {
@@ -894,7 +1029,6 @@ function drawScale(now) {
   // the tray
   bev(204, 154, 94, 10, C.wood, C.woodL, C.woodDD);
   s.tray.forEach((id, i) => weightSprite(id, TRAYX[i], 156));
-  line(163, 60, 174, 66, C.paperD); tag(170, 66, money(A.tags.scale));
   shade(160, 80, 200, .7);
 }
 const panWeight = () => S.scale.pan.reduce((t, id) => t + A.weights[id], 0);
@@ -915,8 +1049,7 @@ function scaleSpots() {
   out.push({ id: 'trayAll', x: 200, y: 164, w: 100, h: 10, label: STR.sSTrayAll, act: () => setMsg(''), use: putSash });
   out.push({ id: 'sack', x: 40, y: 60 + k, w: 60, h: 36, label: STR.sSSack, act: () => say('sSack') });
   if (s.open && !got('dime')) out.push({ id: 'dime', x: 148, y: 164, w: 24, h: 18, label: STR.i_dime, act: () => { give('dime'); say('got', { item: inm('dime') }); done(); } });
-  else out.push({ id: 'drawer', x: 140, y: 150, w: 40, h: 18, label: STR.sSDrawer, act: () => say(s.open ? 'dEmpty' : 'sDrawerShut') });
-  out.push({ id: 'tag', x: 166, y: 62, w: 32, h: 16, label: STR.sTag, act: () => say('tagSays', { price: money(A.tags.scale) }) });
+  else out.push({ id: 'drawer', x: 140, y: 150, w: 40, h: 18, label: STR.sSDrawer, act: () => say(s.open ? 'sDrawerEmpty' : 'sDrawerShut') });
   return out;
 }
 function weigh() {
@@ -948,9 +1081,9 @@ function drawGrinder(now) {
   oval(122, 30, 24, 3, C.ironD); oval(122, 30, 22, 2, C.ink);
   R(88, 56, 104, 30, C.iron); R(88, 58, 104, 3, C.ironL); R(88, 80, 104, 6, C.ironD);
   for (const x of [100, 150, 176]) R(x, 56, 2, 30, C.ironD);
-  text(STR.art_no22, 112, 66, C.ironL);
+  R(110, 64, 30, 9, C.rust); dith(110, 64, 30, 9, C.rustL, 2); dith(111, 65, 28, 7, C.rustD, 3);   // where the number was
   oval(192, 71, 5, 15, C.ironD); oval(192, 71, 3, 12, C.ink);
-  const b = gr.built;
+  const b = gr.built.map(id => PARTS.find(p => p.id === id).kind);
   if (b.includes('screw')) { R(192, 67, 10, 8, C.ironL); line(194, 67, 196, 74, C.iron); line(198, 67, 200, 74, C.iron); }
   if (b.includes('blade')) { R(202, 60, 3, 22, C.steelL); R(198, 70, 11, 3, C.steelL); }
   if (b.includes('plate')) { oval(206, 71, 3, 15, C.steelD); oval(206, 71, 2, 14, C.steel); for (let j = -10; j <= 10; j += 5) px(206, 71 + j, C.ink); }
@@ -960,10 +1093,10 @@ function drawGrinder(now) {
   disc(86, 71, 6, C.ironD);
   if (gr.crank) { const a = AN.gAng, hx = 86 + Math.cos(a) * 24, hy = 71 + Math.sin(a) * 24; line(86, 71, hx, hy, C.iron, 4); R(hx - 3, hy - 8, 6, 10, C.woodL); }
   // the parts on the counter
-  PARTS.forEach((p, i) => { if (!b.includes(p.kind) || !isBuiltPart(p)) partSprite(p, partX(i), 160); });
+  PARTS.forEach((p, i) => { if (!isBuiltPart(p)) partSprite(p, partX(i), 160); });
   shade(160, 90, 200, .7);
 }
-const isBuiltPart = p => p.no !== 71 && S.grinder.built.includes(p.kind);
+const isBuiltPart = p => S.grinder.built.includes(p.id);
 function grinderSpots() {
   const gr = S.grinder, out = [];
   PARTS.forEach((p, i) => {
@@ -976,24 +1109,27 @@ function grinderSpots() {
     AN.gAngT += Math.PI * .8; sfx.creak();
     if (gr.built.length < 4) return say('gSpin');
     if (gr.out) return say('gTurn');
+    // any part goes on in the right order; only cranking finds a wrong size,
+    // so the ledger's number is what tells you which parts are this grinder's
+    if (gr.built.some(id => { const p = PARTS.find(q => q.id === id); return p.no && p.no !== A.grinderNo; })) { gr.jam = true; sfx.bunch(); say('gJam'); return done(); }
     gr.turns++;
     if (gr.turns >= A.grinderTurns) { gr.out = true; say('gOut'); } else say('gTurn');
     done();
   };
   out.push({ id: 'crank', x: 56, y: 40, w: 46, h: 62, label: STR.sGCrank, act: crankAct, use: id => { if (id !== 'crank' || gr.crank) return false; useUp('crank'); gr.crank = true; sfx.clunk(); say('gAttach'); done(); } });
   out.push({ id: 'body', x: 102, y: 26, w: 88, h: 62, label: STR.sGBody, act: () => say('gBody'), use: id => { if (id !== 'crank' || gr.crank) return false; useUp('crank'); gr.crank = true; sfx.clunk(); say('gAttach'); done(); } });
+  if (gr.built.length && !gr.out) out.push({ id: 'end', x: 186, y: 50, w: 30, h: 42, label: STR.sGEnd, act: () => { gr.built = []; gr.jam = false; gr.turns = 0; sfx.click(); say('gOff'); done(); } });
   if (gr.out && !got('chart')) out.push({ id: 'note', x: 208, y: 60, w: 32, h: 22, label: STR.sGNote, act: () => { give('chart'); solve('grinder'); say('got', { item: inm('chart') }); done(); } });
   return out;
 }
 function fitPart(p) {
   const gr = S.grinder, need = A.build[gr.built.length];
-  if (p.no && p.no !== A.grinderNo) { sfx.no(); return say('gWrong', { no: p.no }); }
   if (p.kind !== need) {
     sfx.no();
     const order = A.build.indexOf(p.kind), first = A.build[gr.built.length];
     return say(first === 'screw' ? 'gNeedScrew' : first === 'blade' ? 'gNeedBlade' : order > A.build.indexOf('plate') ? 'gNeedPlate' : 'gNeedBlade');
   }
-  gr.built.push(p.kind); sfx.clunk(); say('gOn'); done();
+  gr.built.push(p.id); sfx.clunk(); say('gOn'); done();
 }
 
 // ----- the ship -----
@@ -1042,7 +1178,6 @@ function drawShip(now) {
   if (f === 0) {
     R(136, 52, 3, 7, C.blue); R(136, 52, 3, 1, C.ink);   // a corner of a flag, peeking from the far side
     bev(104, 178, 112, 14, C.brass, C.brassL, C.brassD); textC(STR.art_plaque, 160, 183, C.ink);
-    line(312, 98, 306, 110, C.paperD); tag(290, 110, money(A.tags.ship));
   } else {
     line(HOIST[0][0], HOIST[0][1], HOIST[1][0], HOIST[1][1], C.ink);
     [...A.flags].forEach((L, i) => { const [x, y] = FLAG_AT(i); R(x - 1, y - 1, 22, 15, C.ink); flag(L, x, y, 20, 13); });
@@ -1053,7 +1188,6 @@ function shipSpots() {
   if (face.ship === 0) return [
     { id: 'ship', x: 56, y: 8, w: 220, h: 144, label: STR.sSail, act: () => say('shipSays') },
     { id: 'plaque', x: 104, y: 176, w: 112, h: 18, label: STR.sPlaque, act: () => say('plaque') },
-    { id: 'tag', x: 286, y: 106, w: 34, h: 16, label: STR.sTag, act: () => say('tagSays', { price: money(A.tags.ship) }) },
   ];
   return [
     { id: 'ship', x: 40, y: 100, w: 200, h: 52, label: STR.sSail, act: () => say('shipSays') },
@@ -1062,21 +1196,30 @@ function shipSpots() {
 }
 
 // ----- the crate -----
+// Up in the hayloft. The padlock's dials match the parking meters; inside,
+// in the straw, are Doc's arm and a little box with four letter wheels that
+// holds his gauge.
 const DIALX = [128, 160, 192], DIAL = [[C.steelL, C.steelD, 'colSilver'], [C.greenL, C.greenD, 'colGreen'], [C.redL, C.redD, 'colRed']];
-const WHEELX = [106, 142, 178, 214];
+const WHEELX = [148, 184, 220, 256];
 const chev = (cx, y, up, c) => { for (let i = 0; i < 6; i++) { const k = up ? i : 5 - i; R(cx - k, y + i - 1, 2 * k + 1, 1, c); } };
+function armItem(x, y) {   // Doc's swing arm, lying down: two rusty bars and a joint
+  line(x - 1, y - 1, x + 30, y - 7, C.ink, 5); line(x + 31, y - 6, x + 52, y + 3, C.ink, 5);   // dark edges so it shows on the straw
+  line(x, y, x + 30, y - 6, C.rustL, 3); disc(x + 31, y - 6, 3, C.rust); line(x + 32, y - 5, x + 52, y + 4, C.rustL, 3); R(x + 50, y + 2, 6, 5, C.steelD);
+}
+function gaugeItem(cx, cy) { disc(cx, cy, 8, C.ironD); disc(cx, cy, 7, C.white); line(cx, cy, cx - 4, cy - 3, C.red); px(cx, cy, C.ink); R(cx - 2, cy + 7, 4, 3, C.ironD); }
 function drawCrate() {
   const c = S.crate;
-  bgFloor();
+  cached('bgCrate', r => { R(0, 0, W, H, '#2a1a0e'); for (let x = -200; x < W; x += 34) line(x, 0, x + 200, 160, '#3a2414', 3); R(0, 170, W, 30, C.woodD); for (let i = 0; i < 200; i++) px((r() * W) | 0, 170 + ((r() * 30) | 0), '#c9a84a'); });
   if (c.lid) {
     R(36, 18, 248, 46, C.wood); for (let y = 18; y < 64; y += 11) R(36, y, 248, 1, C.woodDD);
     R(36, 64, 248, 128, C.woodDD); R(40, 68, 240, 120, '#2a1a0c');
     dith(40, 140, 240, 50, '#c9a84a', 2); dith(41, 160, 238, 30, '#e0c060', 3);
     for (let i = 0; i < 30; i++) { const x = 44 + (i * 53) % 232, y = 132 + (i * 29) % 52; line(x, y, x + 6, y - 3, '#e8cc70'); }
-    bev(70, 86, 180, 84, C.wood, C.woodL, C.woodDD);
-    for (const [x, y] of [[70, 86], [244, 86], [70, 164], [244, 164]]) R(x, y, 6, 6, C.brass);
+    if (!got('arm')) armItem(50, 160);
+    bev(122, 86, 160, 80, C.wood, C.woodL, C.woodDD);
+    for (const [x, y] of [[122, 86], [276, 86], [122, 160], [276, 160]]) R(x, y, 6, 6, C.brass);
     if (!c.box) {
-      R(80, 92, 160, 2, C.woodDD);
+      R(130, 92, 144, 2, C.woodDD);
       c.wheels.forEach((l, i) => {
         const x = WHEELX[i];
         chev(x, 98, true, C.brassL);
@@ -1085,16 +1228,15 @@ function drawCrate() {
         chev(x, 146, false, C.brassL);
       });
     } else {
-      R(74, 90, 172, 76, '#2a1a0c'); bev(70, 66, 180, 22, C.wood, C.woodL, C.woodDD);
-      if (!got('letter')) { R(96, 104, 70, 46, C.paper); line(96, 104, 131, 126, C.paperD); line(166, 104, 131, 126, C.paperD); disc(131, 128, 4, C.red); R(176, 120, 6, 6, C.ironD); R(182, 122, 44, 3, C.iron); R(214, 125, 3, 6, C.iron); R(220, 125, 3, 5, C.iron); ringO(176, 123, 8, 8, C.iron); }
+      R(126, 90, 152, 72, '#2a1a0c'); bev(122, 66, 160, 22, C.wood, C.woodL, C.woodDD);
+      if (!got('gauge')) { oval(202, 130, 22, 12, '#a89c78'); dith(182, 120, 40, 22, '#8a7a5a', 3); gaugeItem(202, 126); }
     }
-  } else if (face.crate === 0) {
+  } else {
     R(36, 40, 248, 152, C.wood);
     for (let y = 40; y < 192; y += 25) { R(36, y, 248, 2, C.woodDD); R(36, y + 2, 248, 1, C.woodL); for (let x = 50; x < 280; x += 37) R(x, y + 8 + (x % 7), 10, 1, C.woodD); }
     R(36, 40, 18, 152, C.woodD); R(266, 40, 18, 152, C.woodD); R(36, 40, 2, 152, C.woodL);
     for (const x of [44, 274]) for (const y of [50, 182]) disc(x, y, 1, C.ironL);
     text(STR.art_up, 60, 172, 'rgba(30,18,8,.55)', 2);
-    // the hasp and padlock
     R(150, 34, 20, 34, C.ironD); R(152, 36, 16, 30, C.iron);
     const up = c.unlocked ? 10 : 0;
     R(112, 52 - up, 8, 22 + up, C.steelD); R(200, 52, 8, 22, C.steelD); ringO(160, 52 - up, 44, 18, C.steelD, Math.PI, Math.PI * 2); ringO(160, 53 - up, 42, 17, C.steel, Math.PI, Math.PI * 2);
@@ -1106,35 +1248,28 @@ function drawCrate() {
       textC(d, x + 1, 104, C.white, 3);
       chev(x, 134, false, C.brassD);
     });
-  } else {
-    R(36, 40, 248, 152, C.wood);
-    for (let x = 36; x < 284; x += 31) { R(x, 40, 2, 152, C.woodDD); R(x + 2, 40, 1, 152, C.woodL); }
-    R(36, 40, 248, 16, C.woodD); R(36, 176, 248, 16, C.woodD);
-    R(120, 76, 80, 54, C.paper); R(120, 128, 80, 2, C.paperD); disc(160, 80, 2, C.ironD);
-    for (let i = 0; i < 5; i++) R(128, 88 + i * 7, 40 + ((i * 17) % 24), 1, '#4a3a2a');
   }
-  shade(160, 100, 200, .7);
+  shade(160, 100, 210, .7);
 }
 function crateSpots() {
   const c = S.crate, out = [];
   if (c.lid) {
+    if (!got('arm')) out.push({ id: 'arm', x: 44, y: 140, w: 70, h: 30, label: STR.sCArm, act: () => { give('arm'); say('got', { item: inm('arm') }); done(); } });
     if (!c.box) c.wheels.forEach((l, i) => {
       const L = String.fromCharCode(65 + l);
       out.push({ id: 'wu' + i, x: WHEELX[i] - 17, y: 92, w: 34, h: 26, label: fmt(STR.sCWUp, { n: i + 1, l: L }), act: () => turnWheel(i, 1) });
       out.push({ id: 'wd' + i, x: WHEELX[i] - 17, y: 128, w: 34, h: 26, label: fmt(STR.sCWDown, { n: i + 1, l: L }), act: () => turnWheel(i, -1) });
     });
-    else if (!got('letter')) out.push({ id: 'letter', x: 92, y: 100, w: 140, h: 54, label: STR.sCLetter, act: takeLetter });
+    else if (!got('gauge')) out.push({ id: 'gauge', x: 178, y: 112, w: 48, h: 34, label: STR.sCGauge, act: () => { give('gauge'); say('got', { item: inm('gauge') }); done(); } });
     return out;
   }
-  if (face.crate === 0) {
-    if (!c.unlocked) c.lock.forEach((d, i) => {
-      const col = STR[DIAL[i][2]];
-      out.push({ id: 'lu' + i, x: DIALX[i] - 16, y: 76, w: 32, h: 30, label: fmt(STR.sCUp, { col, d }), act: () => turnDial(i, 1) });
-      out.push({ id: 'ld' + i, x: DIALX[i] - 16, y: 118, w: 32, h: 30, label: fmt(STR.sCDown, { col, d }), act: () => turnDial(i, -1) });
-    });
-    out.push({ id: 'lid', x: 36, y: 40, w: 248, h: 28, label: STR.sCLid, act: () => { if (!c.unlocked) { sfx.no(); return say('cLocked'); } c.lid = true; sfx.creak(); say('cLid'); done(); } });
-    out.push({ id: 'lock', x: 100, y: 150, w: 120, h: 14, label: STR.sCLock, act: () => say(c.unlocked ? 'cUnlocked' : 'cLocked') });
-  } else out.push({ id: 'note', x: 116, y: 72, w: 88, h: 62, label: STR.sCNote, act: () => readCard('crate') });
+  if (!c.unlocked) c.lock.forEach((d, i) => {
+    const col = STR[DIAL[i][2]];
+    out.push({ id: 'lu' + i, x: DIALX[i] - 16, y: 76, w: 32, h: 30, label: fmt(STR.sCUp, { col, d }), act: () => turnDial(i, 1) });
+    out.push({ id: 'ld' + i, x: DIALX[i] - 16, y: 118, w: 32, h: 30, label: fmt(STR.sCDown, { col, d }), act: () => turnDial(i, -1) });
+  });
+  out.push({ id: 'lid', x: 36, y: 40, w: 248, h: 28, label: STR.sCLid, act: () => { if (!c.unlocked) { sfx.no(); return say('cLocked'); } c.lid = true; sfx.creak(); say('cLid'); done(); } });
+  out.push({ id: 'lock', x: 100, y: 150, w: 120, h: 14, label: STR.sCLock, act: () => say(c.unlocked ? 'cUnlocked' : 'cLocked') });
   return out;
 }
 function turnDial(i, step) {
@@ -1147,7 +1282,6 @@ function turnWheel(i, step) {
   if (c.wheels.map(n => String.fromCharCode(65 + n)).join('') === A.flags) { c.box = true; setTimeout(() => sfx.ding(true), 120); solve('box'); say('cBox'); }
   done();
 }
-function takeLetter() { give('letter'); S.done = true; save(); refresh(); readCard('letter'); }
 
 // ----- the parking meters -----
 const MX = [60, 160, 260], MCOL = [[C.steel, C.steelL, C.steelD], [C.green, C.greenL, C.greenD], [C.red, C.redL, C.redD]];
@@ -1194,47 +1328,74 @@ function meterSpots() {
 }
 
 const VIEWS = {
-  room: { title: 'vRoom', draw: drawRoom, spots: roomSpots },
-  washer: { title: 'vWasher', draw: drawWasher, spots: washerSpots },
-  adder: { title: 'vAdder', draw: drawAdder, spots: adderSpots },
-  register: { title: 'vRegister', draw: drawRegister, spots: registerSpots },
-  dresser: { title: 'vDresser', draw: drawDresser, spots: dresserSpots, faces: () => ['faceFront', 'faceSide', 'faceBack'] },
-  scale: { title: 'vScale', draw: drawScale, spots: scaleSpots },
-  grinder: { title: 'vGrinder', draw: drawGrinder, spots: grinderSpots },
-  ship: { title: 'vShip', draw: drawShip, spots: shipSpots, faces: () => ['facePort', 'faceStar'] },
-  crate: { title: 'vCrate', draw: drawCrate, spots: crateSpots, faces: () => S.crate.lid ? null : ['faceFront', 'faceTop'] },
-  meters: { title: 'vMeters', draw: drawMeters, spots: meterSpots },
+  barn: { title: 'vBarn', draw: drawBarn, spots: barnSpots },
+  bench: { title: 'vBench', draw: drawBench, spots: benchSpots, parent: 'barn', at: [0, 44, 58, 104] },
+  tack: { title: 'vTack', draw: drawTack, spots: tackSpots, parent: 'barn', at: [272, 56, 48, 94] },
+  loft: { title: 'vLoft', draw: drawLoft, spots: loftSpots, parent: 'barn', at: [232, 14, 42, 28] },
+  washer: { title: 'vWasher', draw: drawWasher, spots: washerSpots, parent: 'barn', at: [200, 82, 42, 86] },
+  meters: { title: 'vMeters', draw: drawMeters, spots: meterSpots, parent: 'barn', at: [100, 66, 32, 88] },
+  adder: { title: 'vAdder', draw: drawAdder, spots: adderSpots, parent: 'bench', at: [26, 66, 88, 58] },
+  register: { title: 'vRegister', draw: drawRegister, spots: registerSpots, parent: 'bench', at: [196, 40, 116, 88] },
+  grinder: { title: 'vGrinder', draw: drawGrinder, spots: grinderSpots, parent: 'bench', at: [118, 74, 72, 56] },
+  dresser: { title: 'vDresser', draw: drawDresser, spots: dresserSpots, parent: 'tack', at: [152, 94, 58, 74], faces: () => ['faceFront', 'faceSide', 'faceBack'] },
+  scale: { title: 'vScale', draw: drawScale, spots: scaleSpots, parent: 'tack', at: [220, 94, 64, 82] },
+  ship: { title: 'vShip', draw: drawShip, spots: shipSpots, parent: 'loft', at: [18, 40, 100, 62], faces: () => ['facePort', 'faceStar'] },
+  crate: { title: 'vCrate', draw: drawCrate, spots: crateSpots, parent: 'loft', at: [128, 124, 88, 70] },
 };
 
-// ---------- Solving and Doc's hints ----------
+// ---------- Solving, Doc's parts and his hints ----------
 function solve(id) {
   if (S.solved[id]) return;
   S.solved[id] = true; S.docOn = true; AN.cheer = performance.now();
   setTimeout(sfx.solve, 250);
 }
-// What Doc talks about: the thing you're looking at, if it has something
-// left to do, else the first thing in the room you can get on with.
+// Handing Doc something: one of his own pieces goes back on him and brings a
+// memory back; the ledger page he reads under his lamp; anything else he
+// declines, politely.
+function giveDoc(id) {
+  S.held = null; S.docOn = true; AN.flick = performance.now();
+  if (PARTS_OF_DOC.includes(id)) {
+    useUp(id); S.parts[id] = true; solve(id); sfx.whirr();
+    if (id === 'gauge') { S.done = true; done(); return endCard(); }
+    say(id === 'lamp' ? 'docLamp' : 'docArm', null, 'doc');
+    return done();
+  }
+  if (id === 'ledger') {
+    if (!S.parts.lamp) { sfx.no(); say('ledgerDim', null, 'doc'); return done(); }
+    S.ledgerLit = true; solve('ledger'); say('ledgerLit', null, 'doc'); return done();
+  }
+  sfx.no(); say('docNoUse', { item: inm(id) }, 'doc'); refresh();
+}
+// What Doc talks about: something left to do in the close-up you're looking
+// at, else the first thing in the barn you can get on with. Each step's key
+// picks its three hints. (Counting close-ups inside the place you're in as
+// "here" was tried: on the barn floor he talked about the meters while the
+// receipt still needed adding up at the workbench.)
+const coins = ['penny', 'nickel', 'dime'];
 const STEPS = [
-  { id: 'washer', view: 'washer', left: () => !S.solved.washer || (S.washer.drained && S.washer.lid && !got('penny')), ready: () => true,
+  { view: 'washer', left: () => !S.solved.washer || (S.washer.drained && S.washer.lid && !got('penny')), ready: () => true,
     key: () => { const w = S.washer; if (w.noteIn) return 'washer.crank'; if (has('soggy')) return 'washer.wring'; if (w.lid && w.drained) return 'washer.take'; return 'washer.start'; } },
-  { id: 'adder', view: 'adder', left: () => !S.solved.adder, ready: () => true, key: () => 'adder' },
-  { id: 'register', view: 'register', left: () => !S.solved.register || (S.reg.open && (!got('key') || !got('nickel'))), ready: () => true, key: () => 'register' },
-  { id: 'drawer', view: 'dresser', left: () => !S.solved.drawer || (S.dresser.unlocked && !got('crank')), ready: () => has('key') || S.dresser.unlocked, key: () => 'drawer' },
-  { id: 'grinder', view: 'grinder', left: () => !S.solved.grinder, ready: () => true,
-    key: () => { const gr = S.grinder; if (gr.built.length < 4) return 'grinder.parts'; if (!gr.crank) return 'grinder.crank'; if (!gr.out) return 'grinder.turn'; return 'grinder.take'; } },
-  { id: 'secret', view: 'dresser', left: () => !got('sash'), ready: () => true, key: () => S.dresser.panel ? 'secret.take' : 'secret' },
-  { id: 'scale', view: 'scale', left: () => !S.solved.scale || !got('dime'), ready: () => true,
-    key: () => S.scale.open ? 'scale.take' : (got('sash') ? 'scale' : 'scale.short') },
-  { id: 'meters', view: 'meters', left: () => !S.solved.meters, ready: () => ['penny', 'nickel', 'dime'].some(has),
-    key: () => ['penny', 'nickel', 'dime'].every(c => got(c)) ? 'meters' : 'meters.short' },
-  { id: 'lock', view: 'crate', left: () => !S.solved.lock, ready: () => !!S.solved.meters, key: () => 'lock' },
-  { id: 'box', view: 'crate', left: () => !S.solved.box, ready: () => !!S.solved.lock, key: () => !S.crate.lid ? 'box.lid' : (got('chart') ? 'box' : 'box.nochart') },
-  { id: 'box2', view: 'ship', left: () => !S.solved.box, ready: () => got('chart'), key: () => got('chart') ? 'box' : 'box.nochart' },
-  { id: 'letter', view: 'crate', left: () => !got('letter'), ready: () => !!S.solved.box, key: () => 'letter' },
+  { view: 'adder', left: () => !S.solved.adder, ready: () => got('receipt'), key: () => 'receipt' },
+  { view: 'register', left: () => !S.solved.register || (S.reg.open && (!got('lamp') || !got('nickel'))), ready: () => got('receipt'), key: () => S.reg.open ? 'register.take' : 'register' },
+  { view: 'barn', left: () => !S.parts.lamp, ready: () => has('lamp'), key: () => 'lamp' },
+  { view: 'barn', left: () => !S.loftSeen, ready: () => S.parts.lamp, key: () => 'loft' },
+  { view: 'loft', left: () => !S.ledgerLit, ready: () => S.parts.lamp, key: () => got('ledger') ? 'ledger' : 'ledger.find' },
+  { view: 'dresser', left: () => !got('sash'), ready: () => true, key: () => S.dresser.panel ? 'secret.take' : 'secret' },
+  { view: 'scale', left: () => !S.solved.scale || !got('dime'), ready: () => true, key: () => S.scale.open ? 'scale.take' : (got('sash') ? 'scale' : 'scale.short') },
+  { view: 'meters', left: () => !S.solved.meters, ready: () => coins.some(has), key: () => coins.every(got) ? 'meters' : 'meters.short' },
+  { view: 'crate', left: () => !S.solved.lock, ready: () => !!S.solved.meters && S.loftSeen, key: () => 'lock' },
+  { view: 'crate', left: () => !got('arm'), ready: () => !!S.solved.lock, key: () => S.crate.lid ? 'arm.take' : 'box.lid' },
+  { view: 'barn', left: () => !S.parts.arm, ready: () => has('arm'), key: () => 'arm' },
+  { view: 'tack', left: () => !got('crank'), ready: () => S.parts.arm, key: () => 'shelf' },
+  { view: 'grinder', left: () => !S.solved.grinder, ready: () => S.ledgerLit || got('crank'),
+    key: () => { const gr = S.grinder; if (gr.jam) return 'grinder.jam'; if (gr.built.length < 4) return S.ledgerLit ? 'grinder.parts' : 'grinder.which'; if (!gr.crank) return 'grinder.crank'; if (!gr.out) return 'grinder.turn'; return 'grinder.take'; } },
+  { view: 'crate', left: () => !S.solved.box, ready: () => S.crate.lid, key: () => got('chart') ? 'box' : 'box.nochart' },
+  { view: 'ship', left: () => !S.solved.box, ready: () => got('chart'), key: () => 'box' },
+  { view: 'crate', left: () => !got('gauge'), ready: () => !!S.solved.box, key: () => 'gauge.take' },
+  { view: 'barn', left: () => !S.parts.gauge, ready: () => has('gauge'), key: () => 'gauge' },
 ];
 function hintNow() {
-  const here = STEPS.find(s => s.view === view && s.left() && (s.ready() || view !== 'dresser'));
-  const step = here || STEPS.find(s => s.left() && s.ready());
+  const step = STEPS.find(s => s.left() && s.ready() && s.view === view) || STEPS.find(s => s.left() && s.ready());
   if (!step) return STR.docDone;
   const k = step.key(), lines = HINTS[k], lvl = S.hints[k] || 0;
   S.hints[k] = lvl + 1;
@@ -1276,7 +1437,8 @@ function refresh() {
   if (keep) { const again = box.querySelector(`[data-id="${CSS.escape(keep)}"]`); if (again) again.focus(); }
   const faces = v.faces && v.faces();
   $('#turnL').hidden = $('#turnR').hidden = !faces;
-  $('#backBtn').hidden = view === 'room';
+  $('#backBtn').hidden = !VIEWS[view].parent;
+  $('#docBtn span').textContent = S.held ? STR.giveDoc : STR.crankDoc;
   const title = STR[v.title] + (faces ? ', ' + STR[faces[face[view]]] : '');
   cv.setAttribute('aria-label', title);
   // the pockets
@@ -1308,7 +1470,7 @@ function tapSpot(sp) {
   sp.act();
 }
 function tapItem(id) {
-  if (['note', 'chart', 'letter'].includes(id)) { S.held = null; refresh(); return readCard(id); }
+  if (['receipt', 'ledger', 'chart'].includes(id)) { S.held = null; refresh(); return readCard(id); }
   if (S.held === id) { S.held = null; say('letGo', { item: inm(id) }); }
   else { S.held = id; sfx.pick(); say('holding', { item: inm(id) }); }
   refresh();
@@ -1322,11 +1484,13 @@ function icon(id) {
   const old = G; G = c.getContext('2d');
   switch (id) {
     case 'soggy': soggy(12, 13); break;
-    case 'note': R(5, 4, 14, 17, C.paper); for (let i = 0; i < 5; i++) R(7, 7 + i * 3, 9, 1, '#6a5a40'); break;
+    case 'receipt': R(6, 2, 12, 20, C.paper); for (let i = 0; i < 5; i++) R(8, 5 + i * 3, 8, 1, '#6a5a40'); for (let x = 6; x < 18; x += 2) px(x, 21, C.paperD); break;
+    case 'ledger': R(4, 4, 16, 16, C.paper); R(4, 4, 16, 3, '#4a6a3a'); for (let i = 0; i < 4; i++) R(6, 9 + i * 3, 11, 1, i === 2 ? C.ink : '#6a5a40'); break;
+    case 'lamp': lampItem(10, 12); break;
+    case 'arm': line(2, 16, 11, 9, C.rustL, 2); disc(12, 9, 2, C.rust); line(12, 10, 20, 18, C.rustL, 2); break;
+    case 'gauge': gaugeItem(12, 11); break;
     case 'chart': R(3, 5, 18, 14, C.paper); flag('S', 5, 7, 6, 4); flag('R', 13, 7, 6, 4); flag('T', 5, 13, 6, 4); flag('O', 13, 13, 6, 4); break;
-    case 'letter': R(3, 6, 18, 12, C.paper); line(3, 6, 12, 13, C.paperD); line(20, 6, 12, 13, C.paperD); disc(12, 13, 2, C.red); break;
     case 'penny': case 'nickel': case 'dime': coin(12, 12, id); break;
-    case 'key': brassKey(4, 12); break;
     case 'crank': R(3, 14, 15, 3, C.iron); R(16, 6, 3, 10, C.iron); R(15, 3, 5, 5, C.woodL); break;
     case 'sash': bev(2, 9, 20, 7, C.iron, C.ironL, C.ironD); textC('4', 12, 10, C.ironL); break;
   }
@@ -1357,7 +1521,8 @@ const ACTS = {
   close: () => onClose ? onClose() : closeCard(),
   start: () => { S.started = true; save(); closeCard(); setMsg(STR.startHow); },
   over: () => card(`<h2 id="cardTitle">${esc(STR.overTitle)}</h2><p>${esc(STR.overLine)}</p><div class="row"><button class="btn" type="button" data-act="startCard">${esc(STR.cancel)}</button><button class="btn go" type="button" data-act="wipe">${esc(STR.overGo)}</button></div>`),
-  wipe: () => { S = fresh(S); S.started = true; save(); view = 'room'; face.dresser = face.ship = face.crate = 0; AN.needles = [0, 0, 0]; AN.tilt = 0; closeCard(); setMsg(STR.startHow); },
+  showDoc: () => { closeCard(); giveDoc('ledger'); },
+  wipe: () => { S = fresh(S); S.started = true; save(); view = 'barn'; face.dresser = face.ship = 0; AN.needles = [0, 0, 0]; AN.tilt = 0; closeCard(); setMsg(STR.startHow); },
   startCard: () => startCard(),
 };
 function startCard() {
@@ -1368,26 +1533,39 @@ function startCard() {
 }
 function readCard(id) {
   const btn = `<div class="row"><button class="btn go" type="button" data-act="close">${esc(STR.close)}</button></div>`;
-  if (id === 'note') card(`<h2 id="cardTitle">${esc(STR.noteTitle)}</h2><div class="paper">${esc(STR.noteText)}<p class="sign">${esc(STR.sign)}</p></div>${btn}`);
-  if (id === 'crate') card(`<h2 id="cardTitle">${esc(STR.crateTitle)}</h2><div class="paper">${esc(STR.crateText)}<p class="sign">${esc(STR.crateSign)}</p></div>${btn}`);
-  if (id === 'chart') card(`<h2 id="cardTitle">${esc(STR.chartTitle)}</h2><p>${esc(STR.chartLine)}</p><img class="chart" src="${chartImage()}" alt="${esc(STR.chartAlt)}" width="132" height="52">${btn}`);
-  if (id === 'letter') {
-    const ducks = fmt(STR.ducks, { n: S.duck ? 1 : 0, m: 1 });
-    card(`<h2 id="cardTitle">${esc(STR.letterTitle)}</h2><div class="paper">${esc(STR.letterText)}<p class="sign">${esc(STR.sign)}</p></div><p>${esc(STR.endNext)}</p><p class="soft">${esc(ducks)}</p>` +
-      `<div class="row"><button class="btn" type="button" data-act="over">${esc(STR.startOver)}</button><button class="btn go" type="button" data-act="close">${esc(STR.keepLooking)}</button></div>`);
+  if (id === 'receipt') {
+    const rows = A.receipt.map(([k, c]) => `<tr><td>${esc(STR['r_' + k])}</td><td>${money(c)}</td></tr>`).join('');
+    card(`<h2 id="cardTitle">${esc(STR.receiptTitle)}</h2><div class="paper receipt"><p>${esc(STR.receiptHead)}</p><table>${rows}<tr class="total"><td>${esc(STR.receiptTotal)}</td><td>______</td></tr></table><p>${esc(STR.receiptFoot)}</p></div>${btn}`);
   }
+  if (id === 'ledger') {
+    const lines = STR.ledgerLines.map(l => `<li${l.includes('{no}') && !S.ledgerLit ? ' class="scratched"' : ''}>${esc(fmt(l, { no: S.ledgerLit ? A.grinderNo : STR.ledgerScratched }))}</li>`).join('');
+    const row = S.ledgerLit ? btn : `<p class="soft">${esc(STR.ledgerHint)}</p><div class="row"><button class="btn" type="button" data-act="close">${esc(STR.close)}</button><button class="btn go" type="button" data-act="showDoc">${esc(STR.giveDoc)}</button></div>`;
+    card(`<h2 id="cardTitle">${esc(STR.ledgerTitle)}</h2><div class="paper"><ul class="ledger">${lines}</ul></div>${row}`);
+  }
+  if (id === 'chart') card(`<h2 id="cardTitle">${esc(STR.chartTitle)}</h2><p>${esc(STR.chartLine)}</p><img class="chart" src="${chartImage()}" alt="${esc(STR.chartAlt)}" width="132" height="52">${btn}`);
+}
+// Doc's last memory, when his gauge goes back on
+function endCard() {
+  const ducks = fmt(STR.ducks, { n: S.duck ? 1 : 0, m: 1 });
+  card(`<h2 id="cardTitle">${esc(STR.endTitle)}</h2><div class="paper">${esc(STR.docGauge)}\n\n${esc(STR.endMore)}</div><p>${esc(STR.endNext)}</p><p class="soft">${esc(ducks)}</p>` +
+    `<div class="row"><button class="btn" type="button" data-act="over">${esc(STR.startOver)}</button><button class="btn go" type="button" data-act="close">${esc(STR.keepLooking)}</button></div>`);
 }
 
 // ---------- Moving between views ----------
-let tr = null;   // the zoom: { to, from, t0, rect, out }
+let tr = null;   // the zoom: { parent, child, t0, out }
+// Going into a place or a close-up zooms into where it sits in its parent's
+// picture (`at`); Back zooms out of it again.
 function go(to) {
-  if (tr) return;
-  const out = to === 'room', near = out ? view : to;
-  tr = { from: view, to, t0: performance.now(), rect: ROOM_AT[near], out };
-  view = to; S.held = null; setMsg('');
+  if (tr || to === view) return;
+  const out = VIEWS[view].parent === to;
+  const child = out ? view : to, parent = VIEWS[child].parent;
+  tr = parent ? { parent, child, t0: performance.now(), out } : null;
+  view = to; S.held = null;
+  setMsg('');
   refresh();
   if (lastInput === 'key') { const f = $('#spots .spot'); if (f) f.focus(); }
 }
+const goBack = () => { const p = VIEWS[view].parent; if (p) go(p); };
 function turn(step) {
   const faces = VIEWS[view].faces && VIEWS[view].faces();
   if (!faces) return;
@@ -1409,11 +1587,10 @@ function frame(now) {
   A.meters.forEach((m, i) => { AN.needles[i] += ((S.meters[i] ? m.reads : 0) - AN.needles[i]) * .08; });
   if (tr) {
     const p = Math.min(1, (now - tr.t0) / 340), q = ease(tr.out ? 1 - p : p);
-    const near = tr.out ? tr.from : tr.to;
-    G = bufA.getContext('2d'); VIEWS.room.draw(now);
-    G = bufB.getContext('2d'); VIEWS[near].draw(now);
+    G = bufA.getContext('2d'); VIEWS[tr.parent].draw(now);
+    G = bufB.getContext('2d'); VIEWS[tr.child].draw(now);
     G = g0; g0.imageSmoothingEnabled = false;
-    const [rx, ry, rw, rh] = tr.rect;
+    const [rx, ry, rw, rh] = VIEWS[tr.child].at;
     const sw = W + (rw * 1.15 - W) * q, sh = sw * H / W;
     const sx = (rx + rw / 2 - sw / 2) * q, sy = (ry + rh / 2 - sh / 2) * q;
     g0.globalAlpha = 1; g0.drawImage(bufA, sx, sy, sw, sh, 0, 0, W, H);
@@ -1424,7 +1601,7 @@ function frame(now) {
   // Doc's little face in the panel, and beside his words
   for (const id of ['docFace', 'msgFace']) {
     const c = document.getElementById(id); if (id === 'msgFace' && c.hidden) continue;
-    G = c.getContext('2d'); G.clearRect(0, 0, 34, 30); docHead(2, 3, now);
+    G = c.getContext('2d'); G.clearRect(0, 0, 34, 38); docHead(2, 10, now);
   }
   G = g0;
 }
@@ -1476,7 +1653,7 @@ addEventListener('keydown', e => {
     return;
   }
   if (e.key.startsWith('Arrow')) { e.preventDefault(); nav(e.key); return; }
-  if (e.key === 'Escape' || e.key === 'Backspace') { if (view !== 'room') { e.preventDefault(); go('room'); } return; }
+  if (e.key === 'Escape' || e.key === 'Backspace') { if (VIEWS[view].parent) { e.preventDefault(); goBack(); } return; }
   const k = e.key.toLowerCase();
   if (k === 'h') { e.preventDefault(); crankDoc(); }
   else if (k === 'q') { e.preventDefault(); turn(-1); }
@@ -1487,10 +1664,10 @@ RDG.pad({ a: ' ', b: 'Escape', y: 'h', select: 'h', l: 'q', r: 'e', zl: 'q', zr:
 // ---------- Start ----------
 document.querySelectorAll('[data-s]').forEach(e => { e.textContent = STR[e.dataset.s]; });
 document.querySelectorAll('[data-s-label]').forEach(e => { e.setAttribute('aria-label', STR[e.dataset.sLabel]); });
-$('#backBtn').addEventListener('click', () => go('room'));
+$('#backBtn').addEventListener('click', goBack);
 $('#turnL').addEventListener('click', () => turn(-1));
 $('#turnR').addEventListener('click', () => turn(1));
-$('#docBtn').addEventListener('click', crankDoc);
+$('#docBtn').addEventListener('click', () => S.held ? giveDoc(S.held) : crankDoc());
 $('#soundBtn').addEventListener('click', () => { S.sound = !S.sound; save(); refresh(); });
 addEventListener('resize', fit);
 A.meters.forEach((m, i) => { AN.needles[i] = S.meters[i] ? m.reads : 0; });
