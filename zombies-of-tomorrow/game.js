@@ -426,11 +426,13 @@ function basementEnts() {
       if (flag("power")) { say([["", "The power is on."]]); return; }
       set("power"); S.light = 1; SFX.whirr();
       ents.find((e) => e.id === "lever").spr = "leveron";
+      ents.find((e) => e.id === "pinball").spr = "pinon";
       say([["", "Clunk. The lights flicker, buzz, and come on. Chrome everywhere, and dust on all of it."]], () => hint("Something in the next room is covered in dust"));
     } }),
     ent({ id: "bench", spr: "bench", x: 1.5, y: 4.5, r: 0.45, label: "Open the workbench drawer", use: useBench }),
     ent({ id: "arpf", spr: "arpfoff", x: 8.5, y: 2.3, r: 0.4, label: "Switch on the robot", use: useArpf }),
     ent({ id: "terminal", spr: "terminal", x: 6.6, y: 4.4, label: "Use the terminal", use: useTerminal }),
+    ent({ id: "pinball", spr: "pinoff", x: 1.45, y: 1.4, r: 0.45, label: "The pinball machine", use: usePinball }),
   ];
 }
 
@@ -531,6 +533,22 @@ function checkWin() {
   say([["A.R.P.F.", "Goo and stars! You did it! Ivan Pert would be proud."],
        ["A.R.P.F.", "The silo is through that door. I'll... I'll come too. If that's all right. I'm very good at checkers."]],
       () => hint("Go through the silo door"));
+}
+
+// Added 27 Nov, the kids' idea: a pinball machine in the basement that opens
+// the real one (rubberduckgames.com/pinball/, which has a Zombies of Tomorrow
+// table). It opens in a new tab, so the story is still here when you come
+// back: saves aren't built yet, and leaving this page would lose your place.
+function usePinball() {
+  if (!flag("power")) { say([["", "A pinball machine, under fifty years of dust. ZOMBIES OF TOMORROW, it says on the back-glass, very faintly. It's dark. The power must be off."]]); return; }
+  const lines = [["", "The pinball machine is lit up and ringing, all by itself. ZOMBIES OF TOMORROW. A corgi in a fishbowl helmet on the back-glass, and a round silver rocket."]];
+  if (flag("arpf")) lines.push(["A.R.P.F.", "Mr. Ego never let anybody play it. It's been waiting since 1975. One game wouldn't hurt."]);
+  say(lines, () => {
+    panel(`<h2>Pinball</h2><p>Play pinball in a new tab. Pick the Zombies of Tomorrow table. This game stays right here.</p>
+      <div class="row"><button id="pin-no" class="alt">Not now</button><button id="pin-go">Play pinball</button></div>`);
+    document.getElementById("pin-no").onclick = closePanel;
+    document.getElementById("pin-go").onclick = () => { closePanel(); window.open("../pinball/", "_blank"); };
+  });
 }
 
 // ---------- the story: Ego House (added 26 Nov, as in the novel's ch 18) ----------
