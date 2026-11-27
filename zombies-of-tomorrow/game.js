@@ -1,4 +1,5 @@
-// Zombies of Tomorrow, round one: bedroom to basement (first test build, 15 Nov).
+// Zombies of Tomorrow, round one: bedroom to basement (first test build, 15 Nov),
+// then the silo (26 Nov); the launch itself is launch.html.
 // A small first-person raycaster. All art comes from art.js (make_game_art.py).
 "use strict";
 
@@ -67,21 +68,24 @@ function addPage(title, text, image) {
 // ---------- levels ----------
 const WALLCHARS = {
   "#": "paper", p: "poster", w: "window", m: "starmap", k: "tile", K: "kwindow", d: "door",
-  c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome",
+  c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome", o: "silo", n: "silo7",
 };
 const LEVELS = {
   home: {
+    // Decided 26 Nov: the bedroom was 5 x 5 units (about 8 m, since a person is
+    // about 1 unit tall) and Parker said it was too big for a kid's room. It is
+    // 3 x 3 now, with a short hall to the kitchen; the kitchen is unchanged.
     map: [
-      "##p#w##kkKkkkk",
-      "#.....#......k",
-      "m.....#......k",
+      "#p#w###kkKkkkk",
+      "m...###......k",
       "#............k",
-      "#.....#......k",
-      "#.....#......k",
+      "#...###......k",
+      "#######......k",
+      "#######......k",
       "#######kkkdkkk",
     ],
     ceil: () => "plaster", floor: (x) => (x >= 7 ? "lino" : "boards"), light: 1,
-    start: { x: 2.0, y: 4.0, a: -Math.PI / 2 },
+    start: { x: 2.3, y: 2.6, a: -Math.PI / 2 },
   },
   basement: {
     map: [
@@ -98,6 +102,26 @@ const LEVELS = {
     ceil: () => "cpipes", floor: () => "cfloor", light: 0.45,
     start: { x: 2.5, y: 1.6, a: Math.PI / 2 },
   },
+  // Added 26 Nov: the silo under the estate, round as a grid allows, with
+  // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
+  // so the ship climbs up out of sight.
+  silo: {
+    map: [
+      "ooooonooooo",
+      "oooo...oooo",
+      "oo.......oo",
+      "oo.......oo",
+      "o.........o",
+      "o.........o",
+      "o.........o",
+      "oo.......oo",
+      "oo.......oo",
+      "oooo...oooo",
+      "ooooonooooo",
+    ],
+    ceil: () => "silodark", floor: () => "siloflr", light: 0.85,
+    start: { x: 5.5, y: 9.4, a: -Math.PI / 2 },
+  },
 };
 let L = null, map = null, ents = [];
 const P = { x: 0, y: 0, a: 0 };
@@ -109,28 +133,28 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = name === "home" ? homeEnts() : basementEnts();
+  ents = name === "home" ? homeEnts() : name === "basement" ? basementEnts() : siloEnts();
 }
 
 // ---------- the story: home ----------
 function homeEnts() {
   return [
-    ent({ id: "bed", spr: "bed", x: 1.6, y: 4.6, label: "Go to bed", use: useBed }),
-    ent({ id: "clock", spr: "clock", x: 2.7, y: 5.6, label: "Turn off the alarm", use: useClock }),
-    ent({ id: "comic", spr: "deskcomic", x: 4.4, y: 1.4, label: "Look at the comic", use: () => {
+    ent({ id: "bed", spr: "bed", x: 1.5, y: 3.4, label: "Go to bed", use: useBed }),
+    ent({ id: "clock", spr: "clock", x: 2.4, y: 3.65, label: "Turn off the alarm", use: useClock }),
+    ent({ id: "comic", spr: "deskcomic", x: 2.6, y: 1.35, label: "Look at the comic", use: () => {
       say([["", "An old comic, soft as cloth. ORION GOES TO SPACE. A corgi in a fishbowl helmet flies a round silver rocket, and a friendly robot with a lid for a hat helps him steer.", "art/orion-page-1.png"],
            ["", "In the middle, a page has been torn out. Inside the cover, in faded colored pencil: For my little star. Look up. Love, Papa.", "art/look-inscription.png"]],
           () => addPage("The Orion comic", "Your great-grandfather Ivan Pert drew this for his daughter Rosie in 1958. The robot has a lid for a hat. One page, just before the star map, is missing.", "art/orion-page-1.png"));
     } }),
-    ent({ id: "paper", spr: "deskpaper", x: 1.5, y: 1.4, label: "Read the newspaper clipping", use: () => {
+    ent({ id: "paper", spr: "deskpaper", x: 1.4, y: 1.35, label: "Read the newspaper clipping", use: () => {
       say([["", "A yellow newspaper clipping, 1958: ANOTHER SCIENTIST LOST. Plane vanishes over the Bermuda Triangle. Ivan Pert, 38, an engineer, is the third scientist to go missing this year.", "art/look-clipping.png"]],
           () => addPage("Missing scientists", "1958: Ivan Pert's plane vanished over the Bermuda Triangle. He was the third scientist to go missing that year. Why so many?", "art/look-clipping.png"));
     } }),
-    ent({ id: "photo", spr: "shelf", x: 5.5, y: 5.5, label: "Look at the photo", use: () => {
+    ent({ id: "photo", spr: "shelf", x: 3.6, y: 3.6, label: "Look at the photo", use: () => {
       say([["", "A black and white photo of your great-grandfather, Ivan Pert, grinning in front of a huge silver rocket in the desert.", "art/look-photo.png"], ["", "On the back, in the same handwriting as the comic: Bottling machine. Ha. Love, Papa.", "art/look-photo-back.png"], ["", "Nobody in the family can explain the rocket.", "art/look-photo.png"]],
           () => addPage("Ivan Pert and the rocket", "A photo of Ivan Pert next to a rocket nobody can explain. Where was this taken? Who built it?", "art/look-photo.png"));
     } }),
-    ent({ id: "mirror", spr: "mirror", x: 5.6, y: 1.3, label: "Look in the mirror", use: useMirror }),
+    ent({ id: "mirror", spr: "mirror", x: 3.65, y: 1.3, label: "Look in the mirror", use: useMirror }),
     ent({ id: "stove", spr: "stove", x: 12.4, y: 1.4 }),
     ent({ id: "mom", spr: "mom", x: 11.3, y: 2.0, label: "Talk to Mom", use: useMom }),
     ent({ id: "table", spr: "table", x: 9.5, y: 4.0, r: 0.45, label: () => (flag("human") ? "Open the lock box" : "Look at the table"), use: useBox }),
@@ -368,6 +392,95 @@ function checkWin() {
       () => hint("Go through the silo door"));
 }
 
+// ---------- the story: the silo (added 26 Nov, as in the novel's ch 19) ----------
+function siloEnts() {
+  return [
+    ent({ id: "ship", spr: "shipseven", x: 5.5, y: 4.6, r: 1.35, label: "Climb the ladder", use: useShip }),
+    ent({ id: "crate1", spr: "crate", x: 2.3, y: 6.6, r: 0.5, label: "Pry open the crate", use: useCrate }),
+    ent({ id: "crate2", spr: "crate", x: 8.7, y: 6.6, r: 0.5, label: "Pry open the crate", use: useCrate }),
+    ent({ id: "crate3", spr: "crate", x: 2.6, y: 2.9, r: 0.5, label: "Pry open the crate", use: useCrate }),
+    ent({ id: "tag", spr: "tagpost", x: 6.6, y: 6.3, r: 0.15, label: "Read the tag", use: useTag }),
+    ent({ id: "arpf", spr: "arpfon", x: 4.0, y: 8.5, r: 0.4, label: "Talk to A.R.P.F.", use: useArpfSilo }),
+  ];
+}
+
+function enterSilo() {
+  loadLevel("silo"); SFX.whirr();
+  say([["", "The stairs go down and down. At the bottom, a round concrete room as wide as a church, and so tall the top is lost in the dark."],
+       ["A.R.P.F.", "Ladies and gentlemen... the ship!", "art/look-ship.png"],
+       ["", "It's the rocket from the photograph. The rocket from the comic. Round and silver, standing on three red fins, with a big red 7 on its side.", "art/look-ship.png"],
+       ["A.R.P.F.", "Ship Seven. The families' ship. Fueled and ready since 1964. Somebody has been keeping it that way.", "art/look-ship.png"]],
+      () => {
+        addPage("Ship Seven", "The families' ship, in a silo under Ego House. Round and silver, three red fins, a big red 7. Fueled and ready since 1964.", "art/look-ship.png");
+        hint("Look around the silo. The ladder goes up to the hatch.");
+      });
+}
+
+function useCrate() {
+  const e = target();
+  if (flag("snacks")) {
+    if (e.spr === "crate") { e.spr = "crateopen"; SFX.ok(); }
+    say([["", "More Jackpot Bars. Hundreds of them. You already have plenty."]]);
+    return;
+  }
+  e.spr = "crateopen"; set("snacks"); S.items.snacks = true; SFX.ok();
+  say([
+    ["", "JACKPOT, in giant gold letters, with money signs all over it. You've found a fortune. You've found a FORTUNE."],
+    ["", "You pry the lid up with both hands..."],
+    ["", "Candy. It's candy. Jackpot Bars, gold wrappers, three cherries on every one. Best before 2027.", "art/look-jackpot.png"],
+    ["A.R.P.F.", "Mr. Ego's favorite! He ate one every day. Well. He did. Before."],
+  ], () => {
+    addPage("Jackpot Bars", "Crates and crates of them in the hold of Ship Seven, packed for the colony. Mr. Ego's favorite candy. Best before 2027, so somebody has been changing them.", "art/look-jackpot.png");
+    hint("Snacks: check. Climb the ladder to the hatch.");
+  });
+}
+
+function useTag() {
+  say([
+    ["", "A paper tag, tied to the rail with string, covered on both sides in tiny, neat handwriting. One line a year.", "art/look-tag.png"],
+    ["", "1964: Fuel checked. Seals checked. Ready. H.M. ... 1965: Ready. H.M. ... And on, and on, every year.", "art/look-tag.png"],
+    ["", "One line is different. 2006: NO.", "art/look-tag.png"],
+    ["", "The last line: 2025: Ready. H.M.", "art/look-tag.png"],
+  ], () => addPage("Hu Man's tag", "A tag on the rail by Ship Seven's ladder. Every year from 1964 to 2025, the same tiny handwriting: Ready. H.M. Except 2006, which just says NO.", "art/look-tag.png"));
+}
+
+function useArpfSilo() {
+  if (!flag("snacks")) say([["A.R.P.F.", "Ivan always said never fly without snacks. Those crates say JACKPOT. I'm sure that means something important."]]);
+  else say([["A.R.P.F.", "Up the ladder! I know the way. I've known the way for sixty-two years. Nobody asked."]]);
+}
+
+function useShip() {
+  if (!flag("snacks")) {
+    say([["", "You climb the ladder to the open hatch. Taped inside the door, a note in Ivan Pert's tidy capitals:"],
+         ["", "TO WHOEVER COMES. THE ROBOT KNOWS THE WAY. TRUST IT. AND BRING SNACKS. I.P."],
+         ["", "Snacks. You climb back down."]], () => hint("Find some snacks first. Those crates, maybe?"));
+    return;
+  }
+  say([
+    ["", "Up the ladder, through the hatch. Inside, the ship goes up and up in rings of cream leather seats, each one with a brass plate and a name. The families who never came."],
+    ["", "At the very top, a little round cockpit. Two seats. A panel of switches and dials and chunky levers. The left-hand seat fits you perfectly."],
+    ["A.R.P.F.", "Strap in, please. I've always wanted to say that. Strap in, please!"],
+    ["", "Far above you, with a groan of old steel, the silo doors begin to open. A circle of sky."],
+  ], countdown, (i) => { if (i === 3) SFX.whirr(); });
+}
+
+function countdown() {
+  let n = 10;
+  const tick = () => {
+    if (n > 0) {
+      card(`<p class="small">A calm, friendly voice from 1964, on A.R.P.F.'s radio:</p><h1>T-MINUS ${n}</h1>`, null, 60000);
+      beep(n > 3 ? 440 : 660, 0.12, "square", 0.05);
+      n--; setTimeout(tick, 800);
+    } else {
+      card(`<h1>LIFTOFF!</h1><p>The whole world turns into noise, and then into weight.</p>`, null, 60000);
+      for (let i = 0; i < 6; i++) setTimeout(() => beep(60 + i * 8, 0.4, "sawtooth", 0.08), i * 200);
+      try { sessionStorage.setItem("zot-name", S.name || ""); } catch (e) { /* the launch works without it */ }
+      setTimeout(() => { location.href = "launch.html"; }, 2200);
+    }
+  };
+  tick();
+}
+
 // ---------- the UI ----------
 const talkEl = document.getElementById("talk"), panelEl = document.getElementById("panel"), cardEl = document.getElementById("card");
 let talkQ = null;
@@ -452,7 +565,8 @@ function target() {
   let best = null, bd = 1.5;
   for (const e of ents) {
     if (!e.use || e.hidden || e.dead) continue;
-    const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy);
+    // reach is measured from the edge of big things (Ship Seven is 2.7 wide)
+    const dx = e.x - P.x, dy = e.y - P.y, d = Math.hypot(dx, dy) - Math.max(0, e.r - 0.3);
     let da = Math.atan2(dy, dx) - P.a;
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
@@ -524,7 +638,7 @@ function update(dt) {
     }
   }
   checkWin();
-  if (L.name === "basement" && flag("won") && P.y > 6.3) finish();
+  if (L.name === "basement" && flag("won") && P.y > 6.3) enterSilo();
 }
 
 function knockedOut() {
@@ -533,16 +647,6 @@ function knockedOut() {
     ents = ents.filter((e) => !e.enemy);
     ents.push(sprout(10.4, 3.5), sprout(10.5, 1.5), sprout(10.5, 4.5));
   });
-}
-
-let finished = false;
-function finish() {
-  if (finished) return; finished = true;
-  card(`<h1>END OF ROUND ONE</h1>
-        <p>Down the stairs, in the dark, something huge and silver is waiting in a silo.</p>
-        <p>Next time: the silo, and the crates marked JACKPOT.</p>
-        <p class="small">Pages in your guide book: ${S.guide.length}</p>
-        <div class="row"><button onclick="location.href='flight.html'">Try the flight between stations</button></div>`, "Play again", 0, () => location.reload());
 }
 
 // ---------- drawing ----------
@@ -661,7 +765,7 @@ function frame(t) {
 
 loadLevel("home");
 card(`<h1>ZOMBIES OF TOMORROW</h1>
-      <p class="small">Round one: bedroom to basement. A first test build.</p>
+      <p class="small">Round one: bedroom to liftoff. A test build.</p>
       <p>You dream of stars. A great wheel turns slowly in the dark.<br>Someone, very far away, is saying your name. A corgi barks.</p>
       <p class="small"><a href="flight.html" style="color:#e8b33c">Or skip ahead to the flight test</a></p>`,
      "Wake up", 0, () => {
