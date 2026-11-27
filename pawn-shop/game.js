@@ -47,6 +47,7 @@ const STR = {
     '<b>Getting about:</b> you start on foot, carrying 3 things to one yard sale a day. A used bike turns up at yard sales (5 things, downtown and the swap meet). Downtown, a beat-up truck comes up for sale now and then (12 things, big ones too, everywhere). Your old ride is traded in.',
     '<b>Downtown:</b> houses with a sign out are having a yard sale, and your rival has a shop. He prices high, but sometimes he gets one wrong.',
     '<b>Your rival:</b> he comes into your shop too, and snaps up anything you\'ve priced far too low.',
+    '<b>Good deeds:</b> tell a seller their find is worth more, let a kid have a toy for what they have, mail a photo album home, help your rival, give things away at the box by the door. Sometimes kindness comes back to you. Sometimes it doesn\'t. Your good deeds are listed at the bottom of this help.',
     '<b>Be kind:</b> sometimes a seller is hunting for something another stall has. Buy it and bring it to them.',
     '<b>The online store:</b> at the desk. Everything costs too much and there\'s no haggling, but sometimes it\'s the only place to get what you need.',
     '<b>Quiet days:</b> some days are slow, and around lunch the street goes quiet. Not everyone who comes in buys.',
@@ -182,6 +183,27 @@ const STR = {
   wishShout: 'Anyone seen a {item}?', wishNote: '“I\'ve been looking all over for a {item}. Have you seen one anywhere?”',
   wishGive: 'Give them the {item}', wishThanks: 'Oh, thank you! That\'s so kind. Here, take this. It was my great-grandma\'s.',
   wishThanksAgain: 'Oh, thank you! That\'s so kind. Here, for your trouble.', wishGot: 'You got the {what}.', wishTip: 'They give you ${n}.',
+  // good deeds (Randi, 27 Nov: kindness breeds more kindness; it doesn't
+  // always pay, and that's not the point)
+  honestBtn: 'Tell them it\'s worth more', honestKeep: '“Really? Then I\'ll keep it! Thank you for being honest.”',
+  honestSell: '“You\'re honest. I like that. It\'s still yours, for ${n}.”', honestDud: '“Really? Huh. I\'ll think about it. Thanks!”',
+  honestGone: 'They kept it. Being honest cost you the deal.',
+  kidcWants: 'They really want the {item} (tag ${tag}), but they only have ${n}.', kidcSell: 'Sell it for ${n}', kidcNo: 'Not today',
+  kidcHappy: ['Thank you! Thank you!', 'Best day ever!'], kidcSad: 'Oh. Okay...', kidcIn: ['Ooh, toys!', 'Mom said I could look.'],
+  mailBack: 'Mail it back ${n}', mailed: 'Wrapped up and mailed to the name inside. ${n} in stamps.',
+  mailLetter: 'A letter came: “Thank you for sending back our family album. We thought it was gone forever.”',
+  mailGift: 'A letter came with the album\'s thank-you note, and ${n} tucked inside.',
+  rivalStuck: 'Ugh! My truck won\'t start!', rivalHelpTitle: 'Your rival', rivalHelpText: 'His truck won\'t start. He\'s kicking the tire.',
+  rivalHelp: 'Give him a jump start', rivalTip: '“...Thanks. Hey. There\'s a sale tomorrow with something good on the table. Don\'t tell anyone I told you.”',
+  rivalThanks: '“...Thanks, I guess.”', rivalWhatever: '“Whatever. I had it.”', actRival: 'Help',
+  tipHere: 'Your rival\'s tip was good. Something real is on a table here.',
+  actDonate: 'Give', donateTitle: 'The donation box', donateText: 'Things nobody buys can still help someone. Pick something to give away.',
+  donateNone: 'Nothing in the back room to give.', donateBtn: 'Give it', donated: ['The shelter will love the {item}.', 'The library says thank you for the {item}.', 'The school will find a use for the {item}.'],
+  friendIn: ['I heard you\'re an honest shop!', 'My neighbor says good things about you.', 'My kid still talks about your shop!'],
+  deedsTitle: 'Good deeds', deedsNone: 'None yet.',
+  deed: { honest: 'told a seller their find was worth more', kid: 'let a kid have a toy for what they had', album: 'mailed a family album home',
+    rival: 'helped your rival when his truck wouldn\'t start', donate: 'gave away the {item}', wish: 'found a seller what they were hunting for', locket: 'gave the dump lady her locket back' },
+  deedLine: 'Day {day}: {what}.',
   // the kid selling sporks (his idea, 27 Nov)
   kidTitle: 'A kid selling sporks', kidHello: ['Sporks! A dollar each! It\'s a spoon AND a fork!', 'Get your sporks! Only one dollar!'],
   kidBuy: 'Buy a spork $1', kidAsk: 'Ask about the sporks', kidBought: 'Thank you! Enjoy your spork!',
@@ -207,7 +229,7 @@ const STR = {
   copsOk: 'Okay',
   toss: 'Throw it out', tossed: 'Into the trash it goes.', tossNote: 'Nobody will buy this. Not even the dealer.',
   // buyers in the shop
-  buyers: { rivalc: 'Your rival', hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
+  buyers: { rivalc: 'Your rival', kidc: 'A kid', friend: 'A friendly face', hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
   hunterSays: ['I\'ll give you ${n}. Cash.', 'How about ${n}? It\'s a bit worn.'],
   collectorIn: ['Anything rare today?', 'I collect these!', 'Let\'s see what you\'ve got.', 'Is this the flip shop?'],
   ask: 'Asking', yourPocket: 'You have ${n}.', buy: 'Buy ${n}', leave: 'Leave it', askLess: 'Ask for less',
@@ -294,7 +316,7 @@ const STR = {
     computer: 'old computer', cart: 'gold game cartridge', spork: 'spork', card: 'old baseball card',
     drill: 'old electric drill', handdrill: 'hand crank drill', mangle: 'clothes mangle', wrench: 'set of wrenches', saw: 'hand saw', toolbox: 'metal toolbox', toolset: 'new tool set in its case',
     hotelbox: 'old hotel box', globe: '1920s snow globe',
-    musket: 'Revolutionary War musket', mirror: 'old mirror', hubcap: 'chrome hubcap', tire: 'whitewall tire', hoodorn: 'hood ornament', headlamp: 'old car headlamp', license: 'old license plate',
+    musket: 'Revolutionary War musket', mirror: 'old mirror', album: 'old photo album', hubcap: 'chrome hubcap', tire: 'whitewall tire', hoodorn: 'hood ornament', headlamp: 'old car headlamp', license: 'old license plate',
   },
   pcName: '{d} home computer',
   shipName: 'model battleship {name}',
@@ -369,6 +391,7 @@ const STR = {
     saw: ['Sharp, straight and every tooth there.', 'Bent, with teeth missing. It won\'t cut straight.'],
     toolbox: ['A solid steel toolbox. The latches still snap shut.', 'Dented and rusted through at the bottom.'],
     toolset: ['A real tool set, new in its case. Chrome, not paint.', 'A knockoff. The "chrome" is grey plastic, and it bends.'],
+    album: ['An old family photo album. Someone\'s name and address are written inside the cover.', 'An old family photo album. Someone\'s name and address are written inside the cover.'],
     mirror: ['A 1920s mirror in a carved gold frame. The glass has gone a little cloudy, the way old mirrors do.', 'A new mirror in a plastic frame painted gold.'],
     musket: ['A real Revolutionary War musket, from about 1776. Rusted solid, it hasn\'t fired in two hundred years and never will. A piece of history.', 'A decorator copy from the 1970s. The wood is shiny and new and the metal is one cast piece. It never fired at all.'],
     hubcap: ['A 1950s chrome hubcap. See how it shines?', 'A plastic copy, painted silver. No shine at all.'],
@@ -474,6 +497,7 @@ const KINDS = {
   // car parts from the 1930s to the 1970s (Randi, 27 Nov). Numbers ours.
   hubcap: { ask: [5, 15], worth: 60, dud: 3, real: .5 },
   mirror: { ask: [10, 30], worth: 140, dud: 8, real: .45 },
+  album: { ask: [2, 6], worth: 5, dud: 5, real: 1 },
   // Revolutionary War muskets (Randi, 27 Nov: very rare and not working). A
   // relic: it never fires, and there's no ammo anywhere. Numbers ours.
   musket: { ask: [40, 90], worth: 1500, dud: 40, real: .45 },
@@ -490,7 +514,7 @@ const PC_WORTH = { '1970s': 700, '1980s': 300, '1990s': 120 }, PC_ODDS = [['1970
 // least $80, 5 at least $150. The 4 and 5 multipliers are ours. Duds have a
 // condition too, but it doesn't save them.
 const QUAL = { odds: [.15, .25, .3, .2, .1], mult: [.25, .5, 1, 1.25, 1.5], floor: [0, 0, 0, 80, 150], cap: [10, 1e9, 1e9, 1e9, 1e9] };
-const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk', 'tablet', 'spork', 'hotelbox']);
+const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk', 'tablet', 'spork', 'hotelbox', 'album']);
 const TOOLS = ['drill', 'handdrill', 'wrench', 'saw', 'toolbox'];
 // broken but real, so the bench can fix them; everything else is a copy
 // [hours of shop time, parts $, chance it fails]; the shop day is 8 hours.
@@ -516,7 +540,7 @@ const TOYS = ['robot', 'tincar', 'figure', 'sub', 'truck', 'plane', 'biplane'];
 const BOX_LOOT = [
   { p: .2, kinds: TOYS }, { p: .15, kinds: ['shovel', 'grinder', 'iron', 'sharpener'] }, { p: .1, kinds: ['canteen'] },
   { p: .1, kinds: ['comics'] }, { p: .08, kinds: ['book'] }, { p: .08, kinds: ['plush'] }, { p: .06, kinds: ['present'] },
-  { p: .07, kinds: ['milk'] }, { p: .08, kinds: ['lint'] }, { p: .06, kinds: ['mouse'] }, { p: .02, kinds: ['pills'] },
+  { p: .05, kinds: ['milk'] }, { p: .05, kinds: ['lint'] }, { p: .04, kinds: ['album'] }, { p: .06, kinds: ['mouse'] }, { p: .02, kinds: ['pills'] },
 ];
 // The card's mystery box: $100 for anything from $10 to $5,000.
 const BOX_IN = [
@@ -562,6 +586,9 @@ const TUNE = {
   // the play corner: $15 a go is his; the rest ours
   play: 15, playTime: [8, 12], cornerCarts: 4, gamer: .3, gamerPerCart: .07,
   kidChance: .15,
+  // good deeds: how often each comes up and what sometimes comes back. Ours.
+  kidShop: .12, kidHas: 3, kidMax: 30, rivalTrouble: .3, stamps: 3, friendChance: .15,
+  honestKeep: .5, honestFair: .6, honestFriend: .4, kidFriend: .3, mailOdds: { letter: .5, gift: .2 }, mailGift: 10, rivalOdds: { tip: .35, thanks: .3 },
   // rides (27 Nov, his ask). Ours: what each carries, trade-ins, prices, odds.
   bikeChance: .45, bikePrice: [60, 90], truckChance: .4, truckPrice: [450, 650], tankStun: 20,
   rivalVisit: .2, rivalCheap: .6, rivalMark: [1.6, 2.2], rivalMistake: .2,
@@ -743,6 +770,7 @@ const PIX = {
   toolset: ['yyyyyyyyyyyy', 'yhhhhhhhhhhy', 'yhSSShSShhhy', 'yhSSShSShhhy', 'yhhhhhhhhhhy', 'yVVVVVVVVVVy', 'yyyyyyyyyyyy'],
   musket: ['iiiiiiiiiiKwww....', '.........iwwmwwwww', '...........bwmmmww', '.............mmmmw'],
   armor: ['.......HHHHH........', '......HAAAAAH.......', '.....HAAAAAAAHHHHHHH', '..HHHHHHHHHHHHH.....', '.HAAAAAAAAAAAAAH....', 'HAAAAAAAAAAAAAAAH...', 'HbbbbbbbbbbbbbbbH...', 'bbObObObObObObObbb..', '.bbbbbbbbbbbbbbbb...'],
+  album: ['LLLLLLLLL', 'LmmmmmmmL', 'LmnnnnnmL', 'LmnoGonmL', 'LmnnnnnmL', 'LmmmmmmmL', 'LmBBBBBmL', 'LmmmmmmmL', 'LLLLLLLLL'],
   mirror: ['.BBBBBB.', 'BhhhhhhB', 'BhzhhhhB', 'BhhzhhhB', 'BhhhhhhB', 'BhhhhhhB', 'BhhhhhhB', '.BBBBBB.'],
   bike: ['......bb....', '..bbbbbV....', '...VVVVVV...', '.bb.V..V.bb.', 'b..bV...b..b', 'b..b.....b.b', '.bb.......bb'],
   truck: ['.........RRRR...', '.........RhhR...', 'RRRRRRRRRRhhRR..', 'RKRRRRRKRRRRRRRy', 'RRRRKRRRRRRRRRRR', '.bb.......bb....', '.bb.......bb....'],
@@ -817,6 +845,7 @@ const LOOK = {
   toolset: [PIX.toolset, swap(PIX.toolset, 'S', 'd')],
   hotelbox: [PIX.hotelbox, PIX.hotelbox], globe: [PIX.globe, PIX.globe],
   musket: [PIX.musket, swap(swap(swap(PIX.musket, 'm', 'x'), 'w', 'X'), 'K', 'i')],
+  album: [PIX.album, PIX.album],
   mirror: [PIX.mirror, swap(PIX.mirror, 'B', 'Q')],
   hubcap: [PIX.hubcap, swap(swap(swap(PIX.hubcap, 'S', 'd'), 'h', 'd'), 'O', 'i')],
   tire: [PIX.tire, edit(PIX.tire, [[3, 2, 'K'], [4, 2, 'b'], [2, 5, 'K'], [9, 6, 'b'], [10, 4, 'K'], [6, 9, 'b'], [7, 9, 'K']])],
@@ -943,6 +972,8 @@ const SHOP = [
   { id: 'fleet', x: 16.2, y: 8.4, w: 2.6, h: 1.6, stand: { x: 17.5, y: 10.5 }, act: 'actFleet' },
   // the play corner, bottom left (27 Nov)
   { id: 'corner', x: 1, y: 6.8, w: 2.2, h: 1.3, stand: { x: 2.1, y: 9 }, act: 'actCorner' },
+  // the donation box by the door (27 Nov)
+  { id: 'donate', x: 6.6, y: 9.7, w: 1, h: .9, stand: { x: 8, y: 10.3 }, act: 'actDonate' },
   // the frog tank, once it's bought (27 Nov)
   // the workbench, once it's bought, by the rack (27 Nov)
   { id: 'bench', x: 16.4, y: 6.4, w: 2.4, h: 1, stand: { x: 17.4, y: 7.8 }, act: 'actBench', only: () => S.bench },
@@ -954,7 +985,7 @@ const SHOP_DOOR = { x: 10, y: 11.8 }, REG_FRONT = { x: 14.5, y: 9.6 };
 // each with its own mix, and the swap meet, walked stall to stall. `MK` is
 // the place you're at: its finds, slots, sellers, what's solid.
 const SALES = {
-  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'shiplamp', 'radiometer', 'computer', 'computer', ...TOOLS, ...CAR_PARTS, ...(frogsLeft() ? ['hotelbox'] : [])]).slice(0, 5), ...rareMusket(), ...(Math.random() < .6 ? ['box'] : [])] },
+  garage: { house: '#e8dcc4', siding: '#cfc2a6', yes: .5, finds: () => [...shuffle(['shovel', 'plate', 'camera', 'grinder', 'scale', 'lantern', 'insulator', 'typewriter', 'iron', 'sharpener', 'bottle', 'canteen', 'train', 'boxcam', 'folding', 'enlarger', 'tlr', 'moviecam', 'flashcam', 'shiplamp', 'radiometer', 'computer', 'computer', 'album', ...TOOLS, ...CAR_PARTS, ...(frogsLeft() ? ['hotelbox'] : [])]).slice(0, 5), ...rareMusket(), ...(Math.random() < .6 ? ['box'] : [])] },
   toys: { house: '#d8e4f0', siding: '#b8c8d8', yes: .5, finds: () => ['junk', 'junk', 'junk', ...shuffle([...TOYS, 'train']).slice(0, 2), pick(['figure', 'duck', 'box', 'present', 'plush', 'comics', 'cart', 'cart'])] },
   cat: { house: '#f0d8e0', siding: '#d8b8c4', yes: .15, cats: true, finds: () => ['hairball', 'hairball', 'hairball', 'hairball', ...shuffle(['plate', 'lantern', 'scale', 'camera']).slice(0, 2)] },
   swap: { fee: 5 },
@@ -1075,7 +1106,8 @@ function buildSwap(mine = null) {
 }
 let scene = 'shop';
 const here = o => !o.only || o.only();
-const objs = () => scene === 'shop' ? SHOP.filter(here) : MK.objs.filter(o => (o.slot == null || MK.items[o.slot]) && here(o));
+const rivalObj = () => MK.rival && MK.rival.mode === 'stuck' && !(MK.rival.route || []).length ? [{ id: 'rivalT', x: MK.rival.x - .5, y: MK.rival.y - 1.2, w: 1, h: 1.2, stand: { x: MK.rival.x + .8, y: MK.rival.y }, act: 'actRival' }] : [];
+const objs = () => scene === 'shop' ? SHOP.filter(here) : [...MK.objs.filter(o => (o.slot == null || MK.items[o.slot]) && here(o)), ...rivalObj()];
 function solidAt(x, y) {
   if (scene === 'shop') {
     if (x < 1 || x >= W - 1 || y < 2 || y >= H - 1.2) return true;
@@ -1250,6 +1282,7 @@ function use(o) {
     if (o.id === 'heap') return sweepHeap();
     if (o.id === 'kid') return kidCard();
     if (o.id === 'ridesale') return rideCard();
+    if (o.id === 'rivalT') return rivalHelpCard();
     if (o.mine) return firstWaiting() ? regCard() : say(t('meetMine'));
     if (o.slot != null) return lookCard(o.slot);
     if (o.id === 'car') return carCard();
@@ -1265,6 +1298,7 @@ function use(o) {
   if (o.id === 'corner') return cornerCard();
   if (o.id === 'tank') return tankCard();
   if (o.id === 'bench') return benchCard();
+  if (o.id === 'donate') return donateCard();
 }
 
 // ---------- Cards ----------
@@ -1302,6 +1336,11 @@ $('#card').addEventListener('click', e => {
   else if (a === 'love') { closeCard(); showBar(); }
   else if (a === 'kidBuy') kidBuy();
   else if (a === 'buyRide') buyRide();
+  else if (a === 'honest') honest(+b.dataset.slot);
+  else if (a === 'helpRival') helpRival();
+  else if (a === 'donate') donate(byUid(+b.dataset.uid));
+  else if (a === 'mailBack') { S.stock = S.stock.filter(x => x !== f); S.pocket -= TUNE.stamps; S.mail = { day: S.day }; deed('album'); save(); showBar(); SFX.coin(); say(t('mailed', { n: TUNE.stamps })); deskCard(); }
+  else if (a === 'kidSell') { const c = regCust; c.price = TUNE.kidHas; deed('kid'); if (Math.random() < TUNE.kidFriend) S.friends = (S.friends || 0) + 1; sell(c, TUNE.kidHas); }
   else if (a === 'fleetOut') fleetOut(b.dataset.name);
   else if (a === 'wishGive') wishGive(byUid(+b.dataset.uid));
   else if (a === 'openHotel') openHotel(f);
@@ -1402,6 +1441,10 @@ function goBuying(id, mine = null) {
     const rv = MK.vendors.find(v => v.rival); if (rv) { rv.say = { text: t('tankGasp'), t: 3 }; rv.yes = .6; }
   }
   if (id === 'downtown') say(t('goalDowntown'));
+  if (S.tip && (MK.kind === 'yard' || MK.kind === 'downtown')) {
+    const i = MK.items.findIndex((f, i) => f && !f.good && KINDS[f.kind].real > 0 && f.kind !== 'box' && !MK.vendors[MK.slots[i].vendor].rival && !f.free);
+    if (i >= 0) { let g = makeFind(MK.items[i].kind); for (let n = 0; n < 20 && !g.good; n++) g = makeFind(MK.items[i].kind); if (g.good) { MK.items[i] = g; S.tip = false; save(); say(t('tipHere')); } }
+  }
   showBar();
 }
 // ----- your table at the swap meet -----
@@ -1467,7 +1510,11 @@ function stepRival(dt) {
   if (r.mode === 'rest') {
     r.t -= dt; if (r.t > 0) return;
     const open = MK.items.map((f, i) => wants(i) ? i : -1).filter(i => i >= 0);
-    if (r.took >= r.max || !open.length) { r.say = { text: t('rivalBye'), t: 2 }; r.mode = 'leave'; r.route = path(r, MK.start) || []; return; }
+    if (r.took >= r.max || !open.length) {
+      // now and then his truck won't start, and he's stuck by the gate
+      if (!r.troubled && Math.random() < TUNE.rivalTrouble) { r.troubled = true; r.mode = 'stuck'; r.route = path(r, { x: MK.start.x + 1.6, y: MK.start.y }) || []; r.say = { text: t('rivalStuck'), t: 3 }; return; }
+      r.say = { text: t('rivalBye'), t: 2 }; r.mode = 'leave'; r.route = path(r, MK.start) || []; return;
+    }
     r.slot = pick(open); const o = MK.objs.find(o => o.slot === r.slot);
     r.route = path(r, { x: o.stand.x + .5, y: o.stand.y }) || [{ x: o.stand.x + .5, y: o.stand.y }]; r.mode = 'go';
   } else if (r.mode === 'go') {
@@ -1484,14 +1531,15 @@ function stepRival(dt) {
       } else { (r.passed ||= []).push(f.uid); r.say = { text: t('rivalPass'), t: 1.4 }; }
     }
     r.mode = 'rest'; r.t = randIn(TUNE.rivalRest);
-  } else if (r.mode === 'leave') { if (walk(r, dt, r.speed)) r.gone = true; }
+  } else if (r.mode === 'stuck') { walk(r, dt, r.speed); if (!r.say && Math.random() < dt / 6) r.say = { text: t('rivalStuck'), t: 2.4 }; }
+  else if (r.mode === 'leave') { if (walk(r, dt, r.speed)) r.gone = true; }
 }
 // ----- being kind at the swap meet (Randi, 27 Nov) -----
 // Give a seller the thing they're hunting for. The first time, it's a 1920s
 // snow globe that was their great-grandma's; after that, a few dollars.
 function wishGive(f) {
   if (!f || !MK.wish) return;
-  const v = MK.vendors[MK.wish.vendor]; MK.wish.done = true;
+  const v = MK.vendors[MK.wish.vendor]; MK.wish.done = true; deed('wish');
   S.stock = S.stock.filter(x => x !== f); const i = spotOf(f); if (i >= 0) S.spots[i] = null;
   let what, pic;
   if (!S.globe) { const g = makeFind('globe'); delete g.ask; g.cost = 0; S.stock.push(g); S.globe = true; what = nameOf(g); pic = picHtml(g); SFX.wow(); }
@@ -1618,7 +1666,7 @@ function ladyCard() {
   S.lady = { ...L, stage: 'lost', asked: true }; save();
 }
 function giveLocket() {
-  S.lady.stage = 'given'; save(); SFX.wow();
+  S.lady.stage = 'given'; deed('locket'); SFX.wow();
   openCard(`${h2(t('ladyName'))}<p>${t('ladyThanks')}</p><div class="row">${btn('close', t('done'), true)}</div>`);
   const v = MK.vendors.find(v => v.lady), h = MK.heap;
   v.route = path(v, { x: h.x - .6, y: h.y + 1.6 }) || [{ x: h.x - .6, y: h.y + 1.6 }];
@@ -1731,6 +1779,55 @@ function drawDowntown(now) {
   }
   drawFinds(now);
   drawRide(2 * T, 8.2 * T);
+}
+// ----- good deeds (Randi, 27 Nov) -----
+// Kindness that sometimes comes back and sometimes doesn't: a friendly
+// customer later (`S.friends`), a tip, a letter, or nothing at all. There's no
+// score; the ? help lists what he's done.
+function deed(k, v = {}) { (S.deeds ||= []).push({ k, day: S.day, ...v }); save(); }
+function deedsHtml() {
+  const list = (S.deeds || []).slice(-10).reverse().map(d => `<li>${t('deedLine', { day: d.day, what: t(`deed.${d.k}`, d) })}</li>`).join('');
+  return `<li><b>${t('deedsTitle')}</b>${list ? `<ul>${list}</ul>` : ` ${t('deedsNone')}`}</li>`;
+}
+// the honest seller: once a trip, tell a seller a find is worth more
+function honest(slot) {
+  const f = MK.items[slot]; if (!f || MK.told) return;
+  MK.told = true; deed('honest');
+  if (f.good && f.value >= 30) {
+    if (Math.random() < TUNE.honestFriend) S.friends = (S.friends || 0) + 1;
+    if (Math.random() < TUNE.honestKeep) { MK.items[slot] = null; save(); closeCard(); say(t('honestKeep')); say(t('honestGone')); return; }
+    f.ask = Math.max(f.ask, round5(f.value * TUNE.honestFair)); f.reply = t('honestSell', { n: f.ask }).replace(/^“|”$/g, '');
+  } else f.reply = t('honestDud').replace(/^“|”$/g, '');
+  save(); lookCard(slot);
+}
+// the rival in trouble: help, and maybe he tips you off
+function rivalHelpCard() {
+  openCard(`${h2(t('rivalHelpTitle'))}<p>${t('rivalHelpText')}</p><div class="row">${btn('close', t('leave'))}${btn('helpRival', t('rivalHelp'), true)}</div>`);
+}
+function helpRival() {
+  const r = MK.rival; deed('rival'); SFX.car();
+  const roll = Math.random(), o = TUNE.rivalOdds;
+  const line = roll < o.tip ? (S.tip = true, t('rivalTip')) : roll < o.tip + o.thanks ? t('rivalThanks') : t('rivalWhatever');
+  save(); r.mode = 'leave'; r.route = [{ x: -2, y: r.y }];
+  openCard(`${h2(t('rivalHelpTitle'))}<p>${line}</p><div class="row">${btn('close', t('done'), true)}</div>`);
+}
+// the donation box by the door
+function donateCard() {
+  const list = inBack().map(f => `<li><span><img src="${picSrc(rowsOf(f), colOf(f))}" alt=""> ${Name(f)}</span> ${btn('donate', t('donateBtn'), false, `data-uid="${f.uid}"`)}</li>`).join('');
+  openCard(`${h2(t('donateTitle'))}<p>${t('donateText')}</p>${list ? `<ul class="store">${list}</ul>` : `<p class="soft">${t('donateNone')}</p>`}<div class="row">${btn('close', t('done'), true)}</div>`);
+}
+function donate(f) {
+  if (!f) return;
+  S.stock = S.stock.filter(x => x !== f); deed('donate', { item: nameOf(f) }); SFX.coin();
+  say(t('donated', { item: nameOf(f) })); donateCard();
+}
+// a mailed album: a letter in a day or two, sometimes a little gift, sometimes nothing
+function mailMorning() {
+  const m = S.mail; if (!m || S.day <= m.day) return;
+  S.mail = null; const r = Math.random(), o = TUNE.mailOdds;
+  if (r < o.gift) { S.pocket += TUNE.mailGift; say(t('mailGift', { n: TUNE.mailGift })); SFX.ching(); }
+  else if (r < o.gift + o.letter) say(t('mailLetter'));
+  save();
 }
 // ----- the kid selling sporks (his idea, 27 Nov) -----
 // Now and then a kid has a little table at a yard sale, selling sporks for a
@@ -1856,7 +1953,7 @@ function lookCard(slot) {
   const rough = S.guide && f.q ? `<dt>${t('condLbl')}</dt><dd>${STR.guideSays[f.q - 1]}</dd>` : '';
   openCard(`${h2(Name(f))}<div class="look">${picHtml(f)}<div class="facts"><dl><dt>${t('ask')}</dt><dd>$${f.ask}</dd>${rough}</dl><p class="soft">${t('yourPocket', { n: S.pocket })}</p></div></div>${note}
     <p id="sellerSays" class="soft" role="status">“${f.reply || (f.free ? t('giveaway') : sl.line)}”</p>
-    <div class="row">${btn('close', t('leave'))}${have ? btn('wishGive', t('wishGive', { item: t(`kinds.${w.kind}`) }), false, `data-uid="${have.uid}"`) : ''}${f.free ? '' : btn('askLess', t('askLess'), false, `data-slot="${slot}" ${f.asked ? 'disabled' : ''}`)}${btn('buy', f.free ? t('takeFree') : t('buy', { n: f.ask }), true, `data-slot="${slot}" ${poor ? 'disabled' : ''}`)}</div>`);
+    <div class="row">${btn('close', t('leave'))}${canTell(f, sl) ? btn('honest', t('honestBtn'), false, `data-slot="${slot}"`) : ''}${have ? btn('wishGive', t('wishGive', { item: t(`kinds.${w.kind}`) }), false, `data-uid="${have.uid}"`) : ''}${f.free ? '' : btn('askLess', t('askLess'), false, `data-slot="${slot}" ${f.asked ? 'disabled' : ''}`)}${btn('buy', f.free ? t('takeFree') : t('buy', { n: f.ask }), true, `data-slot="${slot}" ${poor ? 'disabled' : ''}`)}</div>`);
 }
 // Ask for less: a timing bar instead of a coin flip (Randi, 26 Nov). One try per
 // find. Where the green sits moves each time, so it can't be learned by heart.
@@ -1890,6 +1987,8 @@ function hgStop() {
   else { f.reply = t('hgMiss') + ' ' + t(h.v.no); SFX.no(); }
   lookCard(h.slot);
 }
+// telling is for ordinary sellers, once a trip, about ordinary finds
+const canTell = (f, sl) => !MK.told && (MK.kind === 'yard' || MK.kind === 'downtown') && !f.free && !f.reply && !MK.vendors[sl.vendor].rival && !['box', 'junk', 'hairball', 'spork', 'album'].includes(f.kind);
 const cantCarry = f => isBig(f) && !ride().big ? t('tooBig', { ride: t(`rides.${S.ride}`) }) : MK.bought >= ride().carry ? t('carryFull', { ride: t(`rides.${S.ride}`), n: ride().carry }) : '';
 function buy(slot) {
   const f = MK.items[slot];
@@ -2009,7 +2108,8 @@ function findCard(f, from, spot = null) {
   if (isBig(f)) note += ' ' + t('bigNote');
   if (atDesk && known(f) && !dealerPays(f) && f.kind !== 'pills') note += ' ' + t('tossNote');
   const acts = [];
-  if (atDesk && f.kind === 'present') acts.push(btn('unwrap', t('unwrap'), true));
+  if (atDesk && f.kind === 'album') { note = STR.notes.album[0]; acts.push(btn('mailBack', t('mailBack', { n: TUNE.stamps }), true, S.pocket < TUNE.stamps ? 'disabled' : '')); }
+  else if (atDesk && f.kind === 'present') acts.push(btn('unwrap', t('unwrap'), true));
   else if (atDesk && f.kind === 'pills') acts.push(btn('turnIn', t('turnIn'), true));
   else if (atDesk && !known(f)) acts.push(f.kind === 'box' ? btn('openBox', t('openBox')) : btn('snap', t('snap')));
   // the dealer's offer would give away what it's worth, so it shows once you know
@@ -2162,7 +2262,7 @@ function rentCard() {
 function nextDay() {
   closeCard(); S.day++; S.phase = 'morning'; S.clock = 0; S.yardDone = false;
   const was = [...S.today].sort().join(); do S.today = pickToday(); while ([...S.today].sort().join() === was); save();
-  P.x = 10; P.y = 9.5; say(t('morning', { n: S.day })); showBar();
+  P.x = 10; P.y = 9.5; say(t('morning', { n: S.day })); mailMorning(); showBar();
   if (S.catLove && !S.catLove.sent && S.day > S.catLove.day) {
     S.catLove.sent = true; S.pocket += TUNE.loveGift; save(); SFX.wow(); showBar();
     openCard(`${h2(t('loveTitle'))}<p class="note">${t('loveText', { title: S.catLove.title || t('loveTitleNone') })}</p><p>${t('loveGift', { n: TUNE.loveGift })}</p><div class="row">${btn('love', t('done'), true)}</div>`, null, 'love');
@@ -2195,6 +2295,24 @@ function spawnCust() {
     if (g.route) { custs.push(g); SFX.door(); }
     return;
   }
+  // a kid after a toy they can't afford, now and then
+  const toy = S.spots.findIndex(u => { const f = byUid(u); return f && [...TOYS, 'duck', 'plush', 'figure', 'train'].includes(f.kind) && f.tag > TUNE.kidHas && f.tag <= TUNE.kidMax; });
+  if (!fan && toy >= 0 && Math.random() < TUNE.kidShop && !custs.some(o => o.kind === 'kidc')) {
+    const k = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look: pick(LOOKS), kind: 'kidc', rows: KID, mode: 'in', t: 0, walkT: 0, face: 1, find: null, spot: toy, say: { text: t('kidcIn'), t: 2 } };
+    k.route = path(k, SHOP.find(o => o.spot === toy).stand, true);
+    if (k.route) { custs.push(k); SFX.door(); }
+    return;
+  }
+  // someone who heard about you, now and then, after a good deed
+  if (!fan && S.friends > 0 && Math.random() < TUNE.friendChance) {
+    S.friends--; save();
+    const free = S.spots.map((u, i) => u != null && !custs.some(o => o.spot === i) ? i : -1).filter(i => i >= 0);
+    if (free.length) {
+      const fr = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look: pick(LOOKS), kind: 'friend', rows: CUST, mode: 'in', t: 0, walkT: 0, face: 1, find: null, spot: pick(free), say: { text: t('friendIn'), t: 2.4 } };
+      fr.route = path(fr, SHOP.find(o => o.spot === fr.spot).stand, true);
+      if (fr.route) { custs.push(fr); SFX.door(); return; }
+    }
+  }
   // the rival, now and then, after anything you've priced far too low
   const cheap = S.spots.findIndex(u => { const f = byUid(u); return f && worthTo(f) >= 20 && f.tag < worthTo(f) * TUNE.rivalCheap; });
   if (!fan && cheap >= 0 && Math.random() < TUNE.rivalVisit && !custs.some(o => o.kind === 'rivalc')) {
@@ -2224,6 +2342,10 @@ function spawnCust() {
 // for any hairball sculpture: to him they're art.
 function decide(c, f) {
   // the rival buys only what's priced far too low, at the tag, to flip
+  // a kid always wants it, and has what they have
+  if (c.kind === 'kidc') { c.price = f.tag; c.offer = null; c.max = TUNE.kidHas; return true; }
+  // a friend pays fair, a little over, and doesn't haggle
+  if (c.kind === 'friend') { const w = worthTo(f) * rand(1, 1.25); if (!worthTo(f) || f.tag > w) return false; c.price = c.max = f.tag; c.offer = null; return true; }
   if (c.kind === 'rivalc') { const ok = worthTo(f) >= 20 && f.tag < worthTo(f) * TUNE.rivalCheap; if (ok) { c.price = c.max = f.tag; c.offer = null; } return ok; }
   const base = c.kind === 'catfan' && f.kind === 'hairball' ? Math.max(worthTo(f), round5(randIn(TUNE.catFan))) : worthTo(f);
   const mint = f.q === 5;
@@ -2283,7 +2405,7 @@ function stepCusts(dt) {
       if (c.t > 0) continue;
       const f = byUid(S.spots[c.spot]);
       if (!f) { leaveShop(c); continue; }
-      if (c.kind !== 'catfan' && c.kind !== 'collector' && c.kind !== 'rivalc' && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
+      if (!['catfan', 'collector', 'rivalc', 'kidc', 'friend'].includes(c.kind) && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
       if (!decide(c, f)) { bubble(c, t(c.kind === 'rivalc' ? 'rivalNothing' : 'tooPricey')); leaveShop(c); continue; }
       if (c.kind === 'catfan' && f.kind === 'hairball') bubble(c, t('catFanBuy'), 2.4);
       c.find = f; S.spots[c.spot] = null; save();
@@ -2360,6 +2482,7 @@ function regCard() {
   const c = regCust;
   if (!c) { openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<p>${t('regEmpty')}</p><div class="row">${btn('close', t('done'), true)}</div>`); return; }
   const f = c.find, item = nameOf(f), who = `<p><b>${t(`buyers.${c.kind}`)}</b></p>`;
+  if (c.kind === 'kidc') return openCard(`${h2(t('regTitle'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('kidcWants', { item, tag: f.tag, n: TUNE.kidHas })}</p></div></div><div class="row">${btn('noSale', t('kidcNo'))}${btn('kidSell', t('kidcSell', { n: TUNE.kidHas }), true)}</div>`, null, 'noSale');
   if (c.offer == null) {
     openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div>${bidRow(c)}<div class="row">${btn('noSale', t('noSale'))}${c.bid ? btn('bidSell', t('bidSell', { n: c.bid })) : ''}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
   } else {
@@ -2375,11 +2498,11 @@ function counter(c) {
   if (c.mid <= c.max) { bubble(c, t('deal', { n: c.mid })); sell(c, c.mid); }
   else { SFX.no(); bubble(c, t('walkOff')); closeCard(); putBack(c); leaveShop(c); }
 }
-function noSale(c) { closeCard(); bubble(c, t('walkOff')); putBack(c); leaveShop(c); }
+function noSale(c) { closeCard(); bubble(c, t(c.kind === 'kidc' ? 'kidcSad' : 'walkOff')); putBack(c); leaveShop(c); }
 function sell(c, n) {
   const f = c.find; c.find = null;
   S.stock = S.stock.filter(x => x !== f);
-  bubble(c, t(c.kind === 'rivalc' ? 'rivalSucker' : 'thanks'), 2.4); leaveShop(c);
+  bubble(c, t(c.kind === 'rivalc' ? 'rivalSucker' : c.kind === 'kidc' ? 'kidcHappy' : 'thanks'), 2.4); leaveShop(c);
   // the cat fan and the artist: a letter comes the next morning
   if (c.kind === 'catfan' && f.kind === 'hairball' && !S.catLove) S.catLove = { title: f.title || '', day: S.day, sent: false };
   const r = scene === 'shop' ? SHOP.find(o => o.id === 'reg') : { x: c.x - 2.5, y: c.y - 1 };
@@ -2436,7 +2559,7 @@ function goalText() {
 }
 function toggleHelp(open = $('#help').hidden) {
   $('#help').hidden = !open; $('#helpBtn').setAttribute('aria-expanded', open);
-  if (open) { $('#goalNow').textContent = goalText(); $('#helpList').innerHTML = STR.help.map(l => `<li>${l}</li>`).join(''); }
+  if (open) { $('#goalNow').textContent = goalText(); $('#helpList').innerHTML = STR.help.map(l => `<li>${l}</li>`).join('') + deedsHtml(); }
   else hintUntil = performance.now() + TUNE.hint;
 }
 $('#helpBtn').addEventListener('click', () => toggleHelp());
@@ -2544,6 +2667,8 @@ function drawShop(now) {
       tagAt(f.tag, x + w / 2, o.kind === 'rack' ? y + h - 6 : y + h + 3);
     }
   }
+  // the donation box: a blue bin with GIVE on it
+  { const d = SHOP.find(o => o.id === 'donate'), x = d.x * T, y = d.y * T; px(x, y, 16, 14, '#3b6ea8'); px(x, y, 16, 3, '#5aa6e4'); px(x + 3, y + 1, 10, 1, '#1a2a4a'); text('GIVE', x + 1, y + 6, '#ffffff'); }
   // the workbench: a wooden bench, a vise, a pegboard of tools
   if (S.bench) {
     const bn = SHOP.find(o => o.id === 'bench'), bx = bn.x * T, by = bn.y * T;
