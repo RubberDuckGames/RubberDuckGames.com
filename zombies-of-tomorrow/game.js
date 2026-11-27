@@ -68,6 +68,12 @@ function addPage(title, text, image) {
   hint("New page in your guide book (G)");
 }
 
+// Moving to another part of the same page (27 Nov): setting location.href to
+// index.html#something from index.html#else only changes the hash, and the
+// browser doesn't reload for that, so the Harvest Ring and Hometown exits
+// left you standing where you were. Set the hash, then reload.
+function goTo(hash) { location.hash = hash; location.reload(); }
+
 // ---------- levels ----------
 const WALLCHARS = {
   "#": "paper", p: "poster", w: "window", m: "starmap", k: "tile", K: "kwindow", d: "door",
@@ -80,6 +86,11 @@ const WALLCHARS = {
   Y: "roundwin", J: "schoolfront", z: "schoolsign", x: "lockers", I: "room3sign", 8: "booth", 0: "gymsign",
   u: "blackboard", 1: "draw1", 2: "draw2", 3: "draw3", s: "gymwall", R: "rink", 4: "rink2", 7: "rinklaps",
   6: "rinkplain", T: "tapes", W: "switches",
+  // the Lifeboat (27 Nov): the letters were nearly all taken, so these are
+  // whatever was left
+  f: "hotel", t: "tex", y: "buck", Z: "rowena", "@": "dockhatch", 5: "patches", l: "goldwall", 9: "longwin",
+  $: "suit", "&": "labhatch", "*": "labsign", "!": "dont", "+": "labshelf", "<": "chalk1", "=": "chalk2",
+  ">": "chalk3", "~": "labport", "/": "tubedoor", "?": "jartank", "^": "board4",
 };
 // A.R.P.F.'s clean path through the dust in Ego House: from the basement
 // door along the hall and into the greenhouse
@@ -205,6 +216,28 @@ const LEVELS = {
     light: 0.95,
     start: { x: 1.6, y: 1.6, a: 0 },
   },
+  // Added 27 Nov: the Lifeboat (novel ch 24). The hall of portraits from the
+  // docking hatch (west) to the gold ballroom; the lab is the little room at
+  // the east end, reached only through the tube (a card, there and back).
+  lifeboat: {
+    map: [
+      "ffffffff999999$&*9l++++++",
+      "fffffffl..........l+<=>++",
+      "fffffffl..........l+....~",
+      "fftfyfZl..........l+....+",
+      "@.................l/....~",
+      "f.................!+....+",
+      "fff5fffl..........l+....+",
+      "fffffffl..........l++?+++",
+      "fffffffl..........l++++++",
+      "fffffffl..........l++++++",
+      "ffffffffllllllllllll+++++",
+    ],
+    ceil: (x, y) => (x <= 7 ? "hotelceil" : x >= 19 ? "labceil" : (x === 10 && y === 3) || (x === 13 && y === 6) || (x === 15 && y === 3) ? "chandelier" : "goldceil"),
+    floor: (x, y) => (x <= 7 ? "anchorcarpet" : x >= 19 ? "labflr" : "parquet"),
+    light: 0.75,
+    start: { x: 1.5, y: 4.5, a: 0 },
+  },
   // Added 26 Nov: the silo under the estate, round as a grid allows, with
   // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
   // so the ship climbs up out of sight.
@@ -236,7 +269,7 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts, harvest: harvestEnts, hometown: hometownEnts }[name]();
+  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts, hangar: hangarEnts, harvest: harvestEnts, hometown: hometownEnts, lifeboat: lifeboatEnts }[name]();
 }
 
 // ---------- the story: home ----------
@@ -607,14 +640,40 @@ function enterHangar(back) {
     say([["", "Capsule A clamps back into its place in the ring. The light beside HOMETOWN is still green."]], () => hint("Capsule A goes to Hometown whenever you're ready"));
     return;
   }
-  if (back === "hometown") {                                        // home from Hometown (added 27 Nov)
+  if (back === "hometown" || back === "question") {                  // home from Hometown (added 27 Nov)
     set("board"); set("harvestdone"); set("hometowndone"); map[0][5] = "%";
     ents.push(ent({ id: "fluffy", spr: "fluffy", x: 6.4, y: 6.2, r: 0.3, solid: false, label: "The fluffy corgi", use: () => say([
       ["", "The fluffy corgi has found the warmest spot in the hangar and is asleep on it, snoring. It came home with you. Nobody told it not to."]]) }));
+    if (back === "question") {                                      // back from a flight toward the Lifeboat
+      set("lifeboatknown");
+      say([["", "Capsule A clamps back into its place in the ring. Out past Hometown, at the end of the long line, the Lifeboat is still tumbling."]], () => hint("Capsule A goes back out whenever you're ready"));
+      return;
+    }
     say([["", "That night, the light beside HOMETOWN on the mission board turns white."],
-         ["", "And down in the blank rows, beside the penciled question mark, a light blinks on. Green. Steady."],
-         ["A.R.P.F.", "The question mark. Somebody knocked back, and Ivan's board knows where. That part isn't built yet. Ivan never finished anything on time either."]],
-        () => hint("The next place isn't built yet!"));
+         ["", "And down in the blank rows, beside the penciled question mark, a light blinks on. Green. Steady. No name at all."],
+         ["You", "It's not on the plans. The bunker. I looked. It's not on any of the blueprints from the box."],
+         ["", "A.R.P.F.'s radio plays a game show buzzer. Wrong answer. Then a news announcer from long ago, very grave: \"...and the senator declined to comment...\""],
+         ["You", "You know something."],
+         ["", "A.R.P.F.'s lid drops an inch. Its visor looks at the ceiling."]],
+        () => hint("Ask home about the question mark, on the radio"));
+    return;
+  }
+  if (back === "lifeboat") {                                        // home from the Lifeboat (added 27 Nov)
+    set("board"); set("harvestdone"); set("hometowndone"); set("lifeboatknown"); set("lifeboatdone"); map[0][5] = "%";
+    ents.push(ent({ id: "fluffy", spr: "fluffy", x: 5.0, y: 2.4, r: 0.3, solid: false, label: "The fluffy corgi", use: () => say([
+      ["", "The fluffy corgi has decided Dolores is its person now, as well as you. It lies flat on the cold floor between you, chin on its paws, and yawns enormously."]]) }));
+    ents.push(ent({ id: "dolores", spr: "dolores", x: 6.2, y: 2.3, r: 0.3, label: "Talk to Dolores", use: useDoloresHangar }));
+    ents.push(ent({ id: "tomcrate", spr: "tomcrate", x: 2.2, y: 5.6, r: 0.4, label: "The tomatoes", use: () => say([["", "A whole crate of tomatoes from the Lifeboat, and three pots of seedlings. Something green, for where you're going."]]) }));
+    ents.push(ent({ id: "seedlings", spr: "seedlings", x: 2.3, y: 4.6, r: 0.3, solid: false }));
+    say([["", "On Ship Seven, Dolores stands in the hangar for a long time without moving, looking at everything. The capsules. The tags in Hu Man's tiny writing. And then the mission board."],
+         ["", "She walks up to it slowly and puts one finger on the pencil."],
+         ["Dolores", "That's his writing."],
+         ["You", "He knew about the Lifeboat. Before anybody went up. He drew it for them."],
+         ["Dolores", "He knew about everything. He told me once, on the telephone, near the end: if anybody ever came, tell them the dogs know. I asked him what it meant. He said he hoped I'd never need to find out."],
+         ["", "The fluffy corgi looks back at you. Then it yawns, enormously."],
+         ["", "Dolores takes a pencil out of one of her sweater pockets. You nod. On the blank row, very small, in her own careful hand, she writes THE LIFEBOAT."],
+         ["", "The light beside it turns white."]],
+        () => hint("Let Dolores use the radio"), (i) => { if (i === 7) { map[0][5] = "^"; SFX.ok(); } });
     return;
   }
   if (back) {                                                       // home from the flight
@@ -658,14 +717,61 @@ function useHeroNote() {
 }
 
 function useHangarRadio() {
+  if (flag("lifeboatdone")) { doloresCalls(); return; }
+  if (flag("hometowndone") && !flag("lifeboatknown")) { askHuMan(); return; }
   say([["", "You switch on the radio and say hello. Then you wait. One second. Two."],
        ["Mom", "...hello, baby. We can hear you. There's a little gap before you answer. Is that normal?"],
        ["", "It's normal. Weird Kid Weekly, Issue 371: the speed of light. Your voice takes a moment to get there, and the farther you go, the longer it takes."],
        ["Grandma Rosie", "Keep looking up, kiddo. We are."]]);
 }
 
+// the question mark (27 Nov): Hu Man knows, seventeen minutes away
+function askHuMan() {
+  say([["", "You ask your mother to ask Hu Man. Then you sit on the cold floor with your back against the board to wait. The fluffy corgi climbs into your lap and goes straight back to sleep."],
+       ["", "Seventeen minutes there. Seventeen minutes back. When the answer comes, it isn't your mother's voice. It's his."],
+       ["Hu Man", "I drew up the papers myself. In 1962, in my office, with the door locked. Mrs. Hale and Mr. Crandall and four of the others. They did not trust Vladimir, not entirely."],
+       ["Hu Man", "They wanted somewhere to go if the perfect city turned out to be less than perfect. A place he had not built and could not switch off. They called it the Lifeboat."],
+       ["Hu Man", "Your great-grandfather drew it for them. Quietly. It was never on the plans, because the plans were Vladimir's."],
+       ["", "You look up at the question mark. Small and neat and penciled, in the handwriting from the comic. \"He knew,\" you whisper."],
+       ["Hu Man", "It has its own air, and water, and power, and a garden of Earth seed in sealed tins. Forty bedrooms, a library and a ballroom. It is tethered to the far end of Hometown, on a very long line."],
+       ["Hu Man", "You will find it by the line. And I would like to say again, as your lawyer, and as a man who has known a great many lonely people... go carefully."]],
+      () => { set("lifeboatknown"); hint("Take Capsule A to the end of the line"); }, (i) => { if (i === 2) SFX.tick(); });
+}
+
+// home from the Lifeboat (27 Nov): Dolores calls Earth
+function useDoloresHangar() {
+  say([["Dolores", flag("called") ? "Somebody heard. Somebody heard it." : "The dogs know. Mr. Pert said it like it was a place. Not like the dogs know a secret. Like they know where."]],
+      () => { if (!flag("called")) hint("Let Dolores use the radio"); });
+}
+function doloresCalls() {
+  if (flag("called")) { say([["", "The radio is quiet. On the mission board, one light is still dark. FOUNDER'S STATION."]]); return; }
+  say([["", "That night you tell your mother everything. The tumbling drum, the piano floating in the dark, the ballroom full of tomatoes, the lab they kept outside because of Ohio."],
+       ["", "Then you give the microphone to Dolores. She holds it in both hands for a long time."],
+       ["Dolores", "What do I say? It's been so long."],
+       ["You", "Say anything."],
+       ["Dolores", "Can anybody hear me? Is anybody there? This is Dolores. Dolores Brandt. I'm not in Hometown anymore. I'm on a ship, with Ivan Pert's great-grandkid, and a dog, and a trash can."],
+       ["Dolores", "And I just wanted to say. To anybody. That I'm still here."]], () => {
+    card(`<p>Seventeen minutes there. Seventeen minutes back.</p>
+          <p>You sit up with her in the dark of the hangar, among the tomato plants. Dolores eats a tomato like an apple, juice running down her chin.
+          The fluffy corgi eats one too, and sneezes, and eats another. A.R.P.F. plays a slow old waltz, and after a while Dolores's foot begins to tap along.</p>`, "The radio crackles", 0, () => {
+      SFX.static();
+      say([["Grandma Rosie", "Dolores? This is Rosie. Rosie Pert. Ivan's daughter. Yes, sweetheart. We hear you. We hear you."],
+           ["", "Dolores Brandt puts her face in her hands, with a tomato in one of them, and cries. You put your arm around her, and the fluffy corgi climbs into both your laps, and none of you says anything at all."],
+           ["", "On the mission board, one light is still dark. FOUNDER'S STATION. You look at it for a long time before you go to sleep."]],
+          () => { set("called"); addPage("The Lifeboat", "The backers' own bunker, drawn by Ivan Pert and never on Vladimir's plans. Dolores Brandt kept its garden alone and knocked on Ivan's line every night until somebody knocked back.", "art/look-board.png"); hint("Founder's Station isn't built yet!"); });
+    });
+  });
+}
+
 function useCapsuleA() {
-  if (flag("hometowndone")) { say([["A.R.P.F.", "The question mark is next. But that bit isn't built yet. Ivan never finished anything on time either."]]); return; }
+  if (flag("lifeboatdone")) { say([["A.R.P.F.", "One light still dark. FOUNDER'S STATION. That part isn't built yet. Ivan never finished anything on time either."]]); return; }
+  if (flag("hometowndone")) {
+    if (!flag("lifeboatknown")) { say([["", "Capsule A. But where to? The question mark isn't on any plan."], ["A.R.P.F.", "*a game show buzzer* Maybe somebody at home knows. Somebody with a very good memory. And a ticking."]], () => hint("Ask home about the question mark, on the radio")); return; }
+    say([["", "The capsule knows the way to Hometown by now. This time you go past it."], ["A.R.P.F.", "To the end of the line! Mind the corgi. It has a helmet now. I screwed it on myself, with great ceremony."]], () => {
+      card(`<p>The hangar door opens under you, and Capsule A drops out into space.</p>`, null, 1800, () => { location.href = "flight.html#lifeboat"; });
+    });
+    return;
+  }
   if (flag("harvestdone")) {
     say([["", "Capsule A. It knows the way now, and so do you."], ["A.R.P.F.", "Hometown! The rocks are thicker that way. I have been told I am an excellent ducker."]], () => {
       card(`<p>The hangar door opens under you, and Capsule A drops out into space.</p>`, null, 1800, () => { location.href = "flight.html#hometown"; });
@@ -803,7 +909,7 @@ function useSpoke() {
   if (!flag("notebook")) { say([["A.R.P.F.", "Not yet! Hazel said the book's still where we put it. We came for the book."]]); return; }
   if (!g.lured) { say([["", "The man in the overalls is drifting toward you, arms out, humming. You can't get past him to the ladder."]], () => hint("Talk to A.R.P.F.")); return; }
   say([["", "Up the spoke, lighter with every rung, back to the hub and Capsule A. Behind you, very faintly, somebody is humming one note in the potato beds."]], () => {
-    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { location.href = "index.html#hangar-harvest"; });
+    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { goTo("hangar-harvest"); });
   });
 }
 
@@ -1107,7 +1213,7 @@ function useHubLadder() {
     return;
   }
   say([["", "Up the ladder, lighter with every rung, through the floating pool, back to Capsule A. The fluffy corgi comes too. Nobody tells it not to."]], () => {
-    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { location.href = "index.html#hangar-hometown"; });
+    card(`<p>Capsule A drops away from the hub and flies you home to Ship Seven.</p>`, null, 1600, () => { goTo("hangar-hometown"); });
   });
 }
 
@@ -1202,6 +1308,231 @@ function dogFace(e, dx) {
   const base = e.base || (e.spr.replace(/L$/, ""));
   if (!SPR[base + "L"]) return;
   e.spr = dx < 0 ? base + "L" : base;
+}
+
+
+// ---------- the story: the Lifeboat (added 27 Nov, as in the novel's ch 24) ----------
+// The hall runs east from the docking hatch to the ballroom. The lab is out
+// along the rope: in the map it's a room of its own at the east end, and the
+// crinkly tube between them is a card, there and back.
+function lifeboatEnts() {
+  return [
+    ent({ id: "tub1", spr: "tubtom", x: 9.6, y: 2.4, r: 0.6, label: "The bathtub", use: () => say([["", "A claw-footed bathtub with gold taps, full of dark earth. Tomato vines on stakes, heavy with small red tomatoes. Real green. Earth green."]]) }),
+    ent({ id: "tub2", spr: "tubpot", x: 12.3, y: 2.2, r: 0.6, label: "The bathtub", use: () => say([["", "Potatoes in a bathtub, their leaves sticking up out of the earth."]]) }),
+    ent({ id: "tub3", spr: "tubcar", x: 12.2, y: 8.2, r: 0.6, label: "The bathtub", use: () => say([["", "A row of something tall and feathery. Carrots, you think. You've never seen carrots growing before."]]) }),
+    ent({ id: "tub4", spr: "tubtom", x: 9.6, y: 7.6, r: 0.6, label: "The bathtub", use: () => say([["", "More tomatoes. On the edge of this one, a watering can. It's dripping."], ["", "Somebody watered these. Today."]]) }),
+    ent({ id: "bigtub", spr: "tubtom", x: 15.0, y: 7.8, r: 0.6, label: "The big bathtub", use: () => say([[
+      "", flag("met") ? "The big bathtub at the end of the row. Marisol's. She was very, very good with tomatoes." : "The biggest bathtub, at the end of the row. The tomatoes in it are the best in the room."]]) }),
+    ent({ id: "can", spr: "wcan", x: 9.0, y: 6.7, r: 0.15, solid: false }),
+    ent({ id: "drawers", spr: "drawers", x: 16.6, y: 8.4, r: 0.5, label: "The drawers", use: () => say([["", "Dresser drawers, pulled out and lined up and filled with soil. Lettuce, in rows."]]) }),
+    ent({ id: "piano", spr: "piano", x: 13.2, y: 5.0, r: 0.8, label: "The piano", use: () => say([
+      ["", "A grand piano, the twin of the one floating outside, with its lid propped open and its insides full of beans."],
+      ["", "They climb up strings that someone has tied, very neatly, to the chandeliers. You press a key. Plink. A bean leaf trembles."]]) }),
+    ent({ id: "lamp1", spr: "flamp", x: 11.0, y: 4.0, r: 0.15 }), ent({ id: "lamp2", spr: "flamp", x: 16.0, y: 5.8, r: 0.15 }),
+    ent({ id: "lamp3", spr: "flamp", x: 8.6, y: 5.6, r: 0.15 }),
+    ent({ id: "arpf", spr: "arpfon", x: 2.4, y: 4.9, r: 0.4, solid: false, follow: true, label: "Talk to A.R.P.F.", use: useArpfLifeboat }),
+    ent({ id: "fluffy", spr: "fluffy", x: 2.6, y: 4.2, r: 0.3, solid: false, follow: true, label: "The fluffy corgi", use: () => say([["", "The fluffy corgi trots ahead with its tail going. It isn't sniffing the air the way the Hometown corgis did. It's just trotting. Like a dog on a walk."]]) }),
+    // the lab
+    ent({ id: "bench", spr: "workbench", x: 23.45, y: 4.5, r: 0.45, label: "The workbench", use: () => say([["", "Screwdrivers and solder and the guts of three different radios. A round microphone on a stand, and a wire that runs up through the ceiling and out along the rope. Ivan built it."]]) }),
+    ent({ id: "dolores", spr: "dolback", x: 22.6, y: 4.5, r: 0.3, person: true, label: "The woman at the microphone", use: useDolores }),
+  ];
+}
+
+function enterLifeboat() {
+  loadLevel("lifeboat");
+  try { S.name = sessionStorage.getItem("zot-name") || S.name; } catch (e) { /* fine without it */ }
+  S.items.gun = false; document.getElementById("zapBtn").hidden = true;
+  card(`<p>The first thing you notice is the cold. Not freezing, not quite. Your breath comes out in clouds.
+        It's the cold of a house in winter when the heat has been turned down too low for too long.</p>
+        <p>The second thing is the carpet. Red and thick, patterned with little gold anchors, the most expensive carpet
+        you have ever stood on. And threadbare all the way down the middle, as if somebody has walked up and down this hall ten thousand times.</p>`,
+       "Step inside", 0, () => {
+         say([["", "The spin here is gentle and strange. The floor holds you, but lightly, and every half a minute it seems to tilt a little under your feet, and then tilt back."],
+              ["", "You keep one hand on the wall."]], () => hint("Walk down the hall"));
+       });
+}
+
+function noFlowers() {
+  set("noflowers");
+  say([["", "The fluffy corgi, unscrewed from its helmet and much happier, trots ahead with its tail going. Not sniffing the air. Not checking. Just trotting."],
+       ["", "You realize why, and stop. There are no flowers here."],
+       ["", "You've been smelling Moon-Bloom since the Harvest Ring without even knowing it, the sweet, heavy smell at the back of every breath. Here, there isn't any."],
+       ["", "Take nothing with you, the Founder told them. Not the farm seed. Not the tea. And they didn't."]]);
+}
+
+function enterBallroom() {
+  set("ballroom");
+  say([["", "The hall opens into a ballroom. Huge, and round, and gold, and almost dark. Three chandeliers sway very slightly with the wobble, their crystals clinking like ice in a glass."],
+       ["", "And the whole floor is a garden. Not a farm. A garden, the kind somebody makes by hand. Bathtubs full of earth. Dresser drawers. A grand piano full of beans."],
+       ["", "And the plants are green. Real green. Earth green. Not silver, not blue, not glowing. It's the first plain green thing you've seen since you left home."],
+       ["", "That's the smell. Tomato leaves. Dirt. Summer. You stand there breathing it."]],
+      () => hint("Somebody has been gardening here"));
+}
+
+function lifeboatWall(w) {
+  const t = {
+    t: ["Look at the portrait", [["", "A big man in a cowboy hat, holding an oil derrick the way other men hold a fishing rod. TEXAS CRANDALL, FOUNDING MEMBER."]]],
+    y: ["Look at the portrait", [["", "A plump smiling man with a bottle of soda. BUCK FIZZWELL, FOUNDING MEMBER."]]],
+    Z: ["Look at the portrait", [["", "At the end of the hall, bigger than the rest: a tall woman with silver hair, straight as a railroad spike, glaring out as if she's about to ask you a question you can't answer.", "art/look-rowena.png"],
+                                 ["", "ROWENA HALE, CHAIRMAN. Somebody drew a small crown on her head in pencil, a long time ago. Somebody else rubbed it out. And somebody, later, drew it back.", "art/look-rowena.png"]]],
+    5: ["Open the closet", [["", flag("met") ? "The inside of the closet door: tally marks, in fives. Four hundred and twelve patches. D.B." : "A closet door. On the inside, rows and rows of tally marks in groups of five. Somebody has been counting something for a very long time.", "art/look-patches.png"]]],
+    9: ["Look out the window", [["", "Long windows, with the stars sliding past outside. And the gray thread of the cable, running all the way back toward Hometown."]]],
+    $: ["The suit", [["", "A heavy gray suit on a hook, with a fishbowl helmet. Through the window beside it you can see a rope."]]],
+    "!": ["The welded door", [["", "A great door, shut and welded round the edges with thick, ugly seams. Painted across it, in big uneven letters: DON'T."],
+                               ["", "Beyond it, you know, is the hole. And the stars. And the piano, turning."]]],
+    "*": ["Read the sign", [["", "LABORATORY. By order of the Chairman, the laboratory shall be kept OUTSIDE. Under it, in plain marker, smaller: Because of Ohio. R.H.", "art/look-ohio.png"],
+                           ["", "Walt Okonkwo. The chemist from the Tuesday night meetings, who once blew up a laboratory in Ohio on purpose. You laugh, all by yourself in a freezing ballroom full of tomatoes, a little too loud."]]],
+    "<": ["Read the chalkboard", [["", "NO TEA SINCE 1983, underlined twice. Under it, columns of names and dates, and notes: Slower, but no worse. Remembers her sister. Hums. Gardens. Happy.", "art/look-chalk.png"]]],
+    "=": ["Read the chalkboard", [["", "M.S.: knows me most days.", "art/look-chalk.png"]]],
+    ">": ["Read the chalkboard", [["", "At the bottom, in great big letters, with a circle round it and a lot of question marks: WHY NOT THE DOGS???", "art/look-chalk.png"]]],
+    "?": ["The fish tank", [["", "One jar on a shelf by itself, its lid screwed down tight, the whole of it sunk in a fish tank full of water.", "art/look-jar.png"],
+                            ["", "At the bottom, a single silver-blue leaf. Not glowing. Not turning. Just lying there like a leaf at the bottom of a pond. SMUGGLED. SORRY, ROWENA. KEEP IT WET. W.O.", "art/look-jar.png"]]],
+    "~": ["Look out the porthole", [["", "The Lifeboat, right beside you, wobbling. The rope of little lights strung between you, like the lights on a Christmas tree."]]],
+    "+": ["The shelves", [["", "Shelves up to the ceiling, crammed with glass jars and coils of wire and old tin boxes and books with their spines cracked."]]],
+  }[w];
+  if (t) return { label: t[0], use: () => say(t[1], w === "Z" ? () => addPage("Rowena Hale", "Chairman of the Lifeboat. Her portrait has a pencil crown: drawn on, rubbed out, drawn back.", "art/look-rowena.png") : w === "*" ? () => addPage("Because of Ohio", "The Lifeboat's laboratory was kept OUTSIDE, on the end of a rope, by order of the Chairman. Because of Ohio. R.H.", "art/look-ohio.png") : null) };
+  if (w === "&") return { label: "The round hatch", use: useLabHatch };
+  if (w === "/") return { label: "Back through the tube", use: useTubeBack };
+  if (w === "@") return { label: "Back to Capsule A", use: useDockHatch };
+  return null;
+}
+
+function useLabHatch() {
+  if (flag("inlab")) return;
+  say([["", "One of the windows isn't a window at all. It's a hatch, round, with a wheel on it. Through the glass: a thin line strung out into the dark, with little lights clipped along it."],
+       ["", "At the far end of it, wobbling along on its own short tether, a much smaller shape. Round, with one porthole and a stubby chimney. Like a stove somebody threw out of a kitchen."],
+       ["", "There's a light on in the porthole."]], () => {
+    card(`<p>There's a tube along the rope. More of a tunnel, soft and silver and crinkly, like the inside of a juice box, held open with metal hoops.</p>
+          <p>You pull yourself along it hand over hand. The fluffy corgi refuses to be carried and refuses to stay behind, so it comes too, <i>tikka tikka tikka</i>.</p>
+          <p>A.R.P.F. can't fit. Behind you, very loudly, a woman in an old movie wails, "Don't leave me!" And then, sulkily, nothing.</p>`, "Push the little door open", 0, () => {
+      set("inlab");
+      const a = ents.find((e) => e.id === "arpf"); a.follow = false; a.x = 15.5; a.y = 1.6;
+      const f = ents.find((e) => e.id === "fluffy"); f.x = 20.4; f.y = 4.9;
+      P.x = 20.5; P.y = 4.5; P.a = 0; S.knockT = 0.5;
+      say([["", "The lab is round, and small, and so full of things that at first you can't see anything at all."],
+           ["", "And under the porthole, at a workbench covered in the guts of three radios, a person is sitting with their back to you, hunched over a microphone. The round kind."],
+           ["", "A small, thin woman, wrapped in about four sweaters, with a long gray braid tied off with a twist of copper wire. One knuckle out."]]);
+    });
+  });
+}
+
+function useDolores() {
+  const d = ents.find((e) => e.id === "dolores");
+  if (!flag("met")) { meetDolores(); return; }
+  if (!flag("told")) { doloresStory(); return; }
+  if (!flag("hazel")) { say([["Dolores", "My mom's on the Icebox. Since 1975. I want to hear it. Take me to it."]], () => hint("Back through the tube, to A.R.P.F.")); return; }
+  say([["Dolores", d.packed ? "I'm ready, honey. Tomatoes and all. Lead the way." : "You'll want those tomatoes. Where you're going. You'll want something green."]]);
+}
+
+function meetDolores() {
+  const d = ents.find((e) => e.id === "dolores");
+  d.spr = "dolwrench"; set("spun"); SFX.hurt();
+  say([["", "The fluffy corgi sneezes."],
+       ["", "She spins round on the stool so fast her braid whips over her shoulder, and she's got a wrench in her hand, a big one, held up like a bat."],
+       ["", "Her eyes are very wide. They're brown. Plain brown, all the way through, with no silver in them anywhere."]], knockChoice);
+}
+
+function knockChoice() {
+  panel(`<h2>The lab</h2><p>You both stare. In every version you thought of all night, you had something clever ready. Now you don't have anything at all.</p>
+    <div class="row"><button id="dol-hello" class="alt">Say hello</button><button id="dol-knock">Knock three times on the door frame</button></div>`);
+  document.getElementById("dol-hello").onclick = () => { closePanel(); say([["You", "H-hello?"], ["", "The wrench doesn't move. Words could be anybody. She's been waiting for something else."]], knockChoice); };
+  document.getElementById("dol-knock").onclick = () => {
+    closePanel(); SFX.knock();
+    const d = ents.find((e) => e.id === "dolores");
+    say([["", "You lift your hand, and knock three times on the door frame, with one knuckle. Tap. Tap. Tap."],
+         ["", "The wrench comes down, very slowly."],
+         ["", "\"Oh,\" she breathes. Her face crumples, and then un-crumples. \"Oh. It was you.\""]], () => { set("met"); d.label = "Talk to Dolores"; doloresStory(); }, (i) => { if (i === 1) d.spr = "dolores"; });
+  };
+}
+
+function doloresStory() {
+  say([["Dolores", "My name is Dolores Brandt. And I'm sixty-five years old. I wanted to make sure I still knew. You get out of the habit. Of saying it."],
+       ["", "You tell her your name. She says it back to you twice, carefully, tasting it. Then she looks at your face, really looks at it."],
+       ["Dolores", "Say that last name again... Pert. You've got his ears. Ivan Pert. He fixed my radiator, in Hometown, when I was a little girl. He fixed everybody's radiator."],
+       ["Dolores", "He built that line. The night they put us on the shuttles he came out here with a toolbox and spent three days running it all the way back to the school. Our own telephone."],
+       ["Dolores", "He answered it every Sunday night, for four years. And then one Sunday he didn't answer. And he never answered again."],
+       ["", "1987. You don't say it. You don't have to."],
+       ["Dolores", "So I kept calling. Every night. Seven o'clock. In case. The rock took the voice out of it, five years ago. So then I could only knock. I figured knocking's free."],
+       ["You", "Where is everybody?"],
+       ["Dolores", "Rowena ran it for twelve years. Ran it like a railroad. Walt did the science, out here, where she could keep an eye on him. We grew the garden from the sealed tins."],
+       ["Dolores", "In 1999 Walt said there was enough fuel in the two old shuttles to try for home. Most of them went. They said they'd send a ship back for the rest of us. They never called."],
+       ["Dolores", "Somebody had to stay. Somebody had to keep the garden. And Marisol couldn't go. She'd had tea. Walt found if you stop the tea, it doesn't get better. But it doesn't get worse."],
+       ["Dolores", "She hummed all day long, and she was very, very good with tomatoes. She's in the garden now. Under the big bathtub. She'd have liked that."],
+       ["", "The fluffy corgi gets up, walks across the room, and sits down against Dolores's ankle."],
+       ["Dolores", "Well. Hello, you. I haven't seen a dog in forty-three years. You're a big fat fluffy girl. Oh, you're a disgrace. You're a total disgrace."],
+       ["Dolores", "How did you know to knock?"],
+       ["", "You tell her. The radio clock in the middle of the night, the beacon whooping, and under it, a little girl's voice. Can anybody hear me? This is Dolores, in Hometown."],
+       ["Dolores", "That was my birthday message. For my grandma. I was nine. They never sent it... No, honey. Don't be sorry. Somebody heard it."],
+       ["You", "There's one more message. It came on its own, the first night. A.R.P.F. caught it. It's from your mom."],
+       ["Dolores", "My mom's on the Icebox. Since 1975."],
+       ["You", "I know. It's a recording. Nobody ever sent it. But it's for you."]],
+      () => {
+        set("told");
+        addPage("Dolores Brandt", "Sixty-five. Kept the Lifeboat's garden, and knocked on Ivan's line every night at seven o'clock since 1987. Brown eyes, plain all the way through.");
+        hint("Back through the tube, to A.R.P.F.");
+      });
+}
+
+function useTubeBack() {
+  if (!flag("told")) { say([["", flag("met") ? "Not yet. She's still talking." : "The little door back to the tube. Not yet. Somebody in here is knocking."]]); return; }
+  card(`<p>Back through the tube, hand over hand. Dolores goes first. She doesn't look back once at the lab, or the jar in the fish tank, or the chalkboards with all the names.</p>`, "Into the ballroom", 0, () => {
+    const d = ents.find((e) => e.id === "dolores"); d.x = 13.8; d.y = 2.3; d.spr = "dolores";
+    const a = ents.find((e) => e.id === "arpf"); a.x = 15.2; a.y = 2.0; a.follow = false;
+    const f = ents.find((e) => e.id === "fluffy"); f.x = 13.9; f.y = 2.9; f.follow = false;
+    P.x = 14.6; P.y = 3.6; P.a = -Math.PI / 2;
+    SFX.ok();
+    say([["", "A.R.P.F. is waiting at the hatch with its lid all the way up, and when Dolores comes out of the tube it rolls back three feet in astonishment and plays a trumpet fanfare, the kind they play when the queen comes in."],
+         ["Dolores", "Is that... the poop bin?"],
+         ["", "A.R.P.F.'s visor flickers, deeply offended."],
+         ["You", "It's A.R.P.F. It's a lot more than a poop bin now. Play it. The one from the hangar. The first night."],
+         ["A voice", "This is Hazel Brandt, on the Icebox. I used to be head farmer of the Harvest Ring. This is not a crop report."],
+         ["", "Dolores sits down on the edge of the nearest bathtub, very slowly, as if her knees have forgotten how. The fluffy corgi climbs straight into her lap."],
+         ["A voice", "Nobody asked me to make this one, so I don't suppose anybody will ever send it. But I'm making it anyway. Dolores. Baby. If you're out there at the bunker..."],
+         ["", "You don't listen to the rest. It isn't yours. You go and stand at the long windows among the tomato vines, and you let Hazel Brandt talk to her daughter."],
+         ["", "It takes a long time. Some of it makes Dolores laugh. Most of it doesn't."],
+         ["Dolores", "The book. The book's still where we put it. She means the notebook. Under the corn."],
+         ["", "You take out the small green notebook with the soil worked into the corners. You slip Ada's drawing out from between the pages first. Then you give the notebook to her.", "art/look-notebook.png"]],
+        () => {
+          set("hazel"); a.follow = true; f.follow = true;
+          say([["Dolores", "This place has been dying for five years. Four hundred and twelve patches. I've kept count, on the inside of a closet door. I could do four hundred and thirteen. But I'd rather not."],
+               ["", "She doesn't bring much. Her mother's notebook. The sweaters. Walt's notes in a tin box. She looks at the leaf in the fish tank for a while, and leaves it, and turns off the light."],
+               ["Dolores", "And tomatoes. A whole crate, and three pots of seedlings. You'll want those, where you're going. You'll want something green."]],
+              () => { d.packed = true; d.follow = true; d.solid = false; hint("Back to Capsule A, at the end of the hall"); });
+        }, (i) => { if (i === 4) SFX.static(); });
+  });
+}
+
+function useDockHatch() {
+  if (!flag("hazel")) {
+    say([["A.R.P.F.", flag("inlab") || flag("met") ? "Not yet. We came for whoever's knocking." : "Not yet! Somebody watered those tomatoes. Today."]]);
+    return;
+  }
+  say([["", "The capsule is not built for two people, one trash can, one corgi and a crate of tomatoes. It manages."],
+       ["", "As the clamps let go, Dolores watches the Lifeboat through the bubble window until it's too small to see."],
+       ["Dolores", "Rowena would've hated that I'm leaving it. No. She'd have said what took me so long."]], () => {
+    card(`<p>Capsule A swings away from the tumbling drum and flies you all home to Ship Seven.</p>`, null, 1800, () => { goTo("hangar-lifeboat"); });
+  });
+}
+
+function useArpfLifeboat() {
+  if (!flag("ballroom")) say([["A.R.P.F.", "Brr. My joints are squeaking. This is a cold, cold place, and somebody keeps it very tidy."]]);
+  else if (!flag("inlab")) say([["A.R.P.F.", "That watering can is dripping. Somebody is here. Look for a way out to that light."]]);
+  else if (!flag("hazel")) say([["A.R.P.F.", "*sniff* I am NOT sulking. Trash cans do not sulk."]]);
+  else say([["A.R.P.F.", "Capsule A is at the end of the hall. I have counted the seats. There are not enough seats. We will manage."]]);
+}
+
+function updateLifeboat(dt) {
+  S.lt = (S.lt || 0) + dt;
+  P.a += Math.sin(S.lt * 2 * Math.PI / 30) * 0.05 * dt;     // the slow lopsided wobble, every half a minute
+  for (const e of ents) if (e.follow) follow(e, e.id === "arpf" ? 1.0 : e.id === "dolores" ? 1.4 : 0.6, dt);
+  if (!flag("noflowers") && P.x > 3.2 && P.x < 7) noFlowers();
+  if (!flag("ballroom") && P.x > 7.8 && P.x < 18) enterBallroom();
+  if (flag("inlab") && !flag("spun")) {                    // Tap. Tap. Tap. "Come on. You did it once."
+    S.knockT -= dt;
+    if (S.knockT <= 0) { S.knockT = 5; SFX.knock(); }
+    const d = ents.find((e) => e.id === "dolores");
+    if (Math.hypot(d.x - P.x, d.y - P.y) < 1.4) meetDolores();
+  }
 }
 
 
@@ -1386,17 +1717,19 @@ function target() {
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
   }
-  if (!best && ["home", "mansion", "hangar", "harvest", "hometown"].includes(L.name)) {
+  if (!best && ["home", "mansion", "hangar", "harvest", "hometown", "lifeboat"].includes(L.name)) {
     for (let s = 0.2; s <= 1.8; s += 0.1) {
       const w = wallAt(P.x + Math.cos(P.a) * s, P.y + Math.sin(P.a) * s);
       if (L.name === "home" && w === "d") return { label: "Open the front door", use: useDoor };
       if (L.name === "hometown") { const t = townWall(w); if (t) return t; }
+      if (L.name === "lifeboat") { const t = lifeboatWall(w); if (t) return t; }
       if (L.name === "harvest") {
         if (w === "C") return { label: "Read the crop reports", use: useCropWall };
         if (w === "L") return { label: "Climb the spoke ladder", use: useSpoke };
       }
       if (L.name === "hangar") {
         if (w === "M") return { label: "Look at the mission board", use: useBoard };
+        if (w === "^") return { label: "Look at the mission board", use: () => say([["", "MISSION BOARD. HOMETOWN, white. HARVEST RING, white. THE LIFEBOAT, in Dolores's careful pencil, white. And one light still dark: FOUNDER'S STATION.", "art/look-board.png"]]) };
         if (w === "O" || w === "%") return { label: "Look at the mission board", use: () => say([["", w === "%"
           ? "MISSION BOARD. FOUNDER'S STATION, dark. HOMETOWN, white. HARVEST RING, white. And in the blank row, a penciled question mark, and a light beside it. Green."
           : "MISSION BOARD. HARVEST RING, white: done. HOMETOWN, green: next.", "art/look-board.png"]]) };
@@ -1479,6 +1812,7 @@ function update(dt) {
   }
   checkWin();
   if (L.name === "hometown") updateHometown(dt);
+  if (L.name === "lifeboat") updateLifeboat(dt);
   if (L.name === "harvest") {
     if (!flag("hsprouts") && P.x > 7.8) sproutsAttack();
     const g = ents.find((e) => e.id === "gerald");
@@ -1634,6 +1968,12 @@ if (location.hash === "#harvest") {
   enterHarvest();
 } else if (location.hash === "#hometown") {
   enterHometown();
+} else if (location.hash === "#lifeboat") {
+  enterLifeboat();
+} else if (location.hash === "#hangar-question") {
+  enterHangar("question");
+} else if (location.hash === "#hangar-lifeboat") {
+  enterHangar("lifeboat");
 } else if (location.hash === "#hangar-harvest") {
   enterHangar("harvest");
 } else if (location.hash === "#hangar-ready") {

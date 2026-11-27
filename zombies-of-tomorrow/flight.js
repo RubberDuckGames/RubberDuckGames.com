@@ -6,12 +6,14 @@ const W = 640, H = 400, VH = 360;         // play area 640 x 360, HUD strip belo
 const F = 330;                              // pixels per world unit at distance 1
 const SZ = 2.2;                             // how far in front of you the ship flies
 const FAR = 40;
-const TRIP = 75;                            // seconds from the hangar to the Harvest Ring
 // Added 27 Nov: the same flight goes to Hometown as flight.html#hometown,
-// where the novel says the rocks are thicker (ch 23)
-const TOWN = location.hash === "#hometown";
-const THICK = TOWN ? 0.8 : 1;               // time between rock waves
-const BACK = TOWN ? "index.html#hangar-ready" : "index.html#hangar-back";
+// where the novel says the rocks are thicker (ch 23), and to the Lifeboat as
+// flight.html#lifeboat: past Hometown and along its cable, few rocks, and at
+// the end a tumbling drum to dock with (ch 24)
+const TOWN = location.hash === "#hometown", LIFE = location.hash === "#lifeboat";
+const TRIP = LIFE ? 40 : 75;                // seconds from the hangar to the station
+const THICK = TOWN ? 0.8 : LIFE ? 2.2 : 1;  // time between rock waves
+const BACK = TOWN ? "index.html#hangar-ready" : LIFE ? "index.html#hangar-question" : "index.html#hangar-back";
 
 const cv = document.getElementById("screen");
 const ctx = cv.getContext("2d");
@@ -98,6 +100,7 @@ function fire() {
 }
 
 function update(dt) {
+  if (G.dock) return dockUpdate(dt);
   G.t += dt;
   const prog = Math.min(1, G.t / TRIP);
   const s = G.ship;
@@ -183,7 +186,77 @@ function update(dt) {
   G.shots = G.shots.filter((sh) => !sh.dead && sh.z < FAR);
   G.booms = G.booms.filter((b) => b.t < 0.6);
 
-  if (prog >= 1 && !G.done) win();
+  if (prog >= 1 && !G.done) { if (LIFE) startDock(); else win(); }
+}
+
+// ---------- docking with the Lifeboat (27 Nov) ----------
+// Weird Kid Weekly, Issue 409: How Do You Park Next to a Spinning Top? You
+// can't make it stop, so you go round with it. Left and right speed up or
+// slow down your circle; when you're going round exactly as fast as the drum
+// tumbles, its door stands still and A.R.P.F. counts you in.
+const COUNT = ["Clunk.", "One...", "Two...", "Three...", "Four...", "Five...", "Six...", "Seven...", "Eight...", "Nine...", "Ten..."];
+function startDock() {
+  G.dock = { a: 0, star: 0, mine: 0, t: 0, count: 10, ct: 0 };
+  G.rocks = []; G.items = []; G.shots = [];
+  G.dstars = Array.from({ length: 120 }, () => ({ r: 20 + Math.random() * 420, a: Math.random() * 7, b: Math.random() }));
+  hint("It's tumbling. Circle round with it (left and right) until its door stands still.");
+}
+function dockUpdate(dt) {
+  const d = G.dock; d.t += dt;
+  let ax = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+  const st = TOUCH.stick;
+  if (st.on && Math.abs(st.x) > 0.15) ax = st.x;
+  if (pointer) ax = Math.max(-1, Math.min(1, (pointer.x - W / 2) / (W / 4)));
+  d.mine = Math.max(-0.6, Math.min(2.6, d.mine + ax * 0.7 * dt));
+  const spin = 1.1 + 0.08 * Math.sin(d.t * 0.6);       // lopsided, like a top about to fall over
+  d.rel = spin - d.mine;
+  d.a += d.rel * dt; d.star += d.mine * dt;
+  if (Math.abs(d.rel) < 0.12) {
+    d.ct += dt;
+    if (d.ct > 0.5) {
+      d.ct = 0; d.count--; SFX.get();
+      hint("A.R.P.F.: " + COUNT[d.count]);
+      if (d.count <= 0) dockWin();
+    }
+  } else if (d.count < 10) {
+    d.count = 10; d.ct = 0; hint("A.R.P.F.: Steady... start again. Ten...");
+  }
+}
+function dockRender() {
+  const d = G.dock;
+  ctx.fillStyle = PAL.D; ctx.fillRect(0, 0, W, VH);
+  ctx.save(); ctx.translate(W / 2, VH / 2);
+  for (const s of G.dstars) {                         // the whole universe wheeling round behind it
+    const a = s.a + d.star;
+    ctx.fillStyle = s.b > 0.7 ? PAL.S : PAL.l;
+    ctx.fillRect(Math.round(Math.cos(a) * s.r), Math.round(Math.sin(a) * s.r * 0.8), s.b > 0.85 ? 2 : 1, s.b > 0.85 ? 2 : 1);
+  }
+  ctx.rotate(d.star * 0.5); ctx.strokeStyle = PAL.l; ctx.lineWidth = 3;     // the long gray cable, back to Hometown
+  ctx.beginPath(); ctx.moveTo(-60, 0); ctx.lineTo(-W, 0); ctx.stroke();
+  ctx.restore();
+  const pa = d.t * 0.4 + d.star;                      // the piano, turning end over end
+  ctx.save(); ctx.translate(W / 2 + Math.cos(pa) * 230, VH / 2 + Math.sin(pa) * 120); ctx.rotate(d.t * 0.9);
+  ctx.drawImage(SPR.fpiano, -SPR.fpiano.width, -SPR.fpiano.height, SPR.fpiano.width * 2, SPR.fpiano.height * 2); ctx.restore();
+  ctx.save(); ctx.translate(W / 2, VH / 2); ctx.rotate(d.a);
+  const img = SPR.drum, k = 2.2;
+  ctx.drawImage(img, -img.width * k / 2, -img.height * k / 2, img.width * k, img.height * k);
+  ctx.restore();
+  // the tumble meter: the needle in the green means you're matched
+  ctx.fillStyle = PAL.K; ctx.fillRect(0, VH, W, H - VH);
+  const mx = 170, mw = 300, rel = Math.max(-1, Math.min(1, (d.rel || 0) / 1.2));
+  ctx.fillStyle = PAL.Z; ctx.fillRect(mx, VH + 16, mw, 8);
+  ctx.fillStyle = PAL.G; ctx.fillRect(mx + mw / 2 - 15, VH + 14, 30, 12);
+  ctx.fillStyle = PAL.W; ctx.fillRect(Math.round(mx + mw / 2 + rel * mw / 2) - 2, VH + 8, 4, 24);
+  ctx.fillStyle = PAL.Y; ctx.font = "14px monospace";
+  ctx.fillText("TUMBLE", 96, VH + 25);
+  ctx.fillText(d.count < 10 ? COUNT[d.count] : "", 490, VH + 25);
+}
+function dockWin() {
+  G.done = true; G.on = false; G.dock.done = true; SFX.boom();
+  card(`<h1>DOCKED AT THE LIFEBOAT</h1>
+        <p>Clunk. The clamps catch. A light above the hatch blinks, and goes green.</p>
+        <p class="small">The fluffy corgi throws up a little inside its helmet.</p>`,
+    [["Go inside", () => { location.href = "index.html#lifeboat"; }], ["Back to the hangar", () => { location.href = BACK; }], ["Try again", start]]);
 }
 
 function breakRock(r) {
@@ -206,6 +279,7 @@ function drawAt(img, x, y, z, worldR, pxR, flip) {
 }
 
 function render() {
+  if (G.dock) return dockRender();
   const shx = G.shake > 0 ? (Math.random() - 0.5) * 10 : 0, shy = G.shake > 0 ? (Math.random() - 0.5) * 8 : 0;
   ctx.save(); ctx.translate(shx, shy);
   ctx.fillStyle = PAL.D; ctx.fillRect(-10, -10, W + 20, VH + 20);
@@ -223,7 +297,8 @@ function render() {
   // the station, coming up out of the dark near the end
   if (prog > 0.8) {
     const z = 3 + (1 - (prog - 0.8) / 0.2) * 60;
-    drawAt(TOWN ? SPR.town : SPR.station, 0, -0.2, z, 1.8, 80);
+    if (LIFE) drawAt(SPR.drum, 0, -0.2, z, 1.8, 75);
+    else drawAt(TOWN ? SPR.town : SPR.station, 0, -0.2, z, 1.8, 80);
   }
   // everything in the belt, far to near
   const things = [
@@ -316,7 +391,10 @@ function frame(t) {
 }
 
 newGame();
-card(TOWN ? `<h1>THE FLIGHT</h1>
+card(LIFE ? `<h1>THE FLIGHT</h1>
+      <p class="small">Past Hometown, to the end of the line.</p>
+      <p>This time you go past Hometown, along the outside of the great wheel.<br>Then a long gray cable, as thick as a tree, running away into the dark.</p>
+      <p>You follow it. Fewer rocks out here.<br>At the end of the line, something is tumbling.</p>` : TOWN ? `<h1>THE FLIGHT</h1>
       <p class="small">From the hangar to Hometown.</p>
       <p>Capsule A knows the way now, and so do you.<br>The rocks are thicker on the way to Hometown.</p>
       <p>Weave around them. Shoot the ones you can't dodge.<br>Keep an eye out for lost corgis.</p>` : `<h1>THE FLIGHT</h1>
