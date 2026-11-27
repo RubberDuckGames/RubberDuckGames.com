@@ -69,7 +69,11 @@ function addPage(title, text, image) {
 const WALLCHARS = {
   "#": "paper", p: "poster", w: "window", m: "starmap", k: "tile", K: "kwindow", d: "door",
   c: "concrete", P: "pipes", S: "steel", v: "vent", h: "chrome", o: "silo", n: "silo7",
+  e: "hedge", g: "gate", D: "egodoor", B: "basedoor", G: "glass", V: "portrait",
 };
+// A.R.P.F.'s clean path through the dust in Ego House: from the basement
+// door along the hall and into the greenhouse
+const EGO_PATH = new Set(["9,3", "10,3", "11,3", "12,3", ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((x) => x + ",4")]);
 const LEVELS = {
   home: {
     // Decided 26 Nov: the bedroom was 5 x 5 units (about 8 m, since a person is
@@ -102,6 +106,30 @@ const LEVELS = {
     ceil: () => "cpipes", floor: () => "cfloor", light: 0.45,
     start: { x: 2.5, y: 1.6, a: Math.PI / 2 },
   },
+  // Added 26 Nov: Ego House, as in the novel's ch 18. The gates and the drive
+  // at the bottom, the chrome hall under fifty years of dust, and the
+  // greenhouse to the right, where the Moon-Bloom grows.
+  mansion: {
+    map: [
+      "hhhhhhhhhhhhGGGGGG",
+      "hhhhhVhhhhhG.....G",
+      "h.........hG.....G",
+      "h................G",
+      "B.........hG.....G",
+      "h.........hG.....G",
+      "hhhhhhDhhhhG.....G",
+      "eeeee...eeeGGGGGGG",
+      "eeeee...eeeeeeeeee",
+      "eeeeeegeeeeeeeeeee",
+      "eeeee...eeeeeeeeee",
+      "eeeee...eeeeeeeeee",
+      "eeeeeeeeeeeeeeeeee",
+    ],
+    ceil: (x, y) => (y >= 7 ? "sky" : x >= 11 ? "glassroof" : "decoceil"),
+    floor: (x, y) => (y >= 7 ? "gravel" : x >= 11 ? "soil" : EGO_PATH.has(x + "," + y) ? "cleanmarble" : "dustmarble"),
+    light: 1,
+    start: { x: 6.5, y: 11.6, a: -Math.PI / 2 },
+  },
   // Added 26 Nov: the silo under the estate, round as a grid allows, with
   // Ship Seven standing in the middle. The ceiling is the dark of the shaft,
   // so the ship climbs up out of sight.
@@ -133,7 +161,7 @@ function loadLevel(name) {
   map = L.map.map((r) => r.split(""));
   P.x = L.start.x; P.y = L.start.y; P.a = L.start.a;
   S.light = L.light;
-  ents = name === "home" ? homeEnts() : name === "basement" ? basementEnts() : siloEnts();
+  ents = { home: homeEnts, mansion: mansionEnts, basement: basementEnts, silo: siloEnts }[name]();
 }
 
 // ---------- the story: home ----------
@@ -278,8 +306,7 @@ function useBed() {
     ], () => {
       addPage("The first message", "An emergency beacon, and a voice from the Colony of Tomorrow: the stations are moving. The station is on the map from the lock box.");
       card(`<p>The next morning, you take the brass key to the address on the tag.</p>
-            <p>Vladimir Ego's mansion. Dust, chrome furniture, a greenhouse gone wild.</p>
-            <p>The basement stairs go down into the dark.</p>`, "Go down", 0, () => { loadLevel("basement"); hint("Find a way to turn the power on"); });
+            <p>A long road with nothing else on it. At the end: Ego House.</p>`, "Go", 0, enterMansion);
     }, (i) => { if (i === 1) SFX.beacon(); });
   });
 }
@@ -390,6 +417,80 @@ function checkWin() {
   say([["A.R.P.F.", "Goo and stars! You did it! Ivan Pert would be proud."],
        ["A.R.P.F.", "The silo is through that door. I'll... I'll come too. If that's all right. I'm very good at checkers."]],
       () => hint("Go through the silo door"));
+}
+
+// ---------- the story: Ego House (added 26 Nov, as in the novel's ch 18) ----------
+function mansionEnts() {
+  return [
+    ent({ id: "sofa", spr: "sofa", x: 3.0, y: 2.55, r: 0.6 }),
+    ent({ id: "checkers", spr: "checkers", x: 7.5, y: 5.2, r: 0.35, label: "Look at the checkers game", use: () => say([
+      ["", "A game of checkers on a little chrome table, left halfway. Red is winning."],
+      ["", "The board has been dusted. Nothing else in the house has. Somebody still plays this game."]]) }),
+    ent({ id: "lamp", spr: "decolamp", x: 9.4, y: 2.3, r: 0.2 }),
+    ent({ id: "bloom", spr: "bloom0", x: 14.5, y: 3.7, r: 0.8, label: "Look at the Moon-Bloom", use: () => say([
+      ["", "Every flower is turned toward you. When you step to the left, they follow. When you step to the right, they follow.", "art/look-flower.png"],
+      ["", "You don't want to get any closer. You really, really don't."]]) }),
+    ent({ id: "keyhook", spr: "keyhook", x: 16.55, y: 5.45, r: 0.2, label: () => (S.items.basementKey ? "The empty hook" : "Take the key off the hook"), use: useKeyHook }),
+  ];
+}
+
+function enterMansion() {
+  loadLevel("mansion");
+  say([["", "Ego House. Two great curls of black iron with a rocket worked into the middle of each, rusted to the color of cinnamon. Beyond them, a drive between dead hedges."],
+       ["", "Up on the rise, the house: chrome, and round, and shaped like a spaceship from 1955. The gates are locked."]],
+      () => hint("Use the brass key on the gate (walk up to it, press E)"));
+}
+
+function useGate() {
+  map[9][6] = "."; SFX.whirr();
+  say([["", "The brass key turns, stiff and squealing, and the gates groan open."]],
+      () => addPage("Ego House", "Vladimir Ego's mansion, at the end of a long road with nothing else on it. Rocket gates, a chrome house like a 1955 spaceship, and nobody home for fifty years.", "art/look-key.png"));
+}
+
+function useFrontDoor() {
+  map[6][6] = "."; SFX.ok();
+  say([["", "The front door is a round chrome hatch with a porthole in it, like the door of a rocket. It isn't locked. It swings open without a sound, as if somebody oils it."]]);
+}
+
+function usePortrait() {
+  say([["", "A portrait, as tall as the wall, in a gold frame. Slicked-back silver hair, a silver goatee, a teal velvet smoking jacket and an orange ascot. A small, knowing smile.", "art/look-portrait.png"],
+       ["", "The brass plate says THE FOUNDER. His eyes are looking off to one side, at something far away. Or at the greenhouse door.", "art/look-portrait.png"]],
+      () => addPage("Vladimir Ego", "The Founder. His portrait fills the end wall of the hall at Ego House: silver hair, silver goatee, velvet jacket, ascot, and a small knowing smile.", "art/look-portrait.png"));
+}
+
+function useBasementDoor() {
+  if (!S.items.basementKey) {
+    say([["", "A steel door: BASEMENT. Locked. Taped to it, a card in tiny, neat handwriting:"],
+         ["", "The basement key is on the hook in the greenhouse. Please mind the flowers. H.M."]],
+        () => hint("Find the key in the greenhouse"));
+    return;
+  }
+  say([["", "The key turns. Cold air comes up from below, and the smell of dust and oil. Stairs go down into the dark."]], () => {
+    loadLevel("basement"); hint("Find a way to turn the power on");
+  });
+}
+
+function useKeyHook() {
+  if (S.items.basementKey) { say([["", "The hook is empty. The flowers are still watching it."]]); return; }
+  S.items.basementKey = true; SFX.ok();
+  ents.find((e) => e.id === "keyhook").spr = "keyhook0";
+  say([["", "You lift the key off the hook. Behind you, very softly, leaves rustle."],
+       ["", "When you turn around, nothing has moved. But the flowers are all still looking at you."]],
+      () => hint("Back to the basement door, at the end of the hall"));
+}
+
+function watchFlowers() {
+  set("watched");
+  const bloom = ents.find((e) => e.id === "bloom");
+  say([
+    ["", "The greenhouse has gone wild. Roots have cracked the floor. The glass is furred with silver-blue leaves, pressed against it from the inside."],
+    ["", "In the middle, taller than the house should allow: a tower of see-through leaves, silver and blue, glowing like a lamp. The Moon-Bloom."],
+    ["", "Pale round flowers hang all over it, faces to the floor, like lamps on a string."],
+    ["", "Then, all at once, every flower turns. To look at you.", "art/look-flower.png"],
+  ], () => {
+    addPage("The Moon-Bloom", "In the greenhouse at Ego House: a tower of see-through silver-blue leaves, glowing, hung with pale flowers. On Earth! And when you walked in, every flower turned to look at you.", "art/look-flower.png");
+    hint("A key hangs on a hook by the far glass");
+  }, (i) => { if (i === 3) { bloom.spr = "bloom1"; SFX.static(); } });
 }
 
 // ---------- the story: the silo (added 26 Nov, as in the novel's ch 19) ----------
@@ -571,10 +672,16 @@ function target() {
     da = Math.atan2(Math.sin(da), Math.cos(da));
     if (d < bd && Math.abs(da) < 0.55) { best = e; bd = d; }
   }
-  if (!best && L.name === "home") {
+  if (!best && (L.name === "home" || L.name === "mansion")) {
     for (let s = 0.2; s <= 1.8; s += 0.1) {
       const w = wallAt(P.x + Math.cos(P.a) * s, P.y + Math.sin(P.a) * s);
-      if (w === "d") return { label: "Open the front door", use: useDoor };
+      if (L.name === "home" && w === "d") return { label: "Open the front door", use: useDoor };
+      if (L.name === "mansion") {
+        if (w === "g") return { label: "Unlock the gate", use: useGate };
+        if (w === "D") return { label: "Open the front door", use: useFrontDoor };
+        if (w === "B") return { label: "Open the basement door", use: useBasementDoor };
+        if (w === "V") return { label: "Look at the portrait", use: usePortrait };
+      }
       if (w !== ".") break;
     }
   }
@@ -639,6 +746,12 @@ function update(dt) {
   }
   checkWin();
   if (L.name === "basement" && flag("won") && P.y > 6.3) enterSilo();
+  if (L.name === "mansion" && !flag("hall") && P.y < 5.8) {
+    set("hall");
+    say([["", "Inside, everything is chrome, and everything is under dust. Fifty years of it, thick as felt, on the floor and the sofa and the lamps."],
+         ["", "Except for one clean path down the middle of the floor. Two stripes wide, polished, as if something with treads drives up and down here every single day."]]);
+  }
+  if (L.name === "mansion" && !flag("watched") && P.x > 11.4 && P.y < 7) watchFlowers();
 }
 
 function knockedOut() {
