@@ -93,3 +93,10 @@ canvas{display:block;width:100%;image-rendering:pixelated;background:#b07a48;tou
 .loot{list-style:none;margin:.4rem 0;padding:0;display:grid;gap:.3rem}
 .loot li{display:flex;align-items:center;gap:.6rem}
 .loot img{width:3.6rem;height:2.6rem;object-fit:contain;image-rendering:pixelated;background:#f3e2bc;border:2px solid var(--line)}
+/* the haggle bar: a line sweeps across; green and yellow are labelled, not only coloured */
+.haggle{position:relative;height:3rem;margin:.8rem 0;background:#e8c8b8;border:3px solid var(--line);overflow:hidden}
+.haggle .hz{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center}
+.haggle .hz.y{background:#f6dc78}
+.haggle .hz.g{background:#7fbf68;border-left:2px solid var(--line);border-right:2px solid var(--line)}
+.haggle .hz span{font-size:.75rem;font-weight:700;color:#1a120c;white-space:nowrap}
+.haggle .hm{position:absolute;top:-2px;bottom:-2px;width:4px;margin-left:-2px;background:#1a120c}

@@ -101,6 +101,8 @@ const STR = {
   hunterSays: ['I\'ll give you ${n}. Cash.', 'How about ${n}? It\'s a bit worn.'],
   collectorIn: ['Am I too late?', 'Just made it!', 'Still open? Great.'],
   ask: 'Asking', yourPocket: 'You have ${n}.', buy: 'Buy ${n}', leave: 'Leave it', askLess: 'Ask for less',
+  hgText: 'Stop the line in the green for a big discount, or the yellow for a small one.', hgStop: 'Stop!',
+  hgBig: '30% off', hgSmall: '15% off', hgMiss: 'Missed! The price stays.',
   sellerYes: ['Oh, fine. ${n}.', 'For you? ${n}.', 'Sure, ${n}. It\'s just taking up space.'],
   sellerNo: ['Sorry, that price is firm.', 'Nope, that\'s a fair price.', 'I could get more on the internet!'],
   bought: 'Bought the {item} for ${n}.', tooPoor: 'Not enough money in your pocket.',
@@ -315,7 +317,10 @@ const TUNE = {
   jitter: .15,               // a find's worth is its kind's, give or take this share
   dealer: .6,                // quick sell pays this share of what it's worth
   boxWorth: 110,             // what a customer thinks a sealed box is worth
-  sellerYes: .5, sellerCut: .75,
+  // the haggle bar (Randi's idea, 26 Nov): a line sweeps back and forth and you
+  // stop it. Green takes 30% off, yellow 15%; the green is wider for an easy
+  // seller (their `yes`), so the cat lady's is a sliver. Numbers ours.
+  hgSweep: 1.3, hgSlow: .5, hgGreen: [.06, .22], hgYellow: .09, hgBig: .7, hgSmall: .85,
   shadyChance: .6, shadyCut: [.08, .15], copsAfter: [25, 45], copsAfterBuy: 6, copWalk: 3.2, thiefRun: 7,
   // buyers: bargain hunters offer this share of what it's worth; collectors come after this share of the day
   hunter: [.45, .6], hunterMax: .7, lateFrom: .7, collector: [1, 1.3],
@@ -920,6 +925,7 @@ $('#card').addEventListener('click', e => {
   // the yard sale
   else if (a === 'buy') buy(+b.dataset.slot);
   else if (a === 'askLess') askLess(+b.dataset.slot);
+  else if (a === 'hgStop') hgStop();
   else if (a === 'drive') backToShop();
   // the desk and the floor
   else if (a === 'find') findCard(byUid(+b.dataset.uid), cardFrom, cardSpot);
@@ -995,11 +1001,37 @@ function lookCard(slot) {
     <p id="sellerSays" class="soft" role="status">“${f.reply || (f.free ? t('giveaway') : sl.line)}”</p>
     <div class="row">${btn('close', t('leave'))}${f.free ? '' : btn('askLess', t('askLess'), false, `data-slot="${slot}" ${f.asked ? 'disabled' : ''}`)}${btn('buy', f.free ? t('takeFree') : t('buy', { n: f.ask }), true, `data-slot="${slot}" ${poor ? 'disabled' : ''}`)}</div>`);
 }
+// Ask for less: a timing bar instead of a coin flip (Randi, 26 Nov). One try per
+// find. Where the green sits moves each time, so it can't be learned by heart.
+let hg = null;
 function askLess(slot) {
   const f = MK.items[slot], v = MK.vendors[MK.slots[slot].vendor]; f.asked = true;
-  if (Math.random() < v.yes) { f.ask = Math.max(1, Math.round(f.ask * TUNE.sellerCut)); f.reply = t(v.shady ? 'shadyYes' : 'sellerYes', { n: f.ask }); SFX.coin(); }
-  else { f.reply = t(v.no); SFX.no(); }
-  lookCard(slot);
+  const g = TUNE.hgGreen[0] + (TUNE.hgGreen[1] - TUNE.hgGreen[0]) * v.yes, y = TUNE.hgYellow;
+  const c = rand(g / 2 + y + .05, 1 - g / 2 - y - .05);
+  hg = { slot, v, lo: c - g / 2, hi: c + g / 2, ylo: c - g / 2 - y, yhi: c + g / 2 + y, t0: performance.now(), at: 0,
+    speed: matchMedia('(prefers-reduced-motion: reduce)').matches ? TUNE.hgSlow : TUNE.hgSweep };
+  const zone = (a, b, cls, label) => `<div class="hz ${cls}" style="left:${a * 100}%;width:${(b - a) * 100}%"><span>${label}</span></div>`;
+  openCard(`${h2(Name(f))}<p>${t('hgText')}</p>
+    <div class="haggle" aria-hidden="true">${zone(hg.ylo, hg.yhi, 'y', '')}${zone(hg.lo, hg.hi, 'g', t('hgBig'))}<div class="hm" id="hgMark"></div></div>
+    <div class="row">${btn('hgStop', t('hgStop'), true)}</div>`, null, 'hgStop');
+  requestAnimationFrame(hgFrame);
+}
+function hgFrame(now) {
+  if (!hg) return;
+  const u = ((now - hg.t0) / 1000 * hg.speed) % 2;
+  hg.at = u < 1 ? u : 2 - u;
+  const m = $('#hgMark'); if (!m) { hg = null; return; }
+  m.style.left = `${hg.at * 100}%`;
+  requestAnimationFrame(hgFrame);
+}
+function hgStop() {
+  if (!hg) return;
+  const h = hg; hg = null;
+  const f = MK.items[h.slot], at = h.at;
+  const cut = at >= h.lo && at <= h.hi ? TUNE.hgBig : at >= h.ylo && at <= h.yhi ? TUNE.hgSmall : 0;
+  if (cut) { f.ask = Math.max(1, Math.round(f.ask * cut)); f.reply = t(h.v.shady ? 'shadyYes' : 'sellerYes', { n: f.ask }); SFX.coin(); }
+  else { f.reply = t('hgMiss') + ' ' + t(h.v.no); SFX.no(); }
+  lookCard(h.slot);
 }
 function buy(slot) {
   const f = MK.items[slot];
