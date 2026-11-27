@@ -33,12 +33,14 @@ const STR = {
     '<b>The desk:</b> the camera there shows what a find is really worth. Set its price tag, then put it out on a table.',
     '<b>Quick sell:</b> the dealer buys it at the desk right away, for less than it\'s worth.',
     '<b>Every sale:</b> what you paid goes into the Rent Pool. Only the profit goes in your pocket.',
-    '<b>Buyers:</b> bargain hunters come early and offer low. Collectors pay fair, but they only turn up late in the day.',
+    '<b>Buyers:</b> bargain hunters come all day and offer low. Collectors pay the most, but nobody knows when one will walk in, and some days none come at all.',
     '<b>Condition:</b> every find is 1 to 5, broken to mint. Scuffs mean a worn one, a white twinkle a mint one. The camera says exactly; the field guide (at the desk) says roughly before you buy.',
     '<b>Mystery boxes:</b> five things inside. Anything illegal goes to the police: selling it gets you arrested.',
     '<b>More places:</b> the dump (sweep junk piles on a clock; three sweeps to a pile) and your own table at the swap meet (bring up to 5 tagged finds, ring buyers up at the table).',
     '<b>Old computers:</b> the camera says what decade one is from, and older is worth more. A dead one won\'t turn on: look for the power light.',
     '<b>The play corner:</b> set up a working computer and a game cartridge or two in the corner, and players pay $15 a go while the shop is open.',
+    '<b>Other flippers:</b> sometimes a rival is at the sales too. He buys what he likes, so a good find won\'t wait for you. What he passes on tells you something too.',
+    '<b>Bidding:</b> now and then a second buyer wants the same find and offers more at the register. Take it, or stick with the first.',
     '<b>Quiet days:</b> some days are slow, and around lunch the street goes quiet. Not everyone who comes in buys.',
     '<b>Battleships:</b> three big models are out there. Keep one in the ship case and it\'s yours for good; sell it and it may turn up again.',
     '<b>Help:</b> H or ?. A controller works too.',
@@ -114,6 +116,12 @@ const STR = {
   cornerReady: 'The play corner is open for players.', playPaid: 'A player paid ${n} for the play corner.',
   gamerSays: ['Pew pew!', 'One more level!', 'High score!', 'Jump! JUMP!', 'Aw, so close!'], gamerIn: ['Is the computer free?', 'Can I play?'],
   dayPlays: 'Play corner: {n} plays, ${cash}.',
+  // the rival flipper (27 Nov)
+  rivalHere: 'Another flipper is here. He\'s after the good stuff too!', rivalGot: 'The other flipper bought the {item}.',
+  rivalTook: ['Mine!', 'Ooh, nice.', 'Sold! To me.', 'Don\'t mind if I do.'], rivalPass: ['Nah.', 'Seen better.', 'Hmm. No.'], rivalBye: 'Got what I came for.',
+  // a second buyer bidding at the register (27 Nov)
+  bidSay: ['Wait! I\'ll pay ${n} for that!', 'Hold on! I\'ll give you ${n}!'], bidText: 'Another buyer wants it too, and offers ${n}.',
+  bidSell: 'Sell to the other buyer ${n}', bidCut: ['Hey! I was first!', 'No fair!'], bidAw: ['Aw, too slow.', 'Next time, then.'],
   // the kid selling sporks (his idea, 27 Nov)
   kidTitle: 'A kid selling sporks', kidHello: ['Sporks! A dollar each! It\'s a spoon AND a fork!', 'Get your sporks! Only one dollar!'],
   kidBuy: 'Buy a spork $1', kidAsk: 'Ask about the sporks', kidBought: 'Thank you! Enjoy your spork!',
@@ -141,7 +149,7 @@ const STR = {
   // buyers in the shop
   buyers: { hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
   hunterSays: ['I\'ll give you ${n}. Cash.', 'How about ${n}? It\'s a bit worn.'],
-  collectorIn: ['Am I too late?', 'Just made it!', 'Still open? Great.'],
+  collectorIn: ['Anything rare today?', 'I collect these!', 'Let\'s see what you\'ve got.', 'Is this the flip shop?'],
   ask: 'Asking', yourPocket: 'You have ${n}.', buy: 'Buy ${n}', leave: 'Leave it', askLess: 'Ask for less',
   hgText: 'Stop the line in the green for a big discount, or the yellow for a small one.', hgStop: 'Stop!',
   hgBig: '30% off', hgSmall: '15% off', hgMiss: 'Missed! The price stays.',
@@ -383,7 +391,11 @@ const TUNE = {
   hgSweep: 1.3, hgSlow: .5, hgGreen: [.06, .22], hgYellow: .09, hgBig: .7, hgSmall: .85,
   shadyChance: .6, shadyCut: [.08, .15], copsAfter: [25, 45], copsAfterBuy: 6, copWalk: 3.2, thiefRun: 7,
   // buyers: bargain hunters offer this share of what it's worth; collectors come after this share of the day
-  hunter: [.45, .6], hunterMax: .7, lateFrom: .7, collector: [1, 1.3],
+  // collectors (27 Nov, Randi: waiting until the afternoon for them was a sure
+  // thing, so they're random now): 0 to 3 a day, each at a random time, and
+  // now and then one walks in unplanned. Ours.
+  hunter: [.45, .6], hunterMax: .7, collector: [1, 1.3],
+  collDays: [[0, .25], [1, .35], [2, .25], [3, .15]], collAt: [.05, .95], collAny: .05,
   dayLen: 100, firstCust: 3, custEvery: [7, 12], browse: [2, 3.2], wait: 30,
   pay: [.85, 1.25],          // a customer would pay this share of what it's worth
   haggleAnyway: .3,          // ...and sometimes tries to haggle a fair tag down anyway
@@ -407,6 +419,12 @@ const TUNE = {
   // the play corner: $15 a go is his; the rest ours
   play: 15, playTime: [8, 12], cornerCarts: 4, gamer: .3, gamerPerCart: .07,
   kidChance: .15,
+  // the rival flipper (27 Nov): at half the yard sales and every swap meet you
+  // buy at. He has a good eye but not a perfect one. All ours.
+  rivalYard: .5, rivalStart: [5, 9], rivalLook: [2.5, 4], rivalRest: [1.5, 3.5], rivalWalk: 2.6,
+  rivalEye: { real: .55, dud: .15, box: .3 }, rivalMax: { yard: 3, swap: 5 },
+  // a second buyer at the register: how often, and how much more they offer. Ours.
+  bidChance: .15, bidUp: [1.1, 1.3],
   // slow days and quiet spells (Randi, 27 Nov). A day is busy, normal or slow
   // (how often, and what it does to the gap between customers); a lull of
   // `lullLen` seconds comes some time around lunch; some people only look.
@@ -1084,6 +1102,7 @@ $('#card').addEventListener('click', e => {
   else if (a === 'offer') sell(regCust, regCust.offer);
   else if (a === 'counter') counter(regCust);
   else if (a === 'noSale') noSale(regCust);
+  else if (a === 'bidSell') sellToBidder(regCust);
   // the end of the day
   else if (a === 'rent') rentCard();
   else if (a === 'nextDay') nextDay();
@@ -1130,11 +1149,14 @@ function goBuying(id, mine = null) {
   S.pocket -= fee; S.yardDone = true; save();
   queue.length = 0;
   MK = id === 'swap' ? buildSwap(mine) : id === 'dump' ? buildDump() : buildYard(id);
+  if (!mine && (id === 'swap' || (id !== 'dump' && Math.random() < TUNE.rivalYard)))
+    MK.rival = { x: MK.start.x + 1.5, y: MK.start.y, look: { ...C, h: '#1a1a1a', t: '#e8a030', s: '#e8b890', p: '#3a3a42' }, rows: CUST, mode: 'rest', t: randIn(TUNE.rivalStart), took: 0, max: TUNE.rivalMax[MK.kind], face: 1, walkT: 0, route: null, speed: TUNE.rivalWalk };
   scene = 'yard'; P.x = MK.start.x; P.y = MK.start.y; P.route = null; custs = []; floats = [];
   setWidth(MK.w);
   if (mine) { say(t('meetHello')); say(t('fee', { n: fee })); }
   else if (id === 'dump') { say(t('dumpHello', { time: TUNE.dumpTime })); say(t('dumpFee', { n: fee })); }
   else if (fee) { say(t('swapHello')); say(t('fee', { n: fee })); } else say(t(MK.vendors[0].lines));
+  if (MK.rival) say(t('rivalHere'));
   showBar();
 }
 // ----- your table at the swap meet -----
@@ -1180,13 +1202,44 @@ function stepMeet(dt) {
     else if (c.mode === 'browse') {
       c.t -= dt; if (c.t > 0) continue;
       const f = MK.items[c.slot];
-      if (f && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
+      if (f && c.kind !== 'collector' && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
       if (!f || !decide(c, f)) { bubble(c, t(f ? 'tooPricey' : 'nothingHere')); leaveShop(c); continue; }
       c.find = f; MK.items[c.slot] = null; c.mode = 'wait'; c.joined = ++lineNo; c.t = TUNE.wait; bubble(c, t('wait')); SFX.bell();
     } else if (c.mode === 'wait') { c.t -= dt; if (c.t <= 0) { bubble(c, t('forget')); putBack(c); leaveShop(c); } }
     else if (c.mode === 'out') { if (walk(c, dt)) c.gone = true; }
   }
   custs = custs.filter(c => !c.gone);
+}
+// ----- the rival flipper (27 Nov) -----
+// He walks the tables like you do, looks at one find a few seconds, and buys
+// it if he likes it: usually a real one, now and then a dud. He leaves the
+// free battleship, the stolen goods and the kid's sporks alone, and goes once
+// he's bought `max` things or there's nothing left he wants.
+function stepRival(dt) {
+  const r = MK.rival; if (r.gone) return;
+  if (r.say) { r.say.t -= dt; if (r.say.t <= 0) r.say = null; }
+  const wants = i => { const f = MK.items[i]; return f && !f.free && !f.hot && !(r.passed || []).includes(f.uid); };
+  if (r.mode === 'rest') {
+    r.t -= dt; if (r.t > 0) return;
+    const open = MK.items.map((f, i) => wants(i) ? i : -1).filter(i => i >= 0);
+    if (r.took >= r.max || !open.length) { r.say = { text: t('rivalBye'), t: 2 }; r.mode = 'leave'; r.route = path(r, MK.start) || []; return; }
+    r.slot = pick(open); const o = MK.objs.find(o => o.slot === r.slot);
+    r.route = path(r, { x: o.stand.x + .5, y: o.stand.y }) || [{ x: o.stand.x + .5, y: o.stand.y }]; r.mode = 'go';
+  } else if (r.mode === 'go') {
+    if (walk(r, dt, r.speed)) { r.mode = 'look'; r.t = randIn(TUNE.rivalLook); r.face = MK.slots[r.slot].x < r.x ? -1 : 1; }
+  } else if (r.mode === 'look') {
+    r.t -= dt; if (r.t > 0) return;
+    const f = MK.items[r.slot];
+    if (f && wants(r.slot)) {
+      const eye = f.kind === 'box' ? TUNE.rivalEye.box : f.good ? TUNE.rivalEye.real : TUNE.rivalEye.dud;
+      if (Math.random() < eye) {
+        MK.items[r.slot] = null; r.took++; SFX.no();
+        r.say = { text: t('rivalTook'), t: 1.8 }; say(t('rivalGot', { item: nameOf(f) }));
+        float(MK.slots[r.slot].x, MK.slots[r.slot].y - .6, `$${f.ask}`, '#e8a030');
+      } else { (r.passed ||= []).push(f.uid); r.say = { text: t('rivalPass'), t: 1.4 }; }
+    }
+    r.mode = 'rest'; r.t = randIn(TUNE.rivalRest);
+  } else if (r.mode === 'leave') { if (walk(r, dt, r.speed)) r.gone = true; }
 }
 // ----- the kid selling sporks (his idea, 27 Nov) -----
 // Now and then a kid has a little table at a yard sale, selling sporks for a
@@ -1531,7 +1584,9 @@ let daySales = [], dayPlays = { n: 0, cash: 0 };
 function openShop() {
   closeCard(); S.phase = 'open'; S.clock = 0; spawnT = TUNE.firstCust;
   let r = Math.random(); S.mood = (TUNE.moods.find(([, p]) => (r -= p) < 0) || TUNE.moods[1])[0];
-  S.lull = { at: randIn(TUNE.lullAt) * TUNE.dayLen, len: randIn(TUNE.lullLen), said: false }; save();
+  S.lull = { at: randIn(TUNE.lullAt) * TUNE.dayLen, len: randIn(TUNE.lullLen), said: false };
+  r = Math.random(); const nColl = (TUNE.collDays.find(([, p]) => (r -= p) < 0) || [0])[0];
+  S.coll = Array.from({ length: nColl }, () => randIn(TUNE.collAt) * TUNE.dayLen).sort((a, b) => a - b); save();
   SFX.door(); say(t('openMsg')); if (t(`mood.${S.mood}`)) say(t(`mood.${S.mood}`)); showBar();
 }
 const moodGap = () => (TUNE.moods.find(m => m[0] === S.mood) || TUNE.moods[1])[2];
@@ -1589,12 +1644,16 @@ function nextDay() {
 // high, so they bring it and haggle; or it's far too high and they leave.
 // They know what things are worth, give or take: a dud with a big tag sits.
 // Buyers (Randi, 26 Nov): bargain hunters come all day and offer low;
-// collectors pay fair, but only turn up late (after `TUNE.lateFrom` of the
-// day). Selling to the first offer or waiting for a collector is the choice.
+// collectors pay fair or more. They came only late in the day at first, and
+// the oldest kid tester learned to hold everything for the afternoon, so since
+// 27 Nov a day has 0 to 3 of them at random times (`S.coll`, set when the shop
+// opens) plus the odd one unplanned. Selling to the first offer or waiting for
+// a collector is the choice, and waiting is a gamble.
 // A collector wears a hat and glasses, so they can be told apart.
 const COLLECTOR = { a: CUST.a.map((r, i) => i === 0 ? '.hhhhhhhh.' : i === 3 ? '..sbsbbs..' : r), b: CUST.b.map((r, i) => i === 0 ? '.hhhhhhhh.' : i === 3 ? '..sbsbbs..' : r) };
 function spawnCust() {
-  const late = S.clock > TUNE.dayLen * TUNE.lateFrom;
+  // a planned collector whose time has come, or now and then one out of the blue
+  const due = S.coll && S.coll.length && S.clock >= S.coll[0];
   // the cat fan (26 Nov) comes once a hairball sculpture is out, until he's bought one
   const art = !S.catLove && S.spots.findIndex(u => { const f = byUid(u); return f && f.kind === 'hairball'; });
   const fan = art >= 0 && art !== false && Math.random() < TUNE.catFanChance && !custs.some(o => o.kind === 'catfan');
@@ -1605,7 +1664,9 @@ function spawnCust() {
     if (g.route) { custs.push(g); SFX.door(); }
     return;
   }
-  const kind = fan ? 'catfan' : late ? (Math.random() < .7 ? 'collector' : 'regular') : (Math.random() < .5 ? 'hunter' : 'regular');
+  const coll = !fan && (due || Math.random() < TUNE.collAny);
+  if (coll && due) S.coll.shift();
+  const kind = fan ? 'catfan' : coll ? 'collector' : Math.random() < .5 ? 'hunter' : 'regular';
   const look = kind === 'collector' ? { ...pick(LOOKS), h: '#2a2a30' } : kind === 'catfan' ? { ...C, h: '#a8a8a8', t: '#e05a9a', s: '#f0c49a', p: '#3b4a6a' } : pick(LOOKS);
   const c = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look, kind, rows: kind === 'collector' ? COLLECTOR : CUST, mode: 'in', t: 0, walkT: 0, face: 1, route: null, find: null, say: null };
   if (kind === 'collector') c.say = { text: t('collectorIn'), t: 2 };
@@ -1668,6 +1729,7 @@ function stepCusts(dt) {
     if (c.say) { c.say.t -= dt; if (c.say.t <= 0) c.say = null; }
     if ((c.mode === 'in' || c.mode === 'browse') && mice.some(m => dist(m, c) < 1.6)) { bubble(c, t('mouseScare')); leaveShop(c); continue; }
     if (c.kind === 'gamer') { stepGamer(c, dt); continue; }
+    if (c.kind === 'bidder') { stepBidder(c, dt); continue; }
     if (c.mode === 'in') {
       if (walk(c, dt)) {
         if (c.spot == null || S.spots[c.spot] == null) { bubble(c, t('nothingHere')); leaveShop(c); continue; }
@@ -1678,14 +1740,17 @@ function stepCusts(dt) {
       if (c.t > 0) continue;
       const f = byUid(S.spots[c.spot]);
       if (!f) { leaveShop(c); continue; }
-      if (c.kind !== 'catfan' && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
+      if (c.kind !== 'catfan' && c.kind !== 'collector' && Math.random() < TUNE.justLook) { bubble(c, t('justLook')); leaveShop(c); continue; }
       if (!decide(c, f)) { bubble(c, t('tooPricey')); leaveShop(c); continue; }
       if (c.kind === 'catfan' && f.kind === 'hairball') bubble(c, t('catFanBuy'), 2.4);
       c.find = f; S.spots[c.spot] = null; save();
       c.mode = 'toReg'; c.joined = ++lineNo;
       c.route = path(c, linePlace(inLine().indexOf(c)), true);
     } else if (c.mode === 'toReg') {
-      if (walk(c, dt)) { c.mode = 'wait'; c.t = TUNE.wait; bubble(c, t('wait')); SFX.bell(); }
+      if (walk(c, dt)) {
+        c.mode = 'wait'; c.t = TUNE.wait; bubble(c, t('wait')); SFX.bell();
+        if (c.find.value > 0 && Math.random() < TUNE.bidChance && !custs.some(o => o.kind === 'bidder')) spawnBidder(c);
+      }
     } else if (c.mode === 'wait') {
       // the line moves up when the one in front is done
       const at = linePlace(inLine().indexOf(c));
@@ -1714,6 +1779,31 @@ function stepGamer(c, dt) {
     }
   } else if (c.mode === 'out') { if (walk(c, dt)) c.gone = true; }
 }
+// Now and then a second buyer comes in after a find that's already waiting at
+// the register, and offers more for it (27 Nov). Sell to them and the first
+// buyer walks off cross; ring up the first and the second goes. Shop only.
+function spawnBidder(c) {
+  const b = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, kind: 'bidder', look: pick(LOOKS), rows: CUST, mode: 'bid', target: c, t: 0, walkT: 0, face: -1, find: null, say: null };
+  b.route = path(b, { x: REG_FRONT.x + 1.4, y: REG_FRONT.y + .3 }, true);
+  if (b.route) { custs.push(b); SFX.door(); }
+}
+function stepBidder(b, dt) {
+  if (b.say) { b.say.t -= dt; if (b.say.t <= 0) b.say = null; }
+  const c = b.target, still = c && c.mode === 'wait' && c.find && !c.gone;
+  if (b.mode === 'bid') {
+    if (!still) { bubble(b, t('bidAw')); leaveShop(b); return; }
+    if (walk(b, dt)) {
+      c.bid = round5(Math.max(c.price || 0, c.offer || 0, 5) * randIn(TUNE.bidUp)); c.bidder = b;
+      b.mode = 'hover'; b.face = -1; bubble(b, t('bidSay', { n: c.bid }), 2.6); SFX.bell();
+    }
+  } else if (b.mode === 'hover') { if (!still) { if (!b.find) bubble(b, t('bidAw')); leaveShop(b); } }
+  else if (b.mode === 'out') { if (walk(b, dt)) b.gone = true; }
+}
+function sellToBidder(c) {
+  const b = c.bidder, f = c.find, n = c.bid;
+  c.find = null; c.bid = null; bubble(c, t('bidCut')); leaveShop(c);
+  b.find = f; sell(b, n);
+}
 // the line at the register: first come, first served, the next one behind
 let lineNo = 0;
 const inLine = () => custs.filter(c => c.mode === 'toReg' || c.mode === 'wait').sort((a, b) => a.joined - b.joined);
@@ -1728,14 +1818,15 @@ function regCard() {
   if (!c) { openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<p>${t('regEmpty')}</p><div class="row">${btn('close', t('done'), true)}</div>`); return; }
   const f = c.find, item = nameOf(f), who = `<p><b>${t(`buyers.${c.kind}`)}</b></p>`;
   if (c.offer == null) {
-    openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div><div class="row">${btn('noSale', t('noSale'))}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
+    openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div>${bidRow(c)}<div class="row">${btn('noSale', t('noSale'))}${c.bid ? btn('bidSell', t('bidSell', { n: c.bid })) : ''}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
   } else {
     const mid = round5((c.offer + f.tag) / 2);
     c.mid = mid > c.offer && mid < f.tag ? mid : null;
     openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regOffer', { item, tag: f.tag, offer: c.offer })}</p><dl><dt>${t('paid')}</dt><dd>$${f.cost}</dd><dt>${t('worth')}</dt><dd>${known(f) ? '$' + f.value : t('worthUnknown')}</dd></dl></div></div>
-      <div class="row">${btn('noSale', t('noSale'))}${c.mid && !c.countered ? btn('counter', t('counter', { n: c.mid })) : ''}${btn('offer', t('sellFor', { n: c.offer }), true)}</div>`, null, 'noSale');
+      ${bidRow(c)}<div class="row">${btn('noSale', t('noSale'))}${c.bid ? btn('bidSell', t('bidSell', { n: c.bid })) : ''}${c.mid && !c.countered ? btn('counter', t('counter', { n: c.mid })) : ''}${btn('offer', t('sellFor', { n: c.offer }), true)}</div>`, null, 'noSale');
   }
 }
+const bidRow = c => c.bid && c.bidder && !c.bidder.gone ? `<p class="note">${t('bidText', { n: c.bid })}</p>` : '';
 function counter(c) {
   c.countered = true;
   if (c.mid <= c.max) { bubble(c, t('deal', { n: c.mid })); sell(c, c.mid); }
@@ -2075,6 +2166,7 @@ function draw(now) {
   if (scene === 'yard') {
     MK.vendors.forEach(v => { if (!v.gone) people.push({ o: v, rows: v.rows, col: v.look }); });
     if (MK.cops) MK.cops.officers.forEach(o => people.push({ o, rows: OFFICER, col: COP }));
+    if (MK.rival && !MK.rival.gone) people.push({ o: MK.rival, rows: MK.rival.rows, col: MK.rival.look });
   }
   people.sort((a, b) => a.o.y - b.o.y);
   if (scene === 'shop') for (const m of mice) { const img = spr(MOUSE, C, m.face < 0); put(img, m.x * T - img.width / 2, m.y * T - img.height); }
@@ -2085,7 +2177,7 @@ function draw(now) {
   // a $ over anyone waiting to pay, so the line can be seen across the room
   for (const g of tags) drawTag(...g);
   for (const c of custs) if (c.say) bubbleAt(c.say.text, c.x * T, c.y * T - 15); else if (c.mode === 'wait') bubbleAt('$', c.x * T, c.y * T - 15);
-  if (scene === 'yard') for (const v of [...MK.vendors, ...(MK.cops ? MK.cops.officers : [])]) if (v.say && !v.gone) bubbleAt(v.say.text, v.x * T, v.y * T - 15);
+  if (scene === 'yard') for (const v of [...MK.vendors, ...(MK.cops ? MK.cops.officers : []), ...(MK.rival ? [MK.rival] : [])]) if (v.say && !v.gone) bubbleAt(v.say.text, v.x * T, v.y * T - 15);
   // the next thing blinks while the ? help is open and for a few seconds after
   if (mode === 'play' && (!$('#help').hidden || now < hintUntil)) { const o = nextThing(); if (o) corners(o, now); }
   for (const f of floats) { cx.globalAlpha = clamp(f.t, 0, 1); textC(f.text, f.x * T, (f.y - (1.6 - f.t) * .8) * T, f.color, 1); cx.globalAlpha = 1; }
@@ -2110,7 +2202,7 @@ function step(dt, now) {
   if (mode !== 'play') return;
   stepKeeper(dt);
   if (scene === 'shop') { stepDay(dt); stepCusts(dt); stepMice(dt); }
-  else { stepMarket(dt); if (MK.selling) stepMeet(dt); if (MK.kind === 'dump') stepDump(dt); }
+  else { stepMarket(dt); if (MK.rival) stepRival(dt); if (MK.selling) stepMeet(dt); if (MK.kind === 'dump') stepDump(dt); }
   for (const f of floats) f.t -= dt;
   floats = floats.filter(f => f.t > 0);
   const a = t(actionNow()); if ($('#actBtn').textContent !== a) $('#actBtn').textContent = a;
