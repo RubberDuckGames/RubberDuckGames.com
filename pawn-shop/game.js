@@ -37,6 +37,7 @@ const STR = {
     '<b>Buyers:</b> bargain hunters come early and offer low. Collectors pay fair, but they only turn up late in the day.',
     '<b>Condition:</b> every find is 1 to 5, broken to mint. Scuffs mean a worn one, a white twinkle a mint one. The camera says exactly; the field guide (at the desk) says roughly before you buy.',
     '<b>Mystery boxes:</b> five things inside. Anything illegal goes to the police: selling it gets you arrested.',
+    '<b>More places:</b> the dump (sweep junk piles on a clock; three sweeps to a pile) and your own table at the swap meet (bring up to 5 tagged finds, ring buyers up at the table).',
     '<b>Battleships:</b> three big models are out there. Keep one in the ship case and it\'s yours for good; sell it and it may turn up again.',
     '<b>Help:</b> H or ?. A controller works too.',
   ],
@@ -65,11 +66,14 @@ const STR = {
     toys: { name: 'Toy sale on Birch Lane', line: 'Old toys, and a whole lot of plastic.' },
     cat: { name: 'Cat lady\'s yard sale on Elm Street', line: 'Hairball sculptures. She says they\'re art.' },
     swap: { name: 'Oakridge Swap Meet', line: 'Stall after stall of everything. Entry is ${fee}.' },
+    sell: { name: 'Sell at the swap meet', line: 'Rent a table for ${fee} and bring up to 5 tagged finds. Selling takes the day, so the shop stays shut.' },
+    dump: { name: 'Oakridge Dump', line: 'Sweep through the junk piles for {time} seconds. Whatever you find is yours. Entry is ${fee}.' },
   },
   // what each seller says when you talk to them
   sellers: {
     garage: ['Everything must go!', 'Cleaning out the garage.', 'Grandpa kept everything.', 'Ask if you want a deal.'],
     toys: ['My kids grew up. Everything goes!', 'Toys! Lots of toys!', 'Some of these are older than me.'],
+    dump: ['Fifty bucks, sixty seconds. Go!', 'Mind the smashed tablets.', 'Whatever you dig up is yours.'],
     cat: ['Hairball sculptures! Every one is a work of art.', 'Mittens made that one all by herself.', 'Don\'t mind the cats. They\'re the artists.', 'Each sculpture took years. Of coughing.', 'Fluffy is in her blue period.'],
   },
   stalls: {
@@ -83,7 +87,25 @@ const STR = {
     junk: ['Everything a dollar or two. Well, mostly.', 'Junk! Beautiful junk!'],
     shady: ['No questions, okay?', 'Brand new. Don\'t ask where from.', 'Cash only. Quick, quick.'],
   },
-  fee: 'You paid ${n} to get in.', tooPoorFee: 'You need ${n} to get into the swap meet.',
+  // your own table at the swap meet (the oldest kid tester's ask, 26 Nov)
+  pickTitle: 'Sell at the swap meet', pickText: 'Pick up to {max} tagged finds to bring. The table costs ${fee}.',
+  pickNone: 'Nothing tagged to bring. Give finds a price tag at the desk first.', pickBig: 'The battleship is too big for a folding table.',
+  pickGo: 'Go sell ({n})', pickCount: '{n} of {max} picked',
+  meetHello: 'Your table is set up. Buyers walk the stalls.', meetClosing: 'The swap meet is closing. Pack up and drive back.',
+  meetMine: 'Your table. When a buyer waits with a $, come here to ring it up.', actMyTable: 'Your table',
+  meetDone: 'Back from the swap meet. Unsold finds go into the back room.',
+  goalMeet: 'Buyers stop at your table. Ring them up there. Drive back when you\'re done.',
+  // the dump (his ask, 26 Nov)
+  dumpHello: 'The dump! {time} seconds. Sweep the piles with your broom.', dumpFee: 'You paid ${n} at the gate.',
+  dumpNothing: ['Just junk.', 'Old tires and rust.', 'Nothing but broken chairs.', 'A sad pile of nothing.'],
+  dumpTablet: 'A smashed tablet. Worth nothing.', dumpFound: 'Found a {item}!',
+  dumpJet: 'A whole fighter jet under the scrap! How did the dump guy miss that? It won\'t fit in your car.',
+  dumpOver: 'Time\'s up! The dump guy waves you out.', dumpLeft: 'Dump {s}s', actSweep: 'Sweep', swept: 'Already swept.',
+  goalDump: 'Sweep the junk piles before time runs out. Your car is by the gate.',
+  // the cat lady finds love (his idea, 26 Nov)
+  catFanIn: 'Is that... a hairball sculpture?', catFanBuy: 'Who made this? I simply must meet the artist.',
+  loveTitle: 'A letter in the mail', loveText: 'Dear shopkeeper, the gentleman who bought "{title}" came to Elm Street to meet the artist. He stayed for tea. Then dinner. We\'re getting married in the spring, and the cats approve! Thank you for selling my art. With love, the cat lady (and Mittens, Fluffy and Sir Whiskers)',
+  loveGift: 'Tucked in the card: ${n}.', loveTitleNone: 'her finest work', tooPoorFee: 'You need ${n} to get into the swap meet.',
   swapHello: 'The Oakridge Swap Meet! Walk the stalls.',
   hotNote: 'Brand new, with the store tag still on. Why is it so cheap?',
   catNo: ['Fluffy worked hard on that!', 'That price is firm. Mittens says so.', 'Art is priceless. Well. It\'s that price.'],
@@ -97,7 +119,7 @@ const STR = {
   copsOk: 'Okay',
   toss: 'Throw it out', tossed: 'Into the trash it goes.', tossNote: 'Nobody will buy this. Not even the dealer.',
   // buyers in the shop
-  buyers: { hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector' },
+  buyers: { hunter: 'A bargain hunter', regular: 'A shopper', collector: 'A collector', catfan: 'A man who loves cat art' },
   hunterSays: ['I\'ll give you ${n}. Cash.', 'How about ${n}? It\'s a bit worn.'],
   collectorIn: ['Am I too late?', 'Just made it!', 'Still open? Great.'],
   ask: 'Asking', yourPocket: 'You have ${n}.', buy: 'Buy ${n}', leave: 'Leave it', askLess: 'Ask for less',
@@ -157,7 +179,7 @@ const STR = {
     insulator: 'glass insulator', typewriter: 'old typewriter', iron: 'flat iron', duck: 'rubber duck',
     sharpener: 'crank pencil sharpener', train: 'toy train in its box', bottle: 'black glass train bottle', sub: 'tin submarine',
     moviecam: '8mm movie camera', flashcam: 'folding camera with flash', shiplamp: 'copper ship lantern', radiometer: 'glass light mill',
-    tlr: 'twin-lens camera', boxcam: '1920s box camera', folding: '1930s folding camera', enlarger: 'photo enlarger',
+    tlr: 'twin-lens camera', tablet: 'smashed tablet', boxcam: '1920s box camera', folding: '1930s folding camera', enlarger: 'photo enlarger',
     truck: 'moving truck toy', plane: 'tin airliner', biplane: 'tin biplane', ship: 'model battleship',
     canteen: 'army surplus canteen', comics: 'comic book', book: 'old book', plush: 'stuffed bear', present: 'wrapped present',
     milk: 'carton of expired milk', lint: 'ball of lint', pills: 'suspicious bottle',
@@ -203,6 +225,7 @@ const STR = {
     train: ['Still in its window box. The box is half of what collectors pay for.', 'A loose engine, no box, and a wheel missing.'],
     bottle: ['Pressed black glass that shines in the light. It used to hold aftershave.', 'Painted plastic. No shine at all.'],
     sub: ['Tin, with its wind-up key on the side. It dives in the bathtub.', 'A plastic copy. No key, so it doesn\'t go.'],
+    tablet: ['A smashed tablet from the dump. Not even the dealer wants it.', 'A smashed tablet from the dump. Not even the dealer wants it.'],
     tlr: ['A twin-lens camera: you look down into the top lens and shoot through the bottom one.', 'The top lens is cracked, so you can\'t see what you\'re shooting.'],
     boxcam: ['A 1930s box camera with a silver art deco front. Point, click, hope.', 'A plastic toy made to look old. No metal front.'],
     moviecam: ['A wind-up 8mm movie camera. Wind it fully after each shot, and it films about 30 seconds.', 'Somebody took the lens. It won\'t film a thing.'],
@@ -293,13 +316,15 @@ const KINDS = {
   milk: { ask: [1, 1], worth: 0, dud: 0, real: 0 },
   lint: { ask: [1, 1], worth: 0, dud: 0, real: 0 },
   pills: { ask: [1, 1], worth: 0, dud: 0, real: 0 },
+  tablet: { ask: [1, 1], worth: 0, dud: 0, real: 0 },
 };
 // Condition (the oldest kid tester's rule, 26 Nov): a hidden 1 to 5 on every
 // find. 1 is worth a quarter and never more than $10, 2 half, 3 its value, 4 at
 // least $80, 5 at least $150. The 4 and 5 multipliers are ours. Duds have a
 // condition too, but it doesn't save them.
 const QUAL = { odds: [.15, .25, .3, .2, .1], mult: [.25, .5, 1, 1.25, 1.5], floor: [0, 0, 0, 80, 150], cap: [10, 1e9, 1e9, 1e9, 1e9] };
-const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk']);
+const NO_Q = new Set(['box', 'hairball', 'present', 'milk', 'lint', 'pills', 'junk', 'tablet']);
+const DUMP_FINDS = ['shovel', 'iron', 'sharpener', 'typewriter', 'lantern', 'grinder', 'canteen', 'tincar', 'truck', 'enlarger', 'boxcam', 'moviecam', 'insulator', 'scale', 'shiplamp'];
 const TOYS = ['robot', 'tincar', 'figure', 'sub', 'truck', 'plane', 'biplane'];
 // Five things in every mystery box (his list, 26 Nov). The odds are ours.
 const BOX_LOOT = [
@@ -337,6 +362,11 @@ const TUNE = {
   collectorMint: [1.4, 1.8], mintStretch: 2,   // collectors overpay for mint; mint sells even overpriced
   shipChance: .2, giveaway: .1,                // a battleship at the swap meet; a yard sale gives one away
   mouse: 3.4,
+  // your table at the swap meet, the dump, the cat fan. Numbers ours, except
+  // the dump's entry, which is his.
+  tableFee: 15, tableMax: 5, meetSell: 90, meetEvery: [3, 6],
+  dumpFee: 50, dumpTime: 60, dumpHits: 3, dumpOdds: { nothing: .4, tablet: .25, jet: .01 },
+  catFan: [20, 45], catFanChance: .35, loveGift: 25,
   hint: 5000,
 };
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -465,6 +495,7 @@ const PIX = {
   present: ['....VV....', '...V..V...', 'PPPPVVPPPP', 'PPPPVVPPPP', 'VVVVVVVVVV', 'PPPPVVPPPP', 'PPPPVVPPPP', 'PPPPVVPPPP', 'PPPPPPPPPP'],
   milk: ['..nn..', '..dd..', '.nnnn.', 'nnnnnn', 'nPPPPn', 'nPnnPn', 'nPPPPn', 'nnGnnn', 'nGnnnn', 'nnnnnn'],
   lint: ['..dd.dd.', '.dDdddd.', 'ddddDddd', '.dddddd.', '..dd.d..'],
+  tablet: ['bbbbbbbbb', 'bkkkkkkkb', 'bkknkkkkb', 'bkkknkkkb', 'bkkkknnkb', 'bknkkkkkb', 'bkknkkkkb', 'bkkkkkkkb', 'bbbbSbbbb'],
   pills: ['..bb..', '..LL..', '.LLLL.', 'LLLLLL', 'LnnnnL', 'LnVVnL', 'LnnnnL', 'LLLLLL', 'LLLLLL'],
 };
 // the three battleships: one hull, each in its own paint
@@ -514,7 +545,7 @@ const LOOK = {
   comics: [PIX.comics, swap(PIX.comics, 'T', 'n')],
   book: [PIX.book, swap(swap(PIX.book, 'B', 'n'), 'm', 'P')],
   plush: [PIX.plush, swap(PIX.plush, 'b', 'o')],
-  present: [PIX.present, PIX.present], milk: [PIX.milk, PIX.milk], lint: [PIX.lint, PIX.lint], pills: [PIX.pills, PIX.pills],
+  present: [PIX.present, PIX.present], tablet: [PIX.tablet, PIX.tablet], milk: [PIX.milk, PIX.milk], lint: [PIX.lint, PIX.lint], pills: [PIX.pills, PIX.pills],
 };
 // Condition shows, a little: a worn or broken find has scuffs, a mint one a
 // white glint. Placed by the find's uid, so it stays put.
@@ -688,16 +719,24 @@ function buildYard(id) {
 // four stalls under striped awnings, each with its own seller and two finds.
 // The DEALS stall, when it's there, is top right, so its seller can run off
 // the edge when the police come.
-function buildSwap() {
+function buildSwap(mine = null) {
   let list = shuffle(Object.keys(STALLS).filter(k => k !== 'shady' && k !== 'models')).slice(0, 8);
   if (shipsLeft().length && Math.random() < TUNE.shipChance) list[pick([0, 1, 2, 4, 5, 6])] = 'models';
   if (Math.random() < TUNE.shadyChance) { list = list.slice(0, 7); list.splice(3, 0, 'shady'); }
+  if (mine) list[5] = 'mine';
   const M = { id: 'swap', kind: 'swap', w: 36, top: 2, bottom: 11.2, sale: SALES.swap, items: [], slots: [], vendors: [], stalls: [], solid: [], objs: [], bought: 0, start: { x: 3.5, y: 8.6 }, cats: [], cops: null, copT: randIn(TUNE.copsAfter) };
   list.forEach((sid, i) => {
-    const st = STALLS[sid], top = i < 4, sx = 8 + (i % 4) * 7, ty = top ? 3.6 : 8, vi = M.vendors.length;
-    M.vendors.push({ x: sx + 2, y: top ? 3.35 : 10.6, look: sid === 'cat' ? CAT_LADY : sid === 'shady' ? HOOD : pick(LOOKS), rows: sid === 'shady' ? SHADY : CUST, lines: `stalls.${sid}`, yes: st.yes ?? .5, no: sid === 'cat' ? 'catNo' : 'sellerNo', face: 1, walkT: 0, shady: sid === 'shady' });
+    const st = STALLS[sid] || MINE_STALL, top = i < 4, sx = 8 + (i % 4) * 7, ty = top ? 3.6 : 8, vi = M.vendors.length;
+    M.vendors.push({ x: sx + 2, y: top ? 3.35 : 10.6, look: sid === 'cat' ? CAT_LADY : sid === 'shady' ? HOOD : pick(LOOKS), rows: sid === 'shady' ? SHADY : CUST, lines: `stalls.${sid}`, yes: st.yes ?? .5, no: sid === 'cat' ? 'catNo' : 'sellerNo', face: 1, walkT: 0, shady: sid === 'shady', gone: sid === 'mine' });
     M.solid.push({ x: sx, y: ty, w: 4, h: 1 }, top ? { x: sx, y: 2, w: 4, h: 1.6 } : { x: sx, y: 9, w: 4, h: 2.2 });
-    const finds = st.finds();
+    const finds = sid === 'mine' ? [] : st.finds();
+    if (sid === 'mine') {
+      mine.forEach((f, j) => {
+        M.items.push(f);
+        M.slots.push({ x: sx + .55 + j * .72, y: ty + .45, tagY: j % 2 ? ty + 1.55 : ty + 1, vendor: vi, stall: i, mine: true });
+      });
+      M.objs.push({ id: 'mine', x: sx, y: ty, w: 4, h: 1, stand: { x: sx + 2, y: 7.6 }, mine: true, act: 'actMyTable' });
+    }
     finds.forEach((k, j) => {
       const si = M.slots.length, x = finds.length === 1 ? sx + 2 : sx + 1.2 + j * 1.6;
       M.items.push(makeFind(k, !!st.hot));
@@ -709,6 +748,7 @@ function buildSwap() {
   });
   M.objs.push({ id: 'car', x: 2, y: 9, w: 3, h: 2, stand: { x: 3.5, y: 8.6 }, act: 'actCar' });
   M.solid.push({ x: 2, y: 9, w: 3, h: 2.2 }, { x: 2, y: 2, w: 3, h: 2 });
+  if (mine) M.selling = { t: TUNE.meetSell, spawn: 2 };
   return M;
 }
 let scene = 'shop';
@@ -882,6 +922,8 @@ function actionNow() { const o = inReach(); return o ? o.act : 'use'; }
 function act() { const o = inReach(); if (o) use(o); }
 function use(o) {
   if (scene === 'yard') {
+    if (o.pile != null) return sweep(o.pile);
+    if (o.mine) return firstWaiting() ? regCard() : say(t('meetMine'));
     if (o.slot != null) return lookCard(o.slot);
     if (o.id === 'car') return carCard();
     if (o.vendor != null) { say(t(MK.vendors[o.vendor].lines)); if (MK.id === 'cat') SFX.meow(); return; }
@@ -927,6 +969,11 @@ $('#card').addEventListener('click', e => {
   else if (a === 'askLess') askLess(+b.dataset.slot);
   else if (a === 'hgStop') hgStop();
   else if (a === 'drive') backToShop();
+  else if (a === 'pickSell') pickCard();
+  else if (a === 'pickT') { const u = +b.dataset.uid, i = picking.indexOf(u); if (i >= 0) picking.splice(i, 1); else if (picking.length < TUNE.tableMax) picking.push(u); pickCard(); const again = $('#card').querySelector(`[data-uid="${u}"]`); if (again) again.focus(); }
+  else if (a === 'goSell') goSelling();
+  else if (a === 'doorBack') doorCard();
+  else if (a === 'love') { closeCard(); showBar(); }
   // the desk and the floor
   else if (a === 'find') findCard(byUid(+b.dataset.uid), cardFrom, cardSpot);
   else if (a === 'desk') deskCard();
@@ -935,7 +982,7 @@ $('#card').addEventListener('click', e => {
   else if (a === 'openBox') openBox(f);
   else if (a === 'quick') quickSell(f);
   else if (a === 'toss') { S.stock = S.stock.filter(x => x !== f); save(); SFX.no(); say(t('tossed')); deskCard(); }
-  else if (a === 'copsOk') { closeCard(); showBar(); }
+  else if (a === 'copsOk') { closeCard(); showBar(); if (endAfterCops) { endAfterCops = false; endDay(); } }
   else if (a === 'putOut') putOut(f, targetSpot(f));
   else if (a === 'guide') { S.pocket -= TUNE.guide; S.guide = true; save(); SFX.ching(); say(t('guideGot')); showBar(); deskCard(); }
   else if (a === 'unwrap') unwrap(f);
@@ -971,24 +1018,116 @@ function doorCard() {
     return;
   }
   const any = S.spots.some(u => u != null);
-  const icon = { garage: LOOK.shovel[0], toys: LOOK.robot[0], cat: ART[1], swap: PIX.box };
-  const places = S.yardDone ? `<p class="soft">${t('beenYard')}</p>` : `<div class="list">${[...S.today, 'swap'].map(id =>
-    `<button class="it" type="button" data-act="go" data-sale="${id}"><img src="${picSrc(icon[id])}" alt=""><span>${t(`sales.${id}.name`)}<small>${t(`sales.${id}.line`, { fee: SALES.swap.fee })}</small></span></button>`).join('')}</div>`;
+  const icon = { garage: LOOK.shovel[0], toys: LOOK.robot[0], cat: ART[1], swap: PIX.box, sell: PIX.present, dump: PIX.tablet };
+  const fees = { swap: SALES.swap.fee, sell: TUNE.tableFee, dump: TUNE.dumpFee };
+  const places = S.yardDone ? `<p class="soft">${t('beenYard')}</p>` : `<div class="list">${[...S.today, 'swap', 'dump', 'sell'].map(id =>
+    `<button class="it" type="button" data-act="${id === 'sell' ? 'pickSell' : 'go'}" data-sale="${id}"><img src="${picSrc(icon[id])}" alt=""><span>${t(`sales.${id}.name`)}<small>${t(`sales.${id}.line`, { fee: fees[id], time: TUNE.dumpTime })}</small></span></button>`).join('')}</div>`;
   openCard(`${h2(t('doorTitle'))}<p>${t('doorText', { n: S.day })}</p>${places}${any ? '' : `<p class="soft">${t('nothingOut')}</p>`}
     <div class="row">${btn('close', t('cancel'))}${btn('openShop', t('openShop'), S.yardDone && any)}</div>`, S.yardDone ? null : '.it');
 }
 
 // ----- the yard sale -----
-function goBuying(id) {
-  const fee = id === 'swap' ? SALES.swap.fee : 0;
+function goBuying(id, mine = null) {
+  const fee = mine ? TUNE.tableFee : id === 'swap' ? SALES.swap.fee : id === 'dump' ? TUNE.dumpFee : 0;
   if (S.pocket < fee) { closeCard(); say(t('tooPoorFee', { n: fee })); return; }
   closeCard(); SFX.car();
   S.pocket -= fee; S.yardDone = true; save();
-  MK = id === 'swap' ? buildSwap() : buildYard(id);
+  queue.length = 0;
+  MK = id === 'swap' ? buildSwap(mine) : id === 'dump' ? buildDump() : buildYard(id);
   scene = 'yard'; P.x = MK.start.x; P.y = MK.start.y; P.route = null; custs = []; floats = [];
   setWidth(MK.w);
-  if (fee) { say(t('swapHello')); say(t('fee', { n: fee })); } else say(t(MK.vendors[0].lines));
+  if (mine) { say(t('meetHello')); say(t('fee', { n: fee })); }
+  else if (id === 'dump') { say(t('dumpHello', { time: TUNE.dumpTime })); say(t('dumpFee', { n: fee })); }
+  else if (fee) { say(t('swapHello')); say(t('fee', { n: fee })); } else say(t(MK.vendors[0].lines));
   showBar();
+}
+// ----- your table at the swap meet -----
+// Pick up to five tagged finds; they stay in your stock and sit on your table.
+// What buyers take is rung up at the table; the rest comes home.
+let picking = [];
+function pickCard() {
+  const can = S.stock.filter(f => f.tag && !isBig(f) && f.kind !== 'pills');
+  picking = picking.filter(u => can.some(f => f.uid === u));
+  const rows = can.map(f => `<button class="it" type="button" data-act="pickT" data-uid="${f.uid}" aria-pressed="${picking.includes(f.uid)}"><img src="${picSrc(rowsOf(f), colOf(f))}" alt=""><span>${picking.includes(f.uid) ? '✓ ' : ''}${Name(f)}<small>${t('tag')} $${f.tag}</small></span></button>`).join('');
+  const poor = S.pocket < TUNE.tableFee;
+  openCard(`${h2(t('pickTitle'))}<p>${can.length ? t('pickText', { max: TUNE.tableMax, fee: TUNE.tableFee }) : t('pickNone')}</p>
+    ${S.stock.some(isBig) ? `<p class="soft">${t('pickBig')}</p>` : ''}<div class="list">${rows}</div>
+    <p class="soft" role="status">${t('pickCount', { n: picking.length, max: TUNE.tableMax })}</p>
+    <div class="row">${btn('doorBack', t('back'))}${btn('goSell', t('pickGo', { n: picking.length }), true, !picking.length || poor ? 'disabled' : '')}</div>`, '.it', 'doorBack');
+}
+function goSelling() {
+  const mine = picking.map(byUid).filter(Boolean);
+  for (const f of mine) { const i = spotOf(f); if (i >= 0) S.spots[i] = null; }
+  picking = [];
+  goBuying('swap', mine);
+}
+const MINE_STALL = { sign: 'YOU', canopy: '#2f7a4a', finds: () => [] };
+// buyers walk in along the middle aisle to your table, look, and decide the
+// way shop customers do; collectors are common here
+function stepMeet(dt) {
+  const m = MK.selling;
+  if (m.t > 0) {
+    m.t -= dt; m.spawn -= dt;
+    if (m.t <= 0) say(t('meetClosing'));
+    const free = MK.slots.map((s, i) => s.mine && MK.items[i] && !custs.some(c => c.slot === i) ? i : -1).filter(i => i >= 0);
+    if (m.spawn <= 0 && free.length) {
+      m.spawn = randIn(TUNE.meetEvery);
+      const r = Math.random(), kind = r < .4 ? 'collector' : r < .8 ? 'regular' : 'hunter';
+      const slot = pick(free), sl = MK.slots[slot];
+      custs.push({ x: -.5, y: 6.4, kind, slot, look: kind === 'collector' ? { ...pick(LOOKS), h: '#2a2a30' } : pick(LOOKS), rows: kind === 'collector' ? COLLECTOR : CUST,
+        mode: 'in', t: 0, walkT: 0, face: 1, route: [{ x: sl.x, y: 6.4 }, { x: sl.x, y: 7.6 }], find: null, say: null });
+    }
+  }
+  for (const c of custs) {
+    if (c.say) { c.say.t -= dt; if (c.say.t <= 0) c.say = null; }
+    if (c.mode === 'in') { if (walk(c, dt)) { c.mode = 'browse'; c.t = randIn(TUNE.browse); bubble(c, t('browse'), 1.2); } }
+    else if (c.mode === 'browse') {
+      c.t -= dt; if (c.t > 0) continue;
+      const f = MK.items[c.slot];
+      if (!f || !decide(c, f)) { bubble(c, t(f ? 'tooPricey' : 'nothingHere')); leaveShop(c); continue; }
+      c.find = f; MK.items[c.slot] = null; c.mode = 'wait'; c.joined = ++lineNo; c.t = TUNE.wait; bubble(c, t('wait')); SFX.bell();
+    } else if (c.mode === 'wait') { c.t -= dt; if (c.t <= 0) { bubble(c, t('forget')); putBack(c); leaveShop(c); } }
+    else if (c.mode === 'out') { if (walk(c, dt)) c.gone = true; }
+  }
+  custs = custs.filter(c => !c.gone);
+}
+// ----- the dump -----
+// A dirt lot of junk piles. Use sweeps one with the broom: mostly junk, now
+// and then a smashed tablet, sometimes a real find (free, so all profit),
+// and once in a hundred, a fighter jet nobody noticed. Then the clock runs out.
+function buildDump() {
+  const M = { id: 'dump', kind: 'dump', w: 22, top: 2, bottom: 11.2, items: [], slots: [], vendors: [], solid: [], objs: [], cats: [], bought: 0, start: { x: 3.5, y: 8.6 }, piles: [], dumpT: TUNE.dumpTime };
+  M.vendors.push({ x: 4, y: 5.4, look: { ...C, h: '#e8a030', t: '#e8a030', s: '#c08860', p: '#3b4a6a' }, rows: CUST, lines: 'sellers.dump', yes: 0, no: 'sellerNo', face: 1, walkT: 0 });
+  M.objs.push({ id: 'guy', x: 3.4, y: 4.4, w: 1.2, h: 1.2, stand: { x: 4, y: 6.4 }, vendor: 0, act: 'actSeller' });
+  for (const y of [3.4, 6, 8.6]) for (let i = 0; i < 6; i++) {
+    const x = 7 + i * 2.4, k = M.piles.length;
+    M.piles.push({ x, y, swept: false, hits: TUNE.dumpHits, seed: k * 7 + 3 });
+    M.solid.push({ x: x + .1, y: y + .2, w: 1.4, h: .7 });
+    M.objs.push({ id: 'pile' + k, x, y, w: 1.6, h: 1, stand: { x: x + .8, y: y + 1.5 }, pile: k, act: 'actSweep' });
+  }
+  M.objs.push({ id: 'car', x: 2, y: 9, w: 3, h: 2, stand: { x: 3.5, y: 8.6 }, act: 'actCar' });
+  M.solid.push({ x: 2, y: 9, w: 3, h: 2.2 });
+  return M;
+}
+function sweep(i) {
+  const pl = MK.piles[i];
+  if (MK.dumpT <= 0) { say(t('dumpOver')); return; }
+  if (pl.swept) { say(t('swept')); return; }
+  // three sweeps of the broom to get to the bottom of a pile
+  if (--pl.hits > 0) { SFX.rip(); return; }
+  pl.swept = true; SFX.rip();
+  const r = Math.random(), o = TUNE.dumpOdds;
+  if (r < o.jet) { say(t('dumpJet')); SFX.wow(); return; }
+  if (r < o.jet + o.nothing) { say(t('dumpNothing')); return; }
+  const f = makeFind(r < o.jet + o.nothing + o.tablet ? 'tablet' : pick(DUMP_FINDS));
+  delete f.ask; f.cost = 0; S.stock.push(f); MK.bought++; save();
+  if (f.kind === 'tablet') say(t('dumpTablet')); else { say(t('dumpFound', { item: nameOf(f) })); SFX.coin(); }
+  float(pl.x + .8, pl.y, f.kind === 'tablet' ? '...' : '!', '#2f7a4a');
+}
+function stepDump(dt) {
+  if (MK.dumpT <= 0) return;
+  MK.dumpT -= dt;
+  if (MK.dumpT <= 0) { say(t('dumpOver')); SFX.bell(); }
 }
 function lookCard(slot) {
   const f = MK.items[slot]; if (!f) return;
@@ -1049,13 +1188,18 @@ function carCard() {
   const n = MK.bought;
   openCard(`${h2(t('carTitle'))}<p>${n ? t('carText', { n }) : t('carNone')}</p><div class="row">${btn('close', t('stay'))}${btn('drive', t('drive'), true)}</div>`);
 }
+let endAfterCops = false;
 function backToShop() {
+  const selling = !!(MK && MK.selling);
+  if (selling) for (const c of custs) putBack(c);
   closeCard(); SFX.car(); enterShop(); P.x = 10; P.y = 10.4; showBar();
+  if (selling) say(t('meetDone'));
   // driving off with stolen goods doesn't keep them: an officer is waiting
   const hot = S.stock.filter(f => f.hot);
-  if (hot.length) { SFX.siren(); confiscate(hot, 'copsShopTitle', 'copsShop'); }
+  if (hot.length) { SFX.siren(); confiscate(hot, 'copsShopTitle', 'copsShop'); endAfterCops = selling; }
+  else if (selling) endDay();
 }
-function enterShop() { scene = 'shop'; MK = null; custs = []; floats = []; P.route = null; setWidth(20); }
+function enterShop() { queue.length = 0; scene = 'shop'; MK = null; custs = []; floats = []; P.route = null; setWidth(20); }
 // stolen things go back to their owner, and what you paid for them is gone
 function confiscate(list, title, words) {
   S.stock = S.stock.filter(f => !list.includes(f)); save();
@@ -1280,6 +1424,10 @@ function nextDay() {
   closeCard(); S.day++; S.phase = 'morning'; S.clock = 0; S.yardDone = false;
   const was = [...S.today].sort().join(); do S.today = pickToday(); while ([...S.today].sort().join() === was); save();
   P.x = 10; P.y = 9.5; say(t('morning', { n: S.day })); showBar();
+  if (S.catLove && !S.catLove.sent && S.day > S.catLove.day) {
+    S.catLove.sent = true; S.pocket += TUNE.loveGift; save(); SFX.wow(); showBar();
+    openCard(`${h2(t('loveTitle'))}<p class="note">${t('loveText', { title: S.catLove.title || t('loveTitleNone') })}</p><p>${t('loveGift', { n: TUNE.loveGift })}</p><div class="row">${btn('love', t('done'), true)}</div>`, null, 'love');
+  }
 }
 
 // ---------- Customers ----------
@@ -1294,15 +1442,44 @@ function nextDay() {
 const COLLECTOR = { a: CUST.a.map((r, i) => i === 0 ? '.hhhhhhhh.' : i === 3 ? '..sbsbbs..' : r), b: CUST.b.map((r, i) => i === 0 ? '.hhhhhhhh.' : i === 3 ? '..sbsbbs..' : r) };
 function spawnCust() {
   const late = S.clock > TUNE.dayLen * TUNE.lateFrom;
-  const kind = late ? (Math.random() < .7 ? 'collector' : 'regular') : (Math.random() < .5 ? 'hunter' : 'regular');
-  const look = kind === 'collector' ? { ...pick(LOOKS), h: '#2a2a30' } : pick(LOOKS);
+  // the cat fan (26 Nov) comes once a hairball sculpture is out, until he's bought one
+  const art = !S.catLove && S.spots.findIndex(u => { const f = byUid(u); return f && f.kind === 'hairball'; });
+  const fan = art >= 0 && art !== false && Math.random() < TUNE.catFanChance && !custs.some(o => o.kind === 'catfan');
+  const kind = fan ? 'catfan' : late ? (Math.random() < .7 ? 'collector' : 'regular') : (Math.random() < .5 ? 'hunter' : 'regular');
+  const look = kind === 'collector' ? { ...pick(LOOKS), h: '#2a2a30' } : kind === 'catfan' ? { ...C, h: '#a8a8a8', t: '#e05a9a', s: '#f0c49a', p: '#3b4a6a' } : pick(LOOKS);
   const c = { x: SHOP_DOOR.x - .5 + Math.random(), y: 11.6, look, kind, rows: kind === 'collector' ? COLLECTOR : CUST, mode: 'in', t: 0, walkT: 0, face: 1, route: null, find: null, say: null };
   if (kind === 'collector') c.say = { text: t('collectorIn'), t: 2 };
+  if (kind === 'catfan') c.say = { text: t('catFanIn'), t: 2.4 };
   const free = S.spots.map((u, i) => u != null && !custs.some(o => o.spot === i) ? i : -1).filter(i => i >= 0);
-  if (free.length) { c.spot = free[Math.floor(Math.random() * free.length)]; c.route = path(c, SHOP.find(o => o.spot === c.spot).stand, true); }
+  if (kind === 'catfan' && free.includes(art)) { c.spot = art; c.route = path(c, SHOP.find(o => o.spot === art).stand, true); }
+  else if (free.length) { c.spot = free[Math.floor(Math.random() * free.length)]; c.route = path(c, SHOP.find(o => o.spot === c.spot).stand, true); }
   else { c.spot = null; c.route = path(c, { x: 9 + Math.random() * 3, y: 7.6 }, true); }
   if (!c.route) return;
   custs.push(c); SFX.door();
+}
+// Does this buyer want it at its tag? Sets what they'll pay (`price`), their
+// offer if they haggle, and the most they'd go to (`max`). The cat fan pays
+// for any hairball sculpture: to him they're art.
+function decide(c, f) {
+  const base = c.kind === 'catfan' && f.kind === 'hairball' ? Math.max(worthTo(f), round5(randIn(TUNE.catFan))) : worthTo(f);
+  const mint = f.q === 5;
+  const would = base * randIn(c.kind === 'collector' ? (mint ? TUNE.collectorMint : TUNE.collector) : c.kind === 'catfan' ? [1, 1.1] : TUNE.pay);
+  const stretch = mint ? TUNE.mintStretch : TUNE.stretch;
+  if (c.kind === 'hunter') {
+    // a bargain hunter always offers low, and goes no higher than this
+    c.max = Math.max(1, Math.round(base * TUNE.hunterMax)); c.price = f.tag;
+    c.offer = Math.max(1, round5(base * randIn(TUNE.hunter)));
+    if (!base || c.offer >= f.tag) { c.offer = null; c.max = f.tag; }
+    if (!base || f.tag > base * 2) return false;
+  } else if (!base) return false;
+  else if (f.tag <= would) {
+    c.max = f.tag; c.price = f.tag;
+    c.offer = c.kind === 'regular' && Math.random() < TUNE.haggleAnyway && f.tag >= 20 ? round5(f.tag * randIn(TUNE.offer)) : null;
+  } else if (f.tag <= would * stretch) {
+    c.max = Math.max(1, Math.round(would)); c.price = f.tag; c.offer = Math.max(1, round5(would * randIn(TUNE.offer)));
+    if (c.offer >= f.tag) c.offer = null;
+  } else return false;
+  return true;
 }
 function bubble(c, text, s = 1.8) { c.say = { text, t: s }; }
 function walk(c, dt, speed = c.speed || TUNE.cust) {
@@ -1313,10 +1490,15 @@ function walk(c, dt, speed = c.speed || TUNE.cust) {
   if (Math.abs(n.x - c.x) > .05) c.face = n.x > c.x ? 1 : -1;
   return false;
 }
-function leaveShop(c) { c.mode = 'out'; c.route = path(c, SHOP_DOOR, true) || [SHOP_DOOR]; }
+function leaveShop(c) {
+  c.mode = 'out';
+  if (scene !== 'shop') { c.route = [{ x: c.x, y: 6.4 }, { x: W + 1, y: 6.4 }]; return; }
+  c.route = path(c, SHOP_DOOR, true) || [SHOP_DOOR];
+}
 function putBack(c) {
   // the find goes back where it was, if that spot's still free
   if (!c.find) return;
+  if (scene !== 'shop') { MK.items[c.slot] = c.find; c.find = null; return; }
   if (S.spots[c.spot] == null) S.spots[c.spot] = c.find.uid;
   else { const i = S.spots.indexOf(null); if (i >= 0) S.spots[i] = c.find.uid; }
   c.find = null; save();
@@ -1335,22 +1517,8 @@ function stepCusts(dt) {
       if (c.t > 0) continue;
       const f = byUid(S.spots[c.spot]);
       if (!f) { leaveShop(c); continue; }
-      const mint = f.q === 5;
-      const would = worthTo(f) * randIn(c.kind === 'collector' ? (mint ? TUNE.collectorMint : TUNE.collector) : TUNE.pay);
-      const stretch = mint ? TUNE.mintStretch : TUNE.stretch;
-      if (c.kind === 'hunter') {
-        // a bargain hunter always offers low, and goes no higher than this
-        c.max = Math.max(1, Math.round(worthTo(f) * TUNE.hunterMax)); c.price = f.tag;
-        c.offer = Math.max(1, round5(worthTo(f) * randIn(TUNE.hunter)));
-        if (!worthTo(f) || c.offer >= f.tag) { c.offer = null; c.max = f.tag; }
-        if (!worthTo(f) || f.tag > worthTo(f) * 2) { bubble(c, t('tooPricey')); leaveShop(c); continue; }
-      } else if (f.tag <= would) {
-        c.max = f.tag; c.price = f.tag;
-        c.offer = c.kind !== 'collector' && Math.random() < TUNE.haggleAnyway && f.tag >= 20 ? round5(f.tag * randIn(TUNE.offer)) : null;
-      } else if (f.tag <= would * stretch) {
-        c.max = Math.max(1, Math.round(would)); c.price = f.tag; c.offer = Math.max(1, round5(would * randIn(TUNE.offer)));
-        if (c.offer >= f.tag) c.offer = null;
-      } else { bubble(c, t('tooPricey')); leaveShop(c); continue; }
+      if (!decide(c, f)) { bubble(c, t('tooPricey')); leaveShop(c); continue; }
+      if (c.kind === 'catfan' && f.kind === 'hairball') bubble(c, t('catFanBuy'), 2.4);
       c.find = f; S.spots[c.spot] = null; save();
       c.mode = 'toReg'; c.joined = ++lineNo;
       c.route = path(c, linePlace(inLine().indexOf(c)), true);
@@ -1380,14 +1548,14 @@ let regCust = null;
 function regCard() {
   regCust = firstWaiting();
   const c = regCust;
-  if (!c) { openCard(`${h2(t('regTitle'))}<p>${t('regEmpty')}</p><div class="row">${btn('close', t('done'), true)}</div>`); return; }
+  if (!c) { openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<p>${t('regEmpty')}</p><div class="row">${btn('close', t('done'), true)}</div>`); return; }
   const f = c.find, item = nameOf(f), who = `<p><b>${t(`buyers.${c.kind}`)}</b></p>`;
   if (c.offer == null) {
-    openCard(`${h2(t('regTitle'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div><div class="row">${btn('noSale', t('noSale'))}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
+    openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regPays', { item, tag: f.tag })}</p></div></div><div class="row">${btn('noSale', t('noSale'))}${btn('ring', t('ringUp'), true)}</div>`, null, 'noSale');
   } else {
     const mid = round5((c.offer + f.tag) / 2);
     c.mid = mid > c.offer && mid < f.tag ? mid : null;
-    openCard(`${h2(t('regTitle'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regOffer', { item, tag: f.tag, offer: c.offer })}</p><dl><dt>${t('paid')}</dt><dd>$${f.cost}</dd><dt>${t('worth')}</dt><dd>${known(f) ? '$' + f.value : t('worthUnknown')}</dd></dl></div></div>
+    openCard(`${h2(t(scene === 'shop' ? 'regTitle' : 'actMyTable'))}<div class="look">${picHtml(f)}<div class="facts">${who}<p>${t('regOffer', { item, tag: f.tag, offer: c.offer })}</p><dl><dt>${t('paid')}</dt><dd>$${f.cost}</dd><dt>${t('worth')}</dt><dd>${known(f) ? '$' + f.value : t('worthUnknown')}</dd></dl></div></div>
       <div class="row">${btn('noSale', t('noSale'))}${c.mid && !c.countered ? btn('counter', t('counter', { n: c.mid })) : ''}${btn('offer', t('sellFor', { n: c.offer }), true)}</div>`, null, 'noSale');
   }
 }
@@ -1401,7 +1569,9 @@ function sell(c, n) {
   const f = c.find; c.find = null;
   S.stock = S.stock.filter(x => x !== f);
   bubble(c, t('thanks')); leaveShop(c);
-  const r = SHOP.find(o => o.id === 'reg');
+  // the cat fan and the artist: a letter comes the next morning
+  if (c.kind === 'catfan' && f.kind === 'hairball' && !S.catLove) S.catLove = { title: f.title || '', day: S.day, sent: false };
+  const r = scene === 'shop' ? SHOP.find(o => o.id === 'reg') : { x: c.x - 2.5, y: c.y - 1 };
   sale(f, n, r.x + 2.5, r.y);
 }
 // Every sale is split here, the card's rule: what you paid for the find goes
@@ -1426,11 +1596,14 @@ function showBar() {
   const on = mode === 'play';
   ['#dayPill', '#cashPill', '#poolPill', '#helpBtn'].forEach(id => $(id).hidden = !on);
   if (!on) return;
-  $('#dayPill').textContent = S.phase === 'open' ? t('dayClock', { n: S.day, clock: clockText() }) : t('day', { n: S.day });
+  $('#dayPill').textContent = scene !== 'shop' && MK && MK.kind === 'dump' ? t('dumpLeft', { s: Math.max(0, Math.ceil(MK.dumpT)) })
+    : S.phase === 'open' ? t('dayClock', { n: S.day, clock: clockText() }) : t('day', { n: S.day });
   $('#cashPill').innerHTML = `<span class="long">${t('pocket', { n: S.pocket })}</span><span class="short">${t('pocketShort', { n: S.pocket })}</span>`;
   $('#poolPill').innerHTML = `<span class="long">${t('pool', { n: S.pool, rent: S.rent + S.owed })}</span><span class="short">${t('poolShort', { n: S.pool, rent: S.rent + S.owed })}</span>`;
 }
 function nextThing() {
+  if (scene === 'yard' && MK.selling) return firstWaiting() ? MK.objs.find(o => o.mine) : MK.selling.t <= 0 ? MK.objs.find(o => o.id === 'car') : null;
+  if (scene === 'yard' && MK.kind === 'dump') { const k = MK.piles.findIndex(p => !p.swept); return MK.objs.find(o => MK.dumpT > 0 && k >= 0 ? o.pile === k : o.id === 'car'); }
   if (scene === 'yard') { const i = MK.items.findIndex(Boolean); return MK.objs.find(o => i >= 0 ? o.slot === i : o.id === 'car'); }
   if (firstWaiting()) return SHOP.find(o => o.id === 'reg');
   if (S.phase === 'open') return null;
@@ -1441,7 +1614,7 @@ function nextThing() {
   return SHOP.find(o => o.id === 'door');
 }
 function goalText() {
-  if (scene === 'yard') return t('goalYard');
+  if (scene === 'yard') return t(MK.selling ? 'goalMeet' : MK.kind === 'dump' ? 'goalDump' : 'goalYard');
   if (firstWaiting()) return t('goalRegister');
   if (S.phase === 'open') return t('goalOpen');
   const back = inBack();
@@ -1600,7 +1773,7 @@ function drawFinds(now) {
     if (!f) return;
     const s = MK.slots[i];
     drawItemAt(f, s.x * T, s.y * T, now);
-    tagAt(f.ask, s.x * T, s.tagY * T + 2);
+    tagAt(s.mine ? f.tag : f.ask, s.x * T, s.tagY * T + 2);
   });
 }
 // your car: a little red hatchback
@@ -1651,6 +1824,32 @@ function drawSwap(now) {
     text('POLICE', x + 13, y + 9, '#1a2a5a');
   }
 }
+// the dump: packed dirt, a chain-link fence, the gate shed, and the piles
+function dirtTile(v) {
+  return RDG.tile('dirt' + v, T, T, (set, fill, r) => {
+    fill(0, 0, T, T, '#9a7a52');
+    for (let i = 0; i < 10; i++) set(Math.floor(r() * T), Math.floor(r() * T), r() < .5 ? '#86683e' : '#ae8e64');
+  });
+}
+const JUNK_C = ['#5e626c', '#7a7e88', '#3a3a42', '#8a5a30', '#6a4a2e', '#a8acb4', '#c84a3a', '#3b6ea8', '#4f8f46'];
+function drawDump(now) {
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) put(dirtTile((i * 7 + j * 5) % 4), i * T, j * T);
+  px(0, 0, W * T, 2 * T, '#a8b0b8');
+  for (let i = 0; i < W * T; i += 4) for (let j = (i / 4) % 2 ? 2 : 0; j < 2 * T; j += 4) px(i, j, 1, 1, '#7a828a');
+  px(0, 2 * T - 2, W * T, 2, '#5a6068');
+  px(9 * T, 6, 8 * T, 14, '#e8a030'); px(9 * T, 6, 8 * T, 1, '#ffd070'); textC('OAKRIDGE DUMP', 13 * T, 10, '#2a1a10');
+  // the gate shed
+  px(2 * T, 2 * T, 3 * T, 2 * T, '#8a8a8a'); px(2 * T + 4, 2 * T + 4, 3 * T - 8, 12, '#a8d8f0'); px(2 * T, 2 * T, 3 * T, 3, '#5e626c');
+  for (const p of MK.piles) {
+    const x = p.x * T, y = p.y * T;
+    if (p.swept) { px(x + 2, y + 10, 22, 5, '#86683e'); for (let k = 0; k < 4; k++) px(x + 4 + k * 5, y + 11, 3, 1, '#ae8e64'); continue; }
+    // the pile gets lower with each sweep
+    const top = (3 - p.hits) * 3;
+    px(x + 2, y + 6 + top / 2, 22, 10 - top / 2, '#6a5a4a'); if (p.hits > 1) px(x + 6, y + 2 + top, 14, 6, '#6a5a4a'); if (p.hits > 2) px(x + 10, y, 6, 3, '#6a5a4a');
+    for (let k = 0; k < 3 + p.hits * 2; k++) { const sd = (p.seed * 31 + k * 17) % 97; px(x + 3 + sd % 19, y + 2 + top + (sd * 7) % Math.max(4, 12 - top), 2 + sd % 3, 2, JUNK_C[(sd + k) % JUNK_C.length]); }
+  }
+  drawCar(2 * T, 9 * T + 2);
+}
 function drawPerson(o, rows, colors, now) {
   const going = o === P ? P.moving : o.run || (o.route && o.route.length);
   const step = going && Math.floor(o.walkT * 8) % 2 ? rows.b : rows.a;
@@ -1672,7 +1871,7 @@ function bubbleAt(s, x, y) {
 function draw(now) {
   cx.clearRect(0, 0, lo.width, lo.height);
   tags = [];
-  if (scene === 'shop') drawShop(now); else if (MK.kind === 'swap') drawSwap(now); else drawYard(now);
+  if (scene === 'shop') drawShop(now); else if (MK.kind === 'swap') drawSwap(now); else if (MK.kind === 'dump') drawDump(now); else drawYard(now);
   // people, drawn top to bottom so nearer ones stand in front
   const people = [{ o: P, rows: KEEPER, col: C }, ...custs.map(c => ({ o: c, rows: c.rows || CUST, col: c.look }))];
   if (scene === 'yard') {
@@ -1712,7 +1911,8 @@ function startPlay() {
 function step(dt, now) {
   if (mode !== 'play') return;
   stepKeeper(dt);
-  if (scene === 'shop') { stepDay(dt); stepCusts(dt); stepMice(dt); } else stepMarket(dt);
+  if (scene === 'shop') { stepDay(dt); stepCusts(dt); stepMice(dt); }
+  else { stepMarket(dt); if (MK.selling) stepMeet(dt); if (MK.kind === 'dump') stepDump(dt); }
   for (const f of floats) f.t -= dt;
   floats = floats.filter(f => f.t > 0);
   const a = t(actionNow()); if ($('#actBtn').textContent !== a) $('#actBtn').textContent = a;
